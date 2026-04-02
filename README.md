@@ -1,22 +1,25 @@
 # model-informed-greenhouse-dashboard
 
 ## Purpose
-- Briefly describe the biological or modeling question this repository addresses.
+- Build a model-informed greenhouse dashboard that combines greenhouse telemetry, crop-state model outputs, and decision-friendly summaries in one reproducible workspace.
 
 ## Inputs
-- Document forcing data, parameters, canonical variable names, and configuration files here.
+- Greenhouse telemetry, environment and control logs, and derived feature tables.
+- Model outputs, scenario runs, thresholds, and configuration files that define the dashboard contract.
 
 ## Outputs
-- Document canonical outputs, units, and generated artifacts here.
+- Dashboard-ready data products, model-context summaries, and validation-friendly artifacts.
+- Documentation for canonical inputs, outputs, and operating assumptions.
 
 ## How to run
 ```bash
 poetry install
 poetry run pytest
+poetry run ruff check .
 ```
 
 ## Current status
-- Bootstrapped.
+- Bootstrapped with Poetry, workspace GitHub helpers, and the initial project blueprint.
 
 ## Next validation
-- Add one representative baseline, smoke test, or comparison check.
+- Define the first bounded data contract and add one representative smoke test for the initial dashboard slice.

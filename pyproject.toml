@@ -3,7 +3,7 @@ name = "model-informed-greenhouse-dashboard"
 version = "0.1.0"
 description = "Model-informed greenhouse dashboard"
 authors = [
-    {name = "Pytoritas",email = "phmoon08@gmail.com"}
+    {name = "Phytoritas",email = "phmoon08@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
