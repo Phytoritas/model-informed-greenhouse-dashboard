@@ -5,6 +5,7 @@ import ControlPanel from './components/ControlPanel';
 import CropDetails from './components/CropDetails';
 import { useGreenhouse } from './hooks/useGreenhouse';
 import { useAiAssistant } from './hooks/useAiAssistant';
+import { useProducePrices } from './hooks/useProducePrices';
 import { useRtrProfiles } from './hooks/useRtrProfiles';
 import { useWeatherOutlook } from './hooks/useWeatherOutlook';
 import type { CropType } from './types';
@@ -17,6 +18,7 @@ const ModelAnalytics = lazy(() => import('./components/ModelAnalytics'));
 const ForecastPanel = lazy(() => import('./components/ForecastPanel'));
 const ConsultingReport = lazy(() => import('./components/ConsultingReport'));
 const WeatherOutlookPanel = lazy(() => import('./components/WeatherOutlookPanel'));
+const ProducePricesPanel = lazy(() => import('./components/ProducePricesPanel'));
 const RTROutlookPanel = lazy(() => import('./components/RTROutlookPanel'));
 
 interface LoadingPanelProps {
@@ -104,6 +106,11 @@ function App() {
     loading: isWeatherLoading,
     error: weatherError,
   } = useWeatherOutlook();
+  const {
+    prices: producePrices,
+    loading: isProducePricesLoading,
+    error: producePricesError,
+  } = useProducePrices();
   const {
     profiles: rtrProfilesPayload,
     loading: isRtrProfileLoading,
@@ -299,12 +306,19 @@ function App() {
                 onRefresh={handleAnalyze}
               />
             </Suspense>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
               <Suspense fallback={<LoadingPanel title="Daegu Live Weather" minHeightClassName="min-h-[320px]" />}>
                 <WeatherOutlookPanel
                   weather={weather}
                   loading={isWeatherLoading}
                   error={weatherError}
+                />
+              </Suspense>
+              <Suspense fallback={<LoadingPanel title="Live Produce Prices" minHeightClassName="min-h-[320px]" />}>
+                <ProducePricesPanel
+                  prices={producePrices}
+                  loading={isProducePricesLoading}
+                  error={producePricesError}
                 />
               </Suspense>
               <Suspense fallback={<LoadingPanel title="RTR Strategy" minHeightClassName="min-h-[320px]" />}>
