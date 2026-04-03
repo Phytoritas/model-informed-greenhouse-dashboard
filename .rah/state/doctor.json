@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "checked_at": "2026-04-03",
+  "checks": {
+    "architecture_spine": "pass",
+    "runtime_sidecar": "pass",
+    "json_state_parse": "pass",
+    "issue_branch_linkage": "pass",
+    "backend_slice_validation": "pass",
+    "frontend_scope": "pass",
+    "frontend_migration": "pass",
+    "browser_smoke": "pass",
+    "bundle_review": "pass",
+    "local_validation_ladder": "pass"
+  },
+  "warnings": [
+    "configs/rtr_good_windows.yaml still contains concept-demo windows; final RTR calibration sign-off remains pending until grower-approved good-production periods are available."
+  ]
+}

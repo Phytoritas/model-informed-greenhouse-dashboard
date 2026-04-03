@@ -1,0 +1,296 @@
+"""OpenAI integration for consulting and chat endpoints."""
+
+from __future__ import annotations
+
+import json
+import os
+from typing import Any, Dict, List, Optional
+
+try:
+    from openai import AuthenticationError, OpenAI
+except ImportError:  # pragma: no cover - exercised only when optional dependency is absent
+    AuthenticationError = None
+    OpenAI = None
+
+
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
+
+
+def _get_api_key() -> Optional[str]:
+    return os.getenv("OPENAI_API_KEY")
+
+
+def _client() -> OpenAI:
+    if OpenAI is None:
+        raise RuntimeError(
+            "openai is not installed. Install the optional AI dependency to enable OpenAI endpoints."
+        )
+
+    api_key = _get_api_key()
+    if not api_key:
+        raise RuntimeError(
+            "Missing OpenAI API key. Set OPENAI_API_KEY in backend environment."
+        )
+
+    return OpenAI()
+
+
+def _generate_text(*, instructions: str, input_data: Any, model: str) -> str:
+    try:
+        response = _client().responses.create(
+            model=model,
+            instructions=instructions,
+            input=input_data,
+        )
+    except AuthenticationError as exc:
+        raise RuntimeError(
+            "Invalid OpenAI API key. Recreate OPENAI_API_KEY from the OpenAI Platform and update the repo-root .env or backend environment."
+        ) from exc
+
+    text = getattr(response, "output_text", None)
+    if text:
+        return text
+
+    raise ValueError("OpenAI response did not include text output.")
+
+
+def _system_prompt(crop: str, language: str = "ko") -> str:
+    """System prompt with crop-specific focus."""
+    crop_norm = (crop or "").strip().lower()
+    crop_focus_en = ""
+    crop_focus_ko = ""
+
+    if crop_norm == "tomato":
+        crop_focus_en = (
+            "Focus on tomato physiology and management: VPD/transpiration for fruit set, "
+            "stomatal conductance & photosynthesis, canopy temperature, generative vs vegetative balance, "
+            "active trusses/fruit load/harvest outlook, CO2 & light strategy, and energy/HVAC."
+        )
+        crop_focus_ko = (
+            "토마토 관점에 집중하세요: 착과/비대에 중요한 VPD·증산, 기공전도도·광합성, 캐노피 온도, "
+            "생식/영양 균형, 착과(활성 화방/과부하)·수확 전망, CO2/광 전략, 에너지(HVAC)까지 포함."
+        )
+    elif crop_norm == "cucumber":
+        crop_focus_en = (
+            "Focus on cucumber physiology and management: node development, pruning/leaf targets, "
+            "vegetative vs reproductive balance, VPD/transpiration, canopy temperature, "
+            "stomatal conductance & photosynthesis, CO2/light strategy, and energy/HVAC."
+        )
+        crop_focus_ko = (
+            "오이 관점에 집중하세요: 마디수(노드) 발달, 적심/전정·엽수 목표, 영양/생식 균형, "
+            "VPD·증산, 캐노피 온도, 기공전도도·광합성, CO2/광 전략, 에너지(HVAC)까지 포함."
+        )
+
+    if language.lower().startswith("en"):
+        return (
+            "You are a senior greenhouse agronomist and energy engineer. "
+            "Provide concise, actionable consulting based ONLY on the provided dashboard data. "
+            "Do not fabricate missing values; explicitly say 'missing data' when needed. "
+            "Write in Markdown with clear headings and bullet points. "
+            f"{crop_focus_en}"
+        )
+
+    return (
+        "당신은 온실 작물 생리/재배(생육, 광합성, 기공, 증산)와 에너지(HVAC)까지 이해하는 시니어 컨설턴트입니다. "
+        "아래 대시보드 데이터만 근거로 간결하고 실행 가능한 컨설팅을 제공하세요. "
+        "없거나 추정 불가한 값은 임의로 만들지 말고 '추가 데이터 필요'라고 명시하세요. "
+        "Markdown으로 제목/소제목/불릿 형태로 정리하세요. "
+        f"{crop_focus_ko}"
+    )
+
+
+def _consult_markdown_template(crop: str, language: str = "ko") -> str:
+    crop_norm = (crop or "").strip().lower()
+    if crop_norm == "tomato":
+        crop_block_en = "- Active trusses: ...\n" "- Harvest outlook: ...\n"
+        crop_block_ko = (
+            "- Active trusses(활성 화방): ...\n" "- Harvest outlook(수확 전망): ...\n"
+        )
+    elif crop_norm == "cucumber":
+        crop_block_en = "- Node count: ...\n" "- Pruning / target leaf count: ...\n"
+        crop_block_ko = (
+            "- Node count(마디수): ...\n"
+            "- Pruning / target leaf count(전정/목표 엽수): ...\n"
+        )
+    else:
+        crop_block_en = "- Crop-specific: ...\n"
+        crop_block_ko = "- Crop-specific: ...\n"
+
+    if language.lower().startswith("en"):
+        return (
+            "## Executive Summary\n"
+            "- ...\n\n"
+            "## Situation (Last 60 points summary)\n"
+            "### Environment\n"
+            "- Temperature (°C): ...\n"
+            "- RH (%): ...\n"
+            "- CO2 (ppm): ...\n"
+            "- PAR (µmol m⁻² s⁻¹): ...\n"
+            "- VPD (kPa): ...\n\n"
+            "### Plant Physiology\n"
+            "- Photosynthesis (µmol m⁻² s⁻¹): ...\n"
+            "- Stomatal conductance (mol m⁻² s⁻¹): ...\n"
+            "- Transpiration (mm/h): ...\n"
+            "- Energy balance (H/LE, W/m²): ...\n\n"
+            "### Growth / Yield\n"
+            "- LAI: ...\n"
+            "- Biomass (g/m²): ...\n"
+            f"{crop_block_en}\n"
+            "## Alerts & Risks\n"
+            "- **High**: ...\n"
+            "- **Medium**: ...\n"
+            "- **Low**: ...\n\n"
+            "## Recommendations (Priority)\n"
+            "- **High**: ...\n"
+            "- **Medium**: ...\n"
+            "- **Low**: ...\n\n"
+            "## Monitoring Checklist (Next 24h)\n"
+            "- ...\n"
+        )
+
+    return (
+        "## Executive Summary\n"
+        "- ...\n\n"
+        "## Situation (최근 60포인트 요약)\n"
+        "### Environment\n"
+        "- Temperature (°C): ...\n"
+        "- RH (%): ...\n"
+        "- CO2 (ppm): ...\n"
+        "- PAR (µmol m⁻² s⁻¹): ...\n"
+        "- VPD (kPa): ...\n\n"
+        "### Plant Physiology\n"
+        "- Photosynthesis (µmol m⁻² s⁻¹): ...\n"
+        "- Stomatal conductance (mol m⁻² s⁻¹): ...\n"
+        "- Transpiration (mm/h): ...\n"
+        "- Energy balance (H/LE, W/m²): ...\n\n"
+        "### Growth / Yield\n"
+        "- LAI: ...\n"
+        "- Biomass (g/m²): ...\n"
+        f"{crop_block_ko}\n"
+        "## Alerts & Risks\n"
+        "- **High**: ...\n"
+        "- **Medium**: ...\n"
+        "- **Low**: ...\n\n"
+        "## Recommendations (Priority)\n"
+        "- **High**: ...\n"
+        "- **Medium**: ...\n"
+        "- **Low**: ...\n\n"
+        "## Monitoring Checklist (Next 24h)\n"
+        "- ...\n"
+    )
+
+
+def generate_consulting(
+    *,
+    crop: str,
+    dashboard: Dict[str, Any],
+    language: str = "ko",
+    model: str = DEFAULT_MODEL,
+) -> str:
+    """Generate consulting text based on the current dashboard snapshot."""
+    prompt = (
+        f"Crop: {crop}\n"
+        "Units & key mapping (dashboard JSON):\n"
+        "- data.temperature: air temperature (°C)\n"
+        "- data.canopyTemp: canopy temperature (°C)\n"
+        "- data.humidity: RH (%)\n"
+        "- data.co2: CO2 (ppm)\n"
+        "- data.light: PAR (µmol m⁻² s⁻¹)\n"
+        "- data.vpd: VPD (kPa)\n"
+        "- data.transpiration: transpiration (mm/h)\n"
+        "- data.stomatalConductance: stomatal conductance (mol m⁻² s⁻¹)\n"
+        "- data.photosynthesis: gross photosynthesis (µmol m⁻² s⁻¹)\n"
+        "- data.hFlux / data.leFlux: sensible/latent heat flux (W/m²)\n"
+        "- data.energyUsage: electrical power (kW)\n"
+        "- metrics.growth.lai: LAI\n"
+        "- metrics.growth.biomass: biomass (g/m²)\n"
+        "- metrics.energy.consumption: electrical power (kW)\n\n"
+        "Required live context when present:\n"
+        "- weather.current.temperature_c / humidity / cloud / wind plus next 3 daily forecasts for the live Daegu outside outlook\n"
+        "- rtr.profile.* for the calibrated RTR line metadata\n"
+        "- rtr.live.targetTempC / deltaTempC / balanceState / radiationSumMjM2D / averageTempC for the current 24 h balance\n"
+        "- rtr.forecastTargets[*].targetTempC / radiationSumMjM2D for the next 3 days\n\n"
+        "Priority rules:\n"
+        "- If weather or rtr fields are present, explicitly mention them in Executive Summary and Recommendations.\n"
+        "- Use weather and rtr as the primary live steering context when present.\n"
+        "- Use recentSummary as supporting evidence, not as the primary signal, when weather/rtr are available.\n\n"
+        "The dashboard JSON includes a compact `recentSummary` (last ~60 points) with "
+        "trend/step-change stats to avoid sending raw arrays.\n\n"
+        f"Dashboard JSON:\n{json.dumps(dashboard, ensure_ascii=False)}\n\n"
+        "Output rules:\n"
+        "- Return ONLY Markdown (no surrounding code fences).\n"
+        "- Follow EXACTLY the section structure of the template below.\n"
+        "- When you cite numbers, include units and indicate whether it is mean/min/max/last when relevant.\n"
+        "- If a required metric is missing, write '추가 데이터 필요' (or 'missing data').\n\n"
+        "Markdown template:\n"
+        f"{_consult_markdown_template(crop, language)}\n"
+    )
+
+    return _generate_text(
+        instructions=_system_prompt(crop, language),
+        input_data=prompt,
+        model=model,
+    )
+
+
+def generate_chat_reply(
+    *,
+    crop: str,
+    messages: List[Dict[str, str]],
+    dashboard: Optional[Dict[str, Any]] = None,
+    language: str = "ko",
+    model: str = DEFAULT_MODEL,
+) -> str:
+    """Generate a chat reply using the conversation and optional dashboard context."""
+    ctx = dashboard or {}
+    input_messages: List[Dict[str, str]] = [
+        {
+            "role": "user",
+            "content": (
+                "Dashboard JSON (may be partial) and unit guide:\n"
+                "- currentData.temperature: air temperature (°C)\n"
+                "- currentData.canopyTemp: canopy temperature (°C)\n"
+                "- currentData.humidity: RH (%)\n"
+                "- currentData.co2: CO2 (ppm)\n"
+                "- currentData.light: PAR (µmol m⁻² s⁻¹)\n"
+                "- currentData.vpd: VPD (kPa)\n"
+                "- currentData.transpiration: transpiration (mm/h)\n"
+                "- currentData.stomatalConductance: stomatal conductance (mol m⁻² s⁻¹)\n"
+                "- currentData.photosynthesis: gross photosynthesis (µmol m⁻² s⁻¹)\n"
+                "- currentData.hFlux / currentData.leFlux: sensible/latent heat flux (W/m²)\n"
+                "- currentData.energyUsage: electrical power (kW)\n\n"
+                "Required live dashboard context when present:\n"
+                "- weather.current / weather.daily: live Daegu outside weather context\n"
+                "- rtr.profile: calibrated RTR line metadata\n"
+                "- rtr.live: current rolling-24 h RTR status\n"
+                "- rtr.forecastTargets: next 3 forecast-linked RTR targets\n\n"
+                "Priority rules:\n"
+                "- If weather or rtr fields are present, explicitly use them in the answer.\n"
+                "- When steering advice is requested, prioritize weather and rtr over recentSummary-only trend reading.\n"
+                "- Use recentSummary as supporting evidence, not the primary signal, when weather/rtr are available.\n\n"
+                f"Crop: {crop}\n"
+                f"Dashboard JSON:\n{json.dumps(ctx, ensure_ascii=False)}"
+            ),
+        }
+    ]
+
+    for message in messages:
+        role = message.get("role", "user")
+        if role not in {"user", "assistant"}:
+            role = "user"
+        input_messages.append(
+            {
+                "role": role,
+                "content": message.get("content", ""),
+            }
+        )
+
+    return _generate_text(
+        instructions=(
+            f"{_system_prompt(crop, language)}\n\n"
+            "Reply as the assistant. Be specific and actionable. "
+            "Prefer Markdown bullets when listing actions. Do NOT fabricate missing measurements."
+        ),
+        input_data=input_messages,
+        model=model,
+    )
