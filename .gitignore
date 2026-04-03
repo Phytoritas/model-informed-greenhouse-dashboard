@@ -13,6 +13,9 @@ results/
 runs*/
 logs/
 .playwright-mcp/
+.rah/logs/
+!.rah/logs/
+!.rah/logs/activity_log.md
 .rah/logs/*.log
 
 .env

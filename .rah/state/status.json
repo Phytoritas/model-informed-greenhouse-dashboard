@@ -1,10 +1,10 @@
 {
   "mode": "hybrid",
-  "current_stage": "github-project-sync-passed",
+  "current_stage": "delivery-pr-sync-passed",
   "repository_profile": "python-service-scaffold-absorbing-external-dashboard-runtime",
   "active_issue": 1,
   "active_branch": "feat/1-refactor-current-repo-around-dashboard-eng-1-1-architecture",
   "implementation_blocked": false,
-  "next_action": "Commit and push the current branch so the new GitHub Actions CI can execute remotely; issue #1 is already in Validating and now needs remote checks plus an eventual PR refresh.",
+  "next_action": "PR #2 is open and both GitHub Actions CI runs are green. Keep the issue/project item in Validating until review/merge, then replace the concept-demo RTR good-production windows when grower-approved periods are available.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\대시보드-eng_1.1"
 }

@@ -14,7 +14,6 @@
     "local_validation_ladder": "pass"
   },
   "warnings": [
-    "The working tree still contains uncommitted tracked and untracked changes, so GitHub Actions has not yet re-verified the current local state.",
-    "Live OpenAI credential health was not re-smoked during this local doctor refresh; run a direct consult/chat smoke before relying on live AI behavior for the next delivery slice."
+    "configs/rtr_good_windows.yaml still contains concept-demo windows; final RTR calibration sign-off remains pending until grower-approved good-production periods are available."
   ]
 }

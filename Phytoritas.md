@@ -102,6 +102,6 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- Commit and push the validated branch so `.github/workflows/ci.yml` can run against the current local state.
-- Once remote CI is green, create or refresh the PR for issue `#1` and keep the linked project item aligned with `Validating`.
-- When grower-approved good-production periods are available, replace the concept-demo windows in `configs/rtr_good_windows.yaml` and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
+- PR `#2` is open for issue `#1`, and both push + pull request GitHub Actions CI runs are green. The next human gate is review and merge while the linked project item stays in `Validating`.
+- The next unresolved technical gap is still the RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
+- If the AI prompt or dashboard context contract changes again, rerun a representative live consult/chat smoke against the repo-local `OPENAI_API_KEY` before treating the new wording as validated.

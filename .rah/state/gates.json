@@ -61,7 +61,7 @@
   },
   "ai_live_validation": {
     "status": "pass",
-    "note": "Representative live OpenAI consult/chat calls succeeded with the repo-local OPENAI_API_KEY, and both outputs explicitly referenced the injected Daegu weather context plus RTR live/forecast steering data."
+    "note": "Representative live OpenAI consult/chat calls succeeded with the repo-local OPENAI_API_KEY, including a post-PR-refresh re-smoke after CI preparation; the outputs used live weather plus RTR steering context instead of falling back to a recentSummary-only reading."
   },
   "github_ci_workflow": {
     "status": "pass",
@@ -70,5 +70,9 @@
   "github_project_sync": {
     "status": "pass",
     "note": "Issue #1 was moved to Validating via the repo helper script, and a progress comment was added to the issue summarizing the current local validation state and the new CI workflow."
+  },
+  "delivery_pr_sync": {
+    "status": "pass",
+    "note": "Commit b1c0d42 was pushed to the issue branch, PR #2 was opened with the repo helper script, and both push + pull_request GitHub Actions CI runs passed."
   }
 }
