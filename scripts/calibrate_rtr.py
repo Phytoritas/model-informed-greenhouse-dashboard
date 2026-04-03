@@ -69,14 +69,19 @@ def main() -> int:
     if args.crop in ("all", "cucumber"):
         crop_to_csv_path["Cucumber"] = (repo_root / args.cucumber_csv).resolve()
 
-    existing_payload = load_rtr_profiles(repo_root / args.output)
-    calibration_windows_payload = load_rtr_good_windows(repo_root / args.windows)
-    calibrated_payload = calibrate_rtr_profiles_from_csvs(
-        crop_to_csv_path=crop_to_csv_path,
-        existing_payload=existing_payload,
-        calibration_windows_payload=calibration_windows_payload,
-        selection_mode=args.selection_mode,
-    )
+    try:
+        existing_payload = load_rtr_profiles(repo_root / args.output)
+        calibration_windows_payload = load_rtr_good_windows(repo_root / args.windows)
+        calibrated_payload = calibrate_rtr_profiles_from_csvs(
+            crop_to_csv_path=crop_to_csv_path,
+            existing_payload=existing_payload,
+            calibration_windows_payload=calibration_windows_payload,
+            selection_mode=args.selection_mode,
+        )
+    except ValueError as exc:
+        print(f"RTR calibration input error: {exc}")
+        return 1
+
     output_path = save_rtr_profiles(calibrated_payload, repo_root / args.output)
 
     print(f"Saved calibrated RTR profiles to {output_path}")

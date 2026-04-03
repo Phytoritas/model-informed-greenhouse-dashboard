@@ -59,6 +59,10 @@
     "status": "pass",
     "note": "Curated good-production windows now live in configs/rtr_good_windows.yaml, the calibration service can prefer those windows before applying the existing quality filters, and the CLI exposes --windows plus --selection-mode without changing the runtime /api/rtr/profiles contract."
   },
+  "rtr_window_input_hardening": {
+    "status": "pass",
+    "note": "RTR good-window loading now fails closed for malformed dates, unsupported crop keys, non-list crop roots, and ambiguous enabled flags, and the calibration CLI surfaces those input errors explicitly instead of silently falling back."
+  },
   "rtr_curated_profiles": {
     "status": "pass",
     "note": "The concept-demo good-production windows were enabled, configs/rtr_profiles.json was regenerated from them, and a temp-port browser smoke confirmed the RTR panel now renders House-fit status with curated-window metadata."

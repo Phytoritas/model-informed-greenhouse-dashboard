@@ -40,3 +40,4 @@
 - 2026-04-03: PR `#2` merged, issue `#1` closed, and the linked project item moved to `Done`.
 - 2026-04-03: Opened follow-up issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods` for the remaining RTR good-production-window calibration input gap, then shifted the harness resume surfaces to that blocked-but-tracked loop.
 - 2026-04-03: Confirmed the issue `#3` follow-up branch push CI passed, chose not to open a PR yet because the real RTR calibration inputs are still missing, and tightened the harness status text to describe that blocked-but-validated waiting state explicitly.
+- 2026-04-03: Hardened the RTR good-window parser to fail closed on malformed grower inputs (bad dates, unsupported crop keys, non-list crop roots, ambiguous `enabled` values), added focused regression tests for that surface, and verified both the happy-path calibration CLI and an invalid-window error path.

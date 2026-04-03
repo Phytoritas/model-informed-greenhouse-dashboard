@@ -150,16 +150,38 @@ def _normalize_iso_date(value: Any) -> str | None:
     return None
 
 
-def _normalize_good_window(raw_window: Any) -> Dict[str, Any] | None:
-    if not isinstance(raw_window, dict):
+def _normalize_enabled_flag(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value in (0, 1):
+            return bool(value)
         return None
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "yes", "1"}:
+            return True
+        if normalized in {"false", "no", "0"}:
+            return False
+
+    return None
+
+
+def _normalize_good_window(raw_window: Any) -> Dict[str, Any]:
+    if not isinstance(raw_window, dict):
+        raise ValueError("window entries must be mappings")
 
     start_date = _normalize_iso_date(raw_window.get("startDate"))
     end_date = _normalize_iso_date(raw_window.get("endDate"))
     if start_date is None or end_date is None:
-        return None
+        raise ValueError("startDate and endDate must be valid ISO dates")
     if end_date < start_date:
-        return None
+        raise ValueError("endDate must be on or after startDate")
+
+    enabled_raw = raw_window.get("enabled", True)
+    enabled = _normalize_enabled_flag(enabled_raw)
+    if enabled is None:
+        raise ValueError("enabled must be a boolean or boolean-like string")
 
     label = raw_window.get("label")
     notes = raw_window.get("notes")
@@ -168,7 +190,7 @@ def _normalize_good_window(raw_window: Any) -> Dict[str, Any] | None:
         "label": label.strip() if isinstance(label, str) and label.strip() else None,
         "startDate": start_date,
         "endDate": end_date,
-        "enabled": bool(raw_window.get("enabled", True)),
+        "enabled": enabled,
         "notes": notes.strip() if isinstance(notes, str) and notes.strip() else None,
     }
 
@@ -216,7 +238,12 @@ def load_rtr_good_windows(config_path: str | Path | None = None) -> Dict[str, An
         return payload
 
     with path.open("r", encoding="utf-8") as handle:
-        raw = yaml.safe_load(handle) or {}
+        raw = yaml.safe_load(handle)
+
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise ValueError("RTR good windows root must be a mapping")
 
     if isinstance(raw.get("version"), int):
         payload["version"] = raw["version"]
@@ -227,22 +254,26 @@ def load_rtr_good_windows(config_path: str | Path | None = None) -> Dict[str, An
 
     raw_crops = raw.get("crops", {})
     if not isinstance(raw_crops, dict):
-        return payload
+        raise ValueError("RTR good windows 'crops' must be a mapping of crop names to lists")
 
     for crop_key, windows in raw_crops.items():
         try:
             canonical_crop = _normalize_crop_key(crop_key)
-        except ValueError:
-            continue
+        except ValueError as exc:
+            raise ValueError(f"Unsupported crop in RTR good windows: {crop_key}") from exc
 
         if not isinstance(windows, list):
-            continue
+            raise ValueError(f"RTR good windows for {canonical_crop} must be a list")
 
-        normalized_windows = [
-            normalized
-            for raw_window in windows
-            if (normalized := _normalize_good_window(raw_window)) is not None
-        ]
+        normalized_windows = []
+        for window_index, raw_window in enumerate(windows):
+            try:
+                normalized = _normalize_good_window(raw_window)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Invalid RTR good window for {canonical_crop} at index {window_index}: {exc}"
+                ) from exc
+            normalized_windows.append(normalized)
         payload["crops"][canonical_crop] = normalized_windows
 
     return payload

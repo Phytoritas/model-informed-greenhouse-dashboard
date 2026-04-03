@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from model_informed_greenhouse_dashboard.backend.app.services.rtr_profiles import (
     aggregate_daily_rtr_metrics,
@@ -127,6 +128,159 @@ def test_load_rtr_good_windows_normalizes_lowercase_crop_keys(tmp_path) -> None:
     assert payload["crops"]["Tomato"][0]["startDate"] == "2026-04-01"
     assert payload["crops"]["Tomato"][0]["endDate"] == "2026-04-06"
     assert payload["crops"]["Cucumber"][0]["label"] == "cucumber-q1"
+
+
+def test_load_rtr_good_windows_parses_string_enabled_flags(tmp_path) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "version: 2",
+                "timezone: Asia/Seoul",
+                "updatedAt: 2026-04-03T12:00:00Z",
+                "crops:",
+                "  tomato:",
+                "    - label: '  stable-fruiting  '",
+                "      notes: '  operator-approved  '",
+                "      startDate: 2026-04-01",
+                "      endDate: 2026-04-06",
+                "      enabled: 'false'",
+                "  cucumber:",
+                "    - label: cucumber-q1",
+                "      startDate: 2026-02-10",
+                "      endDate: 2026-03-05",
+                "      enabled: 'true'",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    payload = load_rtr_good_windows(config_path)
+
+    assert payload["version"] == 2
+    assert payload["timezone"] == "Asia/Seoul"
+    assert payload["crops"]["Tomato"] == [
+        {
+            "label": "stable-fruiting",
+            "startDate": "2026-04-01",
+            "endDate": "2026-04-06",
+            "enabled": False,
+            "notes": "operator-approved",
+        }
+    ]
+    assert payload["crops"]["Cucumber"][0]["enabled"] is True
+
+
+def test_load_rtr_good_windows_rejects_non_mapping_crops_root(tmp_path) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "version: 3",
+                "timezone: UTC",
+                "updatedAt: '2026-04-03T12:00:00Z'",
+                "crops: []",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="crops"):
+        load_rtr_good_windows(config_path)
+
+
+def test_load_rtr_good_windows_rejects_non_mapping_root(tmp_path) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "- tomato",
+                "- cucumber",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="root"):
+        load_rtr_good_windows(config_path)
+
+
+@pytest.mark.parametrize(
+    ("start_date", "end_date"),
+    [
+        ("2026-04-99", "2026-04-10"),
+        ("2026-04-10", "2026-04-09"),
+    ],
+)
+def test_load_rtr_good_windows_rejects_invalid_window_dates(
+    tmp_path,
+    start_date: str,
+    end_date: str,
+) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "version: 1",
+                "timezone: Asia/Seoul",
+                "updatedAt: 2026-04-03T12:00:00Z",
+                "crops:",
+                "  tomato:",
+                "    - label: invalid-window",
+                f"      startDate: '{start_date}'",
+                f"      endDate: '{end_date}'",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Invalid RTR good window for Tomato"):
+        load_rtr_good_windows(config_path)
+
+
+def test_load_rtr_good_windows_rejects_invalid_enabled_string(tmp_path) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "version: 1",
+                "timezone: Asia/Seoul",
+                "updatedAt: 2026-04-03T12:00:00Z",
+                "crops:",
+                "  tomato:",
+                "    - label: invalid-enabled",
+                "      startDate: 2026-04-01",
+                "      endDate: 2026-04-06",
+                "      enabled: 'maybe'",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="enabled"):
+        load_rtr_good_windows(config_path)
+
+
+def test_load_rtr_good_windows_rejects_unsupported_crop_keys(tmp_path) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "version: 1",
+                "timezone: Asia/Seoul",
+                "updatedAt: 2026-04-03T12:00:00Z",
+                "crops:",
+                "  pepper:",
+                "    - label: unsupported-crop",
+                "      startDate: 2026-03-01",
+                "      endDate: 2026-03-05",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Unsupported crop"):
+        load_rtr_good_windows(config_path)
 
 
 def test_fit_rtr_profile_prefers_curated_windows_when_present() -> None:
