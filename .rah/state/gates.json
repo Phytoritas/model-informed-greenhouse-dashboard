@@ -7,6 +7,10 @@
     "status": "pass",
     "note": "Issue #1 and the issue-based branch were created with the repo helper script."
   },
+  "followup_issue_linkage": {
+    "status": "pass",
+    "note": "After PR #2 merged and issue #1 closed, follow-up issue #3 and branch feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods were created with the repo helper script for the remaining RTR calibration-input gap."
+  },
   "harness_setup": {
     "status": "pass",
     "note": "docs/architecture and .rah starter surfaces were initialized."
@@ -73,6 +77,10 @@
   },
   "delivery_pr_sync": {
     "status": "pass",
-    "note": "Commit b1c0d42 was pushed to the issue branch, PR #2 was opened with the repo helper script, and both push + pull_request GitHub Actions CI runs passed."
+    "note": "The feature branch was pushed, PR #2 was opened with the repo helper script, both push + pull_request GitHub Actions CI runs passed, PR #2 merged, and issue #1 closed with the linked project item moved to Done."
+  },
+  "rtr_good_production_windows": {
+    "status": "blocked",
+    "note": "The remaining follow-up work is tracked on issue #3, but the calibration input upgrade is blocked until grower-approved good-production periods are available."
   }
 }

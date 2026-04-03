@@ -1,10 +1,10 @@
 {
   "mode": "hybrid",
-  "current_stage": "delivery-pr-sync-passed",
+  "current_stage": "followup-issue-opened",
   "repository_profile": "python-service-scaffold-absorbing-external-dashboard-runtime",
-  "active_issue": 1,
-  "active_branch": "feat/1-refactor-current-repo-around-dashboard-eng-1-1-architecture",
-  "implementation_blocked": false,
-  "next_action": "PR #2 is open and both GitHub Actions CI runs are green. Keep the issue/project item in Validating until review/merge, then replace the concept-demo RTR good-production windows when grower-approved periods are available.",
+  "active_issue": 3,
+  "active_branch": "feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods",
+  "implementation_blocked": true,
+  "next_action": "Issue #3 and its branch are open for the remaining RTR calibration-input gap. Wait for grower-approved good-production periods, then update configs/rtr_good_windows.yaml, rerun scripts/calibrate_rtr.py, and re-smoke the RTR dashboard path.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\대시보드-eng_1.1"
 }

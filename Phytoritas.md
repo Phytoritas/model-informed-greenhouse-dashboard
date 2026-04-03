@@ -5,8 +5,8 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `#1`
-- Active branch: `feat/1-refactor-current-repo-around-dashboard-eng-1-1-architecture`
+- Active issue: `#3`
+- Active branch: `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`
 
 ## Identity
 This repository hosts a model-informed greenhouse dashboard that combines greenhouse telemetry, crop-state model outputs, and decision-friendly summaries in one reproducible workspace.
@@ -102,6 +102,6 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- PR `#2` is open for issue `#1`, and both push + pull request GitHub Actions CI runs are green. The next human gate is review and merge while the linked project item stays in `Validating`.
-- The next unresolved technical gap is still the RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
-- If the AI prompt or dashboard context contract changes again, rerun a representative live consult/chat smoke against the repo-local `OPENAI_API_KEY` before treating the new wording as validated.
+- Issue `#1` and PR `#2` are complete; the active follow-up loop now lives on issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`.
+- The earliest pending gate is external input quality: wait for grower-approved good-production periods, then replace the concept-demo windows in `configs/rtr_good_windows.yaml` and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
+- After the regenerated RTR profile payload lands, rerun a representative RTR browser smoke; if the AI prompt or dashboard context contract changes again during that follow-up slice, rerun a representative live consult/chat smoke as well.

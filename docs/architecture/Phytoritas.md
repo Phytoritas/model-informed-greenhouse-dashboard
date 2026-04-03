@@ -16,5 +16,5 @@ The source project for the current migration loop is:
 
 The active issue/branch linkage for this architecture loop is:
 
-- Issue: `#1`
-- Branch: `feat/1-refactor-current-repo-around-dashboard-eng-1-1-architecture`
+- Issue: `#3`
+- Branch: `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`

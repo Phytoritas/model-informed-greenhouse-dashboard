@@ -37,3 +37,5 @@
 - 2026-04-03: Re-ran `npm --prefix frontend run build`, `npm --prefix frontend run lint`, `poetry run pytest`, and `poetry run ruff check .`, then refreshed stale blueprint/gap/doctor artifacts so the harness resume surfaces match the current validated local state before commit/push.
 - 2026-04-03: Committed and pushed the migrated dashboard runtime plus harness scaffold to `feat/1-refactor-current-repo-around-dashboard-eng-1-1-architecture`, opened PR `#2` with the repo helper script, and confirmed both push + pull_request GitHub Actions CI runs passed while issue `#1` stayed in `Validating`.
 - 2026-04-03: Re-smoked representative live OpenAI consult/chat calls with the repo-local `.env` key after PR/CI setup; both calls succeeded and used the live weather/RTR context in the generated advice.
+- 2026-04-03: PR `#2` merged, issue `#1` closed, and the linked project item moved to `Done`.
+- 2026-04-03: Opened follow-up issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods` for the remaining RTR good-production-window calibration input gap, then shifted the harness resume surfaces to that blocked-but-tracked loop.

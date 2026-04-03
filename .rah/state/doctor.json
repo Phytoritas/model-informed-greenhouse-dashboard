@@ -14,6 +14,6 @@
     "local_validation_ladder": "pass"
   },
   "warnings": [
-    "configs/rtr_good_windows.yaml still contains concept-demo windows; final RTR calibration sign-off remains pending until grower-approved good-production periods are available."
+    "Issue #3 is now the active follow-up loop, and its core implementation step is blocked on grower-approved good-production periods for configs/rtr_good_windows.yaml."
   ]
 }
