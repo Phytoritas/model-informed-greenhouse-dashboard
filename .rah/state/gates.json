@@ -76,7 +76,7 @@
     "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback plus browser-smoke coverage."
   },
   "delivery_pr_sync": {
-    "status": "pending",
-    "note": "Issue #6 has passed local validation and browser smoke on the issue branch. The next delivery step is commit/push, PR creation, and GitHub Actions CI."
+    "status": "pass",
+    "note": "Commit dde1a0d was pushed to the issue #6 branch, PR #7 was opened with the repo helper script, and both push + pull_request GitHub Actions CI runs passed."
   }
 }

@@ -1,10 +1,10 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue-6-local-validation-passed",
+  "current_stage": "delivery-pr-sync-passed",
   "repository_profile": "python-service-scaffold-absorbing-external-dashboard-runtime",
   "active_issue": 6,
   "active_branch": "data/6-add-live-produce-price-panel-from-kamis-api",
   "implementation_blocked": false,
-  "next_action": "The KAMIS live produce price panel for issue #6 is implemented and has passed local lint/ruff/pytest/build plus a browser smoke. Commit and push the branch, open a PR, and keep the issue/project item in Validating after GitHub Actions passes while issue #3 remains blocked on grower-approved RTR windows.",
+  "next_action": "PR #7 is open for issue #6 and both push + pull_request GitHub Actions runs are green. Keep the issue/project item in Validating until review/merge, then return to blocked issue #3 once the live produce price loop is closed.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\대시보드-eng_1.1"
 }
