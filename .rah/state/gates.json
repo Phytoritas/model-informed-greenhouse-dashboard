@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #1 and the issue-based branch were created with the repo helper script."
+    "note": "Issue #1 and the original migration branch were created with the repo helper script."
   },
   "followup_issue_linkage": {
     "status": "pass",
@@ -13,7 +13,7 @@
   },
   "followup_branch_validation": {
     "status": "pass",
-    "note": "The state-only follow-up branch for issue #3 was pushed and its branch CI run passed, confirming the blocked follow-up surfaces are in sync before any new RTR calibration input lands."
+    "note": "The blocked issue #3 branch is being kept in sync with merged maintenance and delivery work so the next RTR calibration slice starts from current main."
   },
   "harness_setup": {
     "status": "pass",
@@ -41,7 +41,7 @@
   },
   "browser_smoke": {
     "status": "pass",
-    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the new RTR profile endpoint path. The latest smoke on 127.0.0.1:8010/4174 confirmed the preserved Daegu weather panel, the neighboring RTR monitor reading /api/rtr/profiles, and clean browser console output."
+    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the merged KAMIS produce price panel. The latest smoke on 127.0.0.1:8000/4173 confirmed the new Live Produce Prices card rendered beside weather/RTR and the browser console stayed clean."
   },
   "bundle_review": {
     "status": "pass",
@@ -85,11 +85,15 @@
   },
   "github_project_sync": {
     "status": "pass",
-    "note": "Issue #1 was moved to Validating via the repo helper script, and a progress comment was added to the issue summarizing the current local validation state and the new CI workflow."
+    "note": "Issue #6 moved through Running -> Validating and then closed automatically when PR #7 merged; issue #3 remains the blocked follow-up item."
+  },
+  "live_produce_price_panel": {
+    "status": "pass",
+    "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback; PR #7 merged this slice into main."
   },
   "delivery_pr_sync": {
     "status": "pass",
-    "note": "The feature branch was pushed, PR #2 was opened with the repo helper script, both push + pull_request GitHub Actions CI runs passed, PR #2 merged, and issue #1 closed with the linked project item moved to Done."
+    "note": "Issue #6 was delivered through commits dde1a0d and 5775a32, PR #7 merged, and both push + pull_request GitHub Actions CI runs passed."
   },
   "rtr_good_production_windows": {
     "status": "blocked",

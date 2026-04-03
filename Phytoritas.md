@@ -102,7 +102,7 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- Issue `#1` and PR `#2` are complete; the active follow-up loop now lives on issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`.
-- The issue `#3` follow-up branch has already been pushed, now includes the merged CI action-runtime maintenance from issue `#4` / PR `#5`, its refreshed branch CI passed, and the RTR good-window parser fails closed on malformed dates, unsupported crop keys, non-list crop roots, and ambiguous `enabled` values before calibration runs.
+- Issue `#6` / PR `#7` are complete, so the active follow-up loop returns to issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`.
+- `main` and the blocked issue `#3` branch now both carry the merged KAMIS live produce price panel together with the latest CI/runtime maintenance.
 - The earliest pending gate is still external input quality: wait for grower-approved good-production periods, then replace the concept-demo windows in `configs/rtr_good_windows.yaml` and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json` with a syntactically valid grower window file.
 - After the regenerated RTR profile payload lands, rerun a representative RTR browser smoke; if the AI prompt or dashboard context contract changes again during that follow-up slice, rerun a representative live consult/chat smoke as well.

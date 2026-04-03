@@ -14,6 +14,7 @@
     "local_validation_ladder": "pass"
   },
   "warnings": [
-    "Issue #3 is now the active follow-up loop; its latest support-slice branch CI already passed, and malformed grower window configs now fail closed before calibration runs, but the actual implementation step remains blocked on grower-approved good-production periods for configs/rtr_good_windows.yaml."
+    "Issue #3 is the active follow-up loop and remains blocked until grower-approved good-production periods are available for configs/rtr_good_windows.yaml.",
+    "The merged KAMIS live produce price panel from issue #6 uses the official docs sample credentials (`test/test`) unless repo-root .env overrides them with issued `KAMIS_API_KEY` and `KAMIS_API_ID` values."
   ]
 }
