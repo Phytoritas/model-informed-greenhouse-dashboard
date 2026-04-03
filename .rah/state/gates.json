@@ -79,6 +79,10 @@
     "status": "pass",
     "note": "A GitHub Actions CI workflow now mirrors the local validation ladder with backend Poetry ruff/pytest and frontend npm lint/build jobs on push and pull_request events."
   },
+  "github_ci_node24_action_runtime": {
+    "status": "pass",
+    "note": "Bug issue #4 upgraded actions/checkout, actions/setup-node, and actions/setup-python onto Node24-capable majors; PR #5 merged, and both the fix branch plus the refreshed issue #3 branch CI passed without the previous Node.js 20 deprecation annotations."
+  },
   "github_project_sync": {
     "status": "pass",
     "note": "Issue #1 was moved to Validating via the repo helper script, and a progress comment was added to the issue summarizing the current local validation state and the new CI workflow."
