@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-03T11:22:11.514973+00:00",
+  "profiles": {
+    "Tomato": {
+      "crop": "Tomato",
+      "strategyLabel": "Tomato house-fit RTR line",
+      "sourceNote": "Calibrated from 21 quality-filtered daily RTR points across 1 curated good-production window(s). Keep refining the window spec as higher-confidence operating periods become available.",
+      "baseTempC": 18.553,
+      "slopeCPerMjM2": 0.7913,
+      "toleranceC": 1.0,
+      "lightToRadiantDivisor": 4.57,
+      "calibration": {
+        "mode": "fitted",
+        "sampleDays": 21,
+        "fitStartDate": "2024-08-06",
+        "fitEndDate": "2024-08-26",
+        "minCoverageHours": 20.0,
+        "rSquared": 0.9831,
+        "meanAbsoluteErrorC": 0.1017,
+        "selectionSource": "curated-windows",
+        "windowCount": 1
+      }
+    },
+    "Cucumber": {
+      "crop": "Cucumber",
+      "strategyLabel": "Cucumber house-fit RTR line",
+      "sourceNote": "Calibrated from 27 quality-filtered daily RTR points across 1 curated good-production window(s). Keep refining the window spec as higher-confidence operating periods become available.",
+      "baseTempC": 18.132,
+      "slopeCPerMjM2": 0.3099,
+      "toleranceC": 1.0,
+      "lightToRadiantDivisor": 4.57,
+      "calibration": {
+        "mode": "fitted",
+        "sampleDays": 27,
+        "fitStartDate": "2021-04-15",
+        "fitEndDate": "2021-05-12",
+        "minCoverageHours": 20.0,
+        "rSquared": 0.8973,
+        "meanAbsoluteErrorC": 0.2542,
+        "selectionSource": "curated-windows",
+        "windowCount": 1
+      }
+    }
+  }
+}
