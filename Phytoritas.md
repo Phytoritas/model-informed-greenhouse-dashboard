@@ -103,5 +103,6 @@ Conflict rule:
 
 ## Immediate Next Action
 - Issue `#1` and PR `#2` are complete; the active follow-up loop now lives on issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`.
+- The issue `#3` follow-up branch has already been pushed and its branch CI passed, but the loop remains intentionally blocked with no PR yet because the real calibration input is still missing.
 - The earliest pending gate is external input quality: wait for grower-approved good-production periods, then replace the concept-demo windows in `configs/rtr_good_windows.yaml` and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
 - After the regenerated RTR profile payload lands, rerun a representative RTR browser smoke; if the AI prompt or dashboard context contract changes again during that follow-up slice, rerun a representative live consult/chat smoke as well.

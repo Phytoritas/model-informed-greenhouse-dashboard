@@ -11,6 +11,10 @@
     "status": "pass",
     "note": "After PR #2 merged and issue #1 closed, follow-up issue #3 and branch feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods were created with the repo helper script for the remaining RTR calibration-input gap."
   },
+  "followup_branch_validation": {
+    "status": "pass",
+    "note": "The state-only follow-up branch for issue #3 was pushed and its branch CI run passed, confirming the blocked follow-up surfaces are in sync before any new RTR calibration input lands."
+  },
   "harness_setup": {
     "status": "pass",
     "note": "docs/architecture and .rah starter surfaces were initialized."

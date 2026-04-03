@@ -14,6 +14,6 @@
     "local_validation_ladder": "pass"
   },
   "warnings": [
-    "Issue #3 is now the active follow-up loop, and its core implementation step is blocked on grower-approved good-production periods for configs/rtr_good_windows.yaml."
+    "Issue #3 is now the active follow-up loop; its branch CI already passed, but the actual implementation step remains blocked on grower-approved good-production periods for configs/rtr_good_windows.yaml."
   ]
 }
