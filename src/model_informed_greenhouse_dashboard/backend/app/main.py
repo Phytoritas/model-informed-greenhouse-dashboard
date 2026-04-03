@@ -19,6 +19,7 @@ from .services.irrigation import IrrigationAdvisor
 from .services.energy import EnergyEstimator
 from .services.decision import DecisionSupport
 from .services.openai_service import generate_consulting, generate_chat_reply
+from .services.produce_prices import fetch_featured_produce_prices
 from .services.rtr_profiles import load_rtr_profiles
 from .services.weather import fetch_daegu_weather_outlook
 from .adapters.tomato import TomatoAdapter
@@ -880,6 +881,26 @@ async def get_daegu_weather():
         raise HTTPException(
             status_code=502,
             detail="Failed to fetch live Daegu weather from Open-Meteo.",
+        ) from exc
+
+
+@app.get("/api/market/produce")
+async def get_featured_produce_market_prices():
+    """Return a curated KAMIS retail produce price snapshot for the dashboard."""
+    try:
+        payload = await fetch_featured_produce_prices()
+        return {"status": "success", **payload}
+    except httpx.HTTPError as exc:
+        logger.warning("KAMIS produce price fetch failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to fetch live produce prices from KAMIS.",
+        ) from exc
+    except ValueError as exc:
+        logger.warning("KAMIS produce price payload was invalid: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail=str(exc),
         ) from exc
 
 
