@@ -1,0 +1,20 @@
+{
+  "status": "pass",
+  "checked_at": "2026-04-03",
+  "checks": {
+    "architecture_spine": "pass",
+    "runtime_sidecar": "pass",
+    "json_state_parse": "pass",
+    "issue_branch_linkage": "pass",
+    "backend_slice_validation": "pass",
+    "frontend_scope": "pass",
+    "frontend_migration": "pass",
+    "browser_smoke": "pass",
+    "bundle_review": "pass",
+    "local_validation_ladder": "pass"
+  },
+  "warnings": [
+    "The working tree still contains uncommitted tracked and untracked changes, so GitHub Actions has not yet re-verified the current local state.",
+    "Live OpenAI credential health was not re-smoked during this local doctor refresh; run a direct consult/chat smoke before relying on live AI behavior for the next delivery slice."
+  ]
+}

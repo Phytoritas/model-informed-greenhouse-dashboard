@@ -12,6 +12,8 @@ out/
 results/
 runs*/
 logs/
+.playwright-mcp/
+.rah/logs/*.log
 
 .env
 config.yaml

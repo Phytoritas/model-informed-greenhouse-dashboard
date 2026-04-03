@@ -1,0 +1,10 @@
+{
+  "mode": "hybrid",
+  "current_stage": "github-project-sync-passed",
+  "repository_profile": "python-service-scaffold-absorbing-external-dashboard-runtime",
+  "active_issue": 1,
+  "active_branch": "feat/1-refactor-current-repo-around-dashboard-eng-1-1-architecture",
+  "implementation_blocked": false,
+  "next_action": "Commit and push the current branch so the new GitHub Actions CI can execute remotely; issue #1 is already in Validating and now needs remote checks plus an eventual PR refresh.",
+  "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\대시보드-eng_1.1"
+}

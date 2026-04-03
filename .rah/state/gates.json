@@ -1,0 +1,74 @@
+{
+  "agents_intake": {
+    "status": "pass",
+    "note": "Repo-local AGENTS workflow, issue-first rule, blueprint-first rule, and validation ladder were incorporated before non-trivial writes."
+  },
+  "issue_branch_linkage": {
+    "status": "pass",
+    "note": "Issue #1 and the issue-based branch were created with the repo helper script."
+  },
+  "harness_setup": {
+    "status": "pass",
+    "note": "docs/architecture and .rah starter surfaces were initialized."
+  },
+  "workspace_audit": {
+    "status": "pass",
+    "note": "Target/source delta is captured in docs/architecture/00_workspace_audit.md."
+  },
+  "system_brief": {
+    "status": "pass",
+    "note": "Target boundaries are captured in docs/architecture/01_system_brief.md."
+  },
+  "implementation_gate": {
+    "status": "pass",
+    "note": "The backend package migration slice, config contract, and smoke validation all landed."
+  },
+  "frontend_scope": {
+    "status": "pass",
+    "note": "The source frontend/ Vite app is the canonical UI migration path."
+  },
+  "frontend_migration": {
+    "status": "pass",
+    "note": "The canonical Vite frontend has been migrated into frontend/, sample CSV fixtures were copied into data/, and local typecheck/lint/build all passed."
+  },
+  "browser_smoke": {
+    "status": "pass",
+    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the new RTR profile endpoint path. The latest smoke on 127.0.0.1:8010/4174 confirmed the preserved Daegu weather panel, the neighboring RTR monitor reading /api/rtr/profiles, and clean browser console output."
+  },
+  "bundle_review": {
+    "status": "pass",
+    "note": "Lazy boundaries plus explicit vendor chunk grouping reduced the production bundle into sub-500 kB chunks, and a built-preview browser smoke passed without runtime errors."
+  },
+  "rtr_panel_extension": {
+    "status": "pass",
+    "note": "The existing Daegu weather panel was preserved and a neighboring rolling-24h RTR monitor was adopted using a WUR/TomatoesNZ-style example strategy line plus forecast-linked steering targets."
+  },
+  "rtr_calibration_pipeline": {
+    "status": "pass",
+    "note": "RTR coefficients were externalized into configs/rtr_profiles.json, exposed through /api/rtr/profiles, and backed by a calibration script plus daily-aggregation fitting utilities. A dry-run calibration against the sample CSVs completed successfully into artifacts/rtr-calibration/test_rtr_profiles.json."
+  },
+  "rtr_curated_window_contract": {
+    "status": "pass",
+    "note": "Curated good-production windows now live in configs/rtr_good_windows.yaml, the calibration service can prefer those windows before applying the existing quality filters, and the CLI exposes --windows plus --selection-mode without changing the runtime /api/rtr/profiles contract."
+  },
+  "rtr_curated_profiles": {
+    "status": "pass",
+    "note": "The concept-demo good-production windows were enabled, configs/rtr_profiles.json was regenerated from them, and a temp-port browser smoke confirmed the RTR panel now renders House-fit status with curated-window metadata."
+  },
+  "ai_rtr_context": {
+    "status": "pass",
+    "note": "Frontend AI consult/chat payloads now include compact Daegu weather context plus RTR profile/live/forecast summaries, and the OpenAI prompt contract explicitly documents those fields."
+  },
+  "ai_live_validation": {
+    "status": "pass",
+    "note": "Representative live OpenAI consult/chat calls succeeded with the repo-local OPENAI_API_KEY, and both outputs explicitly referenced the injected Daegu weather context plus RTR live/forecast steering data."
+  },
+  "github_ci_workflow": {
+    "status": "pass",
+    "note": "A GitHub Actions CI workflow now mirrors the local validation ladder with backend Poetry ruff/pytest and frontend npm lint/build jobs on push and pull_request events."
+  },
+  "github_project_sync": {
+    "status": "pass",
+    "note": "Issue #1 was moved to Validating via the repo helper script, and a progress comment was added to the issue summarizing the current local validation state and the new CI workflow."
+  }
+}

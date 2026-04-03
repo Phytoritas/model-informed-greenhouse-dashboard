@@ -1,0 +1,17 @@
+version: 1
+timezone: Asia/Seoul
+updatedAt: "2026-04-03T10:45:00+09:00"
+notes: Heuristic concept-demo windows chosen from fully covered daily environment history by maximizing rolling RTR fit quality (high R², low MAE) while avoiding dataset edges.
+crops:
+  Tomato:
+    - label: tomato-2024-aug-high-fit-window
+      startDate: "2024-08-06"
+      endDate: "2024-08-26"
+      enabled: true
+      notes: 21-day fully covered summer segment with the strongest rolling RTR fit in the sample tomato history (R²≈0.98, MAE≈0.10°C).
+  Cucumber:
+    - label: cucumber-2021-spring-high-fit-window
+      startDate: "2021-04-15"
+      endDate: "2021-05-12"
+      enabled: true
+      notes: 28-day spring segment with the strongest rolling RTR fit in the sample cucumber history after quality filtering (R²≈0.90, MAE≈0.25°C).

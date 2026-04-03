@@ -1,0 +1,216 @@
+import pandas as pd
+
+from model_informed_greenhouse_dashboard.backend.app.services.rtr_profiles import (
+    aggregate_daily_rtr_metrics,
+    filter_daily_points_by_windows,
+    fit_rtr_profile,
+    load_rtr_good_windows,
+)
+
+
+def test_aggregate_daily_rtr_metrics_builds_daily_point() -> None:
+    env_df = pd.DataFrame(
+        {
+            "datetime": [
+                "2026-04-01 00:00",
+                "2026-04-01 12:00",
+                "2026-04-02 00:00",
+            ],
+            "T_air_C": [18.0, 22.0, 18.0],
+            "PAR_umol": [0.0, 500.0, 0.0],
+            "RH_percent": [80.0, 60.0, 82.0],
+        }
+    )
+
+    daily_df = aggregate_daily_rtr_metrics(env_df, light_to_radiant_divisor=5.0)
+
+    assert len(daily_df) == 2
+    first_day = daily_df.iloc[0]
+    assert first_day["date"] == "2026-04-01"
+    assert round(first_day["coverageHours"], 1) == 24.0
+    assert round(first_day["averageTempC"], 1) == 20.0
+    assert round(first_day["dliMolM2"], 1) == 21.6
+    assert round(first_day["radiationSumMjM2"], 1) == 4.3
+
+
+def test_fit_rtr_profile_returns_fitted_mode_for_linear_days() -> None:
+    daily_df = pd.DataFrame(
+        {
+            "date": [
+                "2026-04-01",
+                "2026-04-02",
+                "2026-04-03",
+                "2026-04-04",
+                "2026-04-05",
+                "2026-04-06",
+            ],
+            "coverageHours": [24.0] * 6,
+            "averageTempC": [19.5, 20.1, 20.7, 21.3, 21.9, 22.5],
+            "dliMolM2": [8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
+            "radiationSumMjM2": [8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
+            "averageRhPct": [70.0] * 6,
+            "lightHours": [8.0] * 6,
+            "sampleCount": [1440] * 6,
+        }
+    )
+
+    profile = fit_rtr_profile("Tomato", daily_df)
+
+    assert profile["calibration"]["mode"] == "fitted"
+    assert profile["calibration"]["sampleDays"] == 6
+    assert profile["baseTempC"] == 17.1
+    assert profile["slopeCPerMjM2"] == 0.3
+
+
+def test_filter_daily_points_by_windows_merges_overlapping_ranges() -> None:
+    daily_df = pd.DataFrame(
+        {
+            "date": [
+                "2026-04-01",
+                "2026-04-02",
+                "2026-04-03",
+                "2026-04-04",
+            ],
+            "coverageHours": [24.0] * 4,
+            "averageTempC": [20.0, 20.5, 21.0, 21.5],
+            "dliMolM2": [10.0] * 4,
+            "radiationSumMjM2": [10.0, 11.0, 12.0, 13.0],
+            "averageRhPct": [70.0] * 4,
+            "lightHours": [8.0] * 4,
+            "sampleCount": [1440] * 4,
+        }
+    )
+
+    filtered_df, window_count = filter_daily_points_by_windows(
+        daily_df,
+        calibration_windows=[
+            {"startDate": "2026-04-01", "endDate": "2026-04-03", "enabled": True},
+            {"startDate": "2026-04-02", "endDate": "2026-04-04", "enabled": True},
+        ],
+    )
+
+    assert window_count == 2
+    assert filtered_df["date"].tolist() == [
+        "2026-04-01",
+        "2026-04-02",
+        "2026-04-03",
+        "2026-04-04",
+    ]
+
+
+def test_load_rtr_good_windows_normalizes_lowercase_crop_keys(tmp_path) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "version: 1",
+                "timezone: Asia/Seoul",
+                "updatedAt: 2026-04-03T00:00:00Z",
+                "crops:",
+                "  tomato:",
+                "    - label: tomato-q1",
+                "      startDate: 2026-04-01",
+                "      endDate: 2026-04-06",
+                "      enabled: true",
+                "  cucumber:",
+                "    - label: cucumber-q1",
+                "      startDate: 2026-02-10",
+                "      endDate: 2026-03-05",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    payload = load_rtr_good_windows(config_path)
+
+    assert payload["version"] == 1
+    assert payload["crops"]["Tomato"][0]["startDate"] == "2026-04-01"
+    assert payload["crops"]["Tomato"][0]["endDate"] == "2026-04-06"
+    assert payload["crops"]["Cucumber"][0]["label"] == "cucumber-q1"
+
+
+def test_fit_rtr_profile_prefers_curated_windows_when_present() -> None:
+    daily_df = pd.DataFrame(
+        {
+            "date": [
+                "2026-04-01",
+                "2026-04-02",
+                "2026-04-03",
+                "2026-04-04",
+                "2026-04-05",
+                "2026-04-06",
+                "2026-04-07",
+                "2026-04-08",
+            ],
+            "coverageHours": [24.0] * 8,
+            "averageTempC": [19.5, 20.1, 20.7, 21.3, 21.9, 22.5, 24.0, 24.0],
+            "dliMolM2": [8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0],
+            "radiationSumMjM2": [8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0],
+            "averageRhPct": [70.0] * 8,
+            "lightHours": [8.0] * 8,
+            "sampleCount": [1440] * 8,
+        }
+    )
+
+    profile = fit_rtr_profile(
+        "Tomato",
+        daily_df,
+        calibration_windows=[
+            {
+                "label": "stable-fruiting",
+                "startDate": "2026-04-01",
+                "endDate": "2026-04-06",
+                "enabled": True,
+            }
+        ],
+        selection_mode="auto",
+    )
+
+    assert profile["calibration"]["mode"] == "fitted"
+    assert profile["calibration"]["sampleDays"] == 6
+    assert profile["calibration"]["selectionSource"] == "curated-windows"
+    assert profile["calibration"]["windowCount"] == 1
+    assert profile["baseTempC"] == 17.1
+    assert profile["slopeCPerMjM2"] == 0.3
+
+
+def test_fit_rtr_profile_windows_only_requires_enabled_windows() -> None:
+    daily_df = pd.DataFrame(
+        {
+            "date": [
+                "2026-04-01",
+                "2026-04-02",
+                "2026-04-03",
+                "2026-04-04",
+                "2026-04-05",
+                "2026-04-06",
+            ],
+            "coverageHours": [24.0] * 6,
+            "averageTempC": [19.5, 20.1, 20.7, 21.3, 21.9, 22.5],
+            "dliMolM2": [8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
+            "radiationSumMjM2": [8.0, 10.0, 12.0, 14.0, 16.0, 18.0],
+            "averageRhPct": [70.0] * 6,
+            "lightHours": [8.0] * 6,
+            "sampleCount": [1440] * 6,
+        }
+    )
+
+    profile = fit_rtr_profile(
+        "Tomato",
+        daily_df,
+        calibration_windows=[
+            {
+                "label": "disabled-window",
+                "startDate": "2026-04-01",
+                "endDate": "2026-04-06",
+                "enabled": False,
+            }
+        ],
+        selection_mode="windows-only",
+    )
+
+    assert profile["calibration"]["mode"] == "insufficient-data"
+    assert profile["calibration"]["selectionSource"] == "curated-windows"
+    assert profile["calibration"]["windowCount"] == 0
+    assert profile["baseTempC"] == 18.3
+    assert profile["slopeCPerMjM2"] == 0.15
