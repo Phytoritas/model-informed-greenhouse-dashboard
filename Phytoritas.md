@@ -102,6 +102,6 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- Issue `#6` now owns the next delivery loop: commit and push the KAMIS live produce price panel branch, open a PR, and keep the item in `Validating` after GitHub Actions passes.
-- The new panel is already locally validated with lint, ruff, pytest, production build, a direct live KAMIS fetch, and a browser smoke that confirms the card renders beside weather/RTR using the official docs sample auth fallback.
+- PR `#7` is now open for issue `#6`, and both push + pull_request GitHub Actions CI runs are green. The next human gate is review and merge while the item stays in `Validating`.
+- The new panel has already been validated with lint, ruff, pytest, production build, a direct live KAMIS fetch, and a browser smoke that confirms the card renders beside weather/RTR using the official docs sample auth fallback.
 - After issue `#6` is delivered, the next unresolved technical gap reverts to RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
