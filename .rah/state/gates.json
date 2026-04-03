@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #1 and the issue-based branch were created with the repo helper script."
+    "note": "Issue #6 and branch `data/6-add-live-produce-price-panel-from-kamis-api` were created with the repo helper script before non-trivial writes."
   },
   "harness_setup": {
     "status": "pass",
@@ -33,7 +33,7 @@
   },
   "browser_smoke": {
     "status": "pass",
-    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the new RTR profile endpoint path. The latest smoke on 127.0.0.1:8010/4174 confirmed the preserved Daegu weather panel, the neighboring RTR monitor reading /api/rtr/profiles, and clean browser console output."
+    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the new KAMIS produce price panel. The latest smoke on 127.0.0.1:8000/4173 confirmed the new Live Produce Prices card rendered beside weather/RTR and the browser console stayed clean."
   },
   "bundle_review": {
     "status": "pass",
@@ -69,10 +69,14 @@
   },
   "github_project_sync": {
     "status": "pass",
-    "note": "Issue #1 was moved to Validating via the repo helper script, and a progress comment was added to the issue summarizing the current local validation state and the new CI workflow."
+    "note": "Issue #6 was created via the repo helper script and automatically synced into the GitHub project with Status/Stage `Running`."
+  },
+  "live_produce_price_panel": {
+    "status": "pass",
+    "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback plus browser-smoke coverage."
   },
   "delivery_pr_sync": {
     "status": "pass",
-    "note": "Commit b1c0d42 was pushed to the issue branch, PR #2 was opened with the repo helper script, and both push + pull_request GitHub Actions CI runs passed."
+    "note": "Commit dde1a0d was pushed to the issue #6 branch, PR #7 was opened with the repo helper script, and both push + pull_request GitHub Actions CI runs passed."
   }
 }

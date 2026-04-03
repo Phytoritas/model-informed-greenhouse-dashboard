@@ -116,6 +116,39 @@ export interface WeatherOutlook {
     daily: WeatherForecastDay[];
 }
 
+export type ProducePriceDirection = 'up' | 'down' | 'flat';
+export type ProducePriceAuthMode = 'sample' | 'configured';
+
+export interface ProducePriceEntry {
+    key: string;
+    display_name: string;
+    source_name: string;
+    category_name: string;
+    market_label: string;
+    unit: string;
+    latest_day: string;
+    current_price_krw: number;
+    previous_day_price_krw: number;
+    month_ago_price_krw: number;
+    year_ago_price_krw: number;
+    direction: ProducePriceDirection;
+    day_over_day_pct: number;
+    raw_day_over_day_pct: number;
+}
+
+export interface ProducePricesPayload {
+    source: {
+        provider: string;
+        docs_url: string;
+        endpoint: string;
+        auth_mode: ProducePriceAuthMode;
+        fetched_at: string;
+        latest_day: string;
+    };
+    summary: string;
+    items: ProducePriceEntry[];
+}
+
 export type RtrCalibrationMode = 'baseline' | 'fitted' | 'insufficient-data';
 
 export interface RtrCalibrationMetadata {

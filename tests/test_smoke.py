@@ -243,6 +243,54 @@ def test_daegu_weather_endpoint_returns_live_shape(
     assert payload["daily"][0]["shortwave_radiation_sum_mj_m2"] == 14.2
 
 
+def test_live_produce_prices_endpoint_returns_shape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_fetch() -> dict:
+        return {
+            "source": {
+                "provider": "KAMIS",
+                "docs_url": "https://www.kamis.or.kr/customer/reference/openapi_list.do?action=detail&boardno=6",
+                "endpoint": "dailySalesList",
+                "auth_mode": "sample",
+                "fetched_at": "2026-04-03T09:00:00Z",
+                "latest_day": "2026-04-03",
+            },
+            "summary": "KAMIS latest retail survey (2026-04-03) shows mixed moves.",
+            "items": [
+                {
+                    "key": "321",
+                    "display_name": "Tomato",
+                    "source_name": "토마토/토마토",
+                    "category_name": "채소류",
+                    "market_label": "소매",
+                    "unit": "1kg",
+                    "latest_day": "2026-04-03",
+                    "current_price_krw": 5196,
+                    "previous_day_price_krw": 5234,
+                    "month_ago_price_krw": 5219,
+                    "year_ago_price_krw": 5663,
+                    "direction": "down",
+                    "day_over_day_pct": -0.7,
+                    "raw_day_over_day_pct": 0.7,
+                }
+            ],
+        }
+
+    monkeypatch.setattr(backend_main, "fetch_featured_produce_prices", fake_fetch)
+    client = TestClient(get_app())
+
+    response = client.get("/api/market/produce")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["source"]["provider"] == "KAMIS"
+    assert payload["source"]["latest_day"] == "2026-04-03"
+    assert payload["items"][0]["display_name"] == "Tomato"
+    assert payload["items"][0]["day_over_day_pct"] == -0.7
+
+
 def test_rtr_profiles_endpoint_returns_payload_shape(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
