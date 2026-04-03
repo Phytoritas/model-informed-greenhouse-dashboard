@@ -5,8 +5,8 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `#1`
-- Active branch: `feat/1-refactor-current-repo-around-dashboard-eng-1-1-architecture`
+- Active issue: `#6`
+- Active branch: `data/6-add-live-produce-price-panel-from-kamis-api`
 
 ## Identity
 This repository hosts a model-informed greenhouse dashboard that combines greenhouse telemetry, crop-state model outputs, and decision-friendly summaries in one reproducible workspace.
@@ -102,6 +102,6 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- PR `#2` is open for issue `#1`, and both push + pull request GitHub Actions CI runs are green. The next human gate is review and merge while the linked project item stays in `Validating`.
-- The next unresolved technical gap is still the RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
-- If the AI prompt or dashboard context contract changes again, rerun a representative live consult/chat smoke against the repo-local `OPENAI_API_KEY` before treating the new wording as validated.
+- Issue `#6` now owns the next delivery loop: commit and push the KAMIS live produce price panel branch, open a PR, and keep the item in `Validating` after GitHub Actions passes.
+- The new panel is already locally validated with lint, ruff, pytest, production build, a direct live KAMIS fetch, and a browser smoke that confirms the card renders beside weather/RTR using the official docs sample auth fallback.
+- After issue `#6` is delivered, the next unresolved technical gap reverts to RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
