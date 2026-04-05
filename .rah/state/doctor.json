@@ -1,6 +1,6 @@
 {
   "status": "pass",
-  "checked_at": "2026-04-03",
+  "checked_at": "2026-04-05",
   "checks": {
     "architecture_spine": "pass",
     "runtime_sidecar": "pass",
@@ -14,6 +14,7 @@
     "local_validation_ladder": "pass"
   },
   "warnings": [
+    "Issue #8 is locally validated but not yet delivered through commit/push/PR/remote CI; the active loop is the KAMIS 14-day trend and 3y/5y/10y seasonal-normal overlay slice.",
     "Issue #3 remains blocked because configs/rtr_good_windows.yaml still contains concept-demo windows; final RTR calibration sign-off remains pending until grower-approved good-production periods are available.",
     "The KAMIS live produce price panel uses the official docs sample credentials (`test/test`) unless repo-root .env overrides them with issued `KAMIS_API_KEY` and `KAMIS_API_ID` values."
   ]

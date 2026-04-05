@@ -64,6 +64,7 @@ bash scripts/start_all.sh check
 - Curated good-production windows now have a dedicated input contract at `configs/rtr_good_windows.yaml`, while `configs/rtr_profiles.json` remains the runtime/output artifact for fitted RTR coefficients.
 - The sample repository now ships with enabled concept-demo RTR windows, regenerated `configs/rtr_profiles.json`, and AI dashboard payloads that include weather plus RTR live/profile context for consult/chat prompts.
 - Live OpenAI validation passed for the current prompt contract: representative consult/chat calls now explicitly reference both Daegu weather context and RTR steering context instead of relying only on `recentSummary`.
+- The KAMIS produce panel now overlays a trailing 14-day actual series plus forward 14-day seasonal normals computed from the prior 3, 5, and 10 years for tomato and cucumber retail items.
 
 ## Next validation
 - Replace the current heuristic demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods when richer crop-performance annotations are available, then rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
