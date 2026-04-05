@@ -15,7 +15,7 @@
   },
   "warnings": [
     "Issue #3 is the active follow-up loop and remains blocked until grower-approved good-production periods are available for configs/rtr_good_windows.yaml.",
-    "The synced issue #3 branch now includes the merged KAMIS live produce panel, the 14-day actual + 3y/5y/10y seasonal trend overlay, and the issue #10 fallback/labeling hardening from main.",
+    "The synced issue #3 branch now includes the merged KAMIS live produce panel, the 14-day actual + 3y/5y/10y seasonal trend overlay, the issue #10 fallback/labeling hardening, and the issue #12 dashboard layout rebalance from main.",
     "The KAMIS live produce price panel uses the official docs sample credentials (`test/test`) unless repo-root .env overrides them with issued `KAMIS_API_KEY` and `KAMIS_API_ID` values."
   ]
 }

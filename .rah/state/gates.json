@@ -41,7 +41,7 @@
   },
   "browser_smoke": {
     "status": "pass",
-    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the merged KAMIS produce price panel. The latest smoke on 127.0.0.1:8012/4175 confirmed the trend chart rendered beside weather/RTR and the browser console stayed clean."
+    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, the KAMIS produce price panel, the 14-day trend overlay, and the latest issue #12 layout rebalance on 127.0.0.1:8000/4173. The saved desktop/mobile screenshots confirmed the weather, produce-price, and RTR panels now stretch against their content without the AI card compressing that row."
   },
   "bundle_review": {
     "status": "pass",
@@ -85,7 +85,7 @@
   },
   "github_project_sync": {
     "status": "pass",
-    "note": "Issues #6, #8, and #10 all moved through Running -> Validating and closed through merged PRs, while issue #3 remains the blocked follow-up item."
+    "note": "Issues #6, #8, #10, and #12 all moved through Running -> Validating and closed through merged PRs, while issue #3 remains the blocked follow-up item."
   },
   "live_produce_price_panel": {
     "status": "pass",
@@ -98,5 +98,9 @@
   "rtr_good_production_windows": {
     "status": "blocked",
     "note": "The remaining follow-up work is tracked on issue #3, but the calibration input upgrade is blocked until grower-approved good-production periods are available."
+  },
+  "dashboard_layout_rebalance": {
+    "status": "pass",
+    "note": "Issue #12 / PR #13 widened the overall dashboard shell, moved the AI advisor into its own responsive column above the weather/produce/RTR row, and gave the produce-price chart a dedicated wide chart area so cards and graph height scale more naturally on desktop while still stacking cleanly on mobile."
   }
 }
