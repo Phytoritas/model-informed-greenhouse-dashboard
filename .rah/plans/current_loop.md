@@ -1,9 +1,10 @@
 # Current Loop
 
 ## Earliest Pending Gate
-- Issue `#6` review/merge
+- Issue `#8` delivery push/PR/CI
 
 ## Exact Restart Step
-1. Keep PR `#7` tied to issue `#6`; the branch is pushed and both GitHub Actions CI runs are green, so the next human gate is review and merge while the project item stays in `Validating`.
-2. If reviewer context is needed, point to the browser-smoke artifacts at `artifacts/browser-smoke/issue6-produce-price-panel.png` and `artifacts/browser-smoke/issue6-produce-price-console.log` plus the direct KAMIS fetch smoke notes in the activity log.
-3. After the issue `#6` delivery loop is closed, return to issue `#3`, which remains blocked until grower-approved good-production periods are available for RTR recalibration.
+1. Commit the issue `#8` branch and push `data/8-add-2-week-produce-price-trends-and-seasonal-normals`.
+2. Open a PR that closes issue `#8`, then watch the GitHub Actions push + pull_request runs while the item moves to `Validating`.
+3. If reviewer context is needed, point to the local validation ladder (`npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`) plus the direct live KAMIS fetch smoke that returned four featured series with 14-day history and forward seasonal normals.
+4. After issue `#8` is delivered, return to issue `#3`, which remains blocked until grower-approved good-production periods are available for RTR recalibration.
