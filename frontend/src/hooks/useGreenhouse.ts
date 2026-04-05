@@ -9,6 +9,8 @@ import type {
     MetricHistoryPoint,
 } from '../types';
 import { API_URL, WS_URL } from '../config';
+import { useLocale } from '../i18n/LocaleProvider';
+import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
 
 const DEFAULT_TEMP_SETTINGS_BY_CROP: Record<CropType, TemperatureSettings> = {
     Tomato: { heating: 18, cooling: 26 },
@@ -105,6 +107,7 @@ const appendUniquePoint = <T extends { timestamp: number }>(series: T[], point: 
 };
 
 export const useGreenhouse = () => {
+    const { locale } = useLocale();
     const [selectedCrop, setSelectedCrop] = useState<CropType>('Cucumber');
     const settingsByCropRef = useRef<Record<CropType, TemperatureSettings>>({
         Tomato: { ...DEFAULT_TEMP_SETTINGS_BY_CROP.Tomato },
@@ -599,8 +602,8 @@ export const useGreenhouse = () => {
     const growthDay = startTimestamp
         ? Math.max(1, Math.floor((currentTimestamp - startTimestamp) / (1000 * 60 * 60 * 24)) + 1)
         : null;
-    const startDateLabel = startTimestamp ? new Date(startTimestamp).toLocaleDateString() : null;
-    const currentDateLabel = new Date(currentTimestamp).toLocaleString();
+    const startDateLabel = startTimestamp ? formatLocaleDate(locale, startTimestamp) : null;
+    const currentDateLabel = formatLocaleDateTime(locale, currentTimestamp);
 
     const defaultMetrics: AdvancedModelMetrics = {
         cropType: selectedCrop,
