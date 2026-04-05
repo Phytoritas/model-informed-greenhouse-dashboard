@@ -13,7 +13,7 @@
   },
   "followup_branch_validation": {
     "status": "pass",
-    "note": "The blocked issue #3 branch is being kept in sync with merged maintenance and delivery work so the next RTR calibration slice starts from current main."
+    "note": "The blocked issue #3 branch is being kept in sync with merged maintenance and delivery work so the next RTR calibration slice starts from current main, including the issue #14 Korean dashboard localization merge from PR #15."
   },
   "harness_setup": {
     "status": "pass",
@@ -41,7 +41,7 @@
   },
   "browser_smoke": {
     "status": "pass",
-    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, the KAMIS produce price panel, the 14-day trend overlay, and the latest issue #12 layout rebalance on 127.0.0.1:8000/4173. The saved desktop/mobile screenshots confirmed the weather, produce-price, and RTR panels now stretch against their content without the AI card compressing that row."
+    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, the KAMIS produce price panel, the 14-day trend overlay, the issue #12 layout rebalance, and the issue #14 Korean-localization verification on 127.0.0.1:8000/4173. The saved screenshots confirm the weather, produce-price, and RTR panels render in Korean and that the EN/Korean toggle works."
   },
   "bundle_review": {
     "status": "pass",
@@ -85,7 +85,7 @@
   },
   "github_project_sync": {
     "status": "pass",
-    "note": "Issues #6, #8, #10, and #12 all moved through Running -> Validating and closed through merged PRs, while issue #3 remains the blocked follow-up item."
+    "note": "Issues #6, #8, #10, #12, and #14 all moved through Running -> Validating and closed through merged PRs, while issue #3 remains the blocked follow-up item."
   },
   "live_produce_price_panel": {
     "status": "pass",
@@ -102,5 +102,9 @@
   "dashboard_layout_rebalance": {
     "status": "pass",
     "note": "Issue #12 / PR #13 widened the overall dashboard shell, moved the AI advisor into its own responsive column above the weather/produce/RTR row, and gave the produce-price chart a dedicated wide chart area so cards and graph height scale more naturally on desktop while still stacking cleanly on mobile."
+  },
+  "dashboard_korean_localization": {
+    "status": "pass",
+    "note": "Issue #14 / PR #15 added browser-locale bootstrapping, a persisted EN/Korean toggle, Korean AI consult/chat requests, and localized copy for the dashboard shell, charts, controls, produce-price panel, weather panel, and RTR panel."
   }
 }
