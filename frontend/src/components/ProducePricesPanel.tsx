@@ -173,7 +173,7 @@ const TrendChart = ({
     }
 
     return (
-        <div className="rounded-lg border border-slate-100 bg-slate-50/70 p-4">
+        <div className="flex h-full flex-col rounded-lg border border-slate-100 bg-slate-50/70 p-4">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
@@ -211,7 +211,7 @@ const TrendChart = ({
                 ))}
             </div>
 
-            <div className="mt-4 h-64">
+            <div className="mt-4 h-72 lg:h-[22rem]">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={256}>
                     <LineChart data={selectedSeries.points} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -309,7 +309,7 @@ const TrendChart = ({
                 </ResponsiveContainer>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-500">
+            <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-slate-500 sm:grid-cols-2">
                 <div className="rounded-md bg-white px-3 py-2 shadow-sm">
                     <div className="font-medium text-slate-700">Series window</div>
                     <div className="mt-1">
@@ -335,7 +335,7 @@ const TrendChart = ({
 };
 
 const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps) => (
-    <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-start justify-between gap-3">
             <div>
                 <div className="flex items-center gap-2 text-slate-800">
@@ -356,7 +356,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                 Produce price panel is unavailable: {error}
             </div>
         ) : prices ? (
-            <div className="space-y-4">
+            <div className="flex h-full flex-col space-y-4">
                 <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-lime-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                         <div>
@@ -376,12 +376,14 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                     </div>
                 </div>
 
-                <TrendChart prices={prices} />
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(250px,0.95fr)] lg:items-start">
+                    <TrendChart prices={prices} />
 
-                <div className="space-y-2">
-                    {prices.items.map((item) => (
-                        <ProducePriceCard key={item.key} item={item} />
-                    ))}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                        {prices.items.map((item) => (
+                            <ProducePriceCard key={item.key} item={item} />
+                        ))}
+                    </div>
                 </div>
             </div>
         ) : null}

@@ -5,8 +5,8 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `#8`
-- Active branch: `fix/10-fix-kamis-trend-overlay-fallback-and-labeling`
+- Active issue: `#12`
+- Active branch: `fix/12-rebalance-dashboard-panel-sizing-and-layout`
 
 ## Identity
 This repository hosts a model-informed greenhouse dashboard that combines greenhouse telemetry, crop-state model outputs, and decision-friendly summaries in one reproducible workspace.
@@ -102,6 +102,6 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- Issue `#10` is now the active delivery loop: the hardening branch preserves live KAMIS snapshot cards even when trend enrichment fails, clarifies that chart history uses retail-average prices rather than card snapshots, and surfaces sample-count coverage for the 3y/5y/10y seasonal-normal lines.
-- The exact next step is commit/push on `fix/10-fix-kamis-trend-overlay-fallback-and-labeling`, then open a PR and watch push + pull_request GitHub Actions before closing the loop.
-- After issue `#10` is delivered, the next unresolved technical gap reverts to RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
+- Issue `#12` is now the active delivery loop: the layout branch widens the dashboard shell, gives the AI advisor its own responsive column, and rebalances the weather, live produce-price, and RTR panels so their card/chart footprints fit the actual content on desktop and mobile.
+- The exact next step is commit/push on `fix/12-rebalance-dashboard-panel-sizing-and-layout`, then open a PR and watch push + pull_request GitHub Actions before closing the loop.
+- After issue `#12` is delivered, the next unresolved technical gap reverts to RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
