@@ -1,6 +1,7 @@
 import { Sparkles, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useLocale } from '../i18n/LocaleProvider';
 
 interface AiAdvisorProps {
     analysis: string;
@@ -21,13 +22,25 @@ function extractExecutiveSummary(markdown: string): string {
 }
 
 const AiAdvisor = ({ analysis, isLoading, onRefresh }: AiAdvisorProps) => {
+    const { locale } = useLocale();
+    const copy = locale === 'ko'
+        ? {
+            title: 'AI 어드바이저',
+            loading: '데이터를 분석하는 중...',
+            empty: '시스템을 초기화하고 있습니다. 충분한 데이터가 쌓이면 인사이트를 생성합니다...',
+        }
+        : {
+            title: 'AI Advisor',
+            loading: 'Analyzing data...',
+            empty: 'System initializing. Waiting for sufficient data to generate insights...',
+        };
     const summary = analysis ? extractExecutiveSummary(analysis) : "";
     return (
         <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-6 text-white h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-yellow-300" />
-                    <h3 className="font-semibold">AI Advisor</h3>
+                    <h3 className="font-semibold">{copy.title}</h3>
                 </div>
                 <button
                     onClick={onRefresh}
@@ -40,7 +53,7 @@ const AiAdvisor = ({ analysis, isLoading, onRefresh }: AiAdvisorProps) => {
             <div className="flex-1 bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
-                        <span className="text-sm text-indigo-200">Analyzing data...</span>
+                        <span className="text-sm text-indigo-200">{copy.loading}</span>
                     </div>
                 ) : (
                     <div className="text-sm leading-relaxed text-indigo-50 overflow-y-auto max-h-[240px]">
@@ -57,7 +70,7 @@ const AiAdvisor = ({ analysis, isLoading, onRefresh }: AiAdvisorProps) => {
                                 code: ({ ...props }) => <code className="px-1 py-0.5 rounded bg-white/10 text-white" {...props} />,
                             }}
                         >
-                            {summary || "System initializing. Waiting for sufficient data to generate insights..."}
+                            {summary || copy.empty}
                         </ReactMarkdown>
                     </div>
                 )}
