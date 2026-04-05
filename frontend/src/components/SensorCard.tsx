@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import { useLocale } from '../i18n/LocaleProvider';
 import { formatMetricValue } from '../utils/formatValue';
 
 interface SensorCardProps {
@@ -15,6 +16,7 @@ interface SensorCardProps {
 }
 
 const SensorCard = ({ title, value, unit, subValue, icon: Icon, color, trend, idealRange, className, fractionDigits }: SensorCardProps) => {
+    const { locale } = useLocale();
     const displayValue = typeof value === 'number'
         ? formatMetricValue(value, fractionDigits)
         : value;
@@ -42,7 +44,7 @@ const SensorCard = ({ title, value, unit, subValue, icon: Icon, color, trend, id
                 {idealRange && (
                     <p className="text-xs text-slate-400 mt-2 flex items-start gap-1 leading-snug">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                        Target band: {idealRange}
+                        {locale === 'ko' ? `목표 범위: ${idealRange}` : `Target band: ${idealRange}`}
                     </p>
                 )}
             </div>

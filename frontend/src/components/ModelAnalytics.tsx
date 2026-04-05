@@ -2,7 +2,9 @@ import { memo } from 'react';
 import type { AdvancedModelMetrics, CropType, ForecastData, MetricHistoryPoint } from '../types';
 import { TrendingUp, Zap, Scale, Leaf } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { UNIT_LABELS, getCropModelLabel } from '../utils/displayCopy';
+import { useLocale } from '../i18n/LocaleProvider';
+import { formatLocaleDate, formatLocaleTime } from '../i18n/locale';
+import { UNIT_LABELS, getCropModelLabel, getDevelopmentStageLabel } from '../utils/displayCopy';
 
 interface ModelAnalyticsProps {
     crop: CropType;
@@ -11,13 +13,53 @@ interface ModelAnalyticsProps {
     forecast: ForecastData | null;
 }
 
-const formatTimeLabel = (timestamp: number) =>
-    new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-const formatDayLabel = (date: string) =>
-    new Date(date).toLocaleDateString([], { month: 'numeric', day: 'numeric' });
-
 const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyticsProps) => {
+    const { locale } = useLocale();
+    const copy = locale === 'ko'
+        ? {
+            growthModel: '생육 모델',
+            yieldForecast: '수확 예측',
+            aiInference: 'AI 추론',
+            energyModel: '에너지 모델',
+            efficiencyCost: '효율 및 비용',
+            biomassLine: '바이오매스 (g m⁻²)',
+            stage: '단계',
+            rate: '증가율',
+            harvestForecast: '수확 예측 (kg)',
+            confidence: '신뢰도',
+            harvestReady: '수확 가능 과실',
+            electricalDemand: '전력 수요 (kW)',
+            thermalLoad: '열부하 (kW)',
+            load: '부하',
+            estimatedCost: '예상 비용',
+            optimizationInsight: '최적화 인사이트',
+            highEfficiency: '효율이 높게 유지되고 있습니다. 현재 HVAC 반응은 예상 제어 범위 안에 있습니다.',
+            efficiencyDrop: '효율 저하가 감지됩니다. 환기 손실과 냉난방 단계 제어를 점검하세요.',
+        }
+        : {
+            growthModel: 'Growth Model',
+            yieldForecast: 'Yield Forecast',
+            aiInference: 'AI Inference',
+            energyModel: 'Energy Model',
+            efficiencyCost: 'Efficiency & Cost',
+            biomassLine: 'Biomass (g m⁻²)',
+            stage: 'Stage',
+            rate: 'Rate',
+            harvestForecast: 'Harvest forecast (kg)',
+            confidence: 'Confidence',
+            harvestReady: 'Harvest-ready fruits',
+            electricalDemand: 'Electrical demand (kW)',
+            thermalLoad: 'Thermal load (kW)',
+            load: 'Load',
+            estimatedCost: 'Est. Cost',
+            optimizationInsight: 'Optimization Insight',
+            highEfficiency: 'High efficiency maintained. Current HVAC response is within the expected control envelope.',
+            efficiencyDrop: 'Efficiency drop detected. Check ventilation losses and cooling or heating staging.',
+        };
+    const formatTimeLabel = (timestamp: number) =>
+        formatLocaleTime(locale, timestamp, { hour: '2-digit', minute: '2-digit' });
+    const formatDayLabel = (date: string) =>
+        formatLocaleDate(locale, `${date}T00:00:00`, { month: 'numeric', day: 'numeric' });
     const biomass = metrics.growth.biomass;
     const lai = metrics.growth.lai;
     const predictedWeekly = metrics.yield.predictedWeekly;
@@ -68,8 +110,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                             <Leaf className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-slate-800">Growth Model</h3>
-                            <p className="text-xs text-slate-400">{getCropModelLabel(crop)}</p>
+                            <h3 className="font-semibold text-slate-800">{copy.growthModel}</h3>
+                            <p className="text-xs text-slate-400">{getCropModelLabel(crop, locale)}</p>
                         </div>
                     </div>
                     <div className="text-right">
@@ -89,13 +131,13 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                                 itemStyle={{ fontSize: '12px' }}
                                 formatter={(value: number, name: string) => [value.toFixed(1), name]}
                             />
-                            <Line type="monotone" dataKey="biomass" stroke="#16a34a" strokeWidth={2} dot={false} name="Biomass (g m⁻²)" />
+                            <Line type="monotone" dataKey="biomass" stroke="#16a34a" strokeWidth={2} dot={false} name={copy.biomassLine} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
                 <div className="mt-2 flex justify-between text-xs text-slate-500">
-                    <span>Stage: <span className="font-medium text-green-700">{metrics.growth.developmentStage}</span></span>
-                    <span>Rate: +{metrics.growth.growthRate.toFixed(1)} g m⁻² d⁻¹</span>
+                    <span>{copy.stage}: <span className="font-medium text-green-700">{getDevelopmentStageLabel(metrics.growth.developmentStage, locale)}</span></span>
+                    <span>{copy.rate}: +{metrics.growth.growthRate.toFixed(1)} g m⁻² d⁻¹</span>
                 </div>
             </div>
 
@@ -107,8 +149,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                             <Scale className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-slate-800">Yield Forecast</h3>
-                            <p className="text-xs text-slate-400">AI Inference</p>
+                            <h3 className="font-semibold text-slate-800">{copy.yieldForecast}</h3>
+                            <p className="text-xs text-slate-400">{copy.aiInference}</p>
                         </div>
                     </div>
                     <div className="text-right">
@@ -129,7 +171,7 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                                 itemStyle={{ fontSize: '12px' }}
                                 formatter={(value: number, name: string) => [value.toFixed(1), name]}
                             />
-                            <Bar dataKey="harvestKg" name="Harvest forecast (kg)" radius={[4, 4, 0, 0]}>
+                            <Bar dataKey="harvestKg" name={copy.harvestForecast} radius={[4, 4, 0, 0]}>
                                 {yieldData.map((_entry, index) => (
                                     <Cell key={`cell-${index}`} fill={index === 0 ? '#f97316' : '#fdba74'} />
                                 ))}
@@ -138,8 +180,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                     </ResponsiveContainer>
                 </div>
                 <div className="mt-2 flex justify-between text-xs text-slate-500">
-                    <span>Confidence: <span className="font-medium text-orange-700">{metrics.yield.confidence}%</span></span>
-                    <span>Harvest-ready fruits: ~{metrics.yield.harvestableFruits.toFixed(0)}</span>
+                    <span>{copy.confidence}: <span className="font-medium text-orange-700">{metrics.yield.confidence}%</span></span>
+                    <span>{copy.harvestReady}: ~{metrics.yield.harvestableFruits.toFixed(0)}</span>
                 </div>
             </div>
 
@@ -151,8 +193,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                             <Zap className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-slate-800">Energy Model</h3>
-                            <p className="text-xs text-slate-400">Efficiency & Cost</p>
+                            <h3 className="font-semibold text-slate-800">{copy.energyModel}</h3>
+                            <p className="text-xs text-slate-400">{copy.efficiencyCost}</p>
                         </div>
                     </div>
                     <div className="text-right">
@@ -174,24 +216,24 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                                 itemStyle={{ fontSize: '12px' }}
                                 formatter={(value: number, name: string) => [value.toFixed(2), name]}
                             />
-                            <Line type="monotone" dataKey="powerKw" stroke="#2563eb" strokeWidth={2} dot={false} name="Electrical demand (kW)" />
-                            <Line type="monotone" dataKey="loadKw" stroke="#60a5fa" strokeWidth={2} dot={false} name="Thermal load (kW)" />
+                            <Line type="monotone" dataKey="powerKw" stroke="#2563eb" strokeWidth={2} dot={false} name={copy.electricalDemand} />
+                            <Line type="monotone" dataKey="loadKw" stroke="#60a5fa" strokeWidth={2} dot={false} name={copy.thermalLoad} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
                 <div className="mt-2 flex justify-between text-xs text-slate-500">
-                    <span>Load: <span className="font-medium text-slate-700">{thermalLoadKw.toFixed(1)} kW</span></span>
-                    <span>Est. Cost: <span className="font-medium text-slate-700">{costLabel}</span></span>
+                    <span>{copy.load}: <span className="font-medium text-slate-700">{thermalLoadKw.toFixed(1)} kW</span></span>
+                    <span>{copy.estimatedCost}: <span className="font-medium text-slate-700">{costLabel}</span></span>
                 </div>
                 <div className="mt-3 bg-blue-50 rounded-lg p-3 border border-blue-100">
                     <div className="flex items-center gap-2 mb-1">
                         <TrendingUp className="w-3 h-3 text-blue-600" />
-                        <span className="text-xs font-bold text-blue-800">Optimization Insight</span>
+                        <span className="text-xs font-bold text-blue-800">{copy.optimizationInsight}</span>
                     </div>
                     <p className="text-xs text-blue-700 leading-snug">
                         {energyEfficiency > 3
-                            ? 'High efficiency maintained. Current HVAC response is within the expected control envelope.'
-                            : 'Efficiency drop detected. Check ventilation losses and cooling or heating staging.'}
+                            ? copy.highEfficiency
+                            : copy.efficiencyDrop}
                     </p>
                 </div>
             </div>

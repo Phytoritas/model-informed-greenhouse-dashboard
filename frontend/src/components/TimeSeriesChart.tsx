@@ -1,5 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { ReactNode } from "react";
+import { useLocale } from "../i18n/LocaleProvider";
+import { formatLocaleDateTime, formatLocaleTime } from "../i18n/locale";
 
 interface DataKey {
     key: string;
@@ -24,6 +26,7 @@ const TimeSeriesChart = <T extends { timestamp?: number }>({
     icon,
     height = 240,
 }: TimeSeriesChartProps<T>) => {
+    const { locale } = useLocale();
     // Helper to get nested value like "env.temperature"
     const getNestedValue = (obj: Record<string, unknown>, path: string): unknown => {
         return path.split('.').reduce<unknown>((acc, part) => {
@@ -41,7 +44,7 @@ const TimeSeriesChart = <T extends { timestamp?: number }>({
                     {icon}
                     <span className="font-medium">{title}</span>
                 </div>
-                <p>Waiting for data...</p>
+                <p>{locale === 'ko' ? '데이터를 기다리는 중...' : 'Waiting for data...'}</p>
             </div>
         );
     }
@@ -84,7 +87,7 @@ const TimeSeriesChart = <T extends { timestamp?: number }>({
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis
                             dataKey="timestamp"
-                            tickFormatter={(t) => t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            tickFormatter={(t) => t ? formatLocaleTime(locale, t, { hour: '2-digit', minute: '2-digit' }) : ''}
                             stroke="#94a3b8"
                             tick={{ fontSize: 11 }}
                         />
@@ -96,7 +99,7 @@ const TimeSeriesChart = <T extends { timestamp?: number }>({
                                 borderRadius: '8px',
                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                             }}
-                            labelFormatter={(t) => t ? new Date(t).toLocaleString() : ''}
+                            labelFormatter={(t) => t ? formatLocaleDateTime(locale, t) : ''}
                         />
                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                         {dataKeys.map(({ key, name, color }) => (
