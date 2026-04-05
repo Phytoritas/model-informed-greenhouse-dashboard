@@ -70,7 +70,7 @@ const RTROutlookPanel = ({
         : 'heuristic fallback';
 
     return (
-        <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-slate-800">
@@ -91,7 +91,7 @@ const RTROutlookPanel = ({
                 </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="flex h-full flex-col space-y-4">
                 <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-lime-50 p-4">
                     <div className="flex items-center justify-between gap-3">
                         <div>
@@ -148,14 +148,14 @@ const RTROutlookPanel = ({
                         <CalendarDays className="h-4 w-4 text-slate-500" />
                         <span>3-day RTR steering plan</span>
                     </div>
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
                         {loading ? (
                             <div className="rounded-md bg-white px-3 py-3 text-sm text-slate-500">
                                 Loading Daegu radiation forecast...
                             </div>
                         ) : forecastTargets.length > 0 ? (
                             forecastTargets.map((day) => (
-                                <div key={day.date} className="rounded-md bg-white px-3 py-3">
+                                <div key={day.date} className="h-full rounded-md bg-white px-3 py-3">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="text-sm font-semibold text-slate-800">{formatForecastLabel(day.date)}</div>

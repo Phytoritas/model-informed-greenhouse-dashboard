@@ -14,7 +14,7 @@
     "local_validation_ladder": "pass"
   },
   "warnings": [
-    "Issue #10 is locally validated but not yet delivered through commit/push/PR/remote CI; the active loop is the KAMIS trend-overlay fallback and labeling hardening slice on top of the already-landed 14-day history + 3y/5y/10y seasonal-normal panel.",
+    "Issue #12 is locally validated but not yet delivered through commit/push/PR/remote CI; the active loop is a dashboard layout rebalance slice that widens the overall dashboard shell, decouples the AI card from the market/weather/RTR row, and resizes the produce-price panel around its chart-plus-card content.",
     "Issue #3 remains blocked because configs/rtr_good_windows.yaml still contains concept-demo windows; final RTR calibration sign-off remains pending until grower-approved good-production periods are available.",
     "The KAMIS live produce price panel uses the official docs sample credentials (`test/test`) unless repo-root .env overrides them with issued `KAMIS_API_KEY` and `KAMIS_API_ID` values."
   ]
