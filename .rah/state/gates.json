@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #12 and branch `fix/12-rebalance-dashboard-panel-sizing-and-layout` were created with the repo helper script before the dashboard layout sizing rebalance slice landed."
+    "note": "Issue #16 and branch `data/16-show-wholesale-produce-prices-alongside-retail-market-panel` were created with the repo helper script before the KAMIS wholesale market expansion slice landed."
   },
   "harness_setup": {
     "status": "pass",
@@ -33,7 +33,7 @@
   },
   "browser_smoke": {
     "status": "pass",
-    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, the KAMIS produce price panel, and the latest issue #12 layout rebalance on 127.0.0.1:8000/4173. The saved desktop/mobile screenshots confirmed the weather, produce-price, and RTR panels now stretch against their content without the AI card compressing that row."
+    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the KAMIS produce price panel. For issue #16 specifically, a live 127.0.0.1:8000/4173 smoke confirmed the frontend no longer crashes when a still-retail-only backend payload is served, and a Playwright-mocked smoke confirmed the new wholesale tab renders wholesale cards plus the retail-only trend notice; screenshots were saved under artifacts/browser-smoke/issue16-wholesale-market-panel.png and artifacts/browser-smoke/issue16-wholesale-panel-mocked.png."
   },
   "bundle_review": {
     "status": "pass",
@@ -69,22 +69,26 @@
   },
   "github_project_sync": {
     "status": "pass",
-    "note": "Issue #12 was created via the repo helper script and synced into the GitHub project as the active dashboard-layout bug loop while issue #3 remains the blocked follow-up for RTR good-production windows."
+    "note": "Issue #16 was created via the repo helper script and synced into the GitHub project as the active KAMIS wholesale-price enhancement loop while issue #3 remains the blocked follow-up for RTR good-production windows."
   },
   "live_produce_price_panel": {
     "status": "pass",
-    "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback plus browser-smoke coverage."
+    "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback, and issue #16 extends that payload to publish both retail and wholesale featured snapshots."
   },
   "produce_price_trend_overlay": {
     "status": "pass",
-    "note": "Issue #8 already landed the trailing 14-day actual trend plus forward 14-day 3y/5y/10y seasonal-normal overlays from KAMIS `periodRetailProductList`, and issue #10 hardens that panel so card snapshots survive trend failures while the chart explicitly labels retail-average history versus snapshot prices and exposes per-line sample coverage."
+    "note": "Issue #8 already landed the trailing 14-day actual trend plus forward 14-day 3y/5y/10y seasonal-normal overlays from KAMIS `periodRetailProductList`, issue #10 hardened that panel so card snapshots survive trend failures, and issue #16 now makes the retail-only trend basis explicit whenever the user switches the card rail over to wholesale prices."
   },
   "dashboard_layout_rebalance": {
     "status": "pass",
     "note": "Issue #12 widens the overall dashboard shell, moves the AI advisor into its own responsive column above the weather/produce/RTR row, and gives the produce-price chart a dedicated wide chart area so cards and graph height scale more naturally on desktop while still stacking cleanly on mobile."
   },
+  "produce_price_wholesale_market": {
+    "status": "pass",
+    "note": "Issue #16 expands the KAMIS panel so the backend exposes `markets.retail` and `markets.wholesale`, the frontend can toggle between those snapshots without losing the retail trend chart, and the hook backfills missing `markets` fields so staggered frontend/backend restarts do not crash the panel."
+  },
   "delivery_pr_sync": {
     "status": "pending",
-    "note": "Issue #12 is locally implemented and validated, but the dashboard layout rebalance branch state has not been committed/pushed or opened as a PR yet."
+    "note": "Issue #16 is locally implemented and validated, but the KAMIS wholesale-price expansion branch state has not been committed/pushed or opened as a PR yet."
   }
 }

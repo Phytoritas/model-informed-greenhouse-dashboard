@@ -251,7 +251,7 @@ def test_live_produce_prices_endpoint_returns_shape(
             "source": {
                 "provider": "KAMIS",
                 "docs_url": "https://www.kamis.or.kr/customer/reference/openapi_list.do",
-                "endpoint": "dailySalesList + periodRetailProductList",
+                "endpoint": "dailySalesList + periodRetailProductList (retail trend overlay)",
                 "auth_mode": "sample",
                 "fetched_at": "2026-04-03T09:00:00Z",
                 "latest_day": "2026-04-03",
@@ -275,7 +275,56 @@ def test_live_produce_prices_endpoint_returns_shape(
                     "raw_day_over_day_pct": 0.7,
                 }
             ],
+            "markets": {
+                "retail": {
+                    "market_key": "retail",
+                    "market_label": "Retail",
+                    "summary": "Retail snapshot",
+                    "items": [
+                        {
+                            "key": "321",
+                            "display_name": "Tomato",
+                            "source_name": "\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
+                            "category_name": "\ucc44\uc18c\ub958",
+                            "market_label": "\uc18c\ub9e4",
+                            "unit": "1kg",
+                            "latest_day": "2026-04-03",
+                            "current_price_krw": 5196,
+                            "previous_day_price_krw": 5234,
+                            "month_ago_price_krw": 5219,
+                            "year_ago_price_krw": 5663,
+                            "direction": "down",
+                            "day_over_day_pct": -0.7,
+                            "raw_day_over_day_pct": 0.7,
+                        }
+                    ],
+                },
+                "wholesale": {
+                    "market_key": "wholesale",
+                    "market_label": "Wholesale",
+                    "summary": "Wholesale snapshot",
+                    "items": [
+                        {
+                            "key": "321",
+                            "display_name": "Tomato",
+                            "source_name": "\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
+                            "category_name": "\ucc44\uc18c\ub958",
+                            "market_label": "\ub3c4\ub9e4",
+                            "unit": "5kg",
+                            "latest_day": "2026-04-03",
+                            "current_price_krw": 18140,
+                            "previous_day_price_krw": 18800,
+                            "month_ago_price_krw": 17480,
+                            "year_ago_price_krw": 19556,
+                            "direction": "down",
+                            "day_over_day_pct": -3.5,
+                            "raw_day_over_day_pct": 3.5,
+                        }
+                    ],
+                },
+            },
             "trend": {
+                "market_key": "retail",
                 "reference_date": "2026-04-03",
                 "history_days": 14,
                 "forecast_days": 14,
@@ -342,7 +391,9 @@ def test_live_produce_prices_endpoint_returns_shape(
     assert payload["source"]["latest_day"] == "2026-04-03"
     assert payload["items"][0]["display_name"] == "Tomato"
     assert payload["items"][0]["current_price_krw"] == 5196
+    assert payload["markets"]["wholesale"]["items"][0]["unit"] == "5kg"
     assert payload["items"][0]["day_over_day_pct"] == -0.7
+    assert payload["trend"]["market_key"] == "retail"
     assert payload["trend"]["series"][0]["display_name"] == "Tomato"
     assert payload["trend"]["series"][0]["points"][1]["actual_price_krw"] == 4932
     assert payload["trend"]["series"][0]["points"][2]["normal_10y_price_krw"] == 5900

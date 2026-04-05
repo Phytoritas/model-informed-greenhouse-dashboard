@@ -118,6 +118,7 @@ export interface WeatherOutlook {
 
 export type ProducePriceDirection = 'up' | 'down' | 'flat';
 export type ProducePriceAuthMode = 'sample' | 'configured';
+export type ProduceMarketKey = 'retail' | 'wholesale';
 
 export interface ProducePriceEntry {
     key: string;
@@ -165,6 +166,13 @@ export interface ProducePriceTrendUnavailable {
     reason: string;
 }
 
+export interface ProduceMarketSnapshot {
+    market_key: ProduceMarketKey;
+    market_label: string;
+    summary: string;
+    items: ProducePriceEntry[];
+}
+
 export interface ProducePricesPayload {
     source: {
         provider: string;
@@ -176,7 +184,9 @@ export interface ProducePricesPayload {
     };
     summary: string;
     items: ProducePriceEntry[];
+    markets: Record<ProduceMarketKey, ProduceMarketSnapshot>;
     trend: {
+        market_key: ProduceMarketKey;
         reference_date: string;
         history_days: number;
         forecast_days: number;

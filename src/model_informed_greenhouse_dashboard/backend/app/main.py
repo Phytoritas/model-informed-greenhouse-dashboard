@@ -886,7 +886,7 @@ async def get_daegu_weather():
 
 @app.get("/api/market/produce")
 async def get_featured_produce_market_prices():
-    """Return a curated KAMIS retail produce price snapshot for the dashboard."""
+    """Return curated KAMIS retail/wholesale produce snapshots plus retail trends."""
     try:
         payload = await fetch_featured_produce_prices()
         return {"status": "success", **payload}
