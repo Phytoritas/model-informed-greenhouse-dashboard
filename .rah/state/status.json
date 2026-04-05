@@ -2,9 +2,9 @@
   "mode": "hybrid",
   "current_stage": "implementation-local-validation-passed",
   "repository_profile": "python-service-scaffold-absorbing-external-dashboard-runtime",
-  "active_issue": 12,
-  "active_branch": "fix/12-rebalance-dashboard-panel-sizing-and-layout",
+  "active_issue": 16,
+  "active_branch": "data/16-show-wholesale-produce-prices-alongside-retail-market-panel",
   "implementation_blocked": false,
-  "next_action": "Commit and push issue #12, open a PR for the dashboard panel sizing rebalance slice, and watch GitHub Actions before returning the active loop to blocked issue #3.",
+  "next_action": "Commit and push issue #16, open a PR for the KAMIS wholesale-price expansion slice, and watch GitHub Actions before returning the active loop to blocked issue #3.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1"
 }

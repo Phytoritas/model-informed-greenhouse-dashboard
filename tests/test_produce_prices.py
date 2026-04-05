@@ -98,7 +98,7 @@ def test_featured_produce_selection_prefers_curated_retail_targets() -> None:
         ),
     ]
 
-    items = produce_prices._build_featured_produce_items(rows)
+    items = produce_prices._build_featured_produce_items(rows, market_code="01")
 
     assert [item["display_name"] for item in items] == [
         "Tomato",
@@ -110,6 +110,72 @@ def test_featured_produce_selection_prefers_curated_retail_targets() -> None:
     assert items[0]["direction"] == "down"
     assert items[2]["direction"] == "up"
     assert items[2]["day_over_day_pct"] == 0.7
+
+
+def test_featured_produce_selection_can_build_wholesale_snapshot() -> None:
+    rows = [
+        _make_row(
+            product_cls_code="02",
+            product_name="\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
+            productno="321",
+            unit="5kg",
+            dpr1="18,140",
+            dpr2="18,800",
+            dpr3="17,480",
+            dpr4="19,556",
+            direction="0",
+            value="3.5",
+        ),
+        _make_row(
+            product_cls_code="02",
+            product_name="\ubc29\uc6b8\ud1a0\ub9c8\ud1a0/\ubc29\uc6b8\ud1a0\ub9c8\ud1a0",
+            productno="437",
+            unit="2kg",
+            dpr1="21,222",
+            dpr2="20,800",
+            dpr3="19,750",
+            dpr4="22,015",
+            direction="1",
+            value="2.0",
+        ),
+        _make_row(
+            product_cls_code="02",
+            product_name="\uc624\uc774/\ub2e4\ub2e4\uae30\uacc4",
+            productno="313",
+            unit="100ea",
+            dpr1="31,000",
+            dpr2="30,100",
+            dpr3="28,400",
+            dpr4="32,200",
+            direction="1",
+            value="3.0",
+        ),
+        _make_row(
+            product_cls_code="02",
+            product_name="\uc624\uc774/\ucde8\uccad",
+            productno="315",
+            unit="50ea",
+            dpr1="23,400",
+            dpr2="23,900",
+            dpr3="24,100",
+            dpr4="25,050",
+            direction="0",
+            value="2.1",
+        ),
+    ]
+
+    items = produce_prices._build_featured_produce_items(rows, market_code="02")
+
+    assert [item["display_name"] for item in items] == [
+        "Tomato",
+        "Cherry Tomato",
+        "Cucumber (Dadagi)",
+        "Cucumber (Chuicheong)",
+    ]
+    assert items[0]["market_label"] == "\ub3c4\ub9e4"
+    assert items[0]["unit"] == "5kg"
+    assert items[1]["direction"] == "up"
+    assert items[3]["day_over_day_pct"] == -2.1
 
 
 def test_featured_produce_selection_falls_back_to_other_vegetables() -> None:
@@ -160,7 +226,7 @@ def test_featured_produce_selection_falls_back_to_other_vegetables() -> None:
         ),
     ]
 
-    items = produce_prices._build_featured_produce_items(rows)
+    items = produce_prices._build_featured_produce_items(rows, market_code="01")
 
     assert len(items) == 4
     assert items[0]["display_name"] == "Tomato"
@@ -305,6 +371,30 @@ def test_fetch_featured_produce_prices_preserves_cards_when_trend_enrichment_fai
                             direction="0",
                             value="0.3",
                         ),
+                        _make_row(
+                            product_cls_code="02",
+                            product_name="\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
+                            productno="321",
+                            unit="5kg",
+                            dpr1="18,140",
+                            dpr2="18,800",
+                            dpr3="17,480",
+                            dpr4="19,556",
+                            direction="0",
+                            value="3.5",
+                        ),
+                        _make_row(
+                            product_cls_code="02",
+                            product_name="\ubc29\uc6b8\ud1a0\ub9c8\ud1a0/\ubc29\uc6b8\ud1a0\ub9c8\ud1a0",
+                            productno="437",
+                            unit="2kg",
+                            dpr1="21,222",
+                            dpr2="20,800",
+                            dpr3="19,750",
+                            dpr4="22,015",
+                            direction="1",
+                            value="2.0",
+                        ),
                     ]
                 }
             )
@@ -325,6 +415,10 @@ def test_fetch_featured_produce_prices_preserves_cards_when_trend_enrichment_fai
 
     assert len(payload["items"]) == 4
     assert payload["items"][0]["display_name"] == "Tomato"
+    assert payload["markets"]["retail"]["items"][0]["market_label"] == "\uc18c\ub9e4"
+    assert payload["markets"]["wholesale"]["items"][0]["market_label"] == "\ub3c4\ub9e4"
+    assert payload["markets"]["wholesale"]["items"][0]["unit"] == "5kg"
     assert payload["trend"]["series"] == []
+    assert payload["trend"]["market_key"] == "retail"
     assert len(payload["trend"]["unavailable_series"]) == 4
     assert payload["trend"]["unavailable_series"][0]["display_name"] == "Tomato"
