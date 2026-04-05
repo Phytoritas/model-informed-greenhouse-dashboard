@@ -235,93 +235,102 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto max-w-[1720px] px-4 py-8 sm:px-6 lg:px-8">
         {/* Top Section: Stats & AI */}
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)] gap-6 mb-8">
-          {/* Sensor Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <SensorCard
-              title={DASHBOARD_SENSOR_COPY.temperature.title}
-              value={currentData.temperature}
-              unit={DASHBOARD_SENSOR_COPY.temperature.unit}
-              icon={Thermometer}
-              color="bg-orange-500"
-              trend={currentData.temperature > 28 ? 'up' : 'stable'}
-              idealRange={IDEAL_RANGES[selectedCrop].temperature}
-            />
-            <SensorCard
-              title={DASHBOARD_SENSOR_COPY.humidity.title}
-              value={currentData.humidity}
-              unit={DASHBOARD_SENSOR_COPY.humidity.unit}
-              icon={Droplets}
-              color="bg-blue-500"
-              trend={currentData.humidity > 80 ? 'up' : 'stable'}
-              idealRange={IDEAL_RANGES[selectedCrop].humidity}
-            />
-            <SensorCard
-              title={DASHBOARD_SENSOR_COPY.carbonDioxide.title}
-              value={currentData.co2}
-              unit={DASHBOARD_SENSOR_COPY.carbonDioxide.unit}
-              icon={CloudFog}
-              color="bg-slate-600"
-              trend="stable"
-              idealRange="400-800 ppm"
-            />
-            <SensorCard
-              title={DASHBOARD_SENSOR_COPY.light.title}
-              value={currentData.light}
-              unit={DASHBOARD_SENSOR_COPY.light.unit}
-              subValue={`~ ${(currentData.light / activeRtrDivider).toFixed(1)} ${UNIT_LABELS.radiativeFlux}`}
-              icon={Sun}
-              color="bg-yellow-500"
-              trend={currentData.light > 1000 ? 'up' : 'down'}
-              idealRange={IDEAL_RANGES[selectedCrop].light}
-            />
-            <SensorCard
-              title={DASHBOARD_SENSOR_COPY.vpd.title}
-              value={currentData.vpd}
-              unit={DASHBOARD_SENSOR_COPY.vpd.unit}
-              icon={Activity}
-              color="bg-purple-500"
-              trend={currentData.vpd > 1.2 ? 'up' : 'stable'}
-              idealRange={IDEAL_RANGES[selectedCrop].vpd}
-            />
-            <SensorCard
-              title={DASHBOARD_SENSOR_COPY.stomatalConductance.title}
-              value={currentData.stomatalConductance}
-              unit={DASHBOARD_SENSOR_COPY.stomatalConductance.unit}
-              icon={Leaf}
-              color="bg-green-500"
-              trend="stable"
-              idealRange={`> 0.3 ${UNIT_LABELS.stomatalConductance}`}
-            />
-          </div>
-
-          {/* AI Advisor */}
-          <div className="flex flex-col gap-6">
-            <Suspense fallback={<AiAdvisorFallback />}>
-              <AiAdvisor
-                analysis={aiAnalysis}
-                isLoading={isAnalyzing}
-                onRefresh={handleAnalyze}
+        <div className="mb-8 space-y-6">
+          <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.95fr)]">
+            {/* Sensor Grid */}
+            <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <SensorCard
+                title={DASHBOARD_SENSOR_COPY.temperature.title}
+                value={currentData.temperature}
+                unit={DASHBOARD_SENSOR_COPY.temperature.unit}
+                icon={Thermometer}
+                color="bg-orange-500"
+                trend={currentData.temperature > 28 ? 'up' : 'stable'}
+                idealRange={IDEAL_RANGES[selectedCrop].temperature}
               />
-            </Suspense>
-            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-              <Suspense fallback={<LoadingPanel title="Daegu Live Weather" minHeightClassName="min-h-[320px]" />}>
-                <WeatherOutlookPanel
-                  weather={weather}
-                  loading={isWeatherLoading}
-                  error={weatherError}
+              <SensorCard
+                title={DASHBOARD_SENSOR_COPY.humidity.title}
+                value={currentData.humidity}
+                unit={DASHBOARD_SENSOR_COPY.humidity.unit}
+                icon={Droplets}
+                color="bg-blue-500"
+                trend={currentData.humidity > 80 ? 'up' : 'stable'}
+                idealRange={IDEAL_RANGES[selectedCrop].humidity}
+              />
+              <SensorCard
+                title={DASHBOARD_SENSOR_COPY.carbonDioxide.title}
+                value={currentData.co2}
+                unit={DASHBOARD_SENSOR_COPY.carbonDioxide.unit}
+                icon={CloudFog}
+                color="bg-slate-600"
+                trend="stable"
+                idealRange="400-800 ppm"
+              />
+              <SensorCard
+                title={DASHBOARD_SENSOR_COPY.light.title}
+                value={currentData.light}
+                unit={DASHBOARD_SENSOR_COPY.light.unit}
+                subValue={`~ ${(currentData.light / activeRtrDivider).toFixed(1)} ${UNIT_LABELS.radiativeFlux}`}
+                icon={Sun}
+                color="bg-yellow-500"
+                trend={currentData.light > 1000 ? 'up' : 'down'}
+                idealRange={IDEAL_RANGES[selectedCrop].light}
+              />
+              <SensorCard
+                title={DASHBOARD_SENSOR_COPY.vpd.title}
+                value={currentData.vpd}
+                unit={DASHBOARD_SENSOR_COPY.vpd.unit}
+                icon={Activity}
+                color="bg-purple-500"
+                trend={currentData.vpd > 1.2 ? 'up' : 'stable'}
+                idealRange={IDEAL_RANGES[selectedCrop].vpd}
+              />
+              <SensorCard
+                title={DASHBOARD_SENSOR_COPY.stomatalConductance.title}
+                value={currentData.stomatalConductance}
+                unit={DASHBOARD_SENSOR_COPY.stomatalConductance.unit}
+                icon={Leaf}
+                color="bg-green-500"
+                trend="stable"
+                idealRange={`> 0.3 ${UNIT_LABELS.stomatalConductance}`}
+              />
+            </div>
+
+            {/* AI Advisor */}
+            <div className="min-h-[360px] xl:min-h-[420px]">
+              <Suspense fallback={<AiAdvisorFallback />}>
+                <AiAdvisor
+                  analysis={aiAnalysis}
+                  isLoading={isAnalyzing}
+                  onRefresh={handleAnalyze}
                 />
               </Suspense>
-              <Suspense fallback={<LoadingPanel title="Live Produce Prices" minHeightClassName="min-h-[320px]" />}>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2 xl:grid-cols-[minmax(280px,0.95fr)_minmax(0,1.55fr)_minmax(280px,1fr)]">
+            <div className="h-full lg:col-span-2 xl:order-2 xl:col-span-1">
+              <Suspense fallback={<LoadingPanel title="Live Produce Prices" minHeightClassName="min-h-[420px]" className="h-full" />}>
                 <ProducePricesPanel
                   prices={producePrices}
                   loading={isProducePricesLoading}
                   error={producePricesError}
                 />
               </Suspense>
-              <Suspense fallback={<LoadingPanel title="RTR Strategy" minHeightClassName="min-h-[320px]" />}>
+            </div>
+            <div className="h-full xl:order-1">
+              <Suspense fallback={<LoadingPanel title="Daegu Live Weather" minHeightClassName="min-h-[420px]" className="h-full" />}>
+                <WeatherOutlookPanel
+                  weather={weather}
+                  loading={isWeatherLoading}
+                  error={weatherError}
+                />
+              </Suspense>
+            </div>
+            <div className="h-full xl:order-3">
+              <Suspense fallback={<LoadingPanel title="RTR Strategy" minHeightClassName="min-h-[420px]" className="h-full" />}>
                 <RTROutlookPanel
                   crop={selectedCrop}
                   currentData={currentData}
