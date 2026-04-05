@@ -1,5 +1,6 @@
 import type { ControlStatus, TemperatureSettings } from '../types';
 import { Fan, Droplets, Thermometer, Sun } from 'lucide-react';
+import { useLocale } from '../i18n/LocaleProvider';
 
 interface ControlPanelProps {
     status: ControlStatus;
@@ -8,9 +9,31 @@ interface ControlPanelProps {
 }
 
 const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps) => {
+    const { locale } = useLocale();
+    const copy = locale === 'ko'
+        ? {
+            title: '수동 제어',
+            ventilation: '환기',
+            irrigation: '관수',
+            heating: '난방',
+            shading: '차광',
+            temperatureSettings: '온도 설정',
+            heatingThreshold: '난방 시작 온도',
+            coolingThreshold: '냉방 시작 온도',
+        }
+        : {
+            title: 'Manual Controls',
+            ventilation: 'Ventilation',
+            irrigation: 'Irrigation',
+            heating: 'Heating',
+            shading: 'Shading',
+            temperatureSettings: 'Temperature Settings',
+            heatingThreshold: 'Heating Threshold',
+            coolingThreshold: 'Cooling Threshold',
+        };
     return (
         <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Manual Controls</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">{copy.title}</h3>
             <div className="grid grid-cols-2 gap-4">
                 <button
                     onClick={() => onToggle('ventilation')}
@@ -18,7 +41,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                         }`}
                 >
                     <Fan className="w-6 h-6" />
-                    <span className="text-sm font-medium">Ventilation</span>
+                    <span className="text-sm font-medium">{copy.ventilation}</span>
                 </button>
                 <button
                     onClick={() => onToggle('irrigation')}
@@ -26,7 +49,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                         }`}
                 >
                     <Droplets className="w-6 h-6" />
-                    <span className="text-sm font-medium">Irrigation</span>
+                    <span className="text-sm font-medium">{copy.irrigation}</span>
                 </button>
                 <button
                     onClick={() => onToggle('heating')}
@@ -34,7 +57,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                         }`}
                 >
                     <Thermometer className="w-6 h-6" />
-                    <span className="text-sm font-medium">Heating</span>
+                    <span className="text-sm font-medium">{copy.heating}</span>
                 </button>
                 <button
                     onClick={() => onToggle('shading')}
@@ -42,15 +65,15 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                         }`}
                 >
                     <Sun className="w-6 h-6" />
-                    <span className="text-sm font-medium">Shading</span>
+                    <span className="text-sm font-medium">{copy.shading}</span>
                 </button>
             </div>
 
             <div className="mt-6 pt-6 border-t border-slate-100">
-                <h4 className="text-sm font-medium text-slate-700 mb-3">Temperature Settings</h4>
+                <h4 className="text-sm font-medium text-slate-700 mb-3">{copy.temperatureSettings}</h4>
                 <div className="space-y-4">
                     <div>
-                        <label className="text-xs text-slate-500 block mb-1">Heating Threshold</label>
+                        <label className="text-xs text-slate-500 block mb-1">{copy.heatingThreshold}</label>
                         <input
                             type="range"
                             min="10" max="30"
@@ -65,7 +88,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                         </div>
                     </div>
                     <div>
-                        <label className="text-xs text-slate-500 block mb-1">Cooling Threshold</label>
+                        <label className="text-xs text-slate-500 block mb-1">{copy.coolingThreshold}</label>
                         <input
                             type="range"
                             min="15" max="35"

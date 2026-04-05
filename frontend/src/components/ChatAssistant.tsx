@@ -9,6 +9,7 @@ import type {
     WeatherOutlook,
 } from '../types';
 import { API_URL } from '../config';
+import { useLocale } from '../i18n/LocaleProvider';
 import { buildAiDashboardContext } from '../utils/aiDashboardContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -42,8 +43,26 @@ const ChatAssistant = ({
     weather = null,
     rtrProfile = null,
 }: ChatAssistantProps) => {
+    const { locale } = useLocale();
+    const copy = locale === 'ko'
+        ? {
+            initialMessage: '안녕하세요! 온실 어시스턴트입니다. 현재 생육 상태나 제어 전략에 대해 물어보세요.',
+            title: '어시스턴트',
+            placeholder: '메시지를 입력하세요...',
+            noResponse: '응답이 없습니다.',
+            unknownError: '알 수 없는 오류가 발생했습니다.',
+            aiUnavailable: 'AI 채팅을 사용할 수 없습니다',
+        }
+        : {
+            initialMessage: "Hello! I'm your greenhouse assistant. Ask me anything about your crop status.",
+            title: 'Assistant',
+            placeholder: 'Type a message...',
+            noResponse: 'No response.',
+            unknownError: 'An unknown error occurred.',
+            aiUnavailable: 'AI chat is unavailable',
+        };
     const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([
-        { role: 'ai', text: "Hello! I'm your greenhouse assistant. Ask me anything about your crop status." }
+        { role: 'ai', text: copy.initialMessage }
     ]);
     const [input, setInput] = useState("");
     const [isSending, setIsSending] = useState(false);
@@ -80,7 +99,7 @@ const ChatAssistant = ({
                         weather,
                         rtrProfile,
                     }),
-                    language: 'en'
+                    language: locale
                 })
             });
             const raw = await res.text();
@@ -96,11 +115,11 @@ const ChatAssistant = ({
                 throw new Error(message);
             }
 
-            setMessages(prev => [...prev, { role: 'ai', text: json?.text || "No response." }]);
+            setMessages(prev => [...prev, { role: 'ai', text: json?.text || copy.noResponse }]);
         } catch (e) {
             const message =
-                e instanceof Error ? e.message : "An unknown error occurred.";
-            setMessages(prev => [...prev, { role: 'ai', text: `AI chat is unavailable: ${message}` }]);
+                e instanceof Error ? e.message : copy.unknownError;
+            setMessages(prev => [...prev, { role: 'ai', text: `${copy.aiUnavailable}: ${message}` }]);
         } finally {
             setIsSending(false);
         }
@@ -113,7 +132,7 @@ const ChatAssistant = ({
             <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
                 <div className="flex items-center gap-2">
                     <Bot className="w-5 h-5 text-green-400" />
-                    <span className="font-medium">Assistant</span>
+                    <span className="font-medium">{copy.title}</span>
                 </div>
                 <button onClick={onClose} className="hover:text-slate-300"><X className="w-5 h-5" /></button>
             </div>
@@ -151,7 +170,7 @@ const ChatAssistant = ({
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && !isSending && handleSend()}
-                    placeholder="Type a message..."
+                    placeholder={copy.placeholder}
                     className="flex-1 px-4 py-2 bg-slate-100 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                 />
                 <button
