@@ -13,7 +13,7 @@
   },
   "followup_branch_validation": {
     "status": "pass",
-    "note": "The blocked issue #3 branch is being kept in sync with merged maintenance and delivery work so the next RTR calibration slice starts from current main, including the issue #14 Korean dashboard localization merge from PR #15."
+    "note": "The blocked issue #3 branch is being kept in sync with merged maintenance and delivery work so the next RTR calibration slice starts from current main, including the issue #14 Korean dashboard localization merge from PR #15 and the issue #16 retail/wholesale market expansion from PR #17."
   },
   "harness_setup": {
     "status": "pass",
@@ -41,7 +41,7 @@
   },
   "browser_smoke": {
     "status": "pass",
-    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, the KAMIS produce price panel, the 14-day trend overlay, the issue #12 layout rebalance, and the issue #14 Korean-localization verification on 127.0.0.1:8000/4173. The saved screenshots confirm the weather, produce-price, and RTR panels render in Korean and that the EN/Korean toggle works."
+    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, the KAMIS produce price panel, the 14-day trend overlay, the issue #12 layout rebalance, the issue #14 Korean-localization verification, and the issue #16 wholesale-market expansion. Saved screenshots confirm the produce panel stays alive against a still-retail-only backend payload and renders wholesale cards plus the retail-only trend note when the expanded payload is present."
   },
   "bundle_review": {
     "status": "pass",
@@ -85,15 +85,15 @@
   },
   "github_project_sync": {
     "status": "pass",
-    "note": "Issues #6, #8, #10, #12, and #14 all moved through Running -> Validating and closed through merged PRs, while issue #3 remains the blocked follow-up item."
+    "note": "Issues #6, #8, #10, #12, #14, and #16 all moved through Running -> Validating and closed through merged PRs, while issue #3 remains the blocked follow-up item."
   },
   "live_produce_price_panel": {
     "status": "pass",
-    "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback; PR #7 merged this slice into main."
+    "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback; PR #7 merged the initial slice and PR #17 expanded that payload to publish both retail and wholesale featured snapshots."
   },
   "produce_price_trend_overlay": {
     "status": "pass",
-    "note": "Issue #8 / PR #9 landed the trailing 14-day actual trend plus forward 14-day 3y/5y/10y seasonal-normal overlays from KAMIS `periodRetailProductList`, and issue #10 / PR #11 hardened that panel so card snapshots survive trend failures while the chart explicitly labels retail-average history versus snapshot prices and exposes per-line sample coverage."
+    "note": "Issue #8 / PR #9 landed the trailing 14-day actual trend plus forward 14-day 3y/5y/10y seasonal-normal overlays from KAMIS `periodRetailProductList`, issue #10 / PR #11 hardened that panel so card snapshots survive trend failures, and issue #16 / PR #17 now makes the retail-only trend basis explicit whenever the user switches the card rail over to wholesale prices."
   },
   "rtr_good_production_windows": {
     "status": "blocked",
@@ -106,5 +106,13 @@
   "dashboard_korean_localization": {
     "status": "pass",
     "note": "Issue #14 / PR #15 added browser-locale bootstrapping, a persisted EN/Korean toggle, Korean AI consult/chat requests, and localized copy for the dashboard shell, charts, controls, produce-price panel, weather panel, and RTR panel."
+  },
+  "produce_price_wholesale_market": {
+    "status": "pass",
+    "note": "Issue #16 / PR #17 expands the KAMIS panel so the backend exposes `markets.retail` and `markets.wholesale`, the frontend can toggle between those snapshots without losing the retail trend chart, and the hook backfills missing `markets` fields so staggered frontend/backend restarts do not crash the panel."
+  },
+  "delivery_pr_sync": {
+    "status": "pass",
+    "note": "Issue #16 was delivered through PR #17, both push + pull_request GitHub Actions runs passed, and the merged main branch has now been synced back into the blocked issue #3 follow-up branch."
   }
 }

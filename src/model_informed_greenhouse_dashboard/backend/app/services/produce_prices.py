@@ -23,6 +23,8 @@ DEFAULT_KAMIS_API_KEY = "test"
 DEFAULT_KAMIS_API_ID = "test"
 
 AVERAGE_COUNTY_LABEL = "\ud3c9\uade0"
+MARKET_CODE_TO_KEY = {"01": "retail", "02": "wholesale"}
+MARKET_KEY_TO_LABEL = {"retail": "Retail", "wholesale": "Wholesale"}
 
 FEATURED_PRODUCE_TARGETS = (
     {
@@ -139,8 +141,14 @@ def _normalize_price_row(
     }
 
 
-def _retail_rows(price_rows: Iterable[Dict[str, Any]]) -> list[Dict[str, Any]]:
-    return [row for row in price_rows if str(row.get("product_cls_code") or "") == "01"]
+def _market_rows(
+    price_rows: Iterable[Dict[str, Any]],
+    *,
+    market_code: str,
+) -> list[Dict[str, Any]]:
+    return [
+        row for row in price_rows if str(row.get("product_cls_code") or "") == market_code
+    ]
 
 
 def _target_for_snapshot_row(row: Dict[str, Any]) -> Dict[str, str] | None:
@@ -155,13 +163,17 @@ def _target_for_snapshot_row(row: Dict[str, Any]) -> Dict[str, str] | None:
     return None
 
 
-def _build_featured_produce_items(price_rows: Iterable[Dict[str, Any]]) -> list[Dict[str, Any]]:
-    retail_rows = _retail_rows(price_rows)
+def _build_featured_produce_items(
+    price_rows: Iterable[Dict[str, Any]],
+    *,
+    market_code: str = "01",
+) -> list[Dict[str, Any]]:
+    market_rows = _market_rows(price_rows, market_code=market_code)
     featured_items: list[Dict[str, Any]] = []
     seen_product_keys: set[str] = set()
 
     for target in FEATURED_PRODUCE_TARGETS:
-        for row in retail_rows:
+        for row in market_rows:
             if _target_for_snapshot_row(row) != target:
                 continue
 
@@ -174,7 +186,7 @@ def _build_featured_produce_items(price_rows: Iterable[Dict[str, Any]]) -> list[
     if len(featured_items) >= len(FEATURED_PRODUCE_TARGETS):
         return featured_items
 
-    for row in retail_rows:
+    for row in market_rows:
         product_key = str(row.get("productno") or "").strip()
         if product_key and product_key in seen_product_keys:
             continue
@@ -385,9 +397,18 @@ async def _build_trend_series_for_item(
     )
 
 
-def _build_summary(items: list[Dict[str, Any]], latest_day: str) -> str:
+def _build_summary(
+    items: list[Dict[str, Any]],
+    latest_day: str,
+    *,
+    market_label: str,
+) -> str:
+    market_label_lower = market_label.lower()
     if not items:
-        return "KAMIS live market panel is waiting for featured retail produce prices."
+        return (
+            "KAMIS live market panel is waiting for featured "
+            f"{market_label_lower} produce prices."
+        )
 
     up_count = sum(1 for item in items if item["direction"] == "up")
     down_count = sum(1 for item in items if item["direction"] == "down")
@@ -396,11 +417,12 @@ def _build_summary(items: list[Dict[str, Any]], latest_day: str) -> str:
     lead_item = items[0]
 
     return (
-        f"KAMIS latest retail survey ({survey_label}) shows {up_count} up, "
+        f"KAMIS latest {market_label_lower} survey ({survey_label}) shows {up_count} up, "
         f"{down_count} down, and {flat_count} flat moves across featured produce. "
         f"{lead_item['display_name']} is {lead_item['direction']} at "
         f"KRW {lead_item['current_price_krw']:,}/{lead_item['unit']}, and the panel "
-        f"now overlays the trailing 14 days with forward 3y/5y/10y seasonal normals."
+        f"now exposes live {market_label_lower} cards alongside the retail 14-day "
+        f"trend overlay and forward 3y/5y/10y seasonal normals."
     )
 
 
@@ -443,14 +465,23 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
         if error_code != "000":
             raise ValueError(f"KAMIS returned error code {error_code}.")
 
-        featured_items = _build_featured_produce_items(data.get("price", []))
-        if not featured_items:
-            raise ValueError("KAMIS returned no featured retail produce prices.")
+        price_rows = data.get("price", [])
+        retail_items = _build_featured_produce_items(price_rows, market_code="01")
+        wholesale_items = _build_featured_produce_items(price_rows, market_code="02")
+        if not retail_items and not wholesale_items:
+            raise ValueError(
+                "KAMIS returned no featured retail or wholesale produce prices."
+            )
 
         latest_day = next(
-            (item["latest_day"] for item in featured_items if item["latest_day"]),
+            (item["latest_day"] for item in retail_items if item["latest_day"]),
             "",
         )
+        if not latest_day:
+            latest_day = next(
+                (item["latest_day"] for item in wholesale_items if item["latest_day"]),
+                "",
+            )
         reference_date = _parse_iso_date(latest_day) if latest_day else datetime.now(
             timezone.utc
         ).date()
@@ -464,14 +495,14 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
                     kamis_api_key=kamis_api_key,
                     kamis_api_id=kamis_api_id,
                 )
-                for item in featured_items
+                for item in retail_items
             ],
             return_exceptions=True,
         )
 
     trend_series: list[Dict[str, Any]] = []
     unavailable_series: list[Dict[str, str]] = []
-    for item, result in zip(featured_items, trend_series_results):
+    for item, result in zip(retail_items, trend_series_results):
         if isinstance(result, Exception):
             unavailable_series.append(
                 {
@@ -494,20 +525,38 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
 
         trend_series.append(result)
 
+    markets = {
+        MARKET_CODE_TO_KEY[market_code]: {
+            "market_key": MARKET_CODE_TO_KEY[market_code],
+            "market_label": MARKET_KEY_TO_LABEL[MARKET_CODE_TO_KEY[market_code]],
+            "summary": _build_summary(
+                items,
+                next((item["latest_day"] for item in items if item["latest_day"]), latest_day),
+                market_label=MARKET_KEY_TO_LABEL[MARKET_CODE_TO_KEY[market_code]],
+            ),
+            "items": items,
+        }
+        for market_code, items in (("01", retail_items), ("02", wholesale_items))
+    }
+    primary_market_key = "retail" if retail_items else "wholesale"
+    primary_market = markets[primary_market_key]
+
     payload = {
         "source": {
             "provider": "KAMIS",
             "docs_url": KAMIS_OPEN_API_DOCS_URL,
-            "endpoint": "dailySalesList + periodRetailProductList",
+            "endpoint": "dailySalesList + periodRetailProductList (retail trend overlay)",
             "auth_mode": auth_mode,
             "fetched_at": datetime.now(timezone.utc)
             .isoformat()
             .replace("+00:00", "Z"),
             "latest_day": latest_day,
         },
-        "summary": _build_summary(featured_items, latest_day),
-        "items": featured_items,
+        "summary": primary_market["summary"],
+        "items": primary_market["items"],
+        "markets": markets,
         "trend": {
+            "market_key": "retail",
             "reference_date": reference_date.isoformat(),
             "history_days": PRODUCE_TREND_HISTORY_DAYS,
             "forecast_days": PRODUCE_TREND_FORECAST_DAYS,

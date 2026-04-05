@@ -102,7 +102,7 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- Issues `#6` / `#8` / `#10` / `#12` / `#14` and PRs `#7` / `#9` / `#11` / `#13` / `#15` are complete, so the active follow-up loop returns to issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`.
-- The synced issue `#3` branch now carries the merged KAMIS live produce price panel, the 14-day actual + 3y/5y/10y seasonal-normal trend overlay, the issue `#10` fallback/labeling hardening, the issue `#12` dashboard layout rebalance, the issue `#14` Korean dashboard localization, and the latest CI/runtime maintenance.
+- Issues `#6` / `#8` / `#10` / `#12` / `#14` / `#16` and PRs `#7` / `#9` / `#11` / `#13` / `#15` / `#17` are complete, so the active follow-up loop returns to issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`.
+- The synced issue `#3` branch now carries the merged KAMIS live produce price panel, the 14-day actual + 3y/5y/10y seasonal-normal trend overlay, the issue `#10` fallback/labeling hardening, the issue `#12` dashboard layout rebalance, the issue `#14` Korean dashboard localization, the issue `#16` retail+wholesale market expansion, and the latest CI/runtime maintenance.
 - The earliest pending gate is still external input quality: wait for grower-approved good-production periods, then replace the concept-demo windows in `configs/rtr_good_windows.yaml` and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json` with a syntactically valid grower window file.
 - After the regenerated RTR profile payload lands, rerun a representative RTR browser smoke; if the AI prompt or dashboard context contract changes again during that follow-up slice, rerun a representative live consult/chat smoke as well.

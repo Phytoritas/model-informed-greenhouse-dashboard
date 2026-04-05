@@ -5,6 +5,6 @@
   "active_issue": 3,
   "active_branch": "feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods",
   "implementation_blocked": true,
-  "next_action": "Issues #12 / #14 and PRs #13 / #15 are merged, so the active loop returns to blocked issue #3. Wait for grower-approved good-production periods, replace configs/rtr_good_windows.yaml with a syntactically valid grower window file, rerun scripts/calibrate_rtr.py, and re-smoke the RTR dashboard path before opening the follow-up PR.",
+  "next_action": "Issues #12 / #14 / #16 and PRs #13 / #15 / #17 are merged, so the active loop returns to blocked issue #3. Wait for grower-approved good-production periods, replace configs/rtr_good_windows.yaml with a syntactically valid grower window file, rerun scripts/calibrate_rtr.py, and re-smoke the RTR dashboard path before opening the follow-up PR.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1"
 }

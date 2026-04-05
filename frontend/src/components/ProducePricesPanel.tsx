@@ -24,6 +24,8 @@ import { formatLocaleDate, getIntlLocale, type AppLocale } from '../i18n/locale'
 import type {
     ProducePriceDirection,
     ProducePriceEntry,
+    ProduceMarketKey,
+    ProduceMarketSnapshot,
     ProducePricesPayload,
 } from '../types';
 import { getProduceDisplayName } from '../utils/displayCopy';
@@ -113,30 +115,51 @@ const getDirectionMeta = (locale: AppLocale): Record<
     },
 });
 
+const normalizeMarketKey = (marketLabel: string): ProduceMarketKey | null => {
+    const normalizedLabel = marketLabel.trim().toLowerCase();
+    if (normalizedLabel === 'retail' || marketLabel.trim() === '소매') {
+        return 'retail';
+    }
+    if (normalizedLabel === 'wholesale' || marketLabel.trim() === '도매') {
+        return 'wholesale';
+    }
+
+    return null;
+};
+
 const localizeMarketLabel = (marketLabel: string, locale: AppLocale): string => {
-    if (locale !== 'ko') {
+    const marketKey = normalizeMarketKey(marketLabel);
+    if (!marketKey) {
         return marketLabel;
     }
 
-    const normalizedLabel = marketLabel.toLowerCase();
-    if (normalizedLabel === 'retail') {
-        return '소매';
-    }
-    if (normalizedLabel === 'wholesale') {
-        return '도매';
+    if (locale === 'ko') {
+        return marketKey === 'retail' ? '소매' : '도매';
     }
 
-    return marketLabel;
+    return marketKey === 'retail' ? 'Retail' : 'Wholesale';
 };
 
-const buildProduceSummary = (prices: ProducePricesPayload, locale: AppLocale): string => {
-    const marketLabel = localizeMarketLabel(prices.items[0]?.market_label ?? 'Retail', locale);
+const buildProduceSummary = (
+    prices: ProducePricesPayload,
+    market: ProduceMarketSnapshot,
+    locale: AppLocale,
+): string => {
+    const marketLabel = localizeMarketLabel(market.market_label, locale);
 
-    if (locale === 'ko') {
-        return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} 기준 주요 시설원예 품목 ${prices.items.length}종의 ${marketLabel} 평균가격입니다. 최근 ${prices.trend.history_days}일 실측과 향후 ${prices.trend.forecast_days}일 평년선(3년·5년·10년)을 함께 비교할 수 있습니다.`;
+    if (market.market_key === prices.trend.market_key) {
+        if (locale === 'ko') {
+            return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} 기준 주요 시설원예 품목 ${market.items.length}종의 ${marketLabel} 평균가격입니다. 최근 ${prices.trend.history_days}일 실측과 향후 ${prices.trend.forecast_days}일 평년선(3년·5년·10년)을 함께 비교할 수 있습니다.`;
+        }
+
+        return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} snapshot of ${market.items.length} featured greenhouse produce items in the ${marketLabel.toLowerCase()} market. Compare trailing ${prices.trend.history_days} days of actual prices with forward 3-year, 5-year, and 10-year seasonal normals.`;
     }
 
-    return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} snapshot of ${prices.items.length} featured greenhouse produce items in the ${marketLabel.toLowerCase()} market. Compare trailing ${prices.trend.history_days} days of actual prices with forward 3-year, 5-year, and 10-year seasonal normals.`;
+    if (locale === 'ko') {
+        return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} 기준 주요 시설원예 품목 ${market.items.length}종의 ${marketLabel} 평균가격입니다. 우측 카드는 ${marketLabel} 스냅샷을 표시하고, 좌측 차트는 KAMIS가 제공하는 ${localizeMarketLabel(prices.trend.market_key, locale)} 평균가격 기준 최근 ${prices.trend.history_days}일 실측과 향후 ${prices.trend.forecast_days}일 평년선을 유지합니다.`;
+    }
+
+    return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} snapshot of ${market.items.length} featured greenhouse produce items in the ${marketLabel.toLowerCase()} market. Cards show the live ${marketLabel.toLowerCase()} survey, while the chart keeps the ${localizeMarketLabel(prices.trend.market_key, locale).toLowerCase()} average-price history and forward seasonal normals from KAMIS.`;
 };
 
 const ComparisonChip = ({
@@ -426,21 +449,41 @@ const TrendChart = ({
 
 const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps) => {
     const { locale } = useLocale();
+    const [selectedMarket, setSelectedMarket] = useState<ProduceMarketKey>('retail');
     const copy = locale === 'ko'
         ? {
             title: '실시간 농산물 가격',
-            subtitle: '주요 시설원예 품목 스냅샷과 2주 평년 추세선',
+            subtitle: '소매·도매 스냅샷과 2주 평년 추세선',
             loading: '실시간 농산물 가격을 불러오는 중...',
             unavailable: '농산물 가격 패널을 불러올 수 없습니다',
             retail: '소매',
+            wholesale: '도매',
+            noItems: '현재 선택한 시장에 표시할 주요 품목이 없습니다.',
+            trendNoteTitle: '추세선 기준',
+            trendNote: 'KAMIS 계절성 추세선은 현재 소매 평균가격만 제공합니다. 도매 탭에서도 좌측 차트는 소매 기준으로 유지됩니다.',
         }
         : {
             title: 'Live Produce Prices',
-            subtitle: 'Curated greenhouse produce snapshot with 2-week KAMIS seasonal overlays',
+            subtitle: 'Retail + wholesale snapshots with 2-week KAMIS seasonal overlays',
             loading: 'Loading live produce prices...',
             unavailable: 'Produce price panel is unavailable',
             retail: 'Retail',
+            wholesale: 'Wholesale',
+            noItems: 'No featured produce items are available for the selected market right now.',
+            trendNoteTitle: 'Trend basis',
+            trendNote: 'KAMIS seasonal overlays currently expose retail average prices only. The left chart stays on retail history even when the wholesale tab is selected.',
         };
+
+    const activeMarketKey: ProduceMarketKey | null = prices
+        ? prices.markets[selectedMarket].items.length > 0
+            ? selectedMarket
+            : prices.markets.retail.items.length > 0
+                ? 'retail'
+                : prices.markets.wholesale.items.length > 0
+                    ? 'wholesale'
+                    : selectedMarket
+        : null;
+    const activeMarket = prices && activeMarketKey ? prices.markets[activeMarketKey] : null;
 
     return (
         <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
@@ -463,7 +506,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                     {copy.unavailable}: {error}
                 </div>
-            ) : prices ? (
+            ) : prices && activeMarket ? (
                 <div className="flex h-full flex-col space-y-4">
                     <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-lime-50 p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -472,8 +515,24 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                     <Sprout className="h-3.5 w-3.5 text-emerald-600" />
                                     <span>{prices.source.provider} {prices.source.endpoint}</span>
                                 </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {(['retail', 'wholesale'] as ProduceMarketKey[]).map((marketKey) => (
+                                        <button
+                                            key={marketKey}
+                                            type="button"
+                                            onClick={() => setSelectedMarket(marketKey)}
+                                            className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+                                                marketKey === activeMarketKey
+                                                    ? 'border-emerald-200 bg-white text-emerald-800 shadow-sm'
+                                                    : 'border-emerald-100 bg-emerald-50/60 text-slate-600 hover:border-emerald-200 hover:text-slate-800'
+                                            }`}
+                                        >
+                                            {marketKey === 'retail' ? copy.retail : copy.wholesale}
+                                        </button>
+                                    ))}
+                                </div>
                                 <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                                    {buildProduceSummary(prices, locale)}
+                                    {buildProduceSummary(prices, activeMarket, locale)}
                                 </p>
                             </div>
                             <div className="rounded-2xl bg-white/80 px-3 py-2 text-right text-xs text-slate-500 shadow-sm">
@@ -482,19 +541,33 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                     <span>{formatSurveyDay(locale, prices.source.latest_day)}</span>
                                 </div>
                                 <div className="mt-1">
-                                    {localizeMarketLabel(prices.items[0]?.market_label ?? copy.retail, locale)}
+                                    {localizeMarketLabel(activeMarket.market_label, locale)}
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(250px,0.95fr)] lg:items-start">
-                        <TrendChart prices={prices} locale={locale} />
+                        <div className="space-y-3">
+                            {activeMarketKey !== prices.trend.market_key ? (
+                                <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-3 text-[11px] text-sky-800">
+                                    <div className="font-semibold">{copy.trendNoteTitle}</div>
+                                    <div className="mt-1 leading-relaxed">{copy.trendNote}</div>
+                                </div>
+                            ) : null}
+                            <TrendChart prices={prices} locale={locale} />
+                        </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                            {prices.items.map((item) => (
-                                <ProducePriceCard key={item.key} item={item} locale={locale} />
-                            ))}
+                            {activeMarket.items.length > 0 ? (
+                                activeMarket.items.map((item) => (
+                                    <ProducePriceCard key={item.key} item={item} locale={locale} />
+                                ))
+                            ) : (
+                                <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                                    {copy.noItems}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
