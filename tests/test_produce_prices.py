@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date
 
 from model_informed_greenhouse_dashboard.backend.app.services import produce_prices
@@ -230,3 +231,100 @@ def test_build_featured_trend_series_combines_history_and_forward_normals() -> N
     assert first_forecast_point["normal_3y_sample_count"] == 3
     assert first_forecast_point["normal_5y_sample_count"] == 5
     assert first_forecast_point["normal_10y_sample_count"] == 10
+
+
+def test_fetch_featured_produce_prices_preserves_cards_when_trend_enrichment_fails(
+    monkeypatch,
+) -> None:
+    class FakeResponse:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return self._payload
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def get(self, url: str, params: dict) -> FakeResponse:
+            assert params["action"] == "dailySalesList"
+            return FakeResponse(
+                {
+                    "price": [
+                        _make_row(
+                            product_name="\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
+                            productno="321",
+                            unit="1kg",
+                            dpr1="5,196",
+                            dpr2="5,234",
+                            dpr3="5,219",
+                            dpr4="5,663",
+                            direction="0",
+                            value="0.7",
+                        ),
+                        _make_row(
+                            product_name="\ubc29\uc6b8\ud1a0\ub9c8\ud1a0/\ubc29\uc6b8\ud1a0\ub9c8\ud1a0",
+                            productno="437",
+                            unit="1kg",
+                            dpr1="10,639",
+                            dpr2="10,639",
+                            dpr3="10,357",
+                            dpr4="11,707",
+                            direction="2",
+                            value="0.0",
+                        ),
+                        _make_row(
+                            product_name="\uc624\uc774/\ub2e4\ub2e4\uae30\uacc4",
+                            productno="313",
+                            unit="10ea",
+                            dpr1="8,505",
+                            dpr2="8,450",
+                            dpr3="10,880",
+                            dpr4="10,035",
+                            direction="1",
+                            value="0.7",
+                        ),
+                        _make_row(
+                            product_name="\uc624\uc774/\ucde8\uccad",
+                            productno="315",
+                            unit="10ea",
+                            dpr1="12,999",
+                            dpr2="13,043",
+                            dpr3="14,777",
+                            dpr4="16,271",
+                            direction="0",
+                            value="0.3",
+                        ),
+                    ]
+                }
+            )
+
+    async def fake_build_trend_series_for_item(*args, **kwargs):
+        raise ValueError("trend overlay unavailable")
+
+    produce_prices._produce_price_cache["payload"] = None
+    produce_prices._produce_price_cache["expires_at"] = 0.0
+    monkeypatch.setattr(produce_prices.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        produce_prices,
+        "_build_trend_series_for_item",
+        fake_build_trend_series_for_item,
+    )
+
+    payload = asyncio.run(produce_prices.fetch_featured_produce_prices(force_refresh=True))
+
+    assert len(payload["items"]) == 4
+    assert payload["items"][0]["display_name"] == "Tomato"
+    assert payload["trend"]["series"] == []
+    assert len(payload["trend"]["unavailable_series"]) == 4
+    assert payload["trend"]["unavailable_series"][0]["display_name"] == "Tomato"

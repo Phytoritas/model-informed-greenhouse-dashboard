@@ -465,10 +465,35 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
                     kamis_api_id=kamis_api_id,
                 )
                 for item in featured_items
-            ]
+            ],
+            return_exceptions=True,
         )
 
-    trend_series = [series for series in trend_series_results if series is not None]
+    trend_series: list[Dict[str, Any]] = []
+    unavailable_series: list[Dict[str, str]] = []
+    for item, result in zip(featured_items, trend_series_results):
+        if isinstance(result, Exception):
+            unavailable_series.append(
+                {
+                    "key": item["key"],
+                    "display_name": item["display_name"],
+                    "reason": str(result),
+                }
+            )
+            continue
+
+        if result is None:
+            unavailable_series.append(
+                {
+                    "key": item["key"],
+                    "display_name": item["display_name"],
+                    "reason": "No trend mapping is available for this featured item.",
+                }
+            )
+            continue
+
+        trend_series.append(result)
+
     payload = {
         "source": {
             "provider": "KAMIS",
@@ -488,6 +513,7 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
             "forecast_days": PRODUCE_TREND_FORECAST_DAYS,
             "normal_year_windows": list(PRODUCE_TREND_NORMAL_YEAR_WINDOWS),
             "series": trend_series,
+            "unavailable_series": unavailable_series,
         },
     }
 
