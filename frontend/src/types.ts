@@ -159,6 +159,12 @@ export interface ProducePriceTrendSeries {
     points: ProducePriceTrendPoint[];
 }
 
+export interface ProducePriceTrendUnavailable {
+    key: string;
+    display_name: string;
+    reason: string;
+}
+
 export interface ProducePricesPayload {
     source: {
         provider: string;
@@ -176,6 +182,7 @@ export interface ProducePricesPayload {
         forecast_days: number;
         normal_year_windows: number[];
         series: ProducePriceTrendSeries[];
+        unavailable_series: ProducePriceTrendUnavailable[];
     };
 }
 

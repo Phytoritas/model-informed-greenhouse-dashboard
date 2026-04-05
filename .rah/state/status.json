@@ -2,9 +2,9 @@
   "mode": "hybrid",
   "current_stage": "implementation-local-validation-passed",
   "repository_profile": "python-service-scaffold-absorbing-external-dashboard-runtime",
-  "active_issue": 8,
-  "active_branch": "data/8-add-2-week-produce-price-trends-and-seasonal-normals",
+  "active_issue": 10,
+  "active_branch": "fix/10-fix-kamis-trend-overlay-fallback-and-labeling",
   "implementation_blocked": false,
-  "next_action": "Commit and push issue #8, open a PR for the new KAMIS 14-day trend + 3y/5y/10y seasonal-normal overlay, and watch GitHub Actions before closing the loop or returning to blocked issue #3.",
+  "next_action": "Commit and push issue #10, open a PR for the KAMIS trend fallback/labeling hardening slice, and watch GitHub Actions before returning the active loop to blocked issue #3.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1"
 }

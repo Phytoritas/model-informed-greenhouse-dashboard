@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #8 and branch `data/8-add-2-week-produce-price-trends-and-seasonal-normals` were created with the repo helper script before non-trivial writes."
+    "note": "Issue #10 and branch `fix/10-fix-kamis-trend-overlay-fallback-and-labeling` were created with the repo helper script before the fallback/labeling hardening slice landed."
   },
   "harness_setup": {
     "status": "pass",
@@ -69,7 +69,7 @@
   },
   "github_project_sync": {
     "status": "pass",
-    "note": "Issue #8 was created via the repo helper script and automatically synced into the GitHub project with Status/Stage `Running`."
+    "note": "Issue #10 was created via the repo helper script and synced into the GitHub project as the active hardening loop after the issue #8 trend-overlay feature landed."
   },
   "live_produce_price_panel": {
     "status": "pass",
@@ -77,10 +77,10 @@
   },
   "produce_price_trend_overlay": {
     "status": "pass",
-    "note": "Issue #8 extends `/api/market/produce` with a trailing 14-day actual trend plus forward 14-day 3y/5y/10y seasonal-normal overlays from KAMIS `periodRetailProductList`, and the frontend renders the selectable trend chart beside the existing live price cards."
+    "note": "Issue #8 already landed the trailing 14-day actual trend plus forward 14-day 3y/5y/10y seasonal-normal overlays from KAMIS `periodRetailProductList`, and issue #10 hardens that panel so card snapshots survive trend failures while the chart explicitly labels retail-average history versus snapshot prices and exposes per-line sample coverage."
   },
   "delivery_pr_sync": {
     "status": "pending",
-    "note": "Issue #8 is locally implemented and validated, but the new branch state has not been committed/pushed or opened as a PR yet."
+    "note": "Issue #10 is locally implemented and validated, but the hardening branch state has not been committed/pushed or opened as a PR yet."
   }
 }

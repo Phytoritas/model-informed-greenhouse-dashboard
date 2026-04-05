@@ -199,7 +199,7 @@ def test_daegu_weather_endpoint_returns_live_shape(
                 "docs_url": "https://open-meteo.com/en/docs",
                 "fetched_at": "2026-04-03T09:00",
             },
-            "summary": "Daegu is currently clear at 16.5°C.",
+            "summary": "Daegu is currently clear at 16.5C.",
             "current": {
                 "time": "2026-04-03T09:00",
                 "weather_code": 0,
@@ -261,9 +261,9 @@ def test_live_produce_prices_endpoint_returns_shape(
                 {
                     "key": "321",
                     "display_name": "Tomato",
-                    "source_name": "토마토/토마토",
-                    "category_name": "채소류",
-                    "market_label": "소매",
+                    "source_name": "\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
+                    "category_name": "\ucc44\uc18c\ub958",
+                    "market_label": "\uc18c\ub9e4",
                     "unit": "1kg",
                     "latest_day": "2026-04-03",
                     "current_price_krw": 5196,
@@ -291,9 +291,20 @@ def test_live_produce_prices_endpoint_returns_shape(
                         "forecast_days": 14,
                         "points": [
                             {
+                                "date": "2026-03-21",
+                                "segment": "history",
+                                "actual_price_krw": 5000,
+                                "normal_3y_price_krw": None,
+                                "normal_5y_price_krw": None,
+                                "normal_10y_price_krw": None,
+                                "normal_3y_sample_count": 0,
+                                "normal_5y_sample_count": 0,
+                                "normal_10y_sample_count": 0,
+                            },
+                            {
                                 "date": "2026-04-03",
                                 "segment": "history",
-                                "actual_price_krw": 5196,
+                                "actual_price_krw": 4932,
                                 "normal_3y_price_krw": None,
                                 "normal_5y_price_krw": None,
                                 "normal_10y_price_krw": None,
@@ -315,6 +326,7 @@ def test_live_produce_prices_endpoint_returns_shape(
                         ],
                     }
                 ],
+                "unavailable_series": [],
             },
         }
 
@@ -329,9 +341,12 @@ def test_live_produce_prices_endpoint_returns_shape(
     assert payload["source"]["provider"] == "KAMIS"
     assert payload["source"]["latest_day"] == "2026-04-03"
     assert payload["items"][0]["display_name"] == "Tomato"
+    assert payload["items"][0]["current_price_krw"] == 5196
     assert payload["items"][0]["day_over_day_pct"] == -0.7
     assert payload["trend"]["series"][0]["display_name"] == "Tomato"
-    assert payload["trend"]["series"][0]["points"][1]["normal_10y_price_krw"] == 5900
+    assert payload["trend"]["series"][0]["points"][1]["actual_price_krw"] == 4932
+    assert payload["trend"]["series"][0]["points"][2]["normal_10y_price_krw"] == 5900
+    assert payload["trend"]["unavailable_series"] == []
 
 
 def test_rtr_profiles_endpoint_returns_payload_shape(
@@ -352,5 +367,8 @@ def test_rtr_profiles_endpoint_returns_payload_shape(
     assert payload["version"] == 1
     assert payload["profiles"]["Tomato"]["baseTempC"] == 18.3
     assert payload["profiles"]["Cucumber"]["calibration"]["mode"] == "baseline"
-    assert payload["profiles"]["Tomato"]["calibration"]["selectionSource"] == "heuristic-fallback"
+    assert (
+        payload["profiles"]["Tomato"]["calibration"]["selectionSource"]
+        == "heuristic-fallback"
+    )
     assert payload["profiles"]["Cucumber"]["calibration"]["windowCount"] == 0
