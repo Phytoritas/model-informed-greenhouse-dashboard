@@ -5,13 +5,13 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `#6`
-- Active branch: `data/6-add-live-produce-price-panel-from-kamis-api`
+- Active issue: `#8`
+- Active branch: `data/8-add-2-week-produce-price-trends-and-seasonal-normals`
 
 ## Identity
 This repository hosts a model-informed greenhouse dashboard that combines greenhouse telemetry, crop-state model outputs, and decision-friendly summaries in one reproducible workspace.
 
-The current refactor intake source is `C:\Users\yhmoo\OneDrive\Model\10_Projects\10_AI_Platform\대시보드-eng_1.1`, which provides a working greenhouse dashboard backend, legacy crop models, and a Vite-based frontend. The target repository must absorb that project into the current blueprint, package conventions, and validation ladder instead of copying the source tree verbatim.
+The current refactor intake source is `C:\Users\yhmoo\OneDrive\Model\10_Projects\10_AI_Platform\dashboard-eng_1.1`, which provides a working greenhouse dashboard backend, legacy crop models, and a Vite-based frontend. The target repository must absorb that project into the current blueprint, package conventions, and validation ladder instead of copying the source tree verbatim.
 
 The first objective is still not a production deployment. The first objective is to lock the dashboard scope, data contracts, model-context seams, migration boundaries, and validation loop before broad UI or integration work begins.
 
@@ -102,6 +102,6 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- PR `#7` is now open for issue `#6`, and both push + pull_request GitHub Actions CI runs are green. The next human gate is review and merge while the item stays in `Validating`.
-- The new panel has already been validated with lint, ruff, pytest, production build, a direct live KAMIS fetch, and a browser smoke that confirms the card renders beside weather/RTR using the official docs sample auth fallback.
-- After issue `#6` is delivered, the next unresolved technical gap reverts to RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
+- Issue `#8` is now the active delivery loop: the new branch already adds a 14-day trailing produce-price trend plus forward 3y/5y/10y seasonal-normal overlays on top of the existing KAMIS panel, and the local validation ladder is green.
+- The exact next step is commit/push on `data/8-add-2-week-produce-price-trends-and-seasonal-normals`, then open a PR and watch push + pull_request GitHub Actions before closing the loop.
+- After issue `#8` is delivered, the next unresolved technical gap reverts to RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.

@@ -1,3 +1,5 @@
+from datetime import date
+
 from model_informed_greenhouse_dashboard.backend.app.services import produce_prices
 
 
@@ -5,7 +7,7 @@ def _make_row(
     *,
     product_cls_code: str = "01",
     category_code: str = "200",
-    category_name: str = "채소류",
+    category_name: str = "\ucc44\uc18c\ub958",
     product_name: str,
     productno: str,
     unit: str,
@@ -18,7 +20,7 @@ def _make_row(
 ) -> dict:
     return {
         "product_cls_code": product_cls_code,
-        "product_cls_name": "소매" if product_cls_code == "01" else "도매",
+        "product_cls_name": "\uc18c\ub9e4" if product_cls_code == "01" else "\ub3c4\ub9e4",
         "category_code": category_code,
         "category_name": category_name,
         "productno": productno,
@@ -39,7 +41,7 @@ def test_featured_produce_selection_prefers_curated_retail_targets() -> None:
     rows = [
         _make_row(
             product_cls_code="02",
-            product_name="토마토/토마토",
+            product_name="\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
             productno="60",
             unit="5kg",
             dpr1="18,140",
@@ -50,9 +52,9 @@ def test_featured_produce_selection_prefers_curated_retail_targets() -> None:
             value="3.5",
         ),
         _make_row(
-            product_name="오이/다다기계통",
+            product_name="\uc624\uc774/\ub2e4\ub2e4\uae30\uacc4",
             productno="313",
-            unit="10개",
+            unit="10ea",
             dpr1="8,505",
             dpr2="8,450",
             dpr3="10,880",
@@ -61,9 +63,9 @@ def test_featured_produce_selection_prefers_curated_retail_targets() -> None:
             value="0.7",
         ),
         _make_row(
-            product_name="오이/취청",
+            product_name="\uc624\uc774/\ucde8\uccad",
             productno="315",
-            unit="10개",
+            unit="10ea",
             dpr1="12,999",
             dpr2="13,043",
             dpr3="14,777",
@@ -72,7 +74,7 @@ def test_featured_produce_selection_prefers_curated_retail_targets() -> None:
             value="0.3",
         ),
         _make_row(
-            product_name="토마토/토마토",
+            product_name="\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
             productno="321",
             unit="1kg",
             dpr1="5,196",
@@ -83,7 +85,7 @@ def test_featured_produce_selection_prefers_curated_retail_targets() -> None:
             value="0.7",
         ),
         _make_row(
-            product_name="방울토마토/방울토마토",
+            product_name="\ubc29\uc6b8\ud1a0\ub9c8\ud1a0/\ubc29\uc6b8\ud1a0\ub9c8\ud1a0",
             productno="437",
             unit="1kg",
             dpr1="10,639",
@@ -112,7 +114,7 @@ def test_featured_produce_selection_prefers_curated_retail_targets() -> None:
 def test_featured_produce_selection_falls_back_to_other_vegetables() -> None:
     rows = [
         _make_row(
-            product_name="토마토/토마토",
+            product_name="\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
             productno="321",
             unit="1kg",
             dpr1="5,196",
@@ -123,9 +125,9 @@ def test_featured_produce_selection_falls_back_to_other_vegetables() -> None:
             value="0.7",
         ),
         _make_row(
-            product_name="배추/월동",
+            product_name="\ubc30\ucd94/\ubd09\ub3d9",
             productno="295",
-            unit="1포기",
+            unit="1head",
             dpr1="4,573",
             dpr2="4,578",
             dpr3="5,153",
@@ -134,9 +136,9 @@ def test_featured_produce_selection_falls_back_to_other_vegetables() -> None:
             value="0.1",
         ),
         _make_row(
-            product_name="양배추/양배추",
+            product_name="\uc5bc\uac08\uc774\ubc30\ucd94/\uc5bc\uac08\uc774\ubc30\ucd94",
             productno="297",
-            unit="1포기",
+            unit="1head",
             dpr1="3,054",
             dpr2="3,083",
             dpr3="4,100",
@@ -145,9 +147,9 @@ def test_featured_produce_selection_falls_back_to_other_vegetables() -> None:
             value="0.9",
         ),
         _make_row(
-            product_name="브로콜리/브로콜리(국산)",
+            product_name="\ube0c\ub85c\ucf5c\ub9ac/\ube0c\ub85c\ucf5c\ub9ac(\uad6d\uc0b0)",
             productno="301",
-            unit="1개",
+            unit="1ea",
             dpr1="2,460",
             dpr2="2,447",
             dpr3="2,520",
@@ -161,6 +163,70 @@ def test_featured_produce_selection_falls_back_to_other_vegetables() -> None:
 
     assert len(items) == 4
     assert items[0]["display_name"] == "Tomato"
-    assert items[1]["display_name"] == "배추/월동"
-    assert items[2]["display_name"] == "양배추/양배추"
-    assert items[3]["display_name"] == "브로콜리/브로콜리(국산)"
+    assert items[1]["display_name"] == "\ubc30\ucd94/\ubd09\ub3d9"
+    assert items[2]["display_name"] == "\uc5bc\uac08\uc774\ubc30\ucd94/\uc5bc\uac08\uc774\ubc30\ucd94"
+    assert items[3]["display_name"] == "\ube0c\ub85c\ucf5c\ub9ac/\ube0c\ub85c\ucf5c\ub9ac(\uad6d\uc0b0)"
+
+
+def test_build_featured_trend_series_combines_history_and_forward_normals() -> None:
+    item = {
+        "key": "321",
+        "display_name": "Tomato",
+        "source_name": "\ud1a0\ub9c8\ud1a0/\ud1a0\ub9c8\ud1a0",
+        "unit": "1kg",
+    }
+    reference_date = date(2026, 4, 3)
+    history_prices = {
+        date(2026, 3, 21): 5000,
+        date(2026, 4, 2): 5182,
+        date(2026, 4, 3): 4932,
+    }
+    seasonal_price_maps = {
+        years_back: {} for years_back in range(1, 11)
+    }
+    seasonal_price_maps[1][date(2025, 4, 4)] = 5258
+    seasonal_price_maps[2][date(2024, 4, 4)] = 7502
+    seasonal_price_maps[3][date(2023, 4, 4)] = 6788
+    seasonal_price_maps[4][date(2022, 4, 4)] = 6400
+    seasonal_price_maps[5][date(2021, 4, 4)] = 6120
+    seasonal_price_maps[6][date(2020, 4, 4)] = 5800
+    seasonal_price_maps[7][date(2019, 4, 4)] = 6100
+    seasonal_price_maps[8][date(2018, 4, 4)] = 6000
+    seasonal_price_maps[9][date(2017, 4, 4)] = 5900
+    seasonal_price_maps[10][date(2016, 4, 4)] = 5700
+
+    series = produce_prices._build_featured_trend_series(
+        item,
+        reference_date,
+        history_prices,
+        seasonal_price_maps,
+    )
+
+    assert series["reference_date"] == "2026-04-03"
+    assert series["history_days"] == 14
+    assert series["forecast_days"] == 14
+    assert len(series["points"]) == 28
+
+    first_history_point = series["points"][0]
+    last_history_point = series["points"][13]
+    first_forecast_point = series["points"][14]
+
+    assert first_history_point["date"] == "2026-03-21"
+    assert first_history_point["segment"] == "history"
+    assert first_history_point["actual_price_krw"] == 5000
+    assert last_history_point["date"] == "2026-04-03"
+    assert last_history_point["actual_price_krw"] == 4932
+
+    assert first_forecast_point["date"] == "2026-04-04"
+    assert first_forecast_point["segment"] == "forecast"
+    assert first_forecast_point["actual_price_krw"] is None
+    assert first_forecast_point["normal_3y_price_krw"] == round((5258 + 7502 + 6788) / 3)
+    assert first_forecast_point["normal_5y_price_krw"] == round(
+        (5258 + 7502 + 6788 + 6400 + 6120) / 5
+    )
+    assert first_forecast_point["normal_10y_price_krw"] == round(
+        (5258 + 7502 + 6788 + 6400 + 6120 + 5800 + 6100 + 6000 + 5900 + 5700) / 10
+    )
+    assert first_forecast_point["normal_3y_sample_count"] == 3
+    assert first_forecast_point["normal_5y_sample_count"] == 5
+    assert first_forecast_point["normal_10y_sample_count"] == 10
