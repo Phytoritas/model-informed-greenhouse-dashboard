@@ -41,7 +41,7 @@
   },
   "browser_smoke": {
     "status": "pass",
-    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the merged KAMIS produce price panel. The latest smoke on 127.0.0.1:8000/4173 confirmed the new Live Produce Prices card rendered beside weather/RTR and the browser console stayed clean."
+    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the merged KAMIS produce price panel. The latest smoke on 127.0.0.1:8012/4175 confirmed the trend chart rendered beside weather/RTR and the browser console stayed clean."
   },
   "bundle_review": {
     "status": "pass",
@@ -85,15 +85,15 @@
   },
   "github_project_sync": {
     "status": "pass",
-    "note": "Issue #6 moved through Running -> Validating and then closed automatically when PR #7 merged; issue #3 remains the blocked follow-up item."
+    "note": "Issues #6, #8, and #10 all moved through Running -> Validating and closed through merged PRs, while issue #3 remains the blocked follow-up item."
   },
   "live_produce_price_panel": {
     "status": "pass",
     "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback; PR #7 merged this slice into main."
   },
-  "delivery_pr_sync": {
+  "produce_price_trend_overlay": {
     "status": "pass",
-    "note": "Issue #6 was delivered through commits dde1a0d and 5775a32, PR #7 merged, and both push + pull_request GitHub Actions CI runs passed."
+    "note": "Issue #8 / PR #9 landed the trailing 14-day actual trend plus forward 14-day 3y/5y/10y seasonal-normal overlays from KAMIS `periodRetailProductList`, and issue #10 / PR #11 hardened that panel so card snapshots survive trend failures while the chart explicitly labels retail-average history versus snapshot prices and exposes per-line sample coverage."
   },
   "rtr_good_production_windows": {
     "status": "blocked",

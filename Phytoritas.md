@@ -11,7 +11,7 @@
 ## Identity
 This repository hosts a model-informed greenhouse dashboard that combines greenhouse telemetry, crop-state model outputs, and decision-friendly summaries in one reproducible workspace.
 
-The current refactor intake source is `C:\Users\yhmoo\OneDrive\Model\10_Projects\10_AI_Platform\대시보드-eng_1.1`, which provides a working greenhouse dashboard backend, legacy crop models, and a Vite-based frontend. The target repository must absorb that project into the current blueprint, package conventions, and validation ladder instead of copying the source tree verbatim.
+The current refactor intake source is `C:\Users\yhmoo\OneDrive\Model\10_Projects\10_AI_Platform\dashboard-eng_1.1`, which provides a working greenhouse dashboard backend, legacy crop models, and a Vite-based frontend. The target repository must absorb that project into the current blueprint, package conventions, and validation ladder instead of copying the source tree verbatim.
 
 The first objective is still not a production deployment. The first objective is to lock the dashboard scope, data contracts, model-context seams, migration boundaries, and validation loop before broad UI or integration work begins.
 
@@ -102,7 +102,7 @@ Conflict rule:
 5. Re-run quality checks and record the next unresolved gap.
 
 ## Immediate Next Action
-- Issue `#6` / PR `#7` are complete, so the active follow-up loop returns to issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`.
-- `main` and the blocked issue `#3` branch now both carry the merged KAMIS live produce price panel together with the latest CI/runtime maintenance.
+- Issues `#6` / `#8` / `#10` and PRs `#7` / `#9` / `#11` are complete, so the active follow-up loop returns to issue `#3` and branch `feat/3-replace-concept-demo-rtr-windows-with-grower-approved-periods`.
+- The synced issue `#3` branch now carries the merged KAMIS live produce price panel, the 14-day actual + 3y/5y/10y seasonal-normal trend overlay, the issue `#10` fallback/labeling hardening, and the latest CI/runtime maintenance.
 - The earliest pending gate is still external input quality: wait for grower-approved good-production periods, then replace the concept-demo windows in `configs/rtr_good_windows.yaml` and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json` with a syntactically valid grower window file.
 - After the regenerated RTR profile payload lands, rerun a representative RTR browser smoke; if the AI prompt or dashboard context contract changes again during that follow-up slice, rerun a representative live consult/chat smoke as well.

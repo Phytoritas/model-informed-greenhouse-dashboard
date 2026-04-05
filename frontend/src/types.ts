@@ -136,6 +136,35 @@ export interface ProducePriceEntry {
     raw_day_over_day_pct: number;
 }
 
+export interface ProducePriceTrendPoint {
+    date: string;
+    segment: 'history' | 'forecast';
+    actual_price_krw: number | null;
+    normal_3y_price_krw: number | null;
+    normal_5y_price_krw: number | null;
+    normal_10y_price_krw: number | null;
+    normal_3y_sample_count: number;
+    normal_5y_sample_count: number;
+    normal_10y_sample_count: number;
+}
+
+export interface ProducePriceTrendSeries {
+    key: string;
+    display_name: string;
+    source_name: string;
+    unit: string;
+    reference_date: string;
+    history_days: number;
+    forecast_days: number;
+    points: ProducePriceTrendPoint[];
+}
+
+export interface ProducePriceTrendUnavailable {
+    key: string;
+    display_name: string;
+    reason: string;
+}
+
 export interface ProducePricesPayload {
     source: {
         provider: string;
@@ -147,6 +176,14 @@ export interface ProducePricesPayload {
     };
     summary: string;
     items: ProducePriceEntry[];
+    trend: {
+        reference_date: string;
+        history_days: number;
+        forecast_days: number;
+        normal_year_windows: number[];
+        series: ProducePriceTrendSeries[];
+        unavailable_series: ProducePriceTrendUnavailable[];
+    };
 }
 
 export type RtrCalibrationMode = 'baseline' | 'fitted' | 'insufficient-data';
