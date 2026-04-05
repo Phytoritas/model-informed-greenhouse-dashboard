@@ -60,6 +60,29 @@ const formatShortDate = (date: string): string => {
     return parsed.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
+const coverageRangeLabel = (
+    points: ProducePricesPayload['trend']['series'][number]['points'],
+    key: 'normal_3y_sample_count' | 'normal_5y_sample_count' | 'normal_10y_sample_count',
+    windowSize: number,
+): string => {
+    const counts = points
+        .filter((point) => point.segment === 'forecast')
+        .map((point) => point[key])
+        .filter((count) => count > 0);
+
+    if (counts.length === 0) {
+        return `n=0/${windowSize}`;
+    }
+
+    const minCount = Math.min(...counts);
+    const maxCount = Math.max(...counts);
+    if (minCount === maxCount) {
+        return `n=${minCount}/${windowSize}`;
+    }
+
+    return `n=${minCount}-${maxCount}/${windowSize}`;
+};
+
 const directionMeta: Record<
     ProducePriceDirection,
     {
@@ -136,6 +159,7 @@ const TrendChart = ({
 }) => {
     const [selectedKey, setSelectedKey] = useState<string | null>(null);
     const availableSeries = prices.trend.series;
+    const unavailableSeries = prices.trend.unavailable_series;
 
     const selectedSeries =
         availableSeries.find((series) => series.key === selectedKey) ?? availableSeries[0] ?? null;
@@ -148,10 +172,6 @@ const TrendChart = ({
         );
     }
 
-    const latestForecastPoint = [...selectedSeries.points]
-        .reverse()
-        .find((point) => point.segment === 'forecast');
-
     return (
         <div className="rounded-lg border border-slate-100 bg-slate-50/70 p-4">
             <div className="flex items-start justify-between gap-3">
@@ -161,8 +181,9 @@ const TrendChart = ({
                         <span>2-week trend vs seasonal normals</span>
                     </div>
                     <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                        Actual average prices cover the trailing {prices.trend.history_days} days. Forward lines
-                        use matching calendar dates averaged across the prior 3, 5, and 10 years.
+                        Cards above use the latest KAMIS item snapshot. The chart history line uses KAMIS retail
+                        average prices for the trailing {prices.trend.history_days} days, while forward lines use
+                        matching calendar dates averaged across the prior 3, 5, and 10 years.
                     </p>
                 </div>
                 <div className="rounded-2xl bg-white px-3 py-2 text-right text-[11px] text-slate-500 shadow-sm">
@@ -215,9 +236,20 @@ const TrendChart = ({
                                 boxShadow: '0 12px 32px -20px rgba(15, 23, 42, 0.55)',
                             }}
                             labelFormatter={(value) => formatSurveyDay(String(value))}
-                            formatter={(value, name) => {
+                            formatter={(value, name, item) => {
                                 if (typeof value !== 'number') {
                                     return ['No data', name];
+                                }
+
+                                const point = item?.payload as ProducePricesPayload['trend']['series'][number]['points'][number] | undefined;
+                                if (name === '3y normal') {
+                                    return [formatKrw(value), `3y normal (n=${point?.normal_3y_sample_count ?? 0})`];
+                                }
+                                if (name === '5y normal') {
+                                    return [formatKrw(value), `5y normal (n=${point?.normal_5y_sample_count ?? 0})`];
+                                }
+                                if (name === '10y normal') {
+                                    return [formatKrw(value), `10y normal (n=${point?.normal_10y_sample_count ?? 0})`];
                                 }
 
                                 return [formatKrw(value), name];
@@ -287,10 +319,17 @@ const TrendChart = ({
                 <div className="rounded-md bg-white px-3 py-2 shadow-sm">
                     <div className="font-medium text-slate-700">Future coverage</div>
                     <div className="mt-1">
-                        {latestForecastPoint?.normal_10y_sample_count ?? 0} samples in the 10y line on the furthest day
+                        3y {coverageRangeLabel(selectedSeries.points, 'normal_3y_sample_count', 3)} / 5y {coverageRangeLabel(selectedSeries.points, 'normal_5y_sample_count', 5)} / 10y {coverageRangeLabel(selectedSeries.points, 'normal_10y_sample_count', 10)}
                     </div>
                 </div>
             </div>
+
+            {unavailableSeries.length > 0 ? (
+                <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                    Trend overlay is unavailable for {unavailableSeries.map((series) => series.display_name).join(', ')}.
+                    Snapshot cards remain live even when historical enrichment is missing.
+                </div>
+            ) : null}
         </div>
     );
 };
