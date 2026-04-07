@@ -248,7 +248,7 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
                             <span className="font-semibold text-green-600">{metrics.growth.lai.toFixed(2)}</span>
                         </div>
                     </div>
-                    <p className="text-xs text-slate-400 mt-2 leading-snug">{UNIT_LABELS.leafAreaIndex}</p>
+                    <p className="text-xs text-slate-500 mt-2 leading-snug">{UNIT_LABELS.leafAreaIndex}</p>
                 </div>
 
                 <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
@@ -256,8 +256,8 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
                         <Activity className="w-4 h-4" />
                         <span className="text-sm font-medium">{copy.dailyBiomassGrowth}</span>
                     </div>
-                    <div className="text-2xl font-bold text-green-600">{metrics.growth.growthRate.toFixed(1)}</div>
-                    <p className="text-xs text-slate-400 mt-1 leading-snug">{UNIT_LABELS.biomassGrowthRate}</p>
+                    <div className="text-3xl font-bold text-green-700">{metrics.growth.growthRate.toFixed(1)}</div>
+                    <p className="text-xs text-slate-500 mt-1 leading-snug">{UNIT_LABELS.biomassGrowthRate}</p>
                     <p className="text-xs text-slate-400 mt-1">{copy.biomassTrend}</p>
                 </div>
 
@@ -266,8 +266,8 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
                         <Leaf className="w-4 h-4" />
                         <span className="text-sm font-medium">{copy.yieldPotential}</span>
                     </div>
-                    <div className="text-2xl font-bold text-emerald-600">{metrics.yield.predictedWeekly.toFixed(1)}</div>
-                    <p className="text-xs text-slate-400 mt-1 leading-snug">{UNIT_LABELS.weeklyYield}</p>
+                    <div className="text-3xl font-bold text-emerald-700">{metrics.yield.predictedWeekly.toFixed(1)}</div>
+                    <p className="text-xs text-slate-500 mt-1 leading-snug">{UNIT_LABELS.weeklyYield}</p>
                     <p className="text-xs text-slate-400 mt-1">{copy.confidence}: {metrics.yield.confidence}%</p>
                 </div>
 
@@ -276,8 +276,8 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
                         <Droplets className="w-4 h-4" />
                         <span className="text-sm font-medium">{copy.transpiration}</span>
                     </div>
-                    <div className="text-2xl font-bold text-cyan-600">{formatMetricValue(currentData.transpiration)}</div>
-                    <p className="text-xs text-slate-400 mt-1 leading-snug">{UNIT_LABELS.transpirationRate}</p>
+                    <div className="text-3xl font-bold text-cyan-700">{formatMetricValue(currentData.transpiration)}</div>
+                    <p className="text-xs text-slate-500 mt-1 leading-snug">{UNIT_LABELS.transpirationRate}</p>
                     <p className="text-xs text-slate-400 mt-1">{copy.canopyActivity}</p>
                 </div>
             </div>

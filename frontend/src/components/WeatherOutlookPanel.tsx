@@ -8,9 +8,10 @@ interface WeatherOutlookPanelProps {
     weather: WeatherOutlook | null;
     loading: boolean;
     error: string | null;
+    compact?: boolean;
 }
 
-const WeatherOutlookPanel = ({ weather, loading, error }: WeatherOutlookPanelProps) => {
+const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: WeatherOutlookPanelProps) => {
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
@@ -70,14 +71,14 @@ const WeatherOutlookPanel = ({ weather, loading, error }: WeatherOutlookPanelPro
         : '';
 
     return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-start justify-between gap-3">
+    <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
+        <div className={`flex items-start justify-between gap-3 ${compact ? 'mb-2' : 'mb-4'}`}>
             <div>
                 <div className="flex items-center gap-2 text-slate-800">
                     <CloudSun className="h-5 w-5 text-sky-500" />
-                    <h3 className="font-semibold">{copy.title}</h3>
+                    <h3 className={compact ? 'text-sm font-semibold' : 'font-semibold'}>{copy.title}</h3>
                 </div>
-                <p className="mt-1 text-xs text-slate-400">{copy.subtitle}</p>
+                {!compact && <p className="mt-1 text-xs text-slate-400">{copy.subtitle}</p>}
             </div>
             <div className="rounded-full bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
                 {providerLabel}
@@ -136,6 +137,7 @@ const WeatherOutlookPanel = ({ weather, loading, error }: WeatherOutlookPanelPro
                     </div>
                 </div>
 
+                {!compact && (
                 <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
                     {weather.daily.map((day) => (
                         <div key={day.date} className="h-full rounded-lg border border-slate-100 p-3">
@@ -169,6 +171,7 @@ const WeatherOutlookPanel = ({ weather, loading, error }: WeatherOutlookPanelPro
                         </div>
                     ))}
                 </div>
+                )}
             </div>
         ) : null}
     </div>
