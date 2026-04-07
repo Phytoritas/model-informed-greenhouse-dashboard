@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 
 from model_informed_greenhouse_dashboard.backend.app.services import (
@@ -35,6 +37,68 @@ def _catalog_stub() -> dict[str, object]:
             },
         },
     }
+
+
+def _seed_cucumber_runtime_state(leaf_count: int = 18):
+    from model_informed_greenhouse_dashboard.backend.app.adapters.cucumber import (
+        CucumberAdapter,
+    )
+
+    adapter = CucumberAdapter()
+    model = adapter.model
+    model.nodes = 18
+    model.remaining_leaves = leaf_count
+    model.cumulative_thermal_time = 640.0
+    model.vegetative_dw = 82.0
+    model.fruit_dw = 24.0
+    model.reproductive_node_threshold = 15
+    model.leaves_info = [
+        {
+            "Leaf Number": rank,
+            "Date": model.start_date.date(),
+            "Thermal Time": float((rank - 1) * 18),
+        }
+        for rank in range(1, 19)
+    ]
+    model.LAI = float(model.calculate_current_lai())
+    adapter._last_state = {
+        "LAI": model.LAI,
+        "leaf_count": model.remaining_leaves,
+        "fruit_dry_weight_g_m2": model.fruit_dw,
+        "vegetative_dry_weight_g_m2": model.vegetative_dw,
+        "gross_photosynthesis_umol_m2_s": 13.2,
+        "net_assimilation_umol_m2_s": 8.4,
+        "T_canopy_C": 23.5,
+    }
+    adapter._last_datetime = datetime(2026, 4, 7, 9, 0, tzinfo=UTC)
+    return adapter
+
+
+def _seed_tomato_runtime_state(fruits_per_truss: int = 4):
+    from model_informed_greenhouse_dashboard.backend.app.adapters.tomato import TomatoAdapter
+
+    adapter = TomatoAdapter()
+    model = adapter.model
+    model.truss_count = 3
+    model.n_f = fruits_per_truss
+    model.truss_cohorts = [
+        {"tdvs": 0.55, "n_fruits": fruits_per_truss, "w_fr_cohort": 3.5 * fruits_per_truss, "active": True, "mult": 1.0},
+        {"tdvs": 0.43, "n_fruits": fruits_per_truss, "w_fr_cohort": 2.75 * fruits_per_truss, "active": True, "mult": 1.0},
+        {"tdvs": 0.21, "n_fruits": fruits_per_truss, "w_fr_cohort": 1.5 * fruits_per_truss, "active": True, "mult": 1.0},
+    ]
+    model.W_lv = 78.0
+    model.W_st = 36.0
+    model.W_rt = 18.0
+    model.W_fr = sum(cohort["w_fr_cohort"] for cohort in model.truss_cohorts)
+    model.W_fr_harvested = 9.0
+    model.LAI = 2.35
+    adapter._last_state = {
+        "crop_efficiency": 1.18,
+        "gross_photosynthesis_umol_m2_s": 12.4,
+        "T_canopy_C": 24.1,
+    }
+    adapter._last_datetime = datetime(2026, 4, 7, 10, 0, tzinfo=UTC)
+    return adapter
 
 
 def test_build_advisor_summary_response_wraps_consulting_and_context(
@@ -1657,6 +1721,9 @@ def test_build_advisor_tab_response_work_stays_monitoring_first_without_planning
     assert advisor_actions["mode"] == "monitoring-first"
     analysis = payload["machine_payload"]["work_analysis"]
     assert analysis["mode"] == "monitoring-first"
+    compare = payload["machine_payload"]["work_event_compare"]
+    assert compare["status"] == "history-unavailable"
+    assert compare["options"] == []
     assert analysis["current_state"]["workload_balance"] == "monitoring-first"
     assert analysis["priority_actions"][0]["title"] == "핵심 작업 planning signal 복구"
     assert analysis["context_snapshot"]["missing_work_signals"] == [
@@ -1669,6 +1736,591 @@ def test_build_advisor_tab_response_work_stays_monitoring_first_without_planning
         "inside_humidity",
         "inside_vpd",
     ]
+
+
+def test_build_advisor_tab_response_work_adds_cucumber_work_event_compare_from_persisted_store(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.cucumber_growth_model import (
+        apply_cucumber_work_event,
+        build_cucumber_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_tab_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {"status": "skipped", "mode": "tab_seeded", "focus_domains": []},
+            "llm_context": None,
+            "internal_provenance": {"chunk_ids": [], "document_ids": []},
+        },
+    )
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+
+    greenhouse_id = "gh-1"
+    store = model_state_store.ModelStateStore()
+    before_adapter = _seed_cucumber_runtime_state()
+    before_snapshot = store.persist_snapshot(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        adapter_name=before_adapter.name,
+        adapter_version=before_adapter.version,
+        normalized_snapshot=build_cucumber_snapshot(
+            before_adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=before_adapter.dump_state(),
+        source="test",
+    )
+    after_adapter = advisor_orchestration._clone_compare_adapter_from_raw_state(
+        "cucumber",
+        before_snapshot["raw_adapter_state"],
+    )
+    apply_cucumber_work_event(
+        after_adapter,
+        {
+            "event_type": "leaf_removal",
+            "leaves_removed_count": 2,
+            "target_leaf_count": 16,
+        },
+    )
+    after_snapshot = store.persist_snapshot(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        snapshot_time=datetime(2026, 4, 7, 11, 0, tzinfo=UTC),
+        adapter_name=after_adapter.name,
+        adapter_version=after_adapter.version,
+        normalized_snapshot=build_cucumber_snapshot(
+            after_adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=datetime(2026, 4, 7, 11, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=after_adapter.dump_state(),
+        source="test",
+    )
+    event = store.persist_work_event(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        event_time=datetime(2026, 4, 7, 11, 0, tzinfo=UTC),
+        event_type="leaf_removal",
+        payload={
+            "event_type": "leaf_removal",
+            "leaves_removed_count": 2,
+            "target_leaf_count": 16,
+            "reason_code": "shade_reduction",
+            "operator": "tester",
+        },
+        before_snapshot_id=before_snapshot["snapshot_id"],
+        after_snapshot_id=after_snapshot["snapshot_id"],
+        operator="tester",
+        reason_code="shade_reduction",
+        confidence=0.82,
+    )
+    store.upsert_current_state(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        latest_snapshot_id=after_snapshot["snapshot_id"],
+        latest_event_id=event["event_id"],
+    )
+
+    payload = advisor_orchestration.build_advisor_tab_response(
+        tab_name="work",
+        crop="cucumber",
+        greenhouse_id=greenhouse_id,
+        dashboard={
+            "forecast": {"total_harvest_kg": 2.4},
+            "metrics": {
+                "growth": {"nodeCount": 18},
+                "yield": {"predictedWeekly": 11.2, "harvestableFruits": 17},
+            },
+            "weather": {
+                "current": {"relative_humidity_pct": 84.0},
+                "daily": [{"temperature_max_c": 29.0}],
+            },
+            "rtr": {"live": {"deltaTempC": -0.8}},
+            "data": {"humidity": 84.0, "vpd": 0.64, "transpiration": 0.16},
+        },
+    )
+
+    compare = payload["machine_payload"]["work_event_compare"]
+    assert compare["status"] == "ready"
+    assert compare["history"][0]["event_type"] == "leaf_removal"
+    assert compare["history"][0]["action"] == "하위엽 2매 제거"
+    assert compare["current_state"]["leaf_count"] == 16
+    assert compare["recommended_action"] in {option["action"] for option in compare["options"]}
+    candidate_event = next(
+        option for option in compare["options"] if option["comparison_kind"] == "candidate_event"
+    )
+    assert candidate_event["event_type"] == "leaf_removal"
+    assert "leaf_count_delta" in candidate_event["immediate_state_delta"]
+    assert payload["machine_payload"]["internal_provenance"]["work_event_compare"][
+        "baseline_snapshot_id"
+    ] == after_snapshot["snapshot_id"]
+    assert payload["machine_payload"]["internal_provenance"]["work_event_compare"][
+        "greenhouse_id"
+    ] == greenhouse_id
+    assert compare["current_state"]["minimum_leaf_guard"] == 15
+
+
+@pytest.mark.parametrize(
+    ("leaf_count", "expected_candidate_event_count"),
+    [
+        (12, 0),
+        (15, 0),
+        (18, 2),
+    ],
+)
+def test_build_work_event_compare_payload_cucumber_leaf_guard_matrix(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    leaf_count: int,
+    expected_candidate_event_count: int,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.cucumber_growth_model import (
+        build_cucumber_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / f"cucumber-{leaf_count}.sqlite3",
+    )
+
+    greenhouse_id = f"gh-cucumber-{leaf_count}"
+    store = model_state_store.ModelStateStore()
+    adapter = _seed_cucumber_runtime_state(leaf_count=leaf_count)
+    snapshot = store.persist_snapshot(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=build_cucumber_snapshot(
+            adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=adapter.dump_state(),
+        source="test",
+    )
+    store.upsert_current_state(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        latest_snapshot_id=snapshot["snapshot_id"],
+    )
+
+    compare_result = advisor_orchestration._build_work_event_compare_payload(
+        "cucumber",
+        greenhouse_id=greenhouse_id,
+    )
+    compare = compare_result["payload"]
+    candidate_events = [
+        item
+        for item in compare_result["internal_provenance"]["options"]
+        if item["comparison_kind"] == "candidate_event"
+    ]
+
+    assert compare["status"] == "ready"
+    assert compare["current_state"]["minimum_leaf_guard"] == 15
+    assert len(candidate_events) == expected_candidate_event_count
+    assert all(
+        int(item["event_payload"]["target_leaf_count"]) >= 15
+        for item in candidate_events
+        if item.get("event_payload")
+    )
+    if leaf_count <= 15:
+        assert compare["recommended_action"] in {
+            "\uc720\uc9c0",
+            "\uc801\uc5fd \ubcf4\ub958",
+        }
+
+
+def test_build_advisor_tab_response_work_degrades_compare_when_logged_payload_is_malformed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.cucumber_growth_model import (
+        build_cucumber_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_tab_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {"status": "skipped", "mode": "tab_seeded", "focus_domains": []},
+            "llm_context": None,
+            "internal_provenance": {"chunk_ids": [], "document_ids": []},
+        },
+    )
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+
+    greenhouse_id = "gh-malformed"
+    store = model_state_store.ModelStateStore()
+    adapter = _seed_cucumber_runtime_state()
+    snapshot = store.persist_snapshot(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=build_cucumber_snapshot(
+            adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=adapter.dump_state(),
+        source="test",
+    )
+    malformed_event = store.persist_work_event(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        event_time=datetime(2026, 4, 7, 11, 0, tzinfo=UTC),
+        event_type="leaf_removal",
+        payload={
+            "event_type": "leaf_removal",
+            "leaves_removed_count": "two",
+            "target_leaf_count": "sixteen",
+            "reason_code": "operator_note_only",
+        },
+        before_snapshot_id=snapshot["snapshot_id"],
+        after_snapshot_id=snapshot["snapshot_id"],
+        operator="tester",
+        reason_code="operator_note_only",
+        confidence=0.41,
+    )
+    store.upsert_current_state(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        latest_snapshot_id=snapshot["snapshot_id"],
+        latest_event_id=malformed_event["event_id"],
+    )
+
+    payload = advisor_orchestration.build_advisor_tab_response(
+        tab_name="work",
+        crop="cucumber",
+        greenhouse_id=greenhouse_id,
+        dashboard={
+            "forecast": {"total_harvest_kg": 2.4},
+            "metrics": {
+                "growth": {"nodeCount": 18},
+                "yield": {"predictedWeekly": 11.2, "harvestableFruits": 17},
+            },
+            "weather": {
+                "current": {"relative_humidity_pct": 84.0},
+                "daily": [{"temperature_max_c": 29.0}],
+            },
+            "rtr": {"live": {"deltaTempC": -0.8}},
+            "data": {"humidity": 84.0, "vpd": 0.64, "transpiration": 0.16},
+        },
+    )
+
+    compare = payload["machine_payload"]["work_event_compare"]
+    assert payload["status"] == "success"
+    assert compare["status"] == "ready"
+    assert compare["history"][0]["action"] == "적엽 기록"
+    assert compare["options"]
+    assert payload["machine_payload"]["internal_provenance"]["work_event_compare"][
+        "greenhouse_id"
+    ] == greenhouse_id
+
+
+def test_build_advisor_tab_response_work_degrades_compare_when_store_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_tab_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {"status": "skipped", "mode": "tab_seeded", "focus_domains": []},
+            "llm_context": None,
+            "internal_provenance": {"chunk_ids": [], "document_ids": []},
+        },
+    )
+
+    def _raise_store() -> None:
+        raise OSError("read-only")
+
+    monkeypatch.setattr(advisor_orchestration, "ModelStateStore", _raise_store)
+
+    payload = advisor_orchestration.build_advisor_tab_response(
+        tab_name="work",
+        crop="cucumber",
+        greenhouse_id="gh-readonly",
+        dashboard={},
+    )
+
+    compare = payload["machine_payload"]["work_event_compare"]
+    assert payload["status"] == "success"
+    assert compare["status"] == "history-unavailable"
+    assert compare["options"] == []
+    assert "잠시 비활성화" in compare["summary"]
+    assert payload["machine_payload"]["internal_provenance"]["work_event_compare"][
+        "status"
+    ] == "store-unavailable"
+
+
+def _legacy_test_build_work_event_compare_payload_supports_tomato_fruit_thinning_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.tomato_growth_model import (
+        build_tomato_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+
+    store = model_state_store.ModelStateStore()
+    adapter = _seed_tomato_runtime_state()
+    snapshot = store.persist_snapshot(
+        greenhouse_id="tomato",
+        crop="tomato",
+        snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=build_tomato_snapshot(
+            adapter,
+            greenhouse_id="tomato",
+            snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=adapter.dump_state(),
+        source="test",
+    )
+    store.upsert_current_state(
+        greenhouse_id="tomato",
+        crop="tomato",
+        latest_snapshot_id=snapshot["snapshot_id"],
+    )
+
+    compare = advisor_orchestration._build_work_event_compare_payload("tomato")["payload"]
+
+    assert compare["status"] == "ready"
+    actions = {option["action"] for option in compare["options"]}
+    assert actions >= {"현재 착과수 유지", "감과 보류"}
+    thinning_option = next(
+        option for option in compare["options"] if option["comparison_kind"] == "candidate_event"
+    )
+    assert thinning_option["event_type"] == "fruit_thinning"
+    assert thinning_option["immediate_state_delta"]["fruit_load_delta"] < 0
+
+
+def test_build_work_event_compare_payload_supports_tomato_fruit_thinning_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.tomato_growth_model import (
+        build_tomato_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+
+    store = model_state_store.ModelStateStore()
+    adapter = _seed_tomato_runtime_state()
+    snapshot = store.persist_snapshot(
+        greenhouse_id="tomato",
+        crop="tomato",
+        snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=build_tomato_snapshot(
+            adapter,
+            greenhouse_id="tomato",
+            snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=adapter.dump_state(),
+        source="test",
+    )
+    store.upsert_current_state(
+        greenhouse_id="tomato",
+        crop="tomato",
+        latest_snapshot_id=snapshot["snapshot_id"],
+    )
+
+    compare = advisor_orchestration._build_work_event_compare_payload("tomato")["payload"]
+
+    assert compare["status"] == "ready"
+    actions = {option["action"] for option in compare["options"]}
+    assert actions >= {
+        "\ud604\uc7ac \ucc29\uacfc\uc218 \uc720\uc9c0",
+        "\uac10\uacfc \ubcf4\ub958",
+        "\ub2e4\uc74c \ud654\ubc29\uc5d0\uc11c \uc870\uc815",
+    }
+    thinning_option = next(
+        option for option in compare["options"] if option["comparison_kind"] == "candidate_event"
+    )
+    assert thinning_option["event_type"] == "fruit_thinning"
+    assert thinning_option["immediate_state_delta"]["fruit_load_delta"] < 0
+    assert compare["current_state"]["sink_overload_score"] > 0.0
+
+
+@pytest.mark.parametrize(
+    ("fruits_per_truss", "recommended_action"),
+    [
+        (3, "\ub2e4\uc74c \ud654\ubc29\uc5d0\uc11c \uc870\uc815"),
+        (5, "1\uacfc \uac10\uacfc"),
+    ],
+)
+def test_build_work_event_compare_payload_tomato_sink_overload_matrix(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    fruits_per_truss: int,
+    recommended_action: str,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.tomato_growth_model import (
+        build_tomato_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / f"tomato-{fruits_per_truss}.sqlite3",
+    )
+
+    greenhouse_id = f"gh-tomato-{fruits_per_truss}"
+    store = model_state_store.ModelStateStore()
+    adapter = _seed_tomato_runtime_state(fruits_per_truss=fruits_per_truss)
+    snapshot = store.persist_snapshot(
+        greenhouse_id=greenhouse_id,
+        crop="tomato",
+        snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=build_tomato_snapshot(
+            adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=adapter.dump_state(),
+        source="test",
+    )
+    store.upsert_current_state(
+        greenhouse_id=greenhouse_id,
+        crop="tomato",
+        latest_snapshot_id=snapshot["snapshot_id"],
+    )
+
+    compare = advisor_orchestration._build_work_event_compare_payload(
+        "tomato",
+        greenhouse_id=greenhouse_id,
+    )["payload"]
+
+    assert compare["status"] == "ready"
+    assert compare["recommended_action"] == recommended_action
+    if fruits_per_truss == 3:
+        assert compare["recommended_action"] != "1\uacfc \uac10\uacfc"
+    assert any(
+        option["action"] == "\ub2e4\uc74c \ud654\ubc29\uc5d0\uc11c \uc870\uc815"
+        for option in compare["options"]
+    )
+
+
+def test_build_work_tradeoff_advisor_response_extracts_compare_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_build_advisor_tab_response(**kwargs):
+        captured.update(kwargs)
+        return {
+            "status": "success",
+            "family": "advisor_tab",
+            "crop": kwargs["crop"],
+            "message": "tab message",
+            "machine_payload": {
+                "work_analysis": {
+                    "summary": "work summary",
+                    "confidence": 0.41,
+                },
+                "work_event_compare": {
+                    "summary": "compare summary",
+                    "current_state": {"leaf_count": 16, "lai": 1.42},
+                    "options": [{"action": "유지", "yield_delta_14d": 0.0, "risk": "low"}],
+                    "recommended_action": "유지",
+                    "confidence": 0.78,
+                },
+                "model_runtime": {"status": "ready"},
+            },
+            "orchestration": {
+                "entrypoint": "/api/advisor/tab/work",
+                "available_tabs": ["work"],
+            },
+        }
+
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_advisor_tab_response",
+        _fake_build_advisor_tab_response,
+    )
+
+    payload = advisor_orchestration.build_work_tradeoff_advisor_response(
+        crop="cucumber",
+        greenhouse_id="gh-1",
+        dashboard={"data": {"temperature": 24.0}},
+    )
+
+    assert captured["tab_name"] == "work"
+    assert captured["greenhouse_id"] == "gh-1"
+    assert payload["family"] == "advisor_work_tradeoff"
+    assert payload["summary"] == "compare summary"
+    assert payload["current_state"]["leaf_count"] == 16
+    assert payload["recommended_action"] == "유지"
+    assert payload["confidence"] == 0.78
+    assert payload["orchestration"]["entrypoint"] == "/api/advisor/work-tradeoff"
+    assert payload["orchestration"]["delegates_to"] == "/api/advisor/tab/work"
 
 
 def test_build_advisor_tab_response_rejects_unknown_tabs() -> None:
