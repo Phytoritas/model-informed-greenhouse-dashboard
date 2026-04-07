@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "phase7d-exact-advisor-surface-routes-landed",
+  "current_stage": "phase7e-work-event-compare-ranking-landed",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
   "active_issue": 21,
   "active_branch": "feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs",
   "implementation_blocked": false,
-  "next_action": "Issue #21 now also lands exact additive `/api/advisor/environment`, `/api/advisor/physiology`, `/api/advisor/work-tradeoff`, and `/api/advisor/harvest` routes over the existing model-aware tab surfaces. The next bounded step is deeper work-event compare hardening: tighten cucumber/tomato candidate agronomy/ranking and decide whether to add frontend component-test infrastructure before opening the issue #21 PR.",
+  "next_action": "Issue #21 now also lands crop-specific cucumber/tomato work-event compare agronomy, ranking, matrix tests, and additive frontend detail fields over the existing model-aware work surface. The next bounded step is to decide whether to add dedicated frontend component-test infrastructure for `work_event_compare` before opening the issue #21 PR, or to treat the current lint/build plus backend matrix coverage as sufficient for PR review.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "GitHub issue #21 as the first post-merge follow-up over the April 7, 2026 model-first SmartGrow directive; issue #19 is merged into main at ecbd9b7"
 }

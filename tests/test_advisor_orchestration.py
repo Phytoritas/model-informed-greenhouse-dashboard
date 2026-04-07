@@ -39,7 +39,7 @@ def _catalog_stub() -> dict[str, object]:
     }
 
 
-def _seed_cucumber_runtime_state():
+def _seed_cucumber_runtime_state(leaf_count: int = 18):
     from model_informed_greenhouse_dashboard.backend.app.adapters.cucumber import (
         CucumberAdapter,
     )
@@ -47,7 +47,7 @@ def _seed_cucumber_runtime_state():
     adapter = CucumberAdapter()
     model = adapter.model
     model.nodes = 18
-    model.remaining_leaves = 18
+    model.remaining_leaves = leaf_count
     model.cumulative_thermal_time = 640.0
     model.vegetative_dw = 82.0
     model.fruit_dw = 24.0
@@ -74,17 +74,17 @@ def _seed_cucumber_runtime_state():
     return adapter
 
 
-def _seed_tomato_runtime_state():
+def _seed_tomato_runtime_state(fruits_per_truss: int = 4):
     from model_informed_greenhouse_dashboard.backend.app.adapters.tomato import TomatoAdapter
 
     adapter = TomatoAdapter()
     model = adapter.model
     model.truss_count = 3
-    model.n_f = 4
+    model.n_f = fruits_per_truss
     model.truss_cohorts = [
-        {"tdvs": 0.55, "n_fruits": 4, "w_fr_cohort": 14.0, "active": True, "mult": 1.0},
-        {"tdvs": 0.43, "n_fruits": 4, "w_fr_cohort": 11.0, "active": True, "mult": 1.0},
-        {"tdvs": 0.21, "n_fruits": 4, "w_fr_cohort": 6.0, "active": True, "mult": 1.0},
+        {"tdvs": 0.55, "n_fruits": fruits_per_truss, "w_fr_cohort": 3.5 * fruits_per_truss, "active": True, "mult": 1.0},
+        {"tdvs": 0.43, "n_fruits": fruits_per_truss, "w_fr_cohort": 2.75 * fruits_per_truss, "active": True, "mult": 1.0},
+        {"tdvs": 0.21, "n_fruits": fruits_per_truss, "w_fr_cohort": 1.5 * fruits_per_truss, "active": True, "mult": 1.0},
     ]
     model.W_lv = 78.0
     model.W_st = 36.0
@@ -1875,6 +1875,83 @@ def test_build_advisor_tab_response_work_adds_cucumber_work_event_compare_from_p
     assert payload["machine_payload"]["internal_provenance"]["work_event_compare"][
         "greenhouse_id"
     ] == greenhouse_id
+    assert compare["current_state"]["minimum_leaf_guard"] == 15
+
+
+@pytest.mark.parametrize(
+    ("leaf_count", "expected_candidate_event_count"),
+    [
+        (12, 0),
+        (15, 0),
+        (18, 2),
+    ],
+)
+def test_build_work_event_compare_payload_cucumber_leaf_guard_matrix(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    leaf_count: int,
+    expected_candidate_event_count: int,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.cucumber_growth_model import (
+        build_cucumber_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / f"cucumber-{leaf_count}.sqlite3",
+    )
+
+    greenhouse_id = f"gh-cucumber-{leaf_count}"
+    store = model_state_store.ModelStateStore()
+    adapter = _seed_cucumber_runtime_state(leaf_count=leaf_count)
+    snapshot = store.persist_snapshot(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=build_cucumber_snapshot(
+            adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=adapter.dump_state(),
+        source="test",
+    )
+    store.upsert_current_state(
+        greenhouse_id=greenhouse_id,
+        crop="cucumber",
+        latest_snapshot_id=snapshot["snapshot_id"],
+    )
+
+    compare_result = advisor_orchestration._build_work_event_compare_payload(
+        "cucumber",
+        greenhouse_id=greenhouse_id,
+    )
+    compare = compare_result["payload"]
+    candidate_events = [
+        item
+        for item in compare_result["internal_provenance"]["options"]
+        if item["comparison_kind"] == "candidate_event"
+    ]
+
+    assert compare["status"] == "ready"
+    assert compare["current_state"]["minimum_leaf_guard"] == 15
+    assert len(candidate_events) == expected_candidate_event_count
+    assert all(
+        int(item["event_payload"]["target_leaf_count"]) >= 15
+        for item in candidate_events
+        if item.get("event_payload")
+    )
+    if leaf_count <= 15:
+        assert compare["recommended_action"] in {
+            "\uc720\uc9c0",
+            "\uc801\uc5fd \ubcf4\ub958",
+        }
 
 
 def test_build_advisor_tab_response_work_degrades_compare_when_logged_payload_is_malformed(
@@ -2020,7 +2097,7 @@ def test_build_advisor_tab_response_work_degrades_compare_when_store_is_unavaila
     ] == "store-unavailable"
 
 
-def test_build_work_event_compare_payload_supports_tomato_fruit_thinning_candidates(
+def _legacy_test_build_work_event_compare_payload_supports_tomato_fruit_thinning_candidates(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path,
 ) -> None:
@@ -2069,6 +2146,126 @@ def test_build_work_event_compare_payload_supports_tomato_fruit_thinning_candida
     )
     assert thinning_option["event_type"] == "fruit_thinning"
     assert thinning_option["immediate_state_delta"]["fruit_load_delta"] < 0
+
+
+def test_build_work_event_compare_payload_supports_tomato_fruit_thinning_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.tomato_growth_model import (
+        build_tomato_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+
+    store = model_state_store.ModelStateStore()
+    adapter = _seed_tomato_runtime_state()
+    snapshot = store.persist_snapshot(
+        greenhouse_id="tomato",
+        crop="tomato",
+        snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=build_tomato_snapshot(
+            adapter,
+            greenhouse_id="tomato",
+            snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=adapter.dump_state(),
+        source="test",
+    )
+    store.upsert_current_state(
+        greenhouse_id="tomato",
+        crop="tomato",
+        latest_snapshot_id=snapshot["snapshot_id"],
+    )
+
+    compare = advisor_orchestration._build_work_event_compare_payload("tomato")["payload"]
+
+    assert compare["status"] == "ready"
+    actions = {option["action"] for option in compare["options"]}
+    assert actions >= {
+        "\ud604\uc7ac \ucc29\uacfc\uc218 \uc720\uc9c0",
+        "\uac10\uacfc \ubcf4\ub958",
+        "\ub2e4\uc74c \ud654\ubc29\uc5d0\uc11c \uc870\uc815",
+    }
+    thinning_option = next(
+        option for option in compare["options"] if option["comparison_kind"] == "candidate_event"
+    )
+    assert thinning_option["event_type"] == "fruit_thinning"
+    assert thinning_option["immediate_state_delta"]["fruit_load_delta"] < 0
+    assert compare["current_state"]["sink_overload_score"] > 0.0
+
+
+@pytest.mark.parametrize(
+    ("fruits_per_truss", "recommended_action"),
+    [
+        (3, "\ub2e4\uc74c \ud654\ubc29\uc5d0\uc11c \uc870\uc815"),
+        (5, "1\uacfc \uac10\uacfc"),
+    ],
+)
+def test_build_work_event_compare_payload_tomato_sink_overload_matrix(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    fruits_per_truss: int,
+    recommended_action: str,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.crop_models.tomato_growth_model import (
+        build_tomato_snapshot,
+    )
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / f"tomato-{fruits_per_truss}.sqlite3",
+    )
+
+    greenhouse_id = f"gh-tomato-{fruits_per_truss}"
+    store = model_state_store.ModelStateStore()
+    adapter = _seed_tomato_runtime_state(fruits_per_truss=fruits_per_truss)
+    snapshot = store.persist_snapshot(
+        greenhouse_id=greenhouse_id,
+        crop="tomato",
+        snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=build_tomato_snapshot(
+            adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=datetime(2026, 4, 7, 10, 0, tzinfo=UTC),
+        ),
+        raw_adapter_state=adapter.dump_state(),
+        source="test",
+    )
+    store.upsert_current_state(
+        greenhouse_id=greenhouse_id,
+        crop="tomato",
+        latest_snapshot_id=snapshot["snapshot_id"],
+    )
+
+    compare = advisor_orchestration._build_work_event_compare_payload(
+        "tomato",
+        greenhouse_id=greenhouse_id,
+    )["payload"]
+
+    assert compare["status"] == "ready"
+    assert compare["recommended_action"] == recommended_action
+    if fruits_per_truss == 3:
+        assert compare["recommended_action"] != "1\uacfc \uac10\uacfc"
+    assert any(
+        option["action"] == "\ub2e4\uc74c \ud654\ubc29\uc5d0\uc11c \uc870\uc815"
+        for option in compare["options"]
+    )
 
 
 def test_build_work_tradeoff_advisor_response_extracts_compare_contract(
