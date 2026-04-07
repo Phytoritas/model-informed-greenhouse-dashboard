@@ -1,54 +1,85 @@
 # System Brief
 
 ## Problem
-The target repository is now the correct long-lived home for a model-informed greenhouse dashboard, the absorbed runtime has passed browser smoke, and the production bundle has been explicitly split into stable sub-500 kB chunks. The next architectural question is no longer bundle feasibility, but whether live OpenAI-backed behavior and minor frontend dependency hygiene matter for the next slice.
+The repository already contains a validated dashboard runtime and a landed issue `#18` SmartGrow baseline centered on knowledge ingestion, workbook-backed advisory seams, routed retrieval, and bounded advisor shells.
+The new problem is different: the active mainline must move to model-actuated advisory, where crop physiology state, coupled gas exchange, bounded scenario simulation, local sensitivity, and constraint-aware logic drive recommendations while the existing knowledge layer becomes a supporting explanation surface.
 
 ## Goal
-Refactor the source dashboard into the target repository so that:
-
-- Python backend runtime lives under the package-owned `src/` tree
-- legacy crop models are isolated behind adapters
-- config and data contracts are explicit
-- API payloads and future frontend boundaries can speak in canonical dashboard terms
-- validation can progress through bounded smoke tests instead of ad hoc manual checks
+Extend the existing dashboard so that:
+- cucumber and tomato recommendations are backed by explicit crop-model state and event transitions
+- gas exchange, canopy integration, scenario, sensitivity, and constraint outputs become first-class backend surfaces
+- environment, physiology, work-tradeoff, harvest, and assistant flows consume model outputs instead of knowledge-first heuristics
+- the current dashboard and issue `#18` knowledge/RAG/advisor baseline remain stable throughout the migration
 
 ## Primary Actors
-- greenhouse operator viewing current KPIs and forecast summaries
-- backend service that ingests telemetry and runs crop-model-backed simulation steps
-- adapter layer that translates legacy crop models into dashboard-facing state and KPI payloads
-- future frontend workspace consuming backend payloads without importing model internals
+- greenhouse operator who needs actionable now/today/this-week recommendations
+- model runtime that owns crop state, work events, scenarios, sensitivities, and constraints
+- advisor layer that translates model outputs into actions and natural-language explanations
+- retrieval layer that supplies bounded evidence and internal provenance without owning the primary recommendation
+- frontend workspace that renders current tabs, action cards, and counterfactual comparisons without exposing raw provenance
 
 ## Source-To-Target Mapping
 | Source surface | Target direction | Notes |
 |---|---|---|
-| `backend/app/main.py` | package-owned API runtime | keep FastAPI boundary, adapt import roots |
-| `backend/app/adapters/*` | package-owned adapter layer | remove `sys.path` mutation and isolate legacy model imports |
-| `backend/app/services/*` | package-owned service layer | preserve ingest, forecast, irrigation, energy, decision seams |
-| `backend/app/schemas.py` | package-owned API schema module | keep response/request structure explicit |
-| `src/TomatoModel.py`, `src/CucumberModel.py` | legacy model isolation layer | no blind rename; protect with adapter boundary |
-| `config/greenhouse.yaml` | repo config contract | align with target repo config layout |
-| `frontend/` | canonical UI workspace | source Vite app migrated into the target repo and validated locally |
-| `frontend_legacy/` | reference only | keep out of the canonical migration path unless a specific UI surface is needed later |
+| `src/model_informed_greenhouse_dashboard/models/legacy/CucumberModel.py` | reusable cucumber crop-model service | donor logic for thermal time, LAI, canopy physiology, and defoliation effects; must be wrapped behind explicit state/event interfaces |
+| `src/model_informed_greenhouse_dashboard/models/legacy/TomatoModel.py` | reusable tomato crop-model service | donor logic for truss development, source-sink behavior, canopy physiology, and fruit load; must be wrapped behind explicit cohort/event interfaces |
+| `src/model_informed_greenhouse_dashboard/backend/app/services/advisory*.py` | preserved compatibility baseline | issue `#18` deterministic seams remain intact while the new advisor layer grows beside them |
+| `src/model_informed_greenhouse_dashboard/backend/app/services/knowledge_*.py` | explanation and provenance sidecar | keep the landed knowledge DB, query routing, and context builders, but demote them from mainline recommendation ownership |
+| `frontend/src/components/advisor/**` | model-aware advisor workspace shell | keep the existing tab shell, but replace pending and heuristic internals with model-backed payloads in later phases |
+| `frontend/src/components/chat/RagAssistantDrawer.tsx` and `frontend/src/components/ChatAssistant.tsx` | model-aware assistant split | keep the current chat shell, but route explanation through model snapshots and scenario/sensitivity results |
 
 ## Target Module Boundary
-- `legacy_models`: imported legacy crop models with minimal mechanical changes
-- `adapters`: canonical bridge between legacy model state and dashboard payloads
-- `services`: ingestion, forecasting, irrigation, energy, and decision logic
-- `api`: FastAPI app, schemas, and websocket surfaces
-- `configs`: tracked config contract used by the runtime
-- `frontend`: canonical Vite consumer workspace now wired to the migrated backend contract
+- `crop_models`: cucumber and tomato model services plus reusable thermal-time, dry-matter, gas-exchange, stomatal, and canopy-integration helpers
+- `model_runtime`: model-state store, event application, snapshot/replay, scenario runner, sensitivity engine, optimizer, and constraint engine
+- `advisory`: physiology, environment, work-tradeoff, harvest, and explanation-builder services over model runtime outputs
+- `rag`: bounded retriever/context-builder/router that augments explanation and provenance
+- `frontend_model_surfaces`: environment, physiology, work-tradeoff, harvest, and assistant views fed by model-backed APIs
+
+## Persistence And Contract Targets
+### Tables
+- `crop_model_states`
+- `crop_model_snapshots`
+- `crop_work_events`
+- `gas_exchange_observations`
+- `scenario_runs`
+- `scenario_outputs`
+- `sensitivity_outputs`
+- `advisor_recommendations`
+- `advisor_provenance`
+- `assistant_sessions`
+
+### APIs
+- `POST /api/models/snapshot`
+- `POST /api/models/replay`
+- `POST /api/models/scenario`
+- `POST /api/models/sensitivity`
+- `POST /api/advisor/physiology`
+- `POST /api/advisor/environment`
+- `POST /api/advisor/work-tradeoff`
+- `POST /api/advisor/harvest`
+- `POST /api/advisor/chat`
 
 ## Major Risks
-1. Legacy model code may expose inconsistent symbol names that cannot leak into public contracts.
-2. Optional OpenAI-backed features currently degrade gracefully without credentials, but a later slice may require explicit API-key provisioning and regression coverage for the live AI path.
-3. Frontend dependency hygiene still includes a non-blocking `baseline-browser-mapping` update notice during lint/build.
+1. The current harness truth previously pointed to nutrient and retrieval follow-up work, so the architecture can drift unless the new issue `#19` state remains explicit.
+2. Legacy crop-model code exists, but it is not yet exposed through the service boundaries, state schemas, or API contracts required by the new directive.
+3. The existing frontend advisor tabs are useful shells, but they still reflect issue `#18` semantics and must not be mislabeled as model-backed until the runtime is real.
+4. Recommendations that skip scenario agreement, local sensitivity, or constraint checks would violate the new directive even if the UI looks polished.
 
-## Delivered Migration Slice
-- bootstrap harness files and architecture artifacts
-- migrate backend runtime and legacy models into the package tree
-- align config loading to the target repo conventions
-- add backend-oriented smoke coverage for root, status, and crop-config/control contracts
-- migrate the source `frontend/` Vite app into `frontend/`
-- validate the frontend with local typecheck, lint, and production build
-- pass a live browser smoke of the migrated FastAPI + Vite path, including crop switching and crop-config/control interactions
-- split the frontend into lazy and vendor chunks so the Vite `>500 kB` warning is removed and the built preview still runs cleanly
+## First Bounded Delivery Slice For Issue #19
+- keep issue `#18` knowledge/RAG/advisor seams as the preserved baseline
+- add explicit `crop_models/` and `model_runtime/` package boundaries without rewriting the rest of the backend
+- define canonical state payloads for cucumber and tomato, including `leaf_removal` and `fruit_thinning` event schemas
+- add a bounded `model_state_store` contract plus a frozen choice for the phase-1 persistence adapter
+- expose `/api/models/snapshot` and `/api/models/replay` contracts before scenario/sensitivity or UI expansion
+- add targeted tests for state transitions and snapshot compatibility
+
+## Phase-1 Landing Status
+- The phase-1 persistence adapter is now frozen as a dedicated SQLite sidecar at `artifacts/models/model_runtime.sqlite3`.
+- Raw adapter `dump_state()` payloads remain the authoritative migration seam, and versioned normalized snapshots are now stored beside them for replay and later advisor/runtime promotion.
+- `POST /api/models/snapshot` and `POST /api/models/replay` are live additive contracts and are covered by targeted cucumber/tomato replay tests.
+
+## Deferred Until Later Phases
+- full scenario optimization and ranking across all control axes
+- full UI counterfactual compare, sensitivity charts, and trust-region mini-graphs
+- final Postgres/pgvector/Redis promotion
+- broader nutrient/pesticide calculator expansion beyond the preserved issue `#18` baseline

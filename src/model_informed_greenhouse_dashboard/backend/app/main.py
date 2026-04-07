@@ -1,29 +1,40 @@
 """Main FastAPI application entry point."""
 
+import copy
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, Literal
 
 from .config import settings, greenhouse_config
 from .ws import manager
-from .services.ingest import BatchIngestor
-from .services.simulator import Simulator
-from .services.forecast import BranchForecaster
-from .services.irrigation import IrrigationAdvisor
-from .services.energy import EnergyEstimator
-from .services.decision import DecisionSupport
+from .services.advisory_api import (
+    build_nutrient_correction_response,
+    build_nutrient_recommendation_response,
+    build_pesticide_recommendation_response,
+)
+from .services.advisor_orchestration import (
+    build_advisor_chat_response,
+    build_environment_recommendation_response,
+    build_advisor_summary_response,
+    build_advisor_tab_response,
+    build_work_recommendation_response,
+)
 from .services.openai_service import generate_consulting, generate_chat_reply
+from .services.knowledge_catalog import (
+    build_crop_knowledge_context,
+    build_knowledge_catalog,
+    rebuild_knowledge_catalog,
+)
+from .services.knowledge_database import query_knowledge_database
 from .services.produce_prices import fetch_featured_produce_prices
 from .services.rtr_profiles import load_rtr_profiles
 from .services.weather import fetch_daegu_weather_outlook
-from .adapters.tomato import TomatoAdapter
-from .adapters.cucumber import CucumberAdapter
 from .schemas import OpsConfig, CropConfig
 
 class Settings(BaseModel):
@@ -47,6 +58,151 @@ class AiChatRequest(BaseModel):
     messages: list[Dict[str, str]]
     dashboard: Optional[Dict[str, Any]] = None
     language: Optional[str] = "ko"
+
+
+class AdvisorSummaryRequest(BaseModel):
+    crop: str
+    dashboard: Optional[Dict[str, Any]] = None
+    language: Optional[str] = "ko"
+
+
+class AdvisorChatRequest(BaseModel):
+    crop: str
+    messages: list[Dict[str, str]]
+    dashboard: Optional[Dict[str, Any]] = None
+    language: Optional[str] = "ko"
+
+
+class AdvisorTabRequest(BaseModel):
+    crop: str
+    target: Optional[str] = None
+    limit: int = 5
+    stage: Optional[str] = None
+    medium: Optional[str] = None
+    dashboard: Optional[Dict[str, Any]] = None
+    source_water_mmol_l: Optional[Dict[str, float]] = None
+    drain_water_mmol_l: Optional[Dict[str, float]] = None
+    working_solution_volume_l: Optional[float] = None
+    stock_ratio: Optional[float] = None
+
+
+class EnvironmentRecommendationRequest(BaseModel):
+    crop: str
+    dashboard: Optional[Dict[str, Any]] = None
+
+
+class WorkRecommendationRequest(BaseModel):
+    crop: str
+    dashboard: Optional[Dict[str, Any]] = None
+
+
+class PesticideRecommendationRequest(BaseModel):
+    crop: str
+    target: str
+    limit: int = 5
+
+
+class NutrientRecommendationRequest(BaseModel):
+    crop: str
+    stage: Optional[str] = None
+    medium: Optional[str] = None
+
+
+class NutrientCorrectionRequest(BaseModel):
+    crop: str
+    stage: Optional[str] = None
+    medium: Optional[str] = None
+    source_water_mmol_l: Optional[Dict[str, float]] = None
+    drain_water_mmol_l: Optional[Dict[str, float]] = None
+    working_solution_volume_l: Optional[float] = None
+    stock_ratio: Optional[float] = None
+
+
+class KnowledgeQueryFilters(BaseModel):
+    source_types: Optional[list[str]] = None
+    asset_families: Optional[list[str]] = None
+    topic_major: Optional[str] = None
+    topic_minor: Optional[str] = None
+
+
+class KnowledgeQueryRequest(BaseModel):
+    crop: Optional[str] = None
+    query: str
+    limit: int = 5
+    filters: Optional[KnowledgeQueryFilters] = None
+
+
+ModelWorkEventType = Literal[
+    "leaf_removal",
+    "fruit_thinning",
+    "pruning",
+    "training",
+    "harvest",
+    "pollination",
+    "pesticide_application",
+    "irrigation_change",
+    "nutrient_recipe_change",
+    "heating_setpoint_change",
+    "ventilation_strategy_change",
+    "screen_strategy_change",
+    "CO2_strategy_change",
+]
+
+
+class ModelSnapshotRequest(BaseModel):
+    crop: str
+    greenhouse_id: Optional[str] = None
+    source: Optional[str] = "live_app_state"
+
+
+class ModelReplayEventRequest(BaseModel):
+    event_time: Optional[datetime] = None
+    event_type: ModelWorkEventType
+    leaf_rank_range: Optional[list[int]] = None
+    leaves_removed_count: Optional[int] = None
+    target_leaf_count: Optional[int] = None
+    truss_id: Optional[int] = None
+    cohort_id: Optional[int] = None
+    fruits_removed_count: Optional[int] = None
+    target_fruits_per_truss: Optional[int] = None
+    reason_code: Optional[str] = None
+    operator: Optional[str] = None
+    confidence: Optional[float] = 0.7
+    source: Optional[str] = "api"
+
+
+class ModelReplayRequest(BaseModel):
+    crop: str
+    greenhouse_id: Optional[str] = None
+    snapshot_id: Optional[str] = None
+    events: list[ModelReplayEventRequest]
+
+
+class ModelControlDeltaRequest(BaseModel):
+    temperature_day: Optional[float] = 0.0
+    temperature_night: Optional[float] = 0.0
+    co2_setpoint_day: Optional[float] = 0.0
+    rh_target: Optional[float] = 0.0
+    screen_close: Optional[float] = 0.0
+
+
+class ModelScenarioRequest(BaseModel):
+    crop: str
+    greenhouse_id: Optional[str] = None
+    snapshot_id: Optional[str] = None
+    horizon_hours: list[int] = Field(default_factory=lambda: [24, 72, 336])
+    scenario_label: Optional[str] = None
+    controls: Optional[ModelControlDeltaRequest] = None
+
+
+class ModelSensitivityRequest(BaseModel):
+    crop: str
+    greenhouse_id: Optional[str] = None
+    snapshot_id: Optional[str] = None
+    target: str = "predicted_yield_14d"
+    horizon_hours: int = 72
+    controls: Optional[list[str]] = None
+    step_overrides: Optional[Dict[str, float]] = None
 
 # Setup logging
 logging.basicConfig(
@@ -141,6 +297,177 @@ def _target_crops(crop: Optional[str] = None) -> list[str]:
     return [_validate_crop(crop)]
 
 
+def _normalize_catalog_crop(crop: Optional[str] = None) -> Optional[str]:
+    if crop in (None, "", "all"):
+        return None
+
+    return _validate_crop(crop)
+
+
+def _augment_dashboard_with_knowledge_context(
+    crop: str,
+    dashboard: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    payload = dict(dashboard or {})
+    existing_knowledge = payload.get("knowledge")
+    knowledge_context = build_crop_knowledge_context(crop)
+
+    if existing_knowledge:
+        knowledge_context["client_context"] = existing_knowledge
+
+    payload["knowledge"] = knowledge_context
+    return payload
+
+
+def _resolve_greenhouse_id(crop: str, greenhouse_id: Optional[str] = None) -> str:
+    return greenhouse_id or crop
+
+
+def _build_live_model_metadata(crop: str) -> Dict[str, Any]:
+    crop_state = app_state[crop]
+    return {
+        "ops_config": dict(_get_ops_config(crop)),
+        "crop_config": _serialize_crop_config(crop),
+        "latest_forecast": copy.deepcopy(crop_state.get("latest_forecast")),
+    }
+
+
+def _clone_adapter_from_raw_state(crop: str, raw_state: Dict[str, Any]):
+    from .adapters.cucumber import CucumberAdapter
+    from .adapters.tomato import TomatoAdapter
+
+    area_m2 = greenhouse_config["greenhouse"]["area_m2"]
+    crop_config = greenhouse_config["crops"][crop]
+
+    if crop == "tomato":
+        adapter = TomatoAdapter(
+            area_m2=area_m2,
+            plant_density=crop_config["plant_density_per_m2"],
+        )
+    else:
+        adapter = CucumberAdapter(
+            area_m2=area_m2,
+            plant_density=crop_config["plant_density_per_m2"],
+        )
+
+    adapter.load_state(copy.deepcopy(raw_state))
+    return adapter
+
+
+def _build_normalized_model_snapshot(
+    crop: str,
+    greenhouse_id: str,
+    adapter,
+    *,
+    snapshot_time: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    if crop == "tomato":
+        from .services.crop_models.tomato_growth_model import build_tomato_snapshot
+
+        return build_tomato_snapshot(
+            adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=snapshot_time,
+        )
+
+    from .services.crop_models.cucumber_growth_model import build_cucumber_snapshot
+
+    return build_cucumber_snapshot(
+        adapter,
+        greenhouse_id=greenhouse_id,
+        snapshot_time=snapshot_time,
+    )
+
+
+def _persist_model_snapshot(
+    *,
+    store,
+    crop: str,
+    greenhouse_id: str,
+    adapter,
+    source: str,
+    metadata: Optional[Dict[str, Any]] = None,
+    snapshot_time: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    snapshot_dt = (
+        snapshot_time
+        or getattr(adapter, "_last_datetime", None)
+        or datetime.now(UTC)
+    )
+    normalized_snapshot = _build_normalized_model_snapshot(
+        crop,
+        greenhouse_id,
+        adapter,
+        snapshot_time=snapshot_dt,
+    )
+    return store.persist_snapshot(
+        greenhouse_id=greenhouse_id,
+        crop=crop,
+        snapshot_time=snapshot_dt,
+        adapter_name=adapter.name,
+        adapter_version=adapter.version,
+        normalized_snapshot=normalized_snapshot,
+        raw_adapter_state=adapter.dump_state(),
+        source=source,
+        metadata=metadata,
+    )
+
+
+def _resolve_runtime_snapshot_record(
+    *,
+    store,
+    crop: str,
+    greenhouse_id: Optional[str] = None,
+    snapshot_id: Optional[str] = None,
+    source: str = "live_app_state",
+):
+    if snapshot_id:
+        snapshot_record = store.load_snapshot(snapshot_id)
+        if snapshot_record is None:
+            raise HTTPException(status_code=404, detail=f"Unknown snapshot_id: {snapshot_id}")
+        if snapshot_record["crop"] != crop:
+            raise HTTPException(
+                status_code=400,
+                detail="snapshot_id crop does not match requested crop.",
+            )
+        return _resolve_greenhouse_id(crop, greenhouse_id or snapshot_record["greenhouse_id"]), snapshot_record
+
+    crop_state = app_state[crop]
+    if crop_state["adapter"] is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Model runtime is inactive. Call /api/start first or provide snapshot_id.",
+        )
+
+    resolved_greenhouse_id = _resolve_greenhouse_id(crop, greenhouse_id)
+    adapter = _clone_adapter_from_raw_state(crop, crop_state["adapter"].dump_state())
+    snapshot_record = _persist_model_snapshot(
+        store=store,
+        crop=crop,
+        greenhouse_id=resolved_greenhouse_id,
+        adapter=adapter,
+        source=source,
+        metadata=_build_live_model_metadata(crop),
+    )
+    store.upsert_current_state(
+        greenhouse_id=resolved_greenhouse_id,
+        crop=crop,
+        latest_snapshot_id=snapshot_record["snapshot_id"],
+    )
+    return resolved_greenhouse_id, snapshot_record
+
+
+def _apply_model_replay_event(crop: str, adapter, event_payload: Dict[str, Any]) -> Dict[str, Any]:
+    if crop == "tomato":
+        from .services.crop_models.tomato_growth_model import apply_tomato_work_event
+
+        return apply_tomato_work_event(adapter, event_payload)
+
+    from .services.crop_models.cucumber_growth_model import apply_cucumber_work_event
+
+    return apply_cucumber_work_event(adapter, event_payload)
+
+
 def _get_ops_config(crop: str) -> Dict[str, float]:
     crop_state = app_state[crop]
     ops_config = crop_state.get("ops_config")
@@ -199,6 +526,8 @@ def _serialize_crop_config(crop: str) -> Dict[str, Any]:
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     logger.info("Starting up greenhouse dashboard backend...")
+    from .services.energy import EnergyEstimator
+    from .services.irrigation import IrrigationAdvisor
 
     # Initialize greenhouse area (each greenhouse has same area)
     area_m2 = greenhouse_config["greenhouse"]["area_m2"]
@@ -268,6 +597,12 @@ class StartRequest(BaseModel):
 async def start_simulation(req: StartRequest):
     """Start simulation for specified crop (independent per greenhouse)."""
     logger.info(f"Starting simulation for {req.crop} greenhouse with {req.csv_filename}")
+    from .adapters.cucumber import CucumberAdapter
+    from .adapters.tomato import TomatoAdapter
+    from .services.decision import DecisionSupport
+    from .services.forecast import BranchForecaster
+    from .services.ingest import BatchIngestor
+    from .services.simulator import Simulator
 
     # Validate crop type
     _validate_crop(req.crop)
@@ -833,13 +1168,493 @@ async def submit_feedback(feedback: Feedback):
     return {"status": "received"}
 
 
+@app.get("/api/knowledge/status")
+async def get_knowledge_status(crop: Optional[str] = None):
+    """Return the phase-1 SmartGrow corpus catalog."""
+    try:
+        crop_scope = _normalize_catalog_crop(crop)
+        return {"status": "success", **build_knowledge_catalog(crop_scope)}
+    except Exception as exc:
+        logger.error("Knowledge status failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Knowledge status failed.",
+        ) from exc
+
+
+@app.post("/api/knowledge/reindex")
+async def reindex_knowledge(crop: Optional[str] = None):
+    """Rebuild and persist the phase-1 SmartGrow corpus catalog."""
+    try:
+        crop_scope = _normalize_catalog_crop(crop)
+        return {"status": "success", **rebuild_knowledge_catalog(crop_scope)}
+    except Exception as exc:
+        logger.error("Knowledge reindex failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Knowledge reindex failed.",
+        ) from exc
+
+
+@app.post("/api/knowledge/query")
+async def query_knowledge(req: KnowledgeQueryRequest):
+    """Query persisted SmartGrow knowledge chunks from the SQLite knowledge DB."""
+    try:
+        crop_scope = _normalize_catalog_crop(req.crop)
+        return {
+            "status": "success",
+            **query_knowledge_database(
+                crop=crop_scope,
+                query=req.query,
+                limit=req.limit,
+                filters=req.filters.model_dump(exclude_none=True) if req.filters else None,
+            ),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/models/snapshot")
+async def create_model_snapshot(req: ModelSnapshotRequest):
+    """Persist a normalized model snapshot from the active adapter state."""
+    from .services.model_runtime.model_state_store import ModelStateStore
+
+    crop = _validate_crop(req.crop)
+    crop_state = app_state[crop]
+    if crop_state["adapter"] is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Model runtime is inactive. Call /api/start first.",
+        )
+
+    greenhouse_id = _resolve_greenhouse_id(crop, req.greenhouse_id)
+    store = ModelStateStore()
+    adapter = _clone_adapter_from_raw_state(crop, crop_state["adapter"].dump_state())
+    snapshot_record = _persist_model_snapshot(
+        store=store,
+        crop=crop,
+        greenhouse_id=greenhouse_id,
+        adapter=adapter,
+        source=req.source or "live_app_state",
+        metadata=_build_live_model_metadata(crop),
+    )
+    store.upsert_current_state(
+        greenhouse_id=greenhouse_id,
+        crop=crop,
+        latest_snapshot_id=snapshot_record["snapshot_id"],
+    )
+
+    return {
+        "status": "success",
+        "snapshot_id": snapshot_record["snapshot_id"],
+        "crop": crop,
+        "greenhouse_id": greenhouse_id,
+        "snapshot": snapshot_record["normalized_snapshot"],
+        "store": store.describe(),
+    }
+
+
+@app.post("/api/models/replay")
+async def replay_model_events(req: ModelReplayRequest):
+    """Replay canonical work events over a stored or live model snapshot."""
+    from .services.model_runtime.model_state_store import ModelStateStore
+
+    crop = _validate_crop(req.crop)
+    store = ModelStateStore()
+
+    if req.snapshot_id:
+        baseline_record = store.load_snapshot(req.snapshot_id)
+        if baseline_record is None:
+            raise HTTPException(status_code=404, detail=f"Unknown snapshot_id: {req.snapshot_id}")
+        if baseline_record["crop"] != crop:
+            raise HTTPException(
+                status_code=400,
+                detail="snapshot_id crop does not match replay crop.",
+            )
+        greenhouse_id = _resolve_greenhouse_id(
+            crop,
+            req.greenhouse_id or baseline_record["greenhouse_id"],
+        )
+        adapter = _clone_adapter_from_raw_state(crop, baseline_record["raw_adapter_state"])
+    else:
+        crop_state = app_state[crop]
+        if crop_state["adapter"] is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Model runtime is inactive. Call /api/start first or provide snapshot_id.",
+            )
+        greenhouse_id = _resolve_greenhouse_id(crop, req.greenhouse_id)
+        adapter = _clone_adapter_from_raw_state(crop, crop_state["adapter"].dump_state())
+        baseline_record = _persist_model_snapshot(
+            store=store,
+            crop=crop,
+            greenhouse_id=greenhouse_id,
+            adapter=adapter,
+            source="replay_baseline",
+            metadata=_build_live_model_metadata(crop),
+        )
+
+    latest_snapshot_record = baseline_record
+    applied_events: list[Dict[str, Any]] = []
+
+    for event in req.events:
+        event_payload = event.model_dump(exclude_none=True)
+        event_time = event.event_time or datetime.now(UTC)
+        try:
+            effect = _apply_model_replay_event(crop, adapter, event_payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        latest_snapshot_record = _persist_model_snapshot(
+            store=store,
+            crop=crop,
+            greenhouse_id=greenhouse_id,
+            adapter=adapter,
+            source=f"replay:{event.event_type}",
+            metadata={"replay": True, "event_effect": effect},
+            snapshot_time=event_time,
+        )
+        stored_event = store.persist_work_event(
+            greenhouse_id=greenhouse_id,
+            crop=crop,
+            event_time=event_time,
+            event_type=event.event_type,
+            payload=event_payload,
+            before_snapshot_id=baseline_record["snapshot_id"],
+            after_snapshot_id=latest_snapshot_record["snapshot_id"],
+            operator=event.operator,
+            reason_code=event.reason_code,
+            confidence=event.confidence,
+        )
+        applied_events.append(
+            {
+                "event_id": stored_event["event_id"],
+                "before_snapshot_id": baseline_record["snapshot_id"],
+                "after_snapshot_id": latest_snapshot_record["snapshot_id"],
+                **effect,
+            }
+        )
+        baseline_record = latest_snapshot_record
+
+    latest_event_id = applied_events[-1]["event_id"] if applied_events else None
+    store.upsert_current_state(
+        greenhouse_id=greenhouse_id,
+        crop=crop,
+        latest_snapshot_id=latest_snapshot_record["snapshot_id"],
+        latest_event_id=latest_event_id,
+    )
+
+    return {
+        "status": "success",
+        "crop": crop,
+        "greenhouse_id": greenhouse_id,
+        "initial_snapshot_id": (
+            req.snapshot_id
+            or (applied_events[0]["before_snapshot_id"] if applied_events else baseline_record["snapshot_id"])
+        ),
+        "final_snapshot_id": latest_snapshot_record["snapshot_id"],
+        "events": applied_events,
+        "snapshot": latest_snapshot_record["normalized_snapshot"],
+        "store": store.describe(),
+    }
+
+
+@app.post("/api/models/scenario")
+async def run_model_scenario(req: ModelScenarioRequest):
+    """Run a bounded counterfactual scenario over a stored or live snapshot."""
+    from .services.model_runtime.model_state_store import ModelStateStore
+    from .services.model_runtime.scenario_runner import run_bounded_scenario
+
+    crop = _validate_crop(req.crop)
+    store = ModelStateStore()
+    greenhouse_id, snapshot_record = _resolve_runtime_snapshot_record(
+        store=store,
+        crop=crop,
+        greenhouse_id=req.greenhouse_id,
+        snapshot_id=req.snapshot_id,
+        source="scenario_baseline",
+    )
+    scenario_payload = run_bounded_scenario(
+        snapshot_record,
+        controls=req.controls.model_dump(exclude_none=True) if req.controls else None,
+        horizons_hours=req.horizon_hours,
+    )
+    scenario_record = store.persist_scenario_run(
+        snapshot_id=snapshot_record["snapshot_id"],
+        greenhouse_id=greenhouse_id,
+        crop=crop,
+        controls=scenario_payload["controls"],
+        horizons_hours=[int(row["horizon_hours"]) for row in scenario_payload["outputs"]],
+        violated_constraints=scenario_payload["violated_constraints"],
+        confidence_score=float(scenario_payload["confidence"]),
+        scenario_label=req.scenario_label,
+    )
+    stored_outputs = store.persist_scenario_outputs(
+        scenario_id=scenario_record["scenario_id"],
+        greenhouse_id=greenhouse_id,
+        crop=crop,
+        outputs=scenario_payload["outputs"],
+    )
+
+    return {
+        "status": "success",
+        "scenario_id": scenario_record["scenario_id"],
+        "snapshot_id": snapshot_record["snapshot_id"],
+        "crop": crop,
+        "greenhouse_id": greenhouse_id,
+        "controls": scenario_payload["controls"],
+        "baseline_outputs": scenario_payload["baseline_outputs"],
+        "outputs": stored_outputs,
+        "violated_constraints": scenario_payload["violated_constraints"],
+        "confidence": scenario_payload["confidence"],
+        "store": store.describe(),
+    }
+
+
+@app.post("/api/models/sensitivity")
+async def compute_model_sensitivity(req: ModelSensitivityRequest):
+    """Compute bounded local sensitivities over a stored or live snapshot."""
+    from .services.model_runtime.model_state_store import ModelStateStore
+    from .services.model_runtime.sensitivity_engine import compute_local_sensitivities
+
+    crop = _validate_crop(req.crop)
+    store = ModelStateStore()
+    greenhouse_id, snapshot_record = _resolve_runtime_snapshot_record(
+        store=store,
+        crop=crop,
+        greenhouse_id=req.greenhouse_id,
+        snapshot_id=req.snapshot_id,
+        source="sensitivity_baseline",
+    )
+    sensitivity_payload = compute_local_sensitivities(
+        snapshot_record,
+        derivative_target=req.target,
+        horizon_hours=req.horizon_hours,
+        controls=req.controls,
+        step_overrides=req.step_overrides,
+    )
+    stored_rows = store.persist_sensitivity_outputs(
+        snapshot_id=snapshot_record["snapshot_id"],
+        greenhouse_id=greenhouse_id,
+        crop=crop,
+        horizon_hours=int(sensitivity_payload["horizon_hours"]),
+        sensitivities=sensitivity_payload["sensitivities"],
+    )
+
+    return {
+        "status": "success",
+        "snapshot_id": snapshot_record["snapshot_id"],
+        "crop": crop,
+        "greenhouse_id": greenhouse_id,
+        "horizon_hours": req.horizon_hours,
+        "analysis_horizon_hours": sensitivity_payload["horizon_hours"],
+        "target": req.target,
+        "sensitivities": stored_rows,
+        "confidence": sensitivity_payload["confidence"],
+        "store": store.describe(),
+    }
+
+
+@app.post("/api/advisor/summary")
+async def advisor_summary(req: AdvisorSummaryRequest):
+    """Return a thin SmartGrow advisor summary over live context plus local knowledge."""
+    _validate_crop(req.crop)
+    try:
+        return build_advisor_summary_response(
+            crop=req.crop,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            language=req.language or "ko",
+        )
+    except RuntimeError as exc:
+        logger.warning("Advisor summary degraded gracefully: %s", exc)
+        return {
+            "status": "degraded",
+            "family": "advisor_summary",
+            "crop": req.crop,
+            "text": f"AI consulting is unavailable: {exc}",
+            "machine_payload": {
+                "domains": [],
+                "context_completeness": 0.0,
+                "missing_data": ["openai_unavailable"],
+                "actions": [],
+                "model_runtime": {
+                    "status": "unavailable",
+                    "summary": "Model runtime block was not assembled because the summary endpoint degraded before orchestration completed.",
+                    "state_snapshot": {},
+                    "scenario": {"baseline_outputs": [], "options": [], "recommended": None},
+                    "sensitivity": {
+                        "target": None,
+                        "analysis_horizon_hours": None,
+                        "confidence": 0.0,
+                        "top_levers": [],
+                    },
+                    "constraint_checks": {
+                        "status": "unavailable",
+                        "violated_constraints": [],
+                        "penalties": {},
+                    },
+                    "recommendations": [],
+                    "provenance": {
+                        "source": "advisor_summary_fallback",
+                        "reason": "openai_unavailable",
+                    },
+                },
+            },
+        }
+    except Exception as exc:
+        logger.error("Advisor summary failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Advisor summary failed: {exc}",
+        ) from exc
+
+
+@app.post("/api/advisor/tab/{tab_name}")
+async def advisor_tab(tab_name: str, req: AdvisorTabRequest):
+    """Return a tab-specific SmartGrow advisor payload."""
+    _validate_crop(req.crop)
+    try:
+        return build_advisor_tab_response(
+            tab_name=tab_name,
+            crop=req.crop,
+            target=req.target,
+            limit=req.limit,
+            stage=req.stage,
+            medium=req.medium,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            source_water_mmol_l=req.source_water_mmol_l,
+            drain_water_mmol_l=req.drain_water_mmol_l,
+            working_solution_volume_l=req.working_solution_volume_l,
+            stock_ratio=req.stock_ratio,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/advisor/chat")
+async def advisor_chat(req: AdvisorChatRequest):
+    """Return a SmartGrow chat reply with orchestration metadata."""
+    _validate_crop(req.crop)
+    try:
+        return build_advisor_chat_response(
+            crop=req.crop,
+            messages=req.messages,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            language=req.language or "ko",
+        )
+    except RuntimeError as exc:
+        logger.warning("Advisor chat degraded gracefully: %s", exc)
+        return {
+            "status": "degraded",
+            "family": "advisor_chat",
+            "crop": req.crop,
+            "text": f"AI chat is unavailable: {exc}",
+            "machine_payload": {
+                "domains": [],
+                "context_completeness": 0.0,
+                "missing_data": ["openai_unavailable"],
+                "model_runtime": {
+                    "status": "unavailable",
+                    "summary": "Model runtime block was not assembled because the chat endpoint degraded before orchestration completed.",
+                    "state_snapshot": {},
+                    "scenario": {"baseline_outputs": [], "options": [], "recommended": None},
+                    "sensitivity": {
+                        "target": None,
+                        "analysis_horizon_hours": None,
+                        "confidence": 0.0,
+                        "top_levers": [],
+                    },
+                    "constraint_checks": {
+                        "status": "unavailable",
+                        "violated_constraints": [],
+                        "penalties": {},
+                    },
+                    "recommendations": [],
+                    "provenance": {
+                        "source": "advisor_chat_fallback",
+                        "reason": "openai_unavailable",
+                    },
+                },
+            },
+        }
+    except Exception as exc:
+        logger.error("Advisor chat failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Advisor chat failed: {exc}",
+        ) from exc
+
+
+@app.post("/api/environment/recommend")
+async def recommend_environment_controls(req: EnvironmentRecommendationRequest):
+    """Return deterministic environment-control guidance from the live dashboard."""
+    _validate_crop(req.crop)
+    try:
+        return build_environment_recommendation_response(
+            crop=req.crop,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/work/recommend")
+async def recommend_cultivation_work(req: WorkRecommendationRequest):
+    """Return deterministic cultivation-work guidance from the live dashboard."""
+    _validate_crop(req.crop)
+    try:
+        return build_work_recommendation_response(
+            crop=req.crop,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/pesticides/recommend")
+async def recommend_pesticide_products(req: PesticideRecommendationRequest):
+    """Return deterministic pesticide candidates from the SmartGrow workbook."""
+    return build_pesticide_recommendation_response(
+        crop=req.crop,
+        target=req.target,
+        limit=req.limit,
+    )
+
+
+@app.post("/api/nutrients/recommend")
+async def recommend_nutrient_program(req: NutrientRecommendationRequest):
+    """Return deterministic nutrient recipe lookup from the SmartGrow workbook."""
+    return build_nutrient_recommendation_response(
+        crop=req.crop,
+        stage=req.stage,
+        medium=req.medium,
+    )
+
+
+@app.post("/api/nutrients/correction")
+async def recommend_nutrient_correction_draft(req: NutrientCorrectionRequest):
+    """Return a deterministic nutrient correction draft from workbook baselines."""
+    return build_nutrient_correction_response(
+        crop=req.crop,
+        stage=req.stage,
+        medium=req.medium,
+        source_water_mmol_l=req.source_water_mmol_l,
+        drain_water_mmol_l=req.drain_water_mmol_l,
+        working_solution_volume_l=req.working_solution_volume_l,
+        stock_ratio=req.stock_ratio,
+    )
+
+
 @app.post("/api/ai/consult")
 async def ai_consult(req: AiConsultRequest):
     """Generate consulting content using OpenAI."""
     if req.crop not in ["tomato", "cucumber"]:
         raise HTTPException(status_code=400, detail="crop must be 'tomato' or 'cucumber'")
     try:
-        text = generate_consulting(crop=req.crop, dashboard=req.dashboard, language=req.language or "ko")
+        text = generate_consulting(
+            crop=req.crop,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            language=req.language or "ko",
+        )
         return {"status": "success", "text": text}
     except RuntimeError as e:
         logger.warning("AI consult degraded gracefully: %s", e)
@@ -858,7 +1673,7 @@ async def ai_chat(req: AiChatRequest):
         text = generate_chat_reply(
             crop=req.crop,
             messages=req.messages,
-            dashboard=req.dashboard,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
             language=req.language or "ko",
         )
         return {"status": "success", "text": text}
