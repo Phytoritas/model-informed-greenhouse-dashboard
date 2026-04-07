@@ -1,5 +1,6 @@
 import type { CropType } from '../types';
 import type { AppLocale } from '../i18n/locale';
+import type { NumericRange } from './sensorStatus';
 
 export const UNIT_LABELS = {
     temperature: '°C',
@@ -50,6 +51,27 @@ const IDEAL_RANGES: Record<CropType, Record<'temperature' | 'humidity' | 'light'
         humidity: '70-90 %',
         light: '> 600 µmol m⁻² s⁻¹',
         vpd: '0.5-1.2 kPa',
+    },
+};
+
+export type KpiSensorKey = 'temperature' | 'humidity' | 'co2' | 'light' | 'vpd' | 'stomatalConductance';
+
+export const NUMERIC_IDEAL_RANGES: Record<CropType, Partial<Record<KpiSensorKey, NumericRange>>> = {
+    Tomato: {
+        temperature: { min: 18, max: 26 },
+        humidity: { min: 60, max: 80 },
+        co2: { min: 400, max: 800 },
+        light: { min: 600, max: 1200 },
+        vpd: { min: 0.5, max: 1.2 },
+        stomatalConductance: { min: 0.3, max: 1.0 },
+    },
+    Cucumber: {
+        temperature: { min: 20, max: 28 },
+        humidity: { min: 70, max: 90 },
+        co2: { min: 400, max: 800 },
+        light: { min: 600, max: 1200 },
+        vpd: { min: 0.5, max: 1.2 },
+        stomatalConductance: { min: 0.3, max: 1.0 },
     },
 };
 
