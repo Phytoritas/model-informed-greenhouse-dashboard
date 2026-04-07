@@ -123,7 +123,7 @@ const AiAdvisor = ({
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            title: 'AI 어드바이저',
+            title: '권장 도우미',
             loading: '실시간 데이터와 모델 상태를 분석하는 중입니다...',
             empty: '데이터가 더 쌓이면 실행 가능한 조치를 먼저 보여드립니다.',
             advisoryTitle: '스마트그로우 결정형 상태',
@@ -133,8 +133,8 @@ const AiAdvisor = ({
             nutrientReady: '양액 레시피',
             correctionReady: '양액 보정 초안',
             correctionBoundary:
-                '현재 양액 보정은 macro-only 단일 비료 초안까지만 자동화되어 있으며, 최종 stock-tank 계산은 수동 검토가 필요합니다.',
-            parserPending: 'PDF parser는 아직 준비 중입니다.',
+                '현재 양액 보정은 다량원소 중심 단일 비료 초안까지만 자동화되어 있으며, 최종 원액 탱크 계산은 수동 검토가 필요합니다.',
+            parserPending: 'PDF 파싱 기능은 아직 준비 중입니다.',
             openDetails: '세부 탭 보기',
             openKnowledgeSearch: '지식 검색',
             runtimeTitle: '모델 런타임',

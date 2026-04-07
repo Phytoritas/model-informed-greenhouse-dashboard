@@ -56,7 +56,7 @@ const CHAT_ASSISTANT_FALLBACK_COPY = {
   ko: {
     title: '어시스턴트',
     close: '닫기',
-    loading: 'AI 어시스턴트를 불러오는 중...',
+    loading: '상담 도우미를 불러오는 중...',
   },
 } as const;
 
@@ -116,7 +116,7 @@ const APP_COPY = {
     sensorSlope: '6h 기울기',
     brandTagline: '스마트 온실 의사결정 지원',
     systemOnline: '시스템 정상',
-    askAiAssistant: 'AI 어시스턴트',
+    askAiAssistant: '상담 도우미',
     language: '언어',
     advancedModelAnalytics: '고급 모델 분석',
     yieldForecast: '수확 전망',
@@ -148,9 +148,9 @@ const RAG_ASSISTANT_FALLBACK_COPY = {
     loading: 'Loading knowledge search...',
   },
   ko: {
-    title: 'RAG 지식 검색',
+    title: '지식 검색',
     close: '닫기',
-    loading: '지식 검색 drawer를 불러오는 중...',
+    loading: '지식 검색 패널을 불러오는 중...',
   },
 } as const;
 
