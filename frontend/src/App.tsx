@@ -366,9 +366,9 @@ function App() {
   const [isAdvisorTabsOpen, setIsAdvisorTabsOpen] = useState(false);
   const [telemetryClock, setTelemetryClock] = useState(() => Date.now());
   const advisorTabsAnchorRef = useRef<HTMLDivElement | null>(null);
-  const lastAutoAnalysisAtRef = useRef<Record<CropType, number>>({
-    Tomato: 0,
-    Cucumber: 0,
+  const lastAutoAnalysisRef = useRef<Record<CropType, { telemetryTimestamp: number; marketFetchedAt: string | null }>>({
+    Tomato: { telemetryTimestamp: 0, marketFetchedAt: null },
+    Cucumber: { telemetryTimestamp: 0, marketFetchedAt: null },
   });
   const deferredHistory = useDeferredValue(history);
   const deferredMetricHistory = useDeferredValue(metricHistory);
@@ -515,24 +515,34 @@ function App() {
   useEffect(() => {
     const latestTimestamp = history[history.length - 1]?.timestamp
       ?? (hasTelemetryData ? currentData.timestamp : 0);
+    const latestMarketFetchedAt = producePrices?.source.fetched_at ?? null;
 
     if (!latestTimestamp || telemetry.status === 'loading') {
       return;
     }
 
-    const lastAutoTs = lastAutoAnalysisAtRef.current[selectedCrop];
-    const shouldAnalyze = lastAutoTs === 0 || latestTimestamp - lastAutoTs >= AUTO_ANALYSIS_INTERVAL_MS;
+    const lastAuto = lastAutoAnalysisRef.current[selectedCrop];
+    const telemetryNeedsRefresh =
+      lastAuto.telemetryTimestamp === 0
+      || latestTimestamp - lastAuto.telemetryTimestamp >= AUTO_ANALYSIS_INTERVAL_MS;
+    const marketNeedsRefresh =
+      latestMarketFetchedAt !== null
+      && latestMarketFetchedAt !== lastAuto.marketFetchedAt;
+    const shouldAnalyze = telemetryNeedsRefresh || marketNeedsRefresh;
     if (!shouldAnalyze) {
       return;
     }
 
     const timer = setTimeout(() => {
-      lastAutoAnalysisAtRef.current[selectedCrop] = latestTimestamp;
+      lastAutoAnalysisRef.current[selectedCrop] = {
+        telemetryTimestamp: latestTimestamp,
+        marketFetchedAt: latestMarketFetchedAt,
+      };
       handleAnalyze();
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [currentData.timestamp, handleAnalyze, hasTelemetryData, history, selectedCrop, telemetry.status]);
+  }, [currentData.timestamp, handleAnalyze, hasTelemetryData, history, producePrices, selectedCrop, telemetry.status]);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans">

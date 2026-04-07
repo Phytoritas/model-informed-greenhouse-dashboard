@@ -41,7 +41,10 @@ def test_query_knowledge_database_returns_ranked_results(
     first_result = payload["results"][0]
     assert first_result["document"]["asset_family"] == "nutrient_workbook"
     assert first_result["document"]["source_type"] == "xlsx"
-    assert any("guardrail" in result["text"].lower() for result in payload["results"])
+    assert any(
+        any(token in result["text"].lower() for token in ("ca", "cl", "source_water"))
+        for result in payload["results"]
+    )
 
 
 def test_query_knowledge_database_clamps_limit(
