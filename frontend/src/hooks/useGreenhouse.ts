@@ -4,6 +4,9 @@ import type {
     ControlStatus,
     AdvancedModelMetrics,
     CropType,
+    SensorFieldAvailability,
+    SensorFieldTimestamps,
+    TelemetryStatus,
     TemperatureSettings,
     ForecastData,
     MetricHistoryPoint,
@@ -77,19 +80,39 @@ type BackendPayload = {
 
 type NullableByCrop<T> = Record<CropType, T | null>;
 type ArrayByCrop<T> = Record<CropType, T[]>;
-type TelemetryStatus = 'loading' | 'live' | 'stale' | 'offline';
 type TelemetryState = {
     status: TelemetryStatus;
     lastMessageAt: number | null;
 };
 type TelemetryByCrop = Record<CropType, TelemetryState>;
+type AvailabilityByCrop = Record<CropType, SensorFieldAvailability>;
+type TimestampByCrop = Record<CropType, SensorFieldTimestamps>;
 
 const AREA_M2 = 3305.8;
 const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_HISTORY_POINTS = 288;
 const STREAM_COMMIT_INTERVAL_MS = 250;
-const STREAM_STALE_THRESHOLD_MS = 15_000;
+const STREAM_DELAY_THRESHOLD_MS = 8_000;
+const STREAM_STALE_THRESHOLD_MS = 30_000;
 const TELEMETRY_HEALTH_POLL_MS = 2_000;
+
+const DEFAULT_SENSOR_FIELD_AVAILABILITY: SensorFieldAvailability = {
+    temperature: false,
+    humidity: false,
+    co2: false,
+    light: false,
+    vpd: false,
+    stomatalConductance: false,
+};
+
+const DEFAULT_SENSOR_FIELD_TIMESTAMPS: SensorFieldTimestamps = {
+    temperature: null,
+    humidity: null,
+    co2: null,
+    light: null,
+    vpd: null,
+    stomatalConductance: null,
+};
 
 const appendUniquePoint = <T extends { timestamp: number }>(series: T[], point: T): T[] => {
     const nextSeries = [...series];
@@ -113,6 +136,17 @@ const appendUniquePoint = <T extends { timestamp: number }>(series: T[], point: 
 
     return nextSeries;
 };
+
+function pickNumericValue(
+    candidates: Array<number | undefined>,
+    fallback: number,
+): { value: number; available: boolean } {
+    const resolved = candidates.find((candidate) => Number.isFinite(candidate));
+    return {
+        value: typeof resolved === 'number' ? resolved : fallback,
+        available: typeof resolved === 'number',
+    };
+}
 
 export const useGreenhouse = () => {
     const { locale } = useLocale();
@@ -157,12 +191,22 @@ export const useGreenhouse = () => {
         Tomato: { status: 'loading', lastMessageAt: null },
         Cucumber: { status: 'loading', lastMessageAt: null },
     });
+    const [sensorFieldAvailabilityByCrop, setSensorFieldAvailabilityByCrop] = useState<AvailabilityByCrop>({
+        Tomato: { ...DEFAULT_SENSOR_FIELD_AVAILABILITY },
+        Cucumber: { ...DEFAULT_SENSOR_FIELD_AVAILABILITY },
+    });
+    const [sensorFieldTimestampsByCrop, setSensorFieldTimestampsByCrop] = useState<TimestampByCrop>({
+        Tomato: { ...DEFAULT_SENSOR_FIELD_TIMESTAMPS },
+        Cucumber: { ...DEFAULT_SENSOR_FIELD_TIMESTAMPS },
+    });
     const liveStateRef = useRef<{
         currentDataByCrop: NullableByCrop<SensorData>;
         modelMetricsByCrop: NullableByCrop<AdvancedModelMetrics>;
         historyByCrop: ArrayByCrop<SensorData>;
         metricHistoryByCrop: ArrayByCrop<MetricHistoryPoint>;
         startTimestampByCrop: Record<CropType, number | null>;
+        sensorFieldAvailabilityByCrop: AvailabilityByCrop;
+        sensorFieldTimestampsByCrop: TimestampByCrop;
     }>({
         currentDataByCrop: {
             Tomato: null,
@@ -183,6 +227,14 @@ export const useGreenhouse = () => {
         startTimestampByCrop: {
             Tomato: null,
             Cucumber: null,
+        },
+        sensorFieldAvailabilityByCrop: {
+            Tomato: { ...DEFAULT_SENSOR_FIELD_AVAILABILITY },
+            Cucumber: { ...DEFAULT_SENSOR_FIELD_AVAILABILITY },
+        },
+        sensorFieldTimestampsByCrop: {
+            Tomato: { ...DEFAULT_SENSOR_FIELD_TIMESTAMPS },
+            Cucumber: { ...DEFAULT_SENSOR_FIELD_TIMESTAMPS },
         },
     });
     const pendingFlushTimerRef = useRef<Record<CropType, number | null>>({
@@ -205,8 +257,15 @@ export const useGreenhouse = () => {
     // Helper to map backend payload to frontend types
     const mapPayloadToData = useCallback((
         payload: BackendPayload,
-        cropType: CropType
-    ): { sensor: SensorData; metrics: AdvancedModelMetrics; metricPoint: MetricHistoryPoint } => {
+        cropType: CropType,
+        previousSensor: SensorData | null,
+    ): {
+        sensor: SensorData;
+        metrics: AdvancedModelMetrics;
+        metricPoint: MetricHistoryPoint;
+        fieldAvailability: SensorFieldAvailability;
+        fieldTimestamps: SensorFieldTimestamps;
+    } => {
         const now = Date.now();
 
         // Map Environment Data
@@ -216,23 +275,100 @@ export const useGreenhouse = () => {
             : (payload.state?.datetime ? new Date(payload.state.datetime).getTime() : now);
         const ts = Number.isFinite(tsCandidate) ? tsCandidate : now;
 
+        const temperature = pickNumericValue(
+            [payload.env?.T_air_C, payload.state?.T_air_C],
+            previousSensor?.temperature ?? 0,
+        );
+        const canopyTemp = pickNumericValue(
+            [payload.state?.T_canopy_C, payload.env?.T_air_C],
+            previousSensor?.canopyTemp ?? temperature.value,
+        );
+        const humidity = pickNumericValue(
+            [payload.env?.RH_percent],
+            previousSensor?.humidity ?? 0,
+        );
+        const co2 = pickNumericValue(
+            [payload.env?.CO2_ppm],
+            previousSensor?.co2 ?? 400,
+        );
+        const light = pickNumericValue(
+            [payload.env?.PAR_umol],
+            previousSensor?.light ?? 0,
+        );
+        const soilMoisture = pickNumericValue(
+            [payload.env?.soil_moisture_pct],
+            previousSensor?.soilMoisture ?? 60,
+        );
+        const vpd = pickNumericValue(
+            [payload.env?.VPD_kPa],
+            previousSensor?.vpd ?? 0,
+        );
+        const transpiration = pickNumericValue(
+            [payload.kpi?.transpiration_mm_h],
+            previousSensor?.transpiration ?? 0,
+        );
+        const stomatalConductance = pickNumericValue(
+            [payload.kpi?.stomatal_conductance],
+            previousSensor?.stomatalConductance ?? 0,
+        );
+        const photosynthesis = pickNumericValue(
+            [
+                payload.flux?.gross_photosynthesis_umol_m2_s,
+                payload.state?.gross_photosynthesis_umol_m2_s,
+            ],
+            previousSensor?.photosynthesis ?? 0,
+        );
+        const hFlux = pickNumericValue(
+            [payload.flux?.H_W_m2, payload.state?.H_W_m2],
+            previousSensor?.hFlux ?? 0,
+        );
+        const leFlux = pickNumericValue(
+            [payload.flux?.LE_W_m2, payload.state?.LE_W_m2],
+            previousSensor?.leFlux ?? 0,
+        );
+        const energyUsage = pickNumericValue(
+            [payload.energy?.P_elec_kW],
+            previousSensor?.energyUsage ?? 0,
+        );
+
+        const previousFieldTimestamps =
+            previousSensor?.fieldTimestamps ?? DEFAULT_SENSOR_FIELD_TIMESTAMPS;
+        const fieldAvailability: SensorFieldAvailability = {
+            temperature: temperature.available,
+            humidity: humidity.available,
+            co2: co2.available,
+            light: light.available,
+            vpd: vpd.available,
+            stomatalConductance: stomatalConductance.available,
+        };
+        const fieldTimestamps: SensorFieldTimestamps = {
+            temperature: temperature.available ? ts : previousFieldTimestamps.temperature,
+            humidity: humidity.available ? ts : previousFieldTimestamps.humidity,
+            co2: co2.available ? ts : previousFieldTimestamps.co2,
+            light: light.available ? ts : previousFieldTimestamps.light,
+            vpd: vpd.available ? ts : previousFieldTimestamps.vpd,
+            stomatalConductance: stomatalConductance.available
+                ? ts
+                : previousFieldTimestamps.stomatalConductance,
+        };
+
         const sensor: SensorData = {
             timestamp: ts,
-            temperature: payload.env?.T_air_C ?? payload.state?.T_air_C ?? 0,
-            canopyTemp: payload.state?.T_canopy_C ?? payload.env?.T_air_C ?? 0,
-            humidity: payload.env?.RH_percent ?? 0, // Fixed: RH_pct -> RH_percent
-            co2: payload.env?.CO2_ppm ?? 400,
-            light: payload.env?.PAR_umol ?? 0, // Fixed: PAR_uE -> PAR_umol
-            soilMoisture: payload.env?.soil_moisture_pct ?? 60,
-            vpd: payload.env?.VPD_kPa ?? 0,
-            transpiration: payload.kpi?.transpiration_mm_h ?? 0,
-            stomatalConductance: payload.kpi?.stomatal_conductance ?? 0, // mol m-2 s-1
-            photosynthesis: payload.flux?.gross_photosynthesis_umol_m2_s
-                ?? payload.state?.gross_photosynthesis_umol_m2_s
-                ?? 0,
-            hFlux: payload.flux?.H_W_m2 ?? payload.state?.H_W_m2 ?? 0,
-            leFlux: payload.flux?.LE_W_m2 ?? payload.state?.LE_W_m2 ?? 0,
-            energyUsage: payload.energy?.P_elec_kW ?? 0 // Use Total Power (kW)
+            temperature: temperature.value,
+            canopyTemp: canopyTemp.value,
+            humidity: humidity.value,
+            co2: co2.value,
+            light: light.value,
+            soilMoisture: soilMoisture.value,
+            vpd: vpd.value,
+            transpiration: transpiration.value,
+            stomatalConductance: stomatalConductance.value,
+            photosynthesis: photosynthesis.value,
+            hFlux: hFlux.value,
+            leFlux: leFlux.value,
+            energyUsage: energyUsage.value,
+            fieldAvailability,
+            fieldTimestamps,
         };
 
         // Calculate Biomass from State (g/m2)
@@ -292,7 +428,7 @@ export const useGreenhouse = () => {
             energyEfficiency: metrics.energy.efficiency,
         };
 
-        return { sensor, metrics, metricPoint };
+        return { sensor, metrics, metricPoint, fieldAvailability, fieldTimestamps };
     }, []);
 
     const flushCropState = useCallback((cropType: CropType) => {
@@ -346,6 +482,24 @@ export const useGreenhouse = () => {
                         [cropType]: next,
                     };
             });
+            setSensorFieldAvailabilityByCrop(prev => {
+                const next = liveState.sensorFieldAvailabilityByCrop[cropType];
+                return prev[cropType] === next
+                    ? prev
+                    : {
+                        ...prev,
+                        [cropType]: next,
+                    };
+            });
+            setSensorFieldTimestampsByCrop(prev => {
+                const next = liveState.sensorFieldTimestampsByCrop[cropType];
+                return prev[cropType] === next
+                    ? prev
+                    : {
+                        ...prev,
+                        [cropType]: next,
+                    };
+            });
         });
     }, []);
 
@@ -372,10 +526,17 @@ export const useGreenhouse = () => {
         ws.onmessage = (event) => {
             try {
                 const payload = JSON.parse(event.data);
-                const { sensor, metrics, metricPoint } = mapPayloadToData(payload, cropAtConnection);
                 const liveState = liveStateRef.current;
+                const previousSensor = liveState.currentDataByCrop[cropAtConnection];
+                const { sensor, metrics, metricPoint, fieldAvailability, fieldTimestamps } = mapPayloadToData(
+                    payload,
+                    cropAtConnection,
+                    previousSensor,
+                );
                 liveState.currentDataByCrop[cropAtConnection] = sensor;
                 liveState.modelMetricsByCrop[cropAtConnection] = metrics;
+                liveState.sensorFieldAvailabilityByCrop[cropAtConnection] = fieldAvailability;
+                liveState.sensorFieldTimestampsByCrop[cropAtConnection] = fieldTimestamps;
                 liveState.historyByCrop[cropAtConnection] = appendUniquePoint(
                     liveState.historyByCrop[cropAtConnection],
                     sensor,
@@ -473,10 +634,13 @@ export const useGreenhouse = () => {
                     return prev;
                 }
 
+                const ageMs = Date.now() - current.lastMessageAt;
                 const nextStatus: TelemetryStatus =
-                    Date.now() - current.lastMessageAt > STREAM_STALE_THRESHOLD_MS
+                    ageMs > STREAM_STALE_THRESHOLD_MS
                         ? 'stale'
-                        : 'live';
+                        : ageMs > STREAM_DELAY_THRESHOLD_MS
+                            ? 'delayed'
+                            : 'live';
 
                 if (nextStatus === current.status) {
                     return prev;
@@ -618,7 +782,9 @@ export const useGreenhouse = () => {
         photosynthesis: 0,
         hFlux: 0,
         leFlux: 0,
-        energyUsage: 0
+        energyUsage: 0,
+        fieldAvailability: { ...DEFAULT_SENSOR_FIELD_AVAILABILITY },
+        fieldTimestamps: { ...DEFAULT_SENSOR_FIELD_TIMESTAMPS },
     };
 
     // Fetch forecast for the active crop with stale-request protection
@@ -659,6 +825,10 @@ export const useGreenhouse = () => {
     const metricHistory = metricHistoryByCrop[selectedCrop];
     const forecast = forecastByCrop[selectedCrop];
     const startTimestamp = startTimestampByCrop[selectedCrop];
+    const sensorFieldAvailability =
+        sensorFieldAvailabilityByCrop[selectedCrop] ?? DEFAULT_SENSOR_FIELD_AVAILABILITY;
+    const sensorFieldTimestamps =
+        sensorFieldTimestampsByCrop[selectedCrop] ?? DEFAULT_SENSOR_FIELD_TIMESTAMPS;
 
     // Derived timeline labels
     const currentTimestamp = currentData?.timestamp ?? Date.now();
@@ -681,6 +851,8 @@ export const useGreenhouse = () => {
         selectedCrop,
         setSelectedCrop,
         telemetry: telemetryStateByCrop[selectedCrop],
+        sensorFieldAvailability,
+        sensorFieldTimestamps,
         currentData: currentData || defaultData,
         modelMetrics: {
             ...selectedMetrics,
@@ -698,6 +870,6 @@ export const useGreenhouse = () => {
         setTempSettings,
         growthDay,
         startDateLabel,
-        currentDateLabel
+        currentDateLabel,
     };
 };

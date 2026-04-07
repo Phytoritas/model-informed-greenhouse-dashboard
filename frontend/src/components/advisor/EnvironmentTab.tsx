@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorActionTimeline from './AdvisorActionTimeline';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
@@ -32,7 +33,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             currentState: '현재 상태 진단',
             immediate: '즉시 조치 (0~6h)',
             today: '오늘 조치 (24h)',
-            plan: '3일 steering',
+            plan: '3일 운영 계획',
             expectedEffects: '예상 효과',
             checklist: '확인 체크리스트',
             context: '현재 문맥',
@@ -47,10 +48,10 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             hypotheses: '원인 가설',
             focusAreas: '조치 초점',
             riskFlags: '리스크 플래그',
-            evidenceUnavailable: '이번 실행에서는 environment-domain 지식 검색을 사용할 수 없습니다.',
-            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 environment 근거를 붙이지 못했습니다.',
-            evidenceNoMatches: '현재 환경 문맥과 직접 매칭되는 추가 environment 근거는 찾지 못했습니다.',
-            evidenceSkipped: '이번 실행에서는 별도 environment-domain retrieval이 요청되지 않았습니다.',
+            evidenceUnavailable: '이번 실행에서는 환경 지식 검색을 사용할 수 없습니다.',
+            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 환경 근거를 붙이지 못했습니다.',
+            evidenceNoMatches: '현재 환경 문맥과 직접 맞는 추가 환경 근거는 찾지 못했습니다.',
+            evidenceSkipped: '이번 실행에서는 별도 환경 지식 검색이 요청되지 않았습니다.',
             insideTemp: '실내 온도',
             insideHumidity: '실내 습도',
             insideVpd: '실내 VPD',
@@ -62,7 +63,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             currentWeather: '외기 상태',
             rtrTarget: 'RTR 목표온도',
             rtrDelta: 'RTR 편차',
-            rtrBalance: 'RTR balance',
+            rtrBalance: 'RTR 균형',
             tempTrend: '온도 추세',
             humidityTrend: '습도 추세',
             vpdTrend: 'VPD 추세',
@@ -70,7 +71,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             nextPrecip: '다음 강수확률',
             nextRadiation: '다음 일사',
             nextSunshine: '다음 일조',
-            availableButNotRun: 'deterministic environment advisor는 이미 landed 상태이며, 실행하면 현재 steering 제안을 확인할 수 있습니다.',
+            availableButNotRun: '결정형 환경 어드바이저는 이미 적용되어 있으며, 실행하면 현재 제어 제안을 확인할 수 있습니다.',
         }
         : {
             title: 'Environment',
@@ -160,27 +161,39 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                         <p className="mt-2 text-sm leading-relaxed text-slate-600">{analysis.summary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <AdvisorConfidenceBadge label={`${copy.urgency}:${analysis.urgency}`} tone="warning" />
+                        <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
                         <AdvisorConfidenceBadge
                             label={`${copy.confidence}:${Math.round(analysis.confidence * 100)}%`}
                             tone="info"
                         />
                         <AdvisorConfidenceBadge
-                            label={`${copy.operatingMode}:${analysis.current_state.operating_mode}`}
+                            label={`${copy.operatingMode}:${getLocalizedTokenLabel(analysis.current_state.operating_mode, locale)}`}
                             tone="success"
                         />
                         {analysis.focus_areas.map((item) => (
-                            <AdvisorConfidenceBadge key={item} label={item} tone="success" />
+                            <AdvisorConfidenceBadge
+                                key={item}
+                                label={getLocalizedTokenLabel(item, locale)}
+                                tone="success"
+                            />
                         ))}
                         {props.result?.machine_payload.missing_data.map((item) => (
-                            <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                            <AdvisorConfidenceBadge
+                                key={item}
+                                label={getLocalizedTokenLabel(item, locale)}
+                                tone="neutral"
+                            />
                         ))}
                     </div>
 
                     <AdvisorActionCard
                         title={copy.currentState}
                         subtitle={copy.title}
-                        badges={analysis.focus_areas.length ? analysis.focus_areas : [copy.focusAreas]}
+                        badges={
+                            analysis.focus_areas.length
+                                ? analysis.focus_areas.map((item) => getLocalizedTokenLabel(item, locale))
+                                : [copy.focusAreas]
+                        }
                     >
                         <div className="space-y-3 text-sm text-slate-600">
                             <div>
@@ -203,7 +216,11 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                                 <div className="font-semibold text-slate-900">{copy.riskFlags}</div>
                                 <div className="flex flex-wrap gap-2">
                                     {analysis.current_state.risk_flags.map((item) => (
-                                        <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                                        <AdvisorConfidenceBadge
+                                            key={item}
+                                            label={getLocalizedTokenLabel(item, locale)}
+                                            tone="neutral"
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -233,13 +250,13 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                             <div>{copy.outsideTemp}: {formatValue(analysis.context_snapshot.outside_temp_c, 1, ' °C')}</div>
                             <div>{copy.outsideHumidity}: {formatValue(analysis.context_snapshot.outside_humidity_pct, 0, '%')}</div>
                             <div>{copy.outsideCloud}: {formatValue(analysis.context_snapshot.outside_cloud_cover_pct, 0, '%')}</div>
-                            <div>{copy.currentWeather}: {analysis.context_snapshot.current_weather_label ?? '-'}</div>
+                            <div>{copy.currentWeather}: {getLocalizedTokenLabel(analysis.context_snapshot.current_weather_label ?? '-', locale)}</div>
                             <div>{copy.rtrTarget}: {formatValue(analysis.context_snapshot.rtr_target_temp_c, 1, ' °C')}</div>
                             <div>{copy.rtrDelta}: {formatValue(analysis.context_snapshot.rtr_delta_temp_c, 1, ' °C')}</div>
-                            <div>{copy.rtrBalance}: {analysis.context_snapshot.rtr_balance_state ?? '-'}</div>
-                            <div>{copy.tempTrend}: {analysis.context_snapshot.temperature_trend ?? '-'}</div>
-                            <div>{copy.humidityTrend}: {analysis.context_snapshot.humidity_trend ?? '-'}</div>
-                            <div>{copy.vpdTrend}: {analysis.context_snapshot.vpd_trend ?? '-'}</div>
+                            <div>{copy.rtrBalance}: {getLocalizedTokenLabel(analysis.context_snapshot.rtr_balance_state ?? '-', locale)}</div>
+                            <div>{copy.tempTrend}: {getLocalizedTokenLabel(analysis.context_snapshot.temperature_trend ?? '-', locale)}</div>
+                            <div>{copy.humidityTrend}: {getLocalizedTokenLabel(analysis.context_snapshot.humidity_trend ?? '-', locale)}</div>
+                            <div>{copy.vpdTrend}: {getLocalizedTokenLabel(analysis.context_snapshot.vpd_trend ?? '-', locale)}</div>
                             <div>{copy.nextHigh}: {formatValue(analysis.context_snapshot.next_day_high_temp_c, 1, ' °C')}</div>
                             <div>{copy.nextPrecip}: {formatValue(analysis.context_snapshot.next_day_precip_probability_pct, 0, '%')}</div>
                             <div>{copy.nextRadiation}: {formatValue(analysis.context_snapshot.next_day_radiation_mj_m2, 1, ' MJ m⁻²')}</div>
@@ -251,8 +268,10 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                             title={copy.knowledgeEvidence}
                             subtitle={copy.title}
                             badges={[
-                                retrievalContext.status,
-                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []),
+                                getLocalizedTokenLabel(retrievalContext.status, locale),
+                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []).map((item) =>
+                                    getLocalizedTokenLabel(item, locale),
+                                ),
                             ]}
                         >
                             {knowledgeEvidence?.evidence_cards?.length ? (
@@ -264,13 +283,13 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                                         >
                                             <div className="flex flex-wrap gap-2">
                                                 {card.domain ? (
-                                                    <AdvisorConfidenceBadge label={card.domain} tone="info" />
+                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.domain, locale)} tone="info" />
                                                 ) : null}
                                                 {card.topic_major ? (
-                                                    <AdvisorConfidenceBadge label={card.topic_major} tone="success" />
+                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_major, locale)} tone="success" />
                                                 ) : null}
                                                 {card.topic_minor ? (
-                                                    <AdvisorConfidenceBadge label={card.topic_minor} tone="neutral" />
+                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_minor, locale)} tone="neutral" />
                                                 ) : null}
                                             </div>
                                             <div className="mt-2 text-sm leading-relaxed text-slate-600">
@@ -363,12 +382,12 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             title={copy.title}
             subtitle={
                 locale === 'ko'
-                    ? '이 탭은 live telemetry, weather, RTR를 묶어 현재 steering 제안을 보여주는 환경 advisor 영역입니다.'
+                    ? '이 탭은 실시간 센서, 날씨, RTR를 묶어 현재 환경 제어 제안을 보여주는 환경제어 어드바이저 영역입니다.'
                     : 'This tab combines live telemetry, weather, and RTR into the current steering guidance surface.'
             }
             notes={locale === 'ko'
                 ? [
-                    '예상 출력: 즉시 조치, 24시간 steering, 3일 plan.',
+                    '예상 출력: 즉시 조치, 24시간 운영 제안, 3일 운영 계획.',
                     copy.availableButNotRun,
                 ]
                 : [

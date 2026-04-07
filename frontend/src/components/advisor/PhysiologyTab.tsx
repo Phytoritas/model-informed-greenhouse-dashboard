@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { getDevelopmentStageLabel, getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
 import AdvisorLandedTabStatePanel from './AdvisorLandedTabStatePanel';
@@ -24,7 +25,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             summary: '생리 요약',
             currentState: '현재 상태',
             supportingSignals: '지원 신호',
-            actions: '후속 조치',
+            actions: '다음 조치',
             checklist: '확인 체크리스트',
             context: '현재 문맥',
             knowledgeEvidence: '근거 지식',
@@ -35,14 +36,14 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             deviation: '편차 / 설명',
             hypotheses: '원인 가설',
             cropContext: '작물 문맥',
-            evidenceUnavailable: '이번 실행에서는 physiology-domain 지식 검색을 사용할 수 없습니다.',
-            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 physiology 근거를 붙이지 못했습니다.',
-            evidenceNoMatches: '현재 생리 문맥과 직접 매칭되는 추가 physiology 근거는 찾지 못했습니다.',
-            evidenceSkipped: '이번 실행에서는 별도 physiology-domain retrieval이 요청되지 않았습니다.',
+            evidenceUnavailable: '이번 실행에서는 생리 지식 검색을 사용할 수 없습니다.',
+            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 생리 근거를 붙이지 못했습니다.',
+            evidenceNoMatches: '현재 생리 문맥과 직접 맞는 추가 생리 근거는 찾지 못했습니다.',
+            evidenceSkipped: '이번 실행에서는 별도 생리 지식 검색이 요청되지 않았습니다.',
             insideTemp: '실내 온도',
             insideHumidity: '실내 습도',
             canopyTemp: '캐노피 온도',
-            canopyDelta: 'Canopy-Air Delta',
+            canopyDelta: '캐노피-기온 차이',
             insideVpd: '실내 VPD',
             transpiration: '증산',
             stomatal: '기공전도도',
@@ -50,7 +51,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             insideCo2: '실내 CO2',
             insideLight: '실내 광량',
             lai: 'LAI',
-            biomass: 'Biomass',
+            biomass: '생체중',
             growthRate: '성장률',
             developmentStage: '생육 단계',
             activeTrusses: '활성 화방',
@@ -61,7 +62,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             vpdTrend: 'VPD 추세',
             transpirationTrend: '증산 추세',
             photosynthesisTrend: '광합성 추세',
-            availableButNotRun: 'deterministic physiology advisor는 이미 landed 상태이며, 실행하면 현재 crop balance 해석을 확인할 수 있습니다.',
+            availableButNotRun: '결정형 생리 어드바이저는 이미 적용되어 있으며, 실행하면 현재 생육 균형 해석을 확인할 수 있습니다.',
         }
         : {
             title: 'Physiology',
@@ -144,13 +145,17 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                         <p className="mt-2 text-sm leading-relaxed text-slate-600">{analysis.summary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <AdvisorConfidenceBadge label={`${copy.urgency}:${analysis.urgency}`} tone="warning" />
+                        <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
                         <AdvisorConfidenceBadge
                             label={`${copy.confidence}:${Math.round(analysis.confidence * 100)}%`}
                             tone="info"
                         />
                         {props.result?.machine_payload.missing_data.map((item) => (
-                            <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                            <AdvisorConfidenceBadge
+                                key={item}
+                                label={getLocalizedTokenLabel(item, locale)}
+                                tone="neutral"
+                            />
                         ))}
                     </div>
 
@@ -203,15 +208,20 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                             <div>{copy.lai}: {formatValue(analysis.context_snapshot.lai, 2)}</div>
                             <div>{copy.biomass}: {formatValue(analysis.context_snapshot.biomass_g_m2, 0, ' g m⁻²')}</div>
                             <div>{copy.growthRate}: {formatValue(analysis.context_snapshot.growth_rate_g_m2_d, 1, ' g m⁻² d⁻¹')}</div>
-                            <div>{copy.developmentStage}: {analysis.context_snapshot.development_stage ?? '-'}</div>
+                            <div>
+                                {copy.developmentStage}:{' '}
+                                {analysis.context_snapshot.development_stage
+                                    ? getDevelopmentStageLabel(analysis.context_snapshot.development_stage, locale)
+                                    : '-'}
+                            </div>
                             <div>{copy.activeTrusses}: {formatValue(analysis.context_snapshot.active_trusses, 0)}</div>
                             <div>{copy.nodeCount}: {formatValue(analysis.context_snapshot.node_count, 0)}</div>
                             <div>{copy.harvestableFruits}: {formatValue(analysis.context_snapshot.harvestable_fruits, 0)}</div>
                             <div>{copy.predictedWeeklyYield}: {formatValue(analysis.context_snapshot.predicted_weekly_yield_kg, 1, ' kg')}</div>
-                            <div>{copy.tempTrend}: {analysis.context_snapshot.temperature_trend ?? '-'}</div>
-                            <div>{copy.vpdTrend}: {analysis.context_snapshot.vpd_trend ?? '-'}</div>
-                            <div>{copy.transpirationTrend}: {analysis.context_snapshot.transpiration_trend ?? '-'}</div>
-                            <div>{copy.photosynthesisTrend}: {analysis.context_snapshot.photosynthesis_trend ?? '-'}</div>
+                            <div>{copy.tempTrend}: {getLocalizedTokenLabel(analysis.context_snapshot.temperature_trend ?? '-', locale)}</div>
+                            <div>{copy.vpdTrend}: {getLocalizedTokenLabel(analysis.context_snapshot.vpd_trend ?? '-', locale)}</div>
+                            <div>{copy.transpirationTrend}: {getLocalizedTokenLabel(analysis.context_snapshot.transpiration_trend ?? '-', locale)}</div>
+                            <div>{copy.photosynthesisTrend}: {getLocalizedTokenLabel(analysis.context_snapshot.photosynthesis_trend ?? '-', locale)}</div>
                         </div>
                     </AdvisorActionCard>
                     {retrievalContext ? (
@@ -219,8 +229,10 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                             title={copy.knowledgeEvidence}
                             subtitle={copy.title}
                             badges={[
-                                retrievalContext.status,
-                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []),
+                                getLocalizedTokenLabel(retrievalContext.status, locale),
+                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []).map((item) =>
+                                    getLocalizedTokenLabel(item, locale),
+                                ),
                             ]}
                         >
                             {knowledgeEvidence?.evidence_cards?.length ? (
@@ -232,13 +244,13 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                                         >
                                             <div className="flex flex-wrap gap-2">
                                                 {card.domain ? (
-                                                    <AdvisorConfidenceBadge label={card.domain} tone="info" />
+                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.domain, locale)} tone="info" />
                                                 ) : null}
                                                 {card.topic_major ? (
-                                                    <AdvisorConfidenceBadge label={card.topic_major} tone="success" />
+                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_major, locale)} tone="success" />
                                                 ) : null}
                                                 {card.topic_minor ? (
-                                                    <AdvisorConfidenceBadge label={card.topic_minor} tone="neutral" />
+                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_minor, locale)} tone="neutral" />
                                                 ) : null}
                                             </div>
                                             <div className="mt-2 text-sm leading-relaxed text-slate-600">
@@ -290,7 +302,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                                         className="rounded-2xl border border-slate-200 bg-white p-4"
                                     >
                                         <div className="flex flex-wrap gap-2">
-                                            <AdvisorConfidenceBadge label={action.time_window} tone="success" />
+                                            <AdvisorConfidenceBadge label={getLocalizedTokenLabel(action.time_window, locale)} tone="success" />
                                         </div>
                                         <div className="mt-3 text-sm font-semibold text-slate-900">
                                             {action.title}
@@ -327,12 +339,12 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             title={copy.title}
             subtitle={
                 locale === 'ko'
-                    ? '이 탭은 현재 crop state에서 VPD, canopy temperature, transpiration, stomatal conductance, photosynthesis를 함께 읽어 생식/영양 균형과 stress pressure를 해석하는 재배생리 advisor 영역입니다.'
+                    ? '이 탭은 현재 작물 상태에서 VPD, 캐노피 온도, 증산, 기공전도도, 광합성을 함께 읽어 생식·영양 균형과 스트레스 압력을 해석하는 재배생리 어드바이저 영역입니다.'
                     : 'This tab interprets vegetative versus generative balance and stress pressure from VPD, canopy temperature, transpiration, stomatal conductance, and photosynthesis.'
             }
             notes={locale === 'ko'
                 ? [
-                    '예상 출력: crop balance 해석, supporting signals, operator-facing follow-up actions.',
+                    '예상 출력: 생육 균형 해석, 보조 신호, 작업자용 다음 조치.',
                     copy.availableButNotRun,
                 ]
                 : [

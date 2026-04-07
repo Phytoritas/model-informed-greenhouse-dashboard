@@ -18,7 +18,13 @@ import {
     type PesticideRecommendationPayload,
     type PlannedAdvisorTabKey,
 } from '../../hooks/useSmartGrowAdvisor';
-import { getCropLabel } from '../../utils/displayCopy';
+import {
+    getCultivationMediumLabel,
+    getCropLabel,
+    getDevelopmentStageLabel,
+    getGenericCropLabel,
+    getLocalizedTokenLabel,
+} from '../../utils/displayCopy';
 import { buildAiDashboardContext } from '../../utils/aiDashboardContext';
 import AdvisorActionCard from './AdvisorActionCard';
 import {
@@ -79,10 +85,13 @@ const AdvisorTabs = ({
     const { locale } = useLocale();
     const cropKey = crop.toLowerCase();
     const cropLabel = getCropLabel(crop, locale);
+    const formatStageLabel = (stage: string) => getDevelopmentStageLabel(stage, locale);
+    const formatMediumLabel = (medium: string) => getCultivationMediumLabel(medium, locale);
+    const formatCropName = (name: string) => getGenericCropLabel(name, locale);
     const copy = locale === 'ko'
         ? {
-            title: 'Advisor Tabs',
-            subtitle: `${cropLabel} 기준 deterministic 실행 결과를 확인합니다.`,
+            title: '어드바이저 탭',
+            subtitle: `${cropLabel} 기준 결정형 실행 결과를 확인합니다.`,
             close: '닫기',
             environment: '환경제어',
             physiology: '재배생리',
@@ -105,23 +114,63 @@ const AdvisorTabs = ({
             sourceWater: '원수 mmol/L',
             drainWater: '배액 mmol/L',
             workingSolution: '작업액 L',
-            stockRatio: 'stock ratio',
-            limitations: 'Boundary',
+            stockRatio: '원액 비율',
+            limitations: '제약',
             matchedTargets: '매칭 타겟',
             rotation: '교호 대안',
             recipe: '선택된 처방',
-            guardrails: 'Guardrail',
-            baselines: 'Baseline',
+            ecTarget: 'EC 목표',
+            guardrails: '경계 조건',
+            baselines: '기준값',
             findings: '우선 확인',
             missingData: '추가 데이터 필요',
             candidateDrafts: '보정 draft',
-            macroBundle: 'Macro bundle',
+            macroBundle: '매크로 번들',
             unsupported: '수동 계산 필요',
-            calculationAvailable: 'calculation available',
-            recommendationAvailable: 'recommendation available',
-            noSafeRecommendation: 'no safe recommendation',
-            loadingState: 'loading',
+            calculationAvailable: '계산 가능',
+            recommendationAvailable: '추천 가능',
+            noSafeRecommendation: '안전 추천 없음',
+            loadingState: '로딩 중',
             estimatedBatchMass: '추정 투입량',
+            dilution: '희석배수',
+            application: '살포 방법',
+            mixing: '혼용 주의',
+            moaMissing: 'MOA 미상',
+            calculationPolicy: '계산 정책',
+            workingSolutionShort: '작업액',
+            targetMode: '목표 모드',
+            workbookDrainStage: '워크북 배액 단계',
+            drainClGuardrail: '배액 Cl 경계값',
+            boundedStepCap: '보정 단계 상한',
+            targetPolicy: '목표 정책',
+            baselineReference: '기준 대비',
+            adjustmentStep: '조정량',
+            stepCap: '상한',
+            perTank: '탱크당',
+            sourceWaterReview: '원수 검토',
+            drainWaterReview: '배액 검토',
+            drainFeedbackPlan: '배액 피드백 계획',
+            bundleExecution: '번들 실행안',
+            residualSafeAlternative: '잔여 안전 대안',
+            rankLabel: '순위',
+            tankLabel: '탱크',
+            totalBatch: '총 배치량',
+            stockConcentration: '원액 농도',
+            selectedRank: '선택 순위',
+            selectedBundleAboveTarget: '선택 번들의 과다 항목',
+            unresolvedTargets: '미해결 목표',
+            untargetedAdditions: '비목표 추가분',
+            recipeTarget: '처방 목표',
+            effectiveTarget: '적용 목표',
+            sourceWaterStatus: '원수 상태',
+            drainWaterStatus: '배액 상태',
+            operationalStatusUnknown: '상태 미상',
+            tankUnknown: '탱크 미정',
+            labelCheckRequired: '라벨 확인 필요',
+            adjustedCount: '조정',
+            manualReviewCount: '수동 검토',
+            noResiduals: '없음',
+            clamped: '상한 적용',
         }
         : {
             title: 'Advisor Tabs',
@@ -165,6 +214,40 @@ const AdvisorTabs = ({
             noSafeRecommendation: 'no safe recommendation',
             loadingState: 'loading',
             estimatedBatchMass: 'Estimated batch mass',
+            dilution: 'Dilution',
+            application: 'Application',
+            mixing: 'Mixing',
+            moaMissing: 'MOA n/a',
+            calculationPolicy: 'Calculation policy',
+            workingSolutionShort: 'working solution',
+            targetMode: 'target mode',
+            workbookDrainStage: 'workbook drain stage',
+            drainClGuardrail: 'drain Cl guardrail',
+            boundedStepCap: 'bounded step cap',
+            sourceWaterReview: 'Source-water review',
+            drainWaterReview: 'Drain-water review',
+            drainFeedbackPlan: 'Drain-feedback plan',
+            bundleExecution: 'Bundle execution',
+            residualSafeAlternative: 'Residual-safe alternative',
+            rankLabel: 'rank',
+            tankLabel: 'Tank',
+            totalBatch: 'total batch',
+            stockConcentration: 'stock concentration',
+            selectedRank: 'selected rank',
+            selectedBundleAboveTarget: 'selected bundle above target',
+            unresolvedTargets: 'unresolved targets',
+            untargetedAdditions: 'untargeted additions',
+            recipeTarget: 'recipe target',
+            effectiveTarget: 'effective target',
+            sourceWaterStatus: 'Source-water status',
+            drainWaterStatus: 'Drain-water status',
+            operationalStatusUnknown: 'n/a',
+            tankUnknown: 'tank:n/a',
+            labelCheckRequired: 'label-check-required',
+            adjustedCount: 'adjusted',
+            manualReviewCount: 'manual review',
+            noResiduals: 'none',
+            clamped: 'clamped',
         };
 
     const pesticideSurface = summary?.surfaces.find((surface) => surface.key === 'pesticide') ?? null;
@@ -230,7 +313,7 @@ const AdvisorTabs = ({
         harvest_market: copy.harvestMarket,
     };
 
-    const correctionCandidateCards = useMemo(() => {
+    const correctionCandidateCards = (() => {
         if (!correctionResult) {
             return [];
         }
@@ -243,15 +326,15 @@ const AdvisorTabs = ({
                 title: `${candidate.target_analyte}: ${candidate.fertilizer_name}`,
                 subtitle: candidate.formula ?? null,
                 badges: [
-                    candidate.operational_status ?? 'n/a',
-                    candidate.tank_assignment ?? 'tank:n/a',
+                    getLocalizedTokenLabel(candidate.operational_status ?? copy.operationalStatusUnknown, locale),
+                    candidate.tank_assignment ?? copy.tankUnknown,
                     ...(candidate.guardrail_side_effects.length > 0
                         ? [candidate.guardrail_side_effects.join(', ')]
                         : []),
                     ...(candidate.secondary_target_overshoots && candidate.secondary_target_overshoots.length > 0
                         ? [
                             candidate.secondary_target_overshoots
-                                .map((row) => `${row.analyte} high`)
+                                .map((row) => `${row.analyte} ${getLocalizedTokenLabel('high', locale)}`)
                                 .join(', '),
                         ]
                         : []),
@@ -260,7 +343,7 @@ const AdvisorTabs = ({
                     candidate.single_fertilizer_draft?.estimated_batch_mass?.fertilizer_grams ?? null,
             })),
         );
-    }, [correctionResult]);
+    })();
 
     async function handlePlannedTabRun(tab: PlannedAdvisorTabKey) {
         try {
@@ -341,23 +424,23 @@ const AdvisorTabs = ({
                         subtitle={product.notes_farmer_friendly}
                         badges={[
                             product.active_ingredient,
-                            product.moa_code_group ?? 'MOA n/a',
-                            product.registration_status ?? 'label-check-required',
+                            product.moa_code_group ?? copy.moaMissing,
+                            getLocalizedTokenLabel(product.registration_status ?? copy.labelCheckRequired, locale),
                         ]}
                     >
                         <div className="grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
                             <div>{copy.matchedTargets}: {result.matched_targets.join(', ') || '-'}</div>
                             <div>{copy.limitations}: {product.cycle_recommendation ?? '-'}</div>
-                            <div>Dilution: {product.dilution ?? '-'}</div>
-                            <div>Application: {product.application_method ?? '-'}</div>
-                            <div className="lg:col-span-2">Mixing: {product.mixing_caution ?? '-'}</div>
+                            <div>{copy.dilution}: {product.dilution ?? '-'}</div>
+                            <div>{copy.application}: {product.application_method ?? '-'}</div>
+                            <div className="lg:col-span-2">{copy.mixing}: {product.mixing_caution ?? '-'}</div>
                         </div>
                     </AdvisorActionCard>
                 ))}
                 {result.rotation_program.length > 0 ? (
                     <AdvisorActionCard
-                        title={copy.rotation}
-                        badges={result.rotation_program.map((row) => row.moa_code_group ?? 'MOA')}
+                    title={copy.rotation}
+                    badges={result.rotation_program.map((row) => row.moa_code_group ?? 'MOA')}
                     >
                         <div className="space-y-2 text-sm text-slate-600">
                             {result.rotation_program.map((row) => (
@@ -395,18 +478,18 @@ const AdvisorTabs = ({
                         {copy.calculationAvailable}
                     </span>
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                        {result.resolved.stage}
+                        {formatStageLabel(result.resolved.stage)}
                     </span>
                     <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                        {result.resolved.medium}
+                        {formatMediumLabel(result.resolved.medium)}
                     </span>
                 </div>
                 <AdvisorActionCard
                     title={copy.recipe}
-                    subtitle={`${result.recipe.crop} · ${result.recipe.stage} · ${result.recipe.medium}`}
+                    subtitle={`${formatCropName(result.recipe.crop)} · ${formatStageLabel(result.recipe.stage)} · ${formatMediumLabel(result.recipe.medium)}`}
                 >
                     <div className="grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
-                        <div>EC target: {formatNumber(result.recipe.ec_target)}</div>
+                        <div>{copy.ecTarget}: {formatNumber(result.recipe.ec_target)}</div>
                         <div>
                             {copy.guardrails}: Cl {formatNumber(result.recipe.guardrails.cl_max)},
                             {' '}HCO3 {formatNumber(result.recipe.guardrails.hco3_max)},
@@ -487,7 +570,7 @@ const AdvisorTabs = ({
                         <div className="space-y-2 text-sm text-slate-600">
                             {result.correction_outputs.priority_findings.map((finding) => (
                                 <div key={`${finding.analysis_kind}-${finding.analyte ?? finding.nutrient}`}>
-                                    {finding.analyte ?? finding.nutrient}: {finding.status} ({formatNumber(finding.observed_mmol_l ?? finding.submitted_mmol_l)} vs baseline {formatNumber(finding.baseline_mmol_l)})
+                                    {finding.analyte ?? finding.nutrient}: {getLocalizedTokenLabel(finding.status, locale)} ({formatNumber(finding.observed_mmol_l ?? finding.submitted_mmol_l)} / {copy.baselineReference} {formatNumber(finding.baseline_mmol_l)})
                                 </div>
                             ))}
                         </div>
@@ -499,43 +582,43 @@ const AdvisorTabs = ({
                         subtitle={missingData.join(', ')}
                     />
                 ) : null}
-                <AdvisorActionCard
-                    title="Calculation policy"
-                    subtitle={`${result.resolved.stage} | ${result.resolved.medium}`}
-                    badges={[
-                        `working solution ${formatNumber(result.correction_context.calculator_defaults.working_solution_volume_l)}`,
-                        `stock ratio ${formatNumber(result.correction_context.calculator_defaults.stock_ratio)}`,
-                        `target mode ${result.correction_context.drain_feedback_policy.mode}`,
-                    ]}
-                >
-                    <div className="space-y-2 text-sm text-slate-600">
-                        <div>
-                            workbook drain stage: {String(result.correction_context.drain_feedback_defaults.selected_stage ?? '-')}
+                    <AdvisorActionCard
+                        title={copy.calculationPolicy}
+                        subtitle={`${formatStageLabel(result.resolved.stage)} | ${formatMediumLabel(result.resolved.medium)}`}
+                        badges={[
+                        `${copy.workingSolutionShort} ${formatNumber(result.correction_context.calculator_defaults.working_solution_volume_l)}`,
+                        `${copy.stockRatio} ${formatNumber(result.correction_context.calculator_defaults.stock_ratio)}`,
+                        `${copy.targetMode} ${getLocalizedTokenLabel(result.correction_context.drain_feedback_policy.mode, locale)}`,
+                        ]}
+                    >
+                        <div className="space-y-2 text-sm text-slate-600">
+                            <div>
+                            {copy.workbookDrainStage}: {result.correction_context.drain_feedback_defaults.selected_stage ? formatStageLabel(String(result.correction_context.drain_feedback_defaults.selected_stage)) : '-'}
                         </div>
                         <div>
-                            drain Cl guardrail: {formatNumber(
+                            {copy.drainClGuardrail}: {formatNumber(
                                 typeof drainClGuardrail === 'number' ? drainClGuardrail : null,
                             )}
                         </div>
                         <div>
-                            bounded step cap: min(
+                            {copy.boundedStepCap}: min(
                             {formatNumber(result.correction_context.drain_feedback_policy.step_cap_max_mmol_l, 3)},
                             max(
                             {formatNumber(result.correction_context.drain_feedback_policy.step_cap_min_mmol_l, 3)},
-                            recipe target x {formatNumber(result.correction_context.drain_feedback_policy.step_cap_ratio, 2)}
+                            {copy.recipeTarget} x {formatNumber(result.correction_context.drain_feedback_policy.step_cap_ratio, 2)}
                             ))
                         </div>
                     </div>
                 </AdvisorActionCard>
                 {sourceReview.length > 0 ? (
                     <AdvisorActionCard
-                        title="Source-water review"
-                        badges={sourceReview.map((row) => row.status)}
+                        title={copy.sourceWaterReview}
+                        badges={sourceReview.map((row) => getLocalizedTokenLabel(row.status, locale))}
                     >
                         <div className="space-y-2 text-sm text-slate-600">
                             {sourceReview.map((row) => (
                                 <div key={`source-${row.analyte}`}>
-                                    {row.analyte}: {row.status} ({formatNumber(row.observed_mmol_l)} vs baseline {formatNumber(row.baseline_mmol_l)})
+                                    {row.analyte}: {getLocalizedTokenLabel(row.status, locale)} ({formatNumber(row.observed_mmol_l)} / {copy.baselineReference} {formatNumber(row.baseline_mmol_l)})
                                 </div>
                             ))}
                         </div>
@@ -543,13 +626,13 @@ const AdvisorTabs = ({
                 ) : null}
                 {drainReview.length > 0 ? (
                     <AdvisorActionCard
-                        title="Drain-water review"
-                        badges={drainReview.map((row) => row.status)}
+                        title={copy.drainWaterReview}
+                        badges={drainReview.map((row) => getLocalizedTokenLabel(row.status, locale))}
                     >
                         <div className="space-y-2 text-sm text-slate-600">
                             {drainReview.map((row) => (
                                 <div key={`drain-${row.analyte}`}>
-                                    {row.analyte}: {row.status} ({formatNumber(row.observed_mmol_l)} vs baseline {formatNumber(row.baseline_mmol_l)})
+                                    {row.analyte}: {getLocalizedTokenLabel(row.status, locale)} ({formatNumber(row.observed_mmol_l)} / {copy.baselineReference} {formatNumber(row.baseline_mmol_l)})
                                 </div>
                             ))}
                         </div>
@@ -557,11 +640,11 @@ const AdvisorTabs = ({
                 ) : null}
                 {drainPlan.adjustments.length > 0 ? (
                     <AdvisorActionCard
-                        title="Drain-feedback plan"
-                        subtitle={drainPlan.mode}
+                        title={copy.drainFeedbackPlan}
+                        subtitle={getLocalizedTokenLabel(drainPlan.mode, locale)}
                         badges={[
-                            `${drainPlan.adjusted_analytes.length} adjusted`,
-                            `${drainPlan.manual_review_analytes.length} manual review`,
+                            `${drainPlan.adjusted_analytes.length} ${copy.adjustedCount}`,
+                            `${drainPlan.manual_review_analytes.length} ${copy.manualReviewCount}`,
                         ]}
                     >
                         <div className="space-y-2 text-sm text-slate-600">
@@ -571,15 +654,15 @@ const AdvisorTabs = ({
                                     className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
                                 >
                                     <div className="font-medium text-slate-900">
-                                        {row.analyte}: {row.status}
+                                        {row.analyte}: {getLocalizedTokenLabel(row.status, locale)}
                                     </div>
                                     <div className="mt-1">
-                                        recipe target {formatNumber(row.recipe_target_mmol_l, 4)} to effective target {formatNumber(row.effective_target_mmol_l, 4)}
+                                        {copy.recipeTarget} {formatNumber(row.recipe_target_mmol_l, 4)} → {copy.effectiveTarget} {formatNumber(row.effective_target_mmol_l, 4)}
                                     </div>
                                     <div className="mt-1">
-                                        drain {formatNumber(row.observed_drain_mmol_l, 4)} vs baseline {formatNumber(row.baseline_drain_mmol_l, 4)} | step {formatNumber(row.applied_step_mmol_l, 4)}
-                                        {row.step_cap_mmol_l !== null ? ` / cap ${formatNumber(row.step_cap_mmol_l, 4)}` : ''}
-                                        {row.clamped ? ' | clamped' : ''}
+                                        {copy.drainWater} {formatNumber(row.observed_drain_mmol_l, 4)} / {copy.baselineReference} {formatNumber(row.baseline_drain_mmol_l, 4)} | {copy.adjustmentStep} {formatNumber(row.applied_step_mmol_l, 4)}
+                                        {row.step_cap_mmol_l !== null ? ` / ${copy.stepCap} ${formatNumber(row.step_cap_mmol_l, 4)}` : ''}
+                                        {row.clamped ? ` | ${copy.clamped}` : ''}
                                     </div>
                                     <div className="mt-1">{row.rationale}</div>
                                 </div>
@@ -589,10 +672,10 @@ const AdvisorTabs = ({
                 ) : null}
                 <AdvisorActionCard
                     title={copy.candidateDrafts}
-                    subtitle={`${result.resolved.stage} · ${result.resolved.medium}`}
+                    subtitle={`${formatStageLabel(result.resolved.stage)} · ${formatMediumLabel(result.resolved.medium)}`}
                     badges={[
                         ...result.correction_outputs.stock_tank_prep.balance_basis.draft_eligible_analytes,
-                        `target policy ${result.correction_outputs.stock_tank_prep.balance_basis.target_policy.mode}`,
+                        `${copy.targetPolicy} ${getLocalizedTokenLabel(result.correction_outputs.stock_tank_prep.balance_basis.target_policy.mode, locale)}`,
                     ]}
                 >
                     <div className="space-y-3">
@@ -615,7 +698,7 @@ const AdvisorTabs = ({
                     <AdvisorActionCard
                         title={copy.macroBundle}
                         subtitle={bundle.disclaimer}
-                        badges={[`rank ${bundle.rank}`, bundle.mode, bundle.status]}
+                        badges={[`${copy.rankLabel} ${bundle.rank}`, getLocalizedTokenLabel(bundle.mode, locale), getLocalizedTokenLabel(bundle.status, locale)]}
                     >
                         <div className="space-y-2 text-sm text-slate-600">
                             {bundle.selected_fertilizers.map((row) => (
@@ -632,28 +715,28 @@ const AdvisorTabs = ({
                     </AdvisorActionCard>
                 ) : null}
                 <AdvisorActionCard
-                    title="Bundle execution"
+                    title={copy.bundleExecution}
                     subtitle={bundleExecution.disclaimer}
                     badges={[
-                        bundleExecution.status,
-                        `rank ${bundleExecution.selected_bundle_rank ?? 'n/a'}`,
+                        getLocalizedTokenLabel(bundleExecution.status, locale),
+                        `${copy.rankLabel} ${bundleExecution.selected_bundle_rank ?? copy.operationalStatusUnknown}`,
                     ]}
                 >
-                    <div className="space-y-3 text-sm text-slate-600">
-                        <div>
-                            stock solution per tank: {formatNumber(bundleExecution.stock_solution_volume_l_per_tank, 4)} L
-                        </div>
+                        <div className="space-y-3 text-sm text-slate-600">
+                            <div>
+                                {copy.stockConcentration} {copy.perTank}: {formatNumber(bundleExecution.stock_solution_volume_l_per_tank, 4)} L
+                            </div>
                         {bundleExecution.tank_plan.map((tank) => (
                             <div
                                 key={tank.tank_assignment}
                                 className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
                             >
-                                <div className="font-medium text-slate-900">Tank {tank.tank_assignment}</div>
+                                <div className="font-medium text-slate-900">{copy.tankLabel} {tank.tank_assignment}</div>
                                 <div className="mt-1">
-                                    total batch: {formatNumber(tank.total_batch_mass_g, 4)} g
+                                    {copy.totalBatch}: {formatNumber(tank.total_batch_mass_g, 4)} g
                                 </div>
                                 <div className="mt-1">
-                                    stock concentration: {formatNumber(tank.stock_solution_concentration_g_l, 4)} g/L
+                                    {copy.stockConcentration}: {formatNumber(tank.stock_solution_concentration_g_l, 4)} g/L
                                 </div>
                                 <div className="mt-2 space-y-1">
                                     {tank.fertilizer_lines.map((line) => (
@@ -672,40 +755,40 @@ const AdvisorTabs = ({
                     </div>
                 </AdvisorActionCard>
                 <AdvisorActionCard
-                    title="Residual-safe alternative"
+                    title={copy.residualSafeAlternative}
                     subtitle={residualAlternative.guidance}
                     badges={[
                         residualAlternative.policy,
-                        residualAlternative.status,
-                        `selected rank ${residualAlternative.selected_bundle_rank ?? 'n/a'}`,
+                        getLocalizedTokenLabel(residualAlternative.status, locale),
+                        `${copy.selectedRank} ${residualAlternative.selected_bundle_rank ?? copy.operationalStatusUnknown}`,
                     ]}
                 >
                     <div className="space-y-3 text-sm text-slate-600">
                         {residualAlternative.selected_bundle_over_target_analytes.length > 0 ? (
                             <div>
-                                selected bundle above target: {residualAlternative.selected_bundle_over_target_analytes.join(', ')}
+                                {copy.selectedBundleAboveTarget}: {residualAlternative.selected_bundle_over_target_analytes.join(', ')}
                             </div>
                         ) : null}
                         {residualAlternative.recommended_bundle ? (
                             <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
                                 <div className="font-medium text-slate-900">
-                                    rank {residualAlternative.recommended_bundle.rank} | {residualAlternative.recommended_bundle.status}
+                                    {copy.rankLabel} {residualAlternative.recommended_bundle.rank} | {getLocalizedTokenLabel(residualAlternative.recommended_bundle.status, locale)}
                                 </div>
                                 <div className="mt-1">
-                                    unresolved targets:{' '}
+                                    {copy.unresolvedTargets}:{' '}
                                     {residualAlternative.recommended_bundle.residual_review.unresolved_targets.length > 0
                                         ? residualAlternative.recommended_bundle.residual_review.unresolved_targets
                                             .map((row) => `${row.analyte} ${formatNumber(row.residual_mmol_l, 4)} (${row.status})`)
                                             .join(' | ')
-                                        : 'none'}
+                                        : copy.noResiduals}
                                 </div>
                                 <div className="mt-1">
-                                    untargeted additions:{' '}
+                                    {copy.untargetedAdditions}:{' '}
                                     {residualAlternative.recommended_bundle.residual_review.untargeted_additions.length > 0
                                         ? residualAlternative.recommended_bundle.residual_review.untargeted_additions
                                             .map((row) => `${row.analyte} ${formatNumber(row.projected_mmol_l, 4)}`)
                                             .join(' | ')
-                                        : 'none'}
+                                        : copy.noResiduals}
                                 </div>
                                 <div className="mt-2 space-y-1">
                                     {residualAlternative.recommended_bundle.selected_fertilizers.map((row) => (
@@ -888,7 +971,7 @@ const AdvisorTabs = ({
                                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
                                     >
                                         {(nutrientSurface?.stages ?? []).map((stage) => (
-                                            <option key={stage} value={stage}>{stage}</option>
+                                            <option key={stage} value={stage}>{formatStageLabel(stage)}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -902,7 +985,7 @@ const AdvisorTabs = ({
                                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
                                     >
                                         {(nutrientSurface?.mediums ?? []).map((medium) => (
-                                            <option key={medium} value={medium}>{medium}</option>
+                                            <option key={medium} value={medium}>{formatMediumLabel(medium)}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -953,7 +1036,7 @@ const AdvisorTabs = ({
                                                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-violet-400"
                                                     >
                                                         {(correctionSurface?.stages ?? []).map((stage) => (
-                                                            <option key={stage} value={stage}>{stage}</option>
+                                                            <option key={stage} value={stage}>{formatStageLabel(stage)}</option>
                                                         ))}
                                                     </select>
                                                 </div>
@@ -967,7 +1050,7 @@ const AdvisorTabs = ({
                                                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-violet-400"
                                                     >
                                                         {(correctionSurface?.mediums ?? []).map((medium) => (
-                                                            <option key={medium} value={medium}>{medium}</option>
+                                                            <option key={medium} value={medium}>{formatMediumLabel(medium)}</option>
                                                         ))}
                                                     </select>
                                                 </div>

@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
 
@@ -26,16 +27,16 @@ const AdvisorPendingTabPanel = ({
     const copy = locale === 'ko'
         ? {
             plannedDomain: '예정된 도메인',
-            promptLevelTab: 'prompt-level tab',
-            enginePending: 'engine pending',
+            promptLevelTab: '프롬프트 수준 탭',
+            enginePending: '엔진 대기',
             checking: '현재 경계 확인 중...',
             run: '현재 경계 확인',
             failed: '실행 실패',
-            idleDescription: '이 prompt-level 탭은 먼저 surface만 올라와 있으며, deterministic engine은 아직 landed되지 않았습니다. 현재 backend contract와 누락 surface는 boundary check로 확인할 수 있습니다.',
-            currentBoundary: '현재 contract 경계',
+            idleDescription: '이 프롬프트 수준 탭은 화면만 먼저 올라와 있고, 결정형 엔진은 아직 적용되지 않았습니다. 현재 백엔드 계약과 누락 표면은 경계 확인으로 확인할 수 있습니다.',
+            currentBoundary: '현재 계약 경계',
             tabKey: '탭 키',
             catalogVersion: '카탈로그 버전',
-            existingTabs: '현재 advisor 탭',
+            existingTabs: '현재 어드바이저 탭',
         }
         : {
             plannedDomain: 'Planned Domain',
@@ -98,12 +99,20 @@ const AdvisorPendingTabPanel = ({
                 {status !== 'error' && result ? (
                     <div className="space-y-4">
                         <div className="flex flex-wrap gap-2">
-                            <AdvisorConfidenceBadge label={result.status} tone="warning" />
+                            <AdvisorConfidenceBadge label={getLocalizedTokenLabel(result.status, locale)} tone="warning" />
                             {result.available_tabs.map((tab) => (
-                                <AdvisorConfidenceBadge key={tab} label={`available:${tab}`} tone="success" />
+                                <AdvisorConfidenceBadge
+                                    key={tab}
+                                    label={`${locale === 'ko' ? '사용 가능' : 'Available'}: ${getLocalizedTokenLabel(tab, locale)}`}
+                                    tone="success"
+                                />
                             ))}
                             {result.machine_payload.missing_data.map((item) => (
-                                <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                                <AdvisorConfidenceBadge
+                                    key={item}
+                                    label={getLocalizedTokenLabel(item, locale)}
+                                    tone="neutral"
+                                />
                             ))}
                         </div>
                         <AdvisorActionCard

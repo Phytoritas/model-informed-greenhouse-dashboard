@@ -48,6 +48,30 @@ def test_openai_helper_uses_responses_output_text(monkeypatch: pytest.MonkeyPatc
     assert "Crop: tomato" in fake_client.responses.calls[0]["input"]
 
 
+def test_openai_helper_uses_korean_headings_for_korean_consulting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_client = _FakeOpenAI()
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(ai_service, "OpenAI", lambda: fake_client)
+
+    ai_service.generate_consulting(
+        crop="cucumber",
+        dashboard={"currentData": {}, "metrics": {}},
+        language="ko",
+        model="gpt-5.4-mini",
+    )
+
+    prompt = fake_client.responses.calls[0]["input"]
+    assert "## 핵심 요약" in prompt
+    assert "## 권장 조치" in prompt
+    assert "### 지금" in prompt
+    assert "## 모니터링 체크리스트 (24시간)" in prompt
+    assert "## Executive Summary" not in prompt
+    assert "## Recommendations" not in prompt
+    assert "## Monitoring Checklist (Next 24h)" not in prompt
+
+
 def test_openai_helper_surfaces_invalid_key(monkeypatch: pytest.MonkeyPatch) -> None:
     class _BrokenResponses:
         def create(self, **kwargs):
@@ -95,3 +119,59 @@ def test_openai_helper_includes_knowledge_context_when_present(
     first_message = fake_client.responses.calls[0]["input"][0]["content"]
     assert "Cucumber agronomy compendium" in first_message
     assert "Nutrient recipe workbook" in first_message
+
+
+def test_build_advisory_display_payload_accepts_locale_aware_korean_headings() -> None:
+    payload = ai_service.build_advisory_display_payload(
+        (
+            "## 요약\n"
+            "- 오늘은 과습보다 CO2 제한이 더 큽니다.\n\n"
+            "## 위험 신호\n"
+            "- 오후 고습 지속 시 병해 리스크가 올라갑니다.\n\n"
+            "## 권장 조치\n"
+            "### 지금 할 일\n"
+            "- 환기 설정을 소폭 열어 VPD를 회복합니다.\n\n"
+            "### 오늘 할 일\n"
+            "- CO2 설정을 80 ppm 높여 동화량 변화를 확인합니다.\n\n"
+            "## 모니터링\n"
+            "- 15시 이후 RH 추세를 확인합니다.\n"
+        ),
+        language="ko",
+        confidence=0.82,
+    )
+
+    assert payload["language"] == "ko"
+    assert payload["summary"] == "오늘은 과습보다 CO2 제한이 더 큽니다."
+    assert payload["risks"] == ["오후 고습 지속 시 병해 리스크가 올라갑니다."]
+    assert payload["actions_now"] == ["환기 설정을 소폭 열어 VPD를 회복합니다."]
+    assert payload["actions_today"] == ["CO2 설정을 80 ppm 높여 동화량 변화를 확인합니다."]
+    assert payload["monitor"] == ["15시 이후 RH 추세를 확인합니다."]
+    assert payload["actions_week"] == []
+    assert payload["confidence"] == 0.82
+    assert payload["sections"] == [
+        {
+            "key": "summary",
+            "title": "핵심 요약",
+            "body": "- 오늘은 과습보다 CO2 제한이 더 큽니다.",
+        },
+        {
+            "key": "risks",
+            "title": "위험 신호",
+            "body": "- 오후 고습 지속 시 병해 리스크가 올라갑니다.",
+        },
+        {
+            "key": "actions",
+            "title": "권장 조치",
+            "body": (
+                "### 지금 할 일\n"
+                "- 환기 설정을 소폭 열어 VPD를 회복합니다.\n\n"
+                "### 오늘 할 일\n"
+                "- CO2 설정을 80 ppm 높여 동화량 변화를 확인합니다."
+            ),
+        },
+        {
+            "key": "monitor",
+            "title": "모니터링",
+            "body": "- 15시 이후 RH 추세를 확인합니다.",
+        },
+    ]

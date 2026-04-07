@@ -1,4 +1,5 @@
 import type { AppLocale } from '../i18n/locale';
+import type { SensorFieldState, TelemetryStatus } from '../types';
 
 export type SensorHealthStatus = 'normal' | 'warning' | 'critical';
 
@@ -61,4 +62,79 @@ export function buildStatusSummary(
   }
 
   return parts.join(' · ');
+}
+
+export function deriveSensorFieldState(
+  available: boolean,
+  telemetryStatus: TelemetryStatus,
+): SensorFieldState {
+  if (telemetryStatus === 'offline') {
+    return 'offline';
+  }
+
+  if (telemetryStatus === 'stale') {
+    return 'stale';
+  }
+
+  if (telemetryStatus === 'delayed' || telemetryStatus === 'loading') {
+    return available ? 'delayed' : 'missing';
+  }
+
+  if (!available) {
+    return 'missing';
+  }
+
+  return 'live';
+}
+
+export function getSensorFieldStateLabel(
+  state: SensorFieldState,
+  locale: AppLocale,
+): string {
+  const labels: Record<SensorFieldState, Record<AppLocale, string>> = {
+    live: { ko: '실시간', en: 'Live' },
+    delayed: { ko: '지연', en: 'Delayed' },
+    stale: { ko: '오래됨', en: 'Stale' },
+    offline: { ko: '오프라인', en: 'Offline' },
+    missing: { ko: '미수신', en: 'Missing' },
+  };
+
+  return labels[state][locale];
+}
+
+export function buildDataStateSummary(
+  states: SensorFieldState[],
+  locale: AppLocale,
+): string {
+  const counts = states.reduce<Record<SensorFieldState, number>>(
+    (acc, state) => {
+      acc[state] += 1;
+      return acc;
+    },
+    {
+      live: 0,
+      delayed: 0,
+      stale: 0,
+      offline: 0,
+      missing: 0,
+    },
+  );
+
+  if (counts.offline > 0) {
+    return locale === 'ko' ? '오프라인' : 'Offline';
+  }
+
+  if (counts.missing > 0) {
+    return locale === 'ko' ? `미수신 ${counts.missing}개` : `${counts.missing} missing`;
+  }
+
+  if (counts.stale > 0) {
+    return locale === 'ko' ? `오래됨 ${counts.stale}개` : `${counts.stale} stale`;
+  }
+
+  if (counts.delayed > 0) {
+    return locale === 'ko' ? `지연 ${counts.delayed}개` : `${counts.delayed} delayed`;
+  }
+
+  return locale === 'ko' ? '실시간 수신' : 'Live telemetry';
 }

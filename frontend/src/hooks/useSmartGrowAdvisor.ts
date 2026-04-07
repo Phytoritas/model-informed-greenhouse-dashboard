@@ -15,6 +15,21 @@ export type AdvisorActionEnvelope = {
     today: AdvisorActionTimelineItem[];
     next_3d: AdvisorActionTimelineItem[];
 };
+export type AdvisorDisplaySection = {
+    key: string;
+    title: string;
+    body: string;
+};
+export type AdvisorDisplayPayload = {
+    summary: string | null;
+    risks: string[];
+    actions_now: string[];
+    actions_today: string[];
+    actions_week: string[];
+    monitor: string[];
+    confidence: number | null;
+    sections: AdvisorDisplaySection[];
+};
 export type ModelRuntimeConstraintViolation = {
     code: string;
     severity: string;
