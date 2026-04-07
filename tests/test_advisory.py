@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import pytest
 from fastapi import HTTPException
 
 from model_informed_greenhouse_dashboard.backend.app.services import advisory, advisory_api
+from model_informed_greenhouse_dashboard.backend.app.config import settings
 from model_informed_greenhouse_dashboard.backend.app.services.knowledge_catalog import (
     build_crop_knowledge_context,
     build_knowledge_catalog,
@@ -13,7 +16,19 @@ from model_informed_greenhouse_dashboard.backend.app.services.advisory import (
     recommend_pesticides,
 )
 from model_informed_greenhouse_dashboard.backend.app.services.workbook_normalization import (
+    NUTRIENT_WORKBOOK,
+    PESTICIDE_WORKBOOK,
     clear_workbook_preview_cache,
+)
+
+
+_LOCAL_WORKBOOKS_READY = all(
+    (Path(settings.data_dir) / workbook_name).exists()
+    for workbook_name in (PESTICIDE_WORKBOOK, NUTRIENT_WORKBOOK)
+)
+_REQUIRES_LOCAL_WORKBOOKS = pytest.mark.skipif(
+    not _LOCAL_WORKBOOKS_READY,
+    reason="Local SmartGrow workbooks are not tracked in git; workbook-exact advisory integration stays local-only.",
 )
 
 
@@ -21,6 +36,7 @@ def setup_function() -> None:
     clear_workbook_preview_cache()
 
 
+@_REQUIRES_LOCAL_WORKBOOKS
 def test_recommend_pesticides_returns_crop_scoped_candidates() -> None:
     payload = recommend_pesticides(crop="cucumber", target="흰가루병", limit=4)
 
@@ -224,6 +240,7 @@ def test_recommend_pesticides_hardens_rotation_rows_and_manual_review_flags(
     ]
 
 
+@_REQUIRES_LOCAL_WORKBOOKS
 def test_recommend_nutrient_recipe_returns_exact_stage_recipe() -> None:
     payload = recommend_nutrient_recipe(crop="tomato", stage="Fruit set")
 
@@ -238,6 +255,7 @@ def test_recommend_nutrient_recipe_returns_exact_stage_recipe() -> None:
     assert payload["fertilizer_catalog"]
 
 
+@_REQUIRES_LOCAL_WORKBOOKS
 def test_recommend_nutrient_correction_returns_guardrail_findings() -> None:
     payload = recommend_nutrient_correction(
         crop="tomato",
@@ -429,6 +447,7 @@ def test_recommend_nutrient_correction_returns_guardrail_findings() -> None:
     assert any("manual-only" in reason for reason in execution_summary["readiness_reasons"])
 
 
+@_REQUIRES_LOCAL_WORKBOOKS
 def test_nutrient_correction_rejects_negative_water_measurements() -> None:
     with pytest.raises(ValueError, match="source_water measurement 'Ca'"):
         recommend_nutrient_correction(
@@ -440,6 +459,7 @@ def test_nutrient_correction_rejects_negative_water_measurements() -> None:
         )
 
 
+@_REQUIRES_LOCAL_WORKBOOKS
 def test_nutrient_correction_applies_bounded_drain_feedback_target_shift() -> None:
     payload = recommend_nutrient_correction(
         crop="tomato",
@@ -600,6 +620,7 @@ def test_macro_bundle_candidates_block_combined_guardrail_breaches() -> None:
     )
 
 
+@_REQUIRES_LOCAL_WORKBOOKS
 def test_nutrient_correction_blocks_unmodeled_formula_side_effects_from_draft_sizing() -> None:
     payload = recommend_nutrient_correction(
         crop="tomato",
@@ -625,6 +646,7 @@ def test_nutrient_correction_blocks_unmodeled_formula_side_effects_from_draft_si
     )
 
 
+@_REQUIRES_LOCAL_WORKBOOKS
 def test_nutrient_correction_blocks_micronutrient_draft_sizing_until_unit_contract_is_hardened() -> None:
     payload = recommend_nutrient_correction(
         crop="tomato",
