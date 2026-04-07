@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #19 and branch `feat/19-implement-model-first-smartgrow-advisor-with-crop-physiology-gas-exchange-and-sensitivity-engines` now own the new model-first SmartGrow requirement."
+    "note": "Issue #21 and branch `feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs` now own the next bounded follow-up loop after the merged issue #19 delivery."
   },
   "harness_setup": {
     "status": "pass",
@@ -81,7 +81,11 @@
   },
   "issue19_pr_validation": {
     "status": "pass",
-    "note": "The latest issue #19 local ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) and PR #20 GitHub Actions push/pull_request runs are green after the knowledge-test stabilization, market-summary refresh fix, and knowledge-status sanitization hardening."
+    "note": "Issue #19 is closed and PR #20 is merged after the final local validation ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) plus green GitHub Actions push/pull_request runs."
+  },
+  "work_event_compare_loop": {
+    "status": "pending",
+    "note": "The current `work` advisor already renders control-based `model_runtime.scenario.options` through the shared runtime panel, but it still depends on deterministic planning heuristics and has no read path over persisted `crop_work_events`. Issue #21 must add an additive work-event-driven compare contract for bounded `leaf_removal` / `fruit_thinning` candidate replay."
   },
   "rtr_good_production_windows_followup": {
     "status": "blocked",
