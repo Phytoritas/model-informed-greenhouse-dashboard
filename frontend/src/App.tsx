@@ -691,7 +691,7 @@ function App() {
         )}
         rightSidebar={(
           <>
-            <div className="max-h-[480px] min-h-[320px] overflow-hidden rounded-[28px]">
+            <div className="flex h-[480px] flex-col">
               <Suspense fallback={<AdvisorPanelFallback />}>
                 <AiAdvisor
                   analysis={aiAnalysis}
