@@ -1,7 +1,7 @@
 # Current Loop
 
 ## Active State
-- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy` and now has an uncommitted local follow-up slice beyond PR #24 head.
+- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy`, and PR `#24` head now includes the Korean-visible-UI hardening follow-up commit `7abf02a`.
 - Local validation ladder is green again: `poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`.
 
 ## Latest Delivered Baseline
@@ -19,9 +19,9 @@
   - Korean-mode copy cleanup across advisor/chat/runtime and major analytics surfaces
   - Korean visible-UI hardening across advisor tabs, SmartGrow labels, work-event compare labels, and stage/medium display helpers
   - post-PR follow-up cleanup that removes the remaining Korean-mode `AI`/`RAG`/`drawer` wording on user-visible surfaces, replaces raw knowledge route exposure with descriptive labels, localizes additional work-state tokens, and updates the WorkTab harness accordingly
+  - pushed PR head `7abf02a` (`fix: harden korean dashboard copy surfaces`) so remote validation is rerunning against the latest localized copy surface
 
 ## Exact Restart Step
-1. Commit and push the current Korean-visible-UI hardening slice to PR `#24`.
-2. Watch PR `#24` GitHub Actions until backend/frontend validation settles.
-3. If remote checks fail, fix only the reported regression and rerun the local ladder for the touched surface.
-4. Once PR validation is green, sync harness truth again and proceed to review/merge.
+1. Watch PR `#24` GitHub Actions until backend/frontend validation settles on head `7abf02a`.
+2. If remote checks fail, fix only the reported regression and rerun the local ladder for the touched surface.
+3. Once PR validation is green, sync harness truth again and proceed to review/merge.

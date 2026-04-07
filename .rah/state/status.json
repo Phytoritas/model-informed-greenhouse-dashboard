@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue23-localization-hardening-local-validation-green-pending-push",
+  "current_stage": "issue23-pr-validation-rerunning-after-korean-copy-hardening",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
   "active_issue": 23,
   "active_branch": "feat/23-dashboard-layout-kpi-first-hierarchy",
   "implementation_blocked": false,
-  "next_action": "The issue #23 branch has an additional unpushed Korean-visible-UI hardening pass plus WorkTab localization/test updates, and the full local ladder is green again. Next step: commit and push this follow-up slice to PR #24, then watch GitHub Actions and resync harness truth once remote validation settles.",
+  "next_action": "Commit `7abf02a` is now pushed to PR #24 with the Korean-visible-UI hardening slice and refreshed WorkTab localization/test expectations. Next step: watch the rerun GitHub Actions checks, address any remote regressions if they appear, and sync harness truth again once PR validation turns green.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "GitHub issue #23 dashboard layout KPI-first hierarchy restructure"
 }
