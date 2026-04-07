@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 const cwd = process.cwd()
@@ -32,6 +32,11 @@ const markdownChunkMarkers = [
 // Using polling is slower but typically much more reliable.
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+  },
   build: {
     rollupOptions: {
       output: {

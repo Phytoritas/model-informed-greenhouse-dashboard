@@ -1,8 +1,8 @@
 # Current Loop
 
 ## Earliest Pending Gate
-- `work_event_compare_hardening` is now the active pending gate for issue `#21`
-- The additive work-event compare slice, reviewer hardening, crop-specific candidate agronomy/ranking, and backend matrix tests are landed, but dedicated component coverage and broader reuse are still follow-up work
+- `issue21_pr_validation` is now the active pending gate for issue `#21`
+- The additive work-event compare slice, reviewer hardening, crop-specific candidate agronomy/ranking, backend matrix tests, and dedicated `WorkTab` component coverage are all landed; the remaining work is PR validation and review
 
 ## Landed Before This Loop
 - Issue `#19` is merged into `main` at `ecbd9b7` via PR `#20`, so the model-first runtime foundations, additive advisor contracts, model-aware frontend surfaces, knowledge/advisor CI hardening, and weather-panel resilience are now the fixed baseline
@@ -18,14 +18,14 @@
 - Cucumber work-event compare now enforces a 15-leaf guard, surfaces agronomy flags plus 14-day fruit-DM/LAI deltas, and matrix-tests 12/15/18 leaf scenarios so over-defoliation stays out of the recommended path
 - Tomato work-event compare now scores maintain / thin / defer / next-truss planning options with sink-overload-aware ranking, exposes sink-overload state in the compare payload, and matrix-tests lighter versus heavier fruit-load cases so `1과 감과` only rises when overload pressure is real
 - The frontend typed contract now absorbs the richer work-event compare fields and `WorkTab` renders the new agronomy flags, 14-day fruit-DM delta, 14-day LAI delta, leaf guard, and sink-overload values without breaking the existing work surface
-- Validated: `poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`
+- A minimal frontend Vitest/RTL harness now exists for `WorkTab` `work_event_compare`, covering the landed agronomy-detail path and the `history-unavailable` fallback path
+- Validated: `poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`
 
 ## Exact Restart Step
 1. Continue on issue `#21` and branch `feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs`.
 2. Keep issue `#19` merged mainline and issue `#18` compatibility surfaces fixed; do not regress existing summary/chat/tab runtime consumers while extending the work-tradeoff path.
 3. Treat the current backend compare contract and `WorkTab` compare block as the new baseline; do not fold it back into the generic control-scenario runtime panel.
-4. Crop-specific candidate generation and ranking are now the baseline; do not revert the 15-leaf cucumber guard, sink-overload-aware tomato ordering, or the additive compare detail fields without replacing them with stricter logic.
-5. Frontend component coverage for `work_event_compare` is still absent because the repo currently has no frontend test harness beyond lint/build; decide whether to introduce a minimal Vitest/RTL setup as a separate bounded slice or keep relying on API/backend smoke for issue `#21`.
-6. If another backend slice is needed before PR, keep it bounded to explicit agronomy/ranking refinements rather than reopening the generic compare contract.
-7. Decide whether to open the issue `#21` PR now or after the frontend component-test decision is settled.
-8. Keep issue `#3` isolated as the separate blocked RTR follow-up lane.
+4. Crop-specific candidate generation and ranking are now the baseline; do not revert the 15-leaf cucumber guard, sink-overload-aware tomato ordering, additive compare detail fields, or the new `WorkTab` component harness without replacing them with stricter protection.
+5. Keep PR `#22` as the active delivery surface for issue `#21`; the next work should be review/CI follow-through unless a reviewer finds a concrete regression.
+6. If another follow-up slice is needed after review, open a new bounded issue rather than silently stretching issue `#21` back into broad architecture work.
+7. Keep issue `#3` isolated as the separate blocked RTR follow-up lane.
