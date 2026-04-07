@@ -18,8 +18,6 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
     const { locale } = useLocale();
     const analysis = props.result?.machine_payload.environment_analysis;
     const advisorActions = props.result?.machine_payload.advisor_actions;
-    const retrievalContext = props.result?.machine_payload.retrieval_context;
-    const knowledgeEvidence = props.result?.machine_payload.knowledge_evidence;
     const modelRuntime = props.result?.machine_payload.model_runtime;
     const copy = locale === 'ko'
         ? {
@@ -37,7 +35,6 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             expectedEffects: '예상 효과',
             checklist: '확인 체크리스트',
             context: '현재 문맥',
-            knowledgeEvidence: '근거 지식',
             urgency: '긴급도',
             confidence: '신뢰도',
             diagnosis: '진단',
@@ -48,10 +45,6 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             hypotheses: '원인 가설',
             focusAreas: '조치 초점',
             riskFlags: '리스크 플래그',
-            evidenceUnavailable: '이번 실행에서는 환경 지식 검색을 사용할 수 없습니다.',
-            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 환경 근거를 붙이지 못했습니다.',
-            evidenceNoMatches: '현재 환경 문맥과 직접 맞는 추가 환경 근거는 찾지 못했습니다.',
-            evidenceSkipped: '이번 실행에서는 별도 환경 지식 검색이 요청되지 않았습니다.',
             insideTemp: '실내 온도',
             insideHumidity: '실내 습도',
             insideVpd: '실내 VPD',
@@ -71,7 +64,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             nextPrecip: '다음 강수확률',
             nextRadiation: '다음 일사',
             nextSunshine: '다음 일조',
-            availableButNotRun: '결정형 환경 어드바이저는 이미 적용되어 있으며, 실행하면 현재 제어 제안을 확인할 수 있습니다.',
+            availableButNotRun: '환경 어드바이저는 이미 적용되어 있으며, 실행하면 현재 제어 제안을 확인할 수 있습니다.',
         }
         : {
             title: 'Environment',
@@ -88,7 +81,6 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             expectedEffects: 'Expected effects',
             checklist: 'Monitoring checklist',
             context: 'Context snapshot',
-            knowledgeEvidence: 'Knowledge evidence',
             urgency: 'Urgency',
             confidence: 'Confidence',
             diagnosis: 'Diagnosis',
@@ -99,10 +91,6 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             hypotheses: 'Cause hypotheses',
             focusAreas: 'Control focus',
             riskFlags: 'Risk flags',
-            evidenceUnavailable: 'The environment-domain knowledge retrieval is currently unavailable for this run.',
-            evidenceDatabaseMissing: 'The knowledge database is not ready, so no environment-domain evidence could be attached.',
-            evidenceNoMatches: 'No additional environment-domain evidence matched the current steering context.',
-            evidenceSkipped: 'No separate environment-domain retrieval was requested for this run.',
             insideTemp: 'Inside temp',
             insideHumidity: 'Inside humidity',
             insideVpd: 'Inside VPD',
@@ -122,21 +110,8 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             nextPrecip: 'Next precip probability',
             nextRadiation: 'Next radiation',
             nextSunshine: 'Next sunshine',
-            availableButNotRun: 'The deterministic environment advisor is already landed. Run it to inspect the current steering guidance.',
+            availableButNotRun: 'The environment advisor is already landed. Run it to inspect the current steering guidance.',
         };
-
-    function getRetrievalStatusMessage(status: string | undefined) {
-        switch (status) {
-            case 'retrieval_unavailable':
-                return copy.evidenceUnavailable;
-            case 'database_missing':
-                return copy.evidenceDatabaseMissing;
-            case 'no_matches':
-                return copy.evidenceNoMatches;
-            default:
-                return copy.evidenceSkipped;
-        }
-    }
 
     function formatValue(
         value: number | null | undefined,
@@ -263,48 +238,6 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                             <div>{copy.nextSunshine}: {formatValue(analysis.context_snapshot.next_day_sunshine_h, 1, ' h')}</div>
                         </div>
                     </AdvisorActionCard>
-                    {retrievalContext ? (
-                        <AdvisorActionCard
-                            title={copy.knowledgeEvidence}
-                            subtitle={copy.title}
-                            badges={[
-                                getLocalizedTokenLabel(retrievalContext.status, locale),
-                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []).map((item) =>
-                                    getLocalizedTokenLabel(item, locale),
-                                ),
-                            ]}
-                        >
-                            {knowledgeEvidence?.evidence_cards?.length ? (
-                                <div className="space-y-3">
-                                    {knowledgeEvidence.evidence_cards.map((card, index) => (
-                                        <div
-                                            key={`${card.domain ?? card.topic_minor ?? 'evidence'}-${index}`}
-                                            className="rounded-2xl border border-slate-200 bg-white p-4"
-                                        >
-                                            <div className="flex flex-wrap gap-2">
-                                                {card.domain ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.domain, locale)} tone="info" />
-                                                ) : null}
-                                                {card.topic_major ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_major, locale)} tone="success" />
-                                                ) : null}
-                                                {card.topic_minor ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_minor, locale)} tone="neutral" />
-                                                ) : null}
-                                            </div>
-                                            <div className="mt-2 text-sm leading-relaxed text-slate-600">
-                                                {card.evidence_excerpt}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-sm leading-relaxed text-slate-500">
-                                    {getRetrievalStatusMessage(retrievalContext.status)}
-                                </div>
-                            )}
-                        </AdvisorActionCard>
-                    ) : null}
                 </div>
 
                 <div className="space-y-4">

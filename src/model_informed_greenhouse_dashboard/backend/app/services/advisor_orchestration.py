@@ -64,11 +64,11 @@ _MODEL_RUNTIME_TIME_WINDOWS = {
     "screen_close": "now",
 }
 _MODEL_RUNTIME_CONTROL_LABELS = {
-    "co2_setpoint_day": "주간 CO2 setpoint",
-    "temperature_day": "주간 온도 setpoint",
-    "temperature_night": "야간 온도 setpoint",
-    "rh_target": "RH target",
-    "screen_close": "screen closing",
+    "co2_setpoint_day": "주간 CO2",
+    "temperature_day": "주간 온도",
+    "temperature_night": "야간 온도",
+    "rh_target": "상대습도 목표",
+    "screen_close": "스크린 닫힘",
 }
 _WORK_EVENT_COMPARE_HORIZONS_HOURS = (24, 72, 168, 336)
 logger = logging.getLogger(__name__)
@@ -774,7 +774,7 @@ def _build_model_runtime_payload(
     if observed_signal_score < 0.5:
         return _build_unavailable_model_runtime_payload(
             tab_name=tab_name,
-            reason="Model runtime block is in monitoring-first mode because live physiology/work signals are still incomplete.",
+            reason="실시간 생리·작업 신호가 아직 부족해 예측 모델 분석을 모니터링 우선 상태로 유지합니다.",
             observed_signal_score=observed_signal_score,
             dashboard_missing_fields=dashboard_missing_fields,
             inferred_fields=inferred_fields,
@@ -797,7 +797,7 @@ def _build_model_runtime_payload(
     except Exception:
         return _build_unavailable_model_runtime_payload(
             tab_name=tab_name,
-            reason="Model runtime block could not assemble a stable bounded scenario from the current dashboard context.",
+            reason="현재 대시보드 문맥에서 안정적인 예측 시나리오를 만들지 못했습니다.",
             observed_signal_score=observed_signal_score,
             dashboard_missing_fields=dashboard_missing_fields,
             inferred_fields=inferred_fields,
@@ -840,7 +840,7 @@ def _build_model_runtime_payload(
             {
                 "action": (
                     f"{_MODEL_RUNTIME_CONTROL_LABELS.get(control_name, control_name)} "
-                    f"{abs(delta_value):g}{spec.unit} {'increase' if delta_value > 0 else 'decrease'}"
+                    f"{abs(delta_value):g}{spec.unit} {'올리기' if delta_value > 0 else '내리기'}"
                 ),
                 "time_window": _MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"),
                 "control": control_name,
@@ -907,7 +907,7 @@ def _build_model_runtime_payload(
 
     return {
         "status": "ready",
-        "summary": "Model runtime synthesized a bounded scenario baseline and local sensitivity ranking from the current dashboard context.",
+        "summary": "현재 대시보드 문맥을 기준으로 예측 시나리오와 주요 환경 요인을 함께 정리했습니다.",
         "state_snapshot": {
             "crop": crop,
             "lai": state.get("lai"),
@@ -1191,7 +1191,7 @@ def _build_work_time_windows(
 
     if first_rtr_target:
         next_3d_focus.append(
-            "RTR forecast target을 기준으로 작업량을 분산해 생육 steering과 충돌을 줄입니다."
+            "RTR 예보 목표를 기준으로 작업량을 분산해 생육 제어와 충돌을 줄입니다."
         )
 
     if not next_3d_focus:
@@ -1546,7 +1546,7 @@ def _build_environment_advisor_actions(
         ],
         "today": [
             _build_advisor_action_item(
-                title=str(action.get("title") or "Environment steering"),
+                title=str(action.get("title") or "환경 제어"),
                 rationale=str(action.get("rationale") or ""),
                 operator=str(action.get("operator") or ""),
                 expected_effect=str(action.get("expected_effect") or ""),
@@ -1556,7 +1556,7 @@ def _build_environment_advisor_actions(
         ],
         "next_3d": [
             _build_advisor_action_item(
-                title=str(action.get("title") or "3-day steering"),
+                title=str(action.get("title") or "3일 제어"),
                 rationale=str(action.get("rationale") or ""),
                 badges=[str(action.get("date") or "")],
             )
@@ -1679,12 +1679,12 @@ def _build_environment_tab_payload(
     )
 
     if limited_monitoring_mode:
-        diagnosis_parts.append("실내 환경 telemetry 부족")
+        diagnosis_parts.append("실내 환경 데이터 부족")
         deviation_parts.append(
-            "실내 temperature, humidity, VPD telemetry가 부족해 monitoring-first 모드로 유지합니다."
+            "실내 온도, 습도, VPD 데이터가 부족해 모니터링 우선 모드로 유지합니다."
         )
         cause_hypotheses.append(
-            "현재 dashboard payload에는 closed-loop steering에 필요한 실내 환경 신호가 충분하지 않습니다."
+            "현재 대시보드 데이터에는 자동 제어 판단에 필요한 실내 환경 신호가 충분하지 않습니다."
         )
 
     if (
@@ -1694,17 +1694,17 @@ def _build_environment_tab_payload(
         focus_areas.append("humidity_control")
         diagnosis_parts.append("고습/저VPD 패턴")
         deviation_parts.append(
-            f"{f'RH {humidity_pct:.0f}%' if humidity_pct is not None else 'RH telemetry unavailable'} 및 "
-            f"{f'VPD {vpd_kpa:.2f} kPa' if vpd_kpa is not None else 'VPD telemetry unavailable'}로 결로·병압 리스크가 높습니다."
+            f"{f'상대습도 {humidity_pct:.0f}%' if humidity_pct is not None else '상대습도 정보 없음'} 및 "
+            f"{f'VPD {vpd_kpa:.2f} kPa' if vpd_kpa is not None else 'VPD 정보 없음'}로 결로·병해 리스크가 높습니다."
         )
         cause_hypotheses.append("실내 습기가 높고 잎 표면 건조 시간이 짧아질 가능성이 큽니다.")
         if humidity_trend == "up":
-            cause_hypotheses.append("최근 humidity trend가 상승이라 야간-이른 오전 구간에서 습기 누적이 의심됩니다.")
+            cause_hypotheses.append("최근 습도 상승 추세가 이어져 야간과 이른 오전 구간의 습기 누적이 의심됩니다.")
         immediate_actions.append(
             _build_environment_action(
-                title="제습 우선 steering",
+                title="제습 우선 제어",
                 rationale="고습/저VPD는 결로와 병 발생 리스크를 동시에 밀어 올립니다.",
-                operator="난방 setpoint를 약 +0.5°C 높이고 짧은 환기 pulse로 습기를 털어냅니다.",
+                operator="난방 설정온도를 약 +0.5°C 높이고 짧은 환기로 습기를 털어냅니다.",
                 expected_effect="RH 피크를 낮추고 잎 표면 건조 시간을 확보합니다.",
                 time_window="next_6h",
             )
@@ -1718,8 +1718,8 @@ def _build_environment_tab_payload(
         focus_areas.append("heat_stress")
         diagnosis_parts.append("고온/고VPD 스트레스")
         deviation_parts.append(
-            f"{f'실내 {temperature_c:.1f}°C' if temperature_c is not None else '실내 temperature telemetry unavailable'}, "
-            f"{f'VPD {vpd_kpa:.2f} kPa' if vpd_kpa is not None else 'VPD telemetry unavailable'}로 증산 과부하 가능성이 있습니다."
+            f"{f'실내 {temperature_c:.1f}°C' if temperature_c is not None else '실내 온도 정보 없음'}, "
+            f"{f'VPD {vpd_kpa:.2f} kPa' if vpd_kpa is not None else 'VPD 정보 없음'}로 증산 과부하 가능성이 있습니다."
         )
         cause_hypotheses.append("과도한 일사 또는 환기 과강도로 체감 건조가 커졌을 가능성이 있습니다.")
         immediate_actions.append(
@@ -1749,7 +1749,7 @@ def _build_environment_tab_payload(
                 title="주간 CO2 보강 유지",
                 rationale="광이 있는 시간대의 저 CO2는 환경이 안정해 보여도 실제 동화량을 먼저 눌릴 수 있습니다.",
                 operator="환기 개방 구간과 CO2 보강 지속시간을 같이 점검해 광이 있는 시간대의 CO2 저하를 줄입니다.",
-                expected_effect="주간 탄소 확보력을 유지해 생장 pace와 품질 흔들림을 줄입니다.",
+                expected_effect="주간 탄소 확보력을 유지해 생장 속도와 품질 흔들림을 줄입니다.",
                 time_window="next_24h",
             )
         )
@@ -1766,7 +1766,7 @@ def _build_environment_tab_payload(
         today_steering.append(
             _build_environment_action(
                 title="평균온도 방어",
-                rationale="RTR 기준 평균온도가 낮으면 오늘 생육 pace가 밀릴 수 있습니다.",
+                rationale="RTR 기준 평균온도가 낮으면 오늘 생육 속도가 밀릴 수 있습니다.",
                 operator="과도한 냉방/환기를 줄이고 일사 구간의 목표온도 하단을 방어합니다.",
                 expected_effect="RTR line에 다시 근접하도록 평균온도를 회복합니다.",
                 time_window="next_24h",
@@ -1778,7 +1778,7 @@ def _build_environment_tab_payload(
         diagnosis_parts.append("RTR warm-for-light")
         if target_temp_c is not None and delta_temp_c is not None:
             deviation_parts.append(
-                f"RTR target {target_temp_c:.1f}°C 대비 {delta_temp_c:.1f}°C 높아 과열 steering이 필요합니다."
+                f"RTR 목표온도 {target_temp_c:.1f}°C 대비 {delta_temp_c:.1f}°C 높아 과열 완화가 필요합니다."
             )
         cause_hypotheses.append("광량 대비 평균온도가 높아 품질/에너지 효율이 나빠질 수 있습니다.")
         today_steering.append(
@@ -1817,8 +1817,8 @@ def _build_environment_tab_payload(
 
     if not diagnosis_parts:
         diagnosis_parts.append("대체로 안정")
-        deviation_parts.append("현재 weather/RTR/live telemetry 기준 즉시 교정이 필요한 큰 편차는 제한적입니다.")
-        cause_hypotheses.append("현재 구간은 모니터링 중심 steering이 적절합니다.")
+        deviation_parts.append("현재 날씨, RTR, 실시간 데이터 기준 즉시 교정이 필요한 큰 편차는 제한적입니다.")
+        cause_hypotheses.append("현재 구간은 모니터링 중심 제어가 적절합니다.")
         focus_areas.append("stability_watch")
 
     if not immediate_actions:
@@ -1835,9 +1835,9 @@ def _build_environment_tab_payload(
     if not today_steering:
         today_steering.append(
             _build_environment_action(
-                title="오늘 steering 유지",
+                title="오늘 제어 유지",
                 rationale="현재 문맥에서는 급격한 제어 변경보다 추세 감시가 우선입니다.",
-                operator="RTR target band와 RH/VPD를 함께 보며 today steering을 유지합니다.",
+                operator="RTR 목표 범위와 RH/VPD를 함께 보며 오늘 제어를 유지합니다.",
                 expected_effect="안정 상태를 해치지 않고 미세 조정 여지만 남깁니다.",
                 time_window="next_24h",
             )
@@ -1849,16 +1849,16 @@ def _build_environment_tab_payload(
         date_label = str(target.get("date") or weather_day.get("date") or f"day-{index + 1}")
         target_temp_value = _coerce_float(target.get("targetTempC"))
         radiation_value = _coerce_float(target.get("radiationSumMjM2D"))
-        weather_label = str(target.get("weatherLabel") or weather_day.get("weather_label") or "forecast")
+        weather_label = str(target.get("weatherLabel") or weather_day.get("weather_label") or "예보")
         steering_title = (
-            f"{date_label}: RTR {target_temp_value:.1f}°C steering"
+            f"{date_label}: RTR {target_temp_value:.1f}°C 제어"
             if target_temp_value is not None
-            else f"{date_label}: environment steering"
+            else f"{date_label}: 환경 제어"
         )
         steering_rationale = (
-            f"{weather_label} 예보와 일사 {radiation_value:.1f} MJ m⁻²를 기준으로 평균온도 steering을 맞춥니다."
+            f"{weather_label} 예보와 일사 {radiation_value:.1f} MJ m⁻²를 기준으로 평균온도 제어를 맞춥니다."
             if radiation_value is not None
-            else f"{weather_label} 예보 기준으로 평균온도 steering을 조정합니다."
+            else f"{weather_label} 예보 기준으로 평균온도 제어를 조정합니다."
         )
         three_day_plan.append(
             {
@@ -1872,8 +1872,8 @@ def _build_environment_tab_payload(
         three_day_plan.append(
             {
                 "date": "next_3d",
-                "title": "3일 steering baseline 유지",
-                "rationale": "forecast target이 부족해 현재 RTR/live trend를 기준으로 보수적으로 유지합니다.",
+                "title": "3일 기본 제어 유지",
+                "rationale": "예보 목표가 부족해 현재 RTR와 실시간 추세를 기준으로 보수적으로 유지합니다.",
             }
         )
 
@@ -1887,7 +1887,7 @@ def _build_environment_tab_payload(
     if limited_monitoring_mode:
         monitoring_checklist.insert(
             0,
-            "자동 steering 전에 누락된 실내 temperature/humidity/VPD telemetry를 먼저 복구합니다.",
+            "자동 제어 전에 누락된 실내 온도, 습도, VPD 데이터를 먼저 복구합니다.",
         )
 
     urgency = "medium"
@@ -1920,7 +1920,7 @@ def _build_environment_tab_payload(
     )
     if limited_monitoring_mode:
         operating_mode = "monitoring-first"
-        recovery_objective = "실내 climate telemetry를 복구한 뒤 closed-loop steering을 다시 시작합니다."
+        recovery_objective = "실내 기후 데이터를 복구한 뒤 자동 제어를 다시 시작합니다."
     elif "humidity_control" in focus_areas and "rtr_recovery" in focus_areas:
         operating_mode = "dehumidify-and-rtr-recovery"
         recovery_objective = "제습과 평균온도 회복을 동시에 맞춰 결로 리스크와 생장 지연을 함께 줄입니다."
@@ -1929,26 +1929,26 @@ def _build_environment_tab_payload(
         recovery_objective = "결로·병압 리스크를 먼저 낮추고 잎 표면 건조 시간을 확보합니다."
     elif "heat_stress" in focus_areas and "heat_preparation" in focus_areas:
         operating_mode = "heat-buffering"
-        recovery_objective = "오후 고온 피크 전에 VPD와 leaf energy balance를 완충합니다."
+        recovery_objective = "오후 고온 피크 전에 VPD와 잎 온도 균형을 완충합니다."
     elif "heat_stress" in focus_areas:
         operating_mode = "transpiration-protection"
         recovery_objective = "과도한 건조와 증산 과부하를 먼저 낮춰 기공 반응을 보호합니다."
     elif "rtr_recovery" in focus_areas or "rtr_balance" in focus_areas:
         operating_mode = "rtr-recovery"
-        recovery_objective = "RTR 허용대 안으로 평균온도를 다시 맞춰 오늘 생장 pace를 회복합니다."
+        recovery_objective = "RTR 허용 범위 안으로 평균온도를 다시 맞춰 오늘 생장 속도를 회복합니다."
     elif "co2_support" in focus_areas:
         operating_mode = "co2-recovery"
         recovery_objective = "광이 있는 시간대의 CO2 확보력을 높여 낮 시간 동화 여유를 복구합니다."
     else:
         operating_mode = "steady-state"
-        recovery_objective = "큰 편차 없이 현재 steering 범위를 유지하면서 추세를 모니터링합니다."
+        recovery_objective = "큰 편차 없이 현재 제어 범위를 유지하면서 추세를 모니터링합니다."
 
     return {
         "mode": "monitoring-first" if limited_monitoring_mode else "actionable",
         "summary": (
-            "Environment advisor generated live steering guidance from telemetry, weather, and RTR context."
+            "환경 어드바이저가 실시간 계측, 날씨, RTR 문맥을 바탕으로 제어 방향을 정리했습니다."
             if not limited_monitoring_mode
-            else "Environment advisor is in monitoring-first mode because inside climate telemetry is incomplete."
+            else "실내 기후 데이터가 부족해 환경 어드바이저를 모니터링 우선 상태로 유지합니다."
         ),
         "urgency": urgency,
         "confidence": _environment_context_completeness(dashboard),
@@ -1969,7 +1969,7 @@ def _build_environment_tab_payload(
         "immediate_actions": immediate_actions,
         "today_steering": today_steering,
         "three_day_plan": three_day_plan,
-        "expected_effects": expected_effects or ["현재 steering 안정성 유지"],
+        "expected_effects": expected_effects or ["현재 제어 안정성 유지"],
         "monitoring_checklist": monitoring_checklist,
         "context_snapshot": {
             "inside_temp_c": temperature_c,
@@ -2115,7 +2115,7 @@ def _build_physiology_tab_payload(
 
     if limited_monitoring_mode:
         balance_state = "monitoring-first"
-        diagnosis_parts.append("생리 telemetry 부족")
+        diagnosis_parts.append("생리 데이터 부족")
         deviation_parts.append(
             "캐노피/증산/광합성 신호가 충분하지 않아 원인 해석보다 monitoring-first로 유지합니다."
         )
@@ -2124,7 +2124,7 @@ def _build_physiology_tab_payload(
         )
         follow_up_actions.append(
             _build_physiology_action(
-                title="핵심 생리 telemetry 복구",
+                title="핵심 생리 데이터 복구",
                 rationale="캐노피 온도, VPD, 증산, 기공, 광합성 신호가 있어야 physiology tab이 추론을 과장하지 않습니다.",
                 operator="센서 연결과 최근 요약 집계를 먼저 확인한 뒤 advisor를 다시 실행합니다.",
                 expected_effect="원인 설명과 균형 진단의 신뢰도를 높입니다.",
@@ -2144,19 +2144,19 @@ def _build_physiology_tab_payload(
         if soft_canopy:
             diagnosis_parts.append("연약/저증산 방향")
             deviation_parts.append(
-                "낮은 VPD 또는 느린 증산 흐름으로 canopy가 다소 soft하게 기울 수 있습니다."
+                "낮은 VPD 또는 느린 증산 흐름으로 작물이 연약해지거나 웃자랄 수 있습니다."
             )
             cause_hypotheses.append(
                 "오전 광량 대비 증산 회복이 늦으면 영양생장 쪽으로 기울면서 조직이 연해질 수 있습니다."
             )
             if vpd_trend == "down":
                 cause_hypotheses.append(
-                    "recentSummary 기준 VPD trend가 내려가고 있어 soft canopy 방향이 길어질 수 있습니다."
+                    "최근 요약 기준 VPD 하락 추세가 이어져 연약한 상태가 길어질 수 있습니다."
                 )
             follow_up_actions.append(
                 _build_physiology_action(
                     title="증산 회복 우선",
-                    rationale="연약한 canopy는 fruit set·건전성·작업성 모두에 불리합니다.",
+                    rationale="연약한 작물 상태는 착과, 건전성, 작업성 모두에 불리합니다.",
                     operator="오전 광이 있을 때 과도한 가습과 과한 급액을 피하고 VPD 회복 폭을 먼저 확인합니다.",
                     expected_effect="증산과 동화 균형을 회복해 canopy를 단단하게 유지합니다.",
                     time_window="next_6h",
@@ -2173,12 +2173,12 @@ def _build_physiology_tab_payload(
             )
             if canopy_air_delta_c is not None and canopy_air_delta_c >= 1.0:
                 cause_hypotheses.append(
-                    "canopy-air delta가 커서 leaf energy balance가 빡빡한 상태일 수 있습니다."
+                    "군락-실내 온도차가 커서 잎 온도 균형이 빡빡한 상태일 수 있습니다."
                 )
             follow_up_actions.append(
                 _build_physiology_action(
                     title="오후 수분 스트레스 완충",
-                    rationale="과도한 generative steering은 fruit load가 있을 때 동화 저하와 품질 변동으로 이어질 수 있습니다.",
+                    rationale="과도한 건조·생식생장 제어는 착과 부담이 있을 때 동화 저하와 품질 변동으로 이어질 수 있습니다.",
                     operator="환기·차광·급액 타이밍을 함께 보며 VPD 급등과 캐노피 과열을 완충합니다.",
                     expected_effect="기공 닫힘과 광합성 저하를 줄여 생리적 흔들림을 낮춥니다.",
                     time_window="next_6h",
@@ -2188,14 +2188,14 @@ def _build_physiology_tab_payload(
         if carbon_limit:
             diagnosis_parts.append("광 대비 동화 저하")
             deviation_parts.append(
-                "광이 있는 시간대에도 photosynthesis가 낮아 탄소 획득 병목 가능성이 보입니다."
+                "광이 있는 시간대에도 광합성량이 낮아 탄소 확보 병목 가능성이 보입니다."
             )
             cause_hypotheses.append(
-                "CO2 공급, stomatal response, canopy temperature, 수분 상태 중 하나가 동화량을 제한할 수 있습니다."
+                "CO2 공급, 기공 반응, 군락 온도, 수분 상태 중 하나가 동화량을 제한할 수 있습니다."
             )
             if photosynthesis_trend == "down":
                 cause_hypotheses.append(
-                    "recentSummary에서 photosynthesis trend가 하락 방향이면 단발성보다 반복 패턴일 가능성이 있습니다."
+                    "최근 요약에서 광합성 하락 추세가 이어지면 일시적 현상보다 반복 패턴일 가능성이 있습니다."
                 )
             follow_up_actions.append(
                 _build_physiology_action(
@@ -2210,41 +2210,41 @@ def _build_physiology_tab_payload(
         if balanced_assimilation and not diagnosis_parts:
             diagnosis_parts.append("생리 균형 유지")
             deviation_parts.append(
-                "현재 VPD, stomatal conductance, photosynthesis 조합은 큰 흔들림 없이 유지되고 있습니다."
+                "현재 VPD, 기공전도도, 광합성 조합은 큰 흔들림 없이 유지되고 있습니다."
             )
             cause_hypotheses.append(
-                "현재 구간은 과한 steering보다 추세 유지와 load monitoring이 더 중요합니다."
+                "현재 구간은 과한 제어보다 추세 유지와 착과 부하 모니터링이 더 중요합니다."
             )
 
         if crop == "tomato":
             if active_trusses is not None and active_trusses >= 8:
                 cause_hypotheses.append(
-                    f"토마토 active trusses {active_trusses}개는 generative load가 이미 걸린 상태여서 추가 건조 steering은 보수적으로 다뤄야 합니다."
+                    f"토마토 활성 화방 {active_trusses}개 구간은 이미 착과 부담이 커서 추가 건조 제어는 보수적으로 다뤄야 합니다."
                 )
                 crop_specific_context = (
-                    f"토마토 active trusses {active_trusses}개와 harvestable fruits "
-                    f"{harvestable_fruits if harvestable_fruits is not None else 'n/a'}개가 보여 fruit load signal이 분명합니다."
+                    f"토마토 활성 화방 {active_trusses}개와 수확 가능 과실 "
+                    f"{harvestable_fruits if harvestable_fruits is not None else '정보 없음'}개가 보여 착과 부담 신호가 분명합니다."
                 )
             elif active_trusses is not None:
                 crop_specific_context = (
-                    f"토마토 active trusses {active_trusses}개 기준으로 fruit load는 보이지만, physiology 판단의 핵심은 VPD·증산·동화의 연속성입니다."
+                    f"토마토 활성 화방 {active_trusses}개 기준으로 착과 부담은 보이지만, 생리 판단의 핵심은 VPD·증산·동화 흐름의 연속성입니다."
                 )
             else:
                 crop_specific_context = (
-                    "토마토 fruit-load telemetry가 제한적이므로 VPD·증산·광합성 흐름을 우선 기준으로 봅니다."
+                    "토마토 착과 데이터가 제한적이므로 VPD·증산·광합성 흐름을 우선 기준으로 봅니다."
                 )
         else:
             if node_count is not None and node_count >= 24:
                 crop_specific_context = (
-                    f"오이 node count {node_count}개는 canopy extension이 활발한 상태라 pruning rhythm을 VPD·증산과 같이 맞춰야 합니다."
+                    f"오이 마디 수 {node_count}개 구간은 초세 전개가 활발해 유인·적엽 리듬을 VPD·증산과 같이 맞춰야 합니다."
                 )
             elif node_count is not None:
                 crop_specific_context = (
-                    f"오이 node count {node_count}개 구간에서는 soft canopy가 길어지면 절간/엽 균형이 흐려질 수 있습니다."
+                    f"오이 마디 수 {node_count}개 구간에서는 연약한 상태가 길어지면 절간과 엽 균형이 흐려질 수 있습니다."
                 )
             else:
                 crop_specific_context = (
-                    "오이 node-development telemetry가 제한적이므로 canopy temperature와 증산 회복 여부를 우선 지표로 씁니다."
+                    "오이 마디 생장 데이터가 제한적이므로 군락 온도와 증산 회복 여부를 우선 지표로 씁니다."
                 )
 
         if not follow_up_actions:
@@ -2252,7 +2252,7 @@ def _build_physiology_tab_payload(
                 _build_physiology_action(
                     title="현재 균형 유지",
                     rationale="명확한 과조정 신호가 없을 때는 추세 유지가 가장 안전합니다.",
-                    operator="VPD, 증산, 광합성, crop load를 함께 보며 급격한 steering은 피합니다.",
+                    operator="VPD, 증산, 광합성, 착과 부하를 함께 보며 급격한 제어는 피합니다.",
                     expected_effect="생식/영양 균형을 해치지 않고 현재 생리 상태를 유지합니다.",
                     time_window="today",
                 )
@@ -2270,21 +2270,21 @@ def _build_physiology_tab_payload(
                 "VPD",
                 f"{vpd_kpa:.2f} kPa",
                 (
-                    "증산 demand가 낮아 canopy가 soft해질 수 있습니다."
+                    "증산 요구가 낮아 작물이 연약해질 수 있습니다."
                     if vpd_kpa <= 0.45
-                    else "증산 demand가 높아 수분 스트레스 쪽을 확인해야 합니다."
+                    else "증산 요구가 높아 수분 스트레스 쪽을 확인해야 합니다."
                     if vpd_kpa >= 1.3
-                    else "VPD는 physiology steering 범위 안에 있습니다."
+                    else "VPD는 생리 제어 범위 안에 있습니다."
                 ),
             )
         )
     if canopy_air_delta_c is not None:
         supporting_signals.append(
             _build_supporting_signal(
-                "Canopy-Air Delta",
+                "군락-실내 온도차",
                 f"{canopy_air_delta_c:.1f} °C",
                 (
-                    "캐노피가 더 뜨거워 leaf energy balance pressure가 있습니다."
+                    "군락 온도가 더 높아 잎 온도 부담이 있습니다."
                     if canopy_air_delta_c >= 1.0
                     else "캐노피와 공기 온도 차가 과도하지 않습니다."
                 ),
@@ -2293,7 +2293,7 @@ def _build_physiology_tab_payload(
     if transpiration_mm_h is not None:
         supporting_signals.append(
             _build_supporting_signal(
-                "Transpiration",
+                "증산",
                 f"{transpiration_mm_h:.2f} mm h⁻¹",
                 (
                     "낮 시간 기준 증산 회복이 느린 편입니다."
@@ -2305,7 +2305,7 @@ def _build_physiology_tab_payload(
     if stomatal_conductance is not None:
         supporting_signals.append(
             _build_supporting_signal(
-                "Stomatal Conductance",
+                "기공전도도",
                 f"{stomatal_conductance:.2f} mol m⁻² s⁻¹",
                 (
                     "기공 반응이 조여진 상태라 동화 제한 가능성을 봐야 합니다."
@@ -2317,7 +2317,7 @@ def _build_physiology_tab_payload(
     if photosynthesis_umol is not None:
         supporting_signals.append(
             _build_supporting_signal(
-                "Photosynthesis",
+                "광합성",
                 f"{photosynthesis_umol:.1f} µmol m⁻² s⁻¹",
                 (
                     "광 대비 동화가 다소 눌려 있을 수 있습니다."
@@ -2329,17 +2329,17 @@ def _build_physiology_tab_payload(
     if crop == "tomato" and active_trusses is not None:
         supporting_signals.append(
             _build_supporting_signal(
-                "Active Trusses",
+                "활성 화방",
                 str(active_trusses),
-                "fruit load signal입니다. 기후 steering이 과도하면 비대·착과 변동성이 커질 수 있습니다.",
+                "착과 부담 신호입니다. 기후 제어가 과도하면 비대와 착과 변동성이 커질 수 있습니다.",
             )
         )
     if crop == "cucumber" and node_count is not None:
         supporting_signals.append(
             _build_supporting_signal(
-                "Node Count",
+                "마디 수",
                 str(node_count),
-                "node development pace를 pruning/leaf rhythm과 함께 봐야 합니다.",
+                "마디 생장 속도를 유인과 적엽 리듬과 함께 봐야 합니다.",
             )
         )
 
@@ -2353,29 +2353,29 @@ def _build_physiology_tab_payload(
 
     monitoring_checklist = [
         "다음 실행에서도 VPD-증산-광합성이 같은 방향으로 움직이는지 확인",
-        "canopy-air delta가 더 벌어지거나 soft canopy가 길어지는지 확인",
-        "즉시 조치 후 fruit load 또는 node development pace가 흔들리지 않는지 확인",
+        "군락-실내 온도차가 더 벌어지거나 연약한 상태가 길어지는지 확인",
+        "즉시 조치 후 착과 부담 또는 마디 생장 속도가 흔들리지 않는지 확인",
     ]
     if limited_monitoring_mode:
         monitoring_checklist.insert(
             0,
-            "원인 진단 전에 canopy temperature, transpiration, stomatal conductance, photosynthesis telemetry를 먼저 복구합니다.",
+            "원인 진단 전에 군락 온도, 증산, 기공전도도, 광합성 데이터를 먼저 복구합니다.",
         )
     elif crop == "tomato":
-        monitoring_checklist.append("active trusses와 harvestable fruits가 늘 때 과도한 건조 steering이 없는지 확인")
+        monitoring_checklist.append("활성 화방과 수확 가능 과실이 늘 때 과도한 건조 제어가 없는지 확인")
     else:
-        monitoring_checklist.append("node count 증가 구간에서 pruning rhythm이 transpiration recovery를 해치지 않는지 확인")
+        monitoring_checklist.append("마디 수가 늘어나는 구간에서 유인·적엽 리듬이 증산 회복을 해치지 않는지 확인")
 
     if not diagnosis_parts:
         diagnosis_parts.append("추세 모니터링 중심")
         deviation_parts.append("현재 physiology context에서 즉시 강한 교정이 필요한 편차는 제한적입니다.")
-        cause_hypotheses.append("현재 구간은 crop load와 gas-exchange trend를 함께 보는 편이 안전합니다.")
+        cause_hypotheses.append("현재 구간은 착과 부하와 가스교환 추세를 함께 보는 편이 안전합니다.")
 
     return {
         "summary": (
-            "Physiology advisor interpreted crop balance from live climate, gas-exchange, and growth signals."
+            "생리 어드바이저가 실시간 기후, 가스교환, 생장 신호를 바탕으로 작물 균형을 해석했습니다."
             if not limited_monitoring_mode
-            else "Physiology advisor is in monitoring-first mode because crop physiology telemetry is incomplete."
+            else "작물 생리 데이터가 부족해 생리 어드바이저를 모니터링 우선 상태로 유지합니다."
         ),
         "urgency": urgency,
         "confidence": _physiology_context_completeness(dashboard),
@@ -2956,7 +2956,7 @@ def _build_work_event_compare_payload(
         )
         return {
             "payload": _build_unavailable_work_event_compare_payload(
-                reason="Persisted work-event compare 저장소를 불러오지 못해 replay compare를 잠시 비활성화했습니다.",
+                reason="저장된 작업 비교 기록을 불러오지 못해 작업 이벤트 비교를 잠시 중단했습니다.",
                 history=history,
             ),
             "internal_provenance": {
@@ -2970,7 +2970,7 @@ def _build_work_event_compare_payload(
     if baseline_snapshot_record is None:
         return {
             "payload": _build_unavailable_work_event_compare_payload(
-                reason="Persisted model snapshot이 없어 work-event replay compare를 만들 수 없습니다. 먼저 `/api/models/snapshot` 또는 `/api/models/replay`로 baseline state를 저장해야 합니다.",
+                reason="저장된 기준 상태가 없어 작업 이벤트 비교를 만들 수 없습니다. 먼저 기준 상태를 저장해 주세요.",
                 history=history,
             ),
             "internal_provenance": {
@@ -3204,9 +3204,9 @@ def _build_work_event_compare_payload(
             "payload": {
                 "status": "ready",
                 "summary": (
-                    "Persisted model snapshot과 work-event history를 기준으로 additive replay compare를 구성했습니다."
+                    "저장된 기준 상태와 작업 이력을 바탕으로 작업 전후 비교를 만들었습니다."
                     if history
-                    else "Persisted model snapshot을 기준으로 첫 work-event replay compare를 구성했습니다. 아직 저장된 작업 이력은 없습니다."
+                    else "저장된 기준 상태를 바탕으로 첫 작업 비교를 만들었습니다. 아직 저장된 작업 이력은 없습니다."
                 ),
                 "history": history,
                 "current_state": current_state_payload,
@@ -3232,7 +3232,7 @@ def _build_work_event_compare_payload(
         )
         return {
             "payload": _build_unavailable_work_event_compare_payload(
-                reason="저장된 작업 이력 또는 state 형식이 불완전해 work-event replay compare를 잠시 비활성화했습니다.",
+                reason="저장된 작업 이력 형식이 불완전해 작업 이벤트 비교를 잠시 중단했습니다.",
                 history=history,
             ),
             "internal_provenance": {
@@ -3362,17 +3362,17 @@ def _build_work_tab_payload(
     if limited_monitoring_mode:
         return {
             "mode": "monitoring-first",
-            "summary": "Work advisor is in monitoring-first mode because planning or climate telemetry is incomplete.",
+            "summary": "작업 계획 또는 기후 데이터가 부족해 작업 어드바이저를 모니터링 우선 상태로 유지합니다.",
             "urgency": "low",
             "confidence": _work_context_completeness(dashboard),
             "focus_areas": ["workflow_visibility"],
             "current_state": {
-                "diagnosis": "작업 planning/climate telemetry 부족",
+                "diagnosis": "작업 계획/기후 데이터 부족",
                 "operating_mode": "monitoring-first",
-                "primary_constraint": "planning 또는 climate telemetry가 부족해 강한 작업 재배치를 피해야 합니다.",
+                "primary_constraint": "작업 계획 또는 기후 데이터가 부족해 강한 작업 재배치를 피해야 합니다.",
                 "labor_strategy": "누락 신호를 복구하기 전에는 기본 작업 리듬을 크게 바꾸지 않습니다.",
                 "workload_balance": "monitoring-first",
-                "deviation": "forecast, growth/yield, humidity/VPD, RTR live 중 일부가 비어 있어 작업 순서를 강하게 재배치하기보다 visibility recovery가 우선입니다.",
+                "deviation": "예보, 생장/수량, 습도/VPD, RTR 실시간 값 중 일부가 비어 있어 작업 순서를 강하게 바꾸기보다 데이터 가시성 회복이 우선입니다.",
                 "cause_hypotheses": [
                     "현재 dashboard payload만으로는 작업량과 기후 리스크를 같이 판단하기에 핵심 planning signal이 부족합니다.",
                 ],
@@ -3383,7 +3383,7 @@ def _build_work_tab_payload(
                     priority="medium",
                     category="workflow",
                     title="핵심 작업 planning signal 복구",
-                    message="forecast, growth/yield, humidity/VPD, RTR live 중 누락 신호를 먼저 복구한 뒤 작업 우선순위를 다시 계산합니다.",
+                    message="예보, 생장/수량, 습도/VPD, RTR 실시간 값 중 누락 신호를 먼저 복구한 뒤 작업 우선순위를 다시 계산합니다.",
                     action="restore_workflow_visibility",
                     time_window="next_6h",
                 )
@@ -3405,9 +3405,9 @@ def _build_work_tab_payload(
                     "rationale": "forecast와 yield context가 회복되기 전까지는 작업량을 크게 바꾸지 않습니다.",
                 },
             ],
-            "expected_effects": ["불완전한 telemetry를 정상 작업지시로 오인하는 리스크 차단"],
+            "expected_effects": ["불완전한 데이터를 정상 작업지시로 오인하는 리스크 차단"],
             "monitoring_checklist": [
-                "forecast, growth/yield, humidity/VPD, RTR live 신호가 다시 들어오는지 확인",
+                "예보, 생장/수량, 습도/VPD, RTR 실시간 신호가 다시 들어오는지 확인",
                 "누락 신호가 복구되기 전까지는 접촉 작업과 수확 창을 과도하게 재배치하지 않기",
             ],
             "context_snapshot": {
@@ -3518,18 +3518,18 @@ def _build_work_tab_payload(
 
     if crop == "tomato" and kpi["active_trusses"] >= 8 and rtr_delta_temp_c is not None and rtr_delta_temp_c <= -1.0:
         focus_areas.append("tomato_load_balance")
-        diagnosis_parts.append("토마토 generative load 대비 pace 보수화 필요")
+        diagnosis_parts.append("토마토 착과 부담 대비 작업 속도 보수화 필요")
         deviation_parts.append(
-            f"active trusses {kpi['active_trusses']}개와 RTR 편차 {rtr_delta_temp_c:.1f}°C는 pruning/유인 강도를 보수적으로 나눌 필요가 있습니다."
+            f"활성 화방 {kpi['active_trusses']}개와 RTR 편차 {rtr_delta_temp_c:.1f}°C는 순지르기와 유인 강도를 보수적으로 나눌 필요가 있습니다."
         )
-        cause_hypotheses.append("fruit load가 큰 날 과도한 작업 강도는 생장 pace와 회복을 동시에 흔들 수 있습니다.")
-        expected_effects.append("토마토 fruit-load day의 작업 과부하 억제")
+        cause_hypotheses.append("착과 부담이 큰 날 과도한 작업 강도는 생장 속도와 회복을 동시에 흔들 수 있습니다.")
+        expected_effects.append("토마토 착과 부담일의 작업 과부하 억제")
         rule_actions.append(
             _build_work_priority_action(
                 priority="medium",
                 category="growth",
-                title="과부하 pruning 보수화",
-                message="토마토 fruit load가 큰 날은 pruning/유인을 한 번에 몰지 말고 수확 이후로 나눕니다.",
+                title="순지르기 강도 분산",
+                message="토마토 착과 부담이 큰 날은 순지르기와 유인을 한 번에 몰지 말고 수확 이후로 나눕니다.",
                 action="moderate_pruning_load",
                 time_window="today",
             )
@@ -3540,18 +3540,18 @@ def _build_work_tab_payload(
         or (vpd_kpa is not None and vpd_kpa <= 0.45)
     ):
         focus_areas.append("cucumber_canopy_rhythm")
-        diagnosis_parts.append("오이 canopy rhythm 분산 필요")
+        diagnosis_parts.append("오이 작업 리듬 분산 필요")
         deviation_parts.append(
-            f"node count {kpi['node_count']}개 구간의 soft canopy에서는 유인/적엽을 분산해야 canopy extension을 덜 흔듭니다."
+            f"마디 수 {kpi['node_count']}개 구간의 연약한 초세에서는 유인과 적엽을 분산해야 초세 전개를 덜 흔듭니다."
         )
-        cause_hypotheses.append("오이는 node extension 리듬이 무너지면 canopy 회복과 작업성이 동시에 떨어질 수 있습니다.")
-        expected_effects.append("오이 canopy extension과 작업 리듬 안정화")
+        cause_hypotheses.append("오이는 마디 전개 리듬이 무너지면 초세 회복과 작업성이 동시에 떨어질 수 있습니다.")
+        expected_effects.append("오이 초세 전개와 작업 리듬 안정화")
         rule_actions.append(
             _build_work_priority_action(
                 priority="medium",
                 category="pruning",
                 title="유인·적엽 분산",
-                message="오이 canopy extension 구간에서는 유인과 적엽을 분리해 node development pace를 보전합니다.",
+                message="오이 초세 전개 구간에서는 유인과 적엽을 분리해 마디 생장 속도를 보전합니다.",
                 action="split_training_and_pruning",
                 time_window="today",
             )
@@ -3576,15 +3576,15 @@ def _build_work_tab_payload(
     high_priority_count = sum(1 for action in priority_actions if action["priority"] == "high")
     urgency = "high" if high_priority_count > 0 else "medium" if priority_actions else "low"
     summary = (
-        f"Work advisor identified {len(priority_actions)} prioritized cultivation actions."
+        f"작업 어드바이저가 우선 작업 {len(priority_actions)}건을 정리했습니다."
         if priority_actions
-        else "Work advisor did not find a strong cultivation-work trigger from the current dashboard context."
+        else "현재 대시보드 문맥에서는 강한 작업 트리거가 아직 뚜렷하지 않습니다."
     )
 
     if not diagnosis_parts:
         diagnosis_parts.append("작업 리듬 대체로 안정")
-        deviation_parts.append("현재 dashboard context에서는 작업 순서를 급격히 바꿔야 할 강한 cultivation trigger가 제한적입니다.")
-        cause_hypotheses.append("기본 작업 리듬을 유지하면서 harvest, humidity, irrigation trigger만 추적하면 됩니다.")
+        deviation_parts.append("현재 대시보드 문맥에서는 작업 순서를 급격히 바꿔야 할 강한 작업 신호가 제한적입니다.")
+        cause_hypotheses.append("기본 작업 리듬을 유지하면서 수확, 습도, 급액 신호만 추적하면 됩니다.")
         focus_areas.append("workflow_stability")
         expected_effects.append("기본 작업 리듬 유지")
 
@@ -3858,7 +3858,7 @@ def _build_harvest_market_tab_payload(
         harvest_outlook = "단기 수확량은 과도하지 않아 품질 안정과 수확 타이밍 조정이 우선입니다."
 
     if limited_market_mode:
-        market_outlook = "현재 crop과 직접 매칭되는 시장 가격 snapshot이 부족합니다."
+        market_outlook = "현재 작물과 직접 맞는 시장 가격 정보가 부족합니다."
     elif market_favorable:
         market_outlook = "현재 가격 흐름은 출하 우선분을 활용해볼 수 있는 쪽입니다."
     elif market_soft:
@@ -3877,13 +3877,13 @@ def _build_harvest_market_tab_payload(
 
     if crop == "tomato":
         crop_specific_context = (
-            f"tomato fruit-load context: active trusses {active_trusses or 0}, "
-            f"harvestable fruits {harvestable_fruits or 0}."
+            f"토마토 착과 문맥: 활성 화방 {active_trusses or 0}개, "
+            f"수확 가능 과실 {harvestable_fruits or 0}개."
         )
     else:
         crop_specific_context = (
-            f"cucumber pace context: node count {node_count or 0}, "
-            f"harvestable fruits {harvestable_fruits or 0}."
+            f"오이 생장 문맥: 마디 수 {node_count or 0}개, "
+            f"수확 가능 과실 {harvestable_fruits or 0}개."
         )
 
     priority_actions: list[dict[str, str]] = []
@@ -3925,9 +3925,9 @@ def _build_harvest_market_tab_payload(
             _build_harvest_market_action(
                 priority="low",
                 title="시장 데이터 복구",
-                rationale="시장 snapshot이 없으면 수확량과 가격을 함께 해석할 수 없습니다.",
-                operator="market panel과 API 응답을 확인해 crop-matched snapshot을 먼저 복구합니다.",
-                expected_effect="다음 실행에서 가격 연동 steering을 함께 볼 수 있습니다.",
+                rationale="시장 가격 정보가 없으면 수확량과 가격을 함께 해석할 수 없습니다.",
+                operator="가격 패널과 API 응답을 확인해 작물 일치 가격 정보를 먼저 복구합니다.",
+                expected_effect="다음 실행에서 가격 연동 제어 방향을 함께 볼 수 있습니다.",
                 time_window="next_run",
             )
         )
@@ -3994,25 +3994,25 @@ def _build_harvest_market_tab_payload(
             "window": "next_3d",
             "focus": "수확/시장 연동 모니터링",
             "rationale": (
-                "forecast 물량, RTR balance, 가격 snapshot이 같은 방향인지 보며 다음 harvest window를 조정합니다."
+                "예상 물량, RTR 균형, 가격 정보가 같은 방향인지 보며 다음 수확 창을 조정합니다."
             ),
         },
     ]
 
     monitoring_checklist = [
-        "다음 실행에서 forecast harvest_kg와 actual harvest cadence가 크게 어긋나지 않는지 확인",
+        "다음 실행에서 예상 수확량과 실제 수확 흐름이 크게 어긋나지 않는지 확인",
         "오후 고습/저VPD 구간이 길어질 때 선별·포장 대기 시간이 늘지 않는지 확인",
-        "시장 snapshot이 약세로 돌면 규격/비규격 분리 기준을 바로 조정할 수 있는지 확인",
+        "시장 가격 흐름이 약세로 돌면 규격/비규격 분리 기준을 바로 조정할 수 있는지 확인",
     ]
     if limited_market_mode:
         monitoring_checklist.insert(
             0,
-            "시장 가격 snapshot이 비었으면 market panel/API 응답부터 복구합니다.",
+            "시장 가격 정보가 비었으면 가격 패널과 API 응답부터 복구합니다.",
         )
     if monitoring_first:
         monitoring_checklist.insert(
             0,
-            "수확 forecast와 crop-matched market snapshot이 모두 비어 있어 monitoring-first로 유지합니다.",
+            "수확 예측과 작물 일치 가격 정보가 모두 비어 있어 모니터링 우선으로 유지합니다.",
         )
 
     urgency = "low"
@@ -4023,11 +4023,11 @@ def _build_harvest_market_tab_payload(
 
     return {
         "summary": (
-            "Harvest/market advisor combined yield outlook, market snapshot, and climate risk into shipment guidance."
+            "수확/가격 어드바이저가 수확 전망, 가격 정보, 기후 위험을 함께 묶어 출하 방향을 정리했습니다."
             if not monitoring_first and not limited_market_mode
-            else "Harvest/market advisor generated harvest-first guidance while the crop-matched market context is partial."
+            else "수확/가격 어드바이저가 가격 정보가 일부만 있는 상태에서 수확 우선 가이드를 정리했습니다."
             if not monitoring_first
-            else "Harvest/market advisor is in monitoring-first mode because harvest outlook and market context are both incomplete."
+            else "수확 전망과 가격 정보가 모두 부족해 수확/가격 어드바이저를 모니터링 우선 상태로 유지합니다."
         ),
         "urgency": urgency,
         "confidence": _harvest_market_context_completeness(dashboard),
@@ -4242,7 +4242,7 @@ def build_advisor_tab_response(
             "status": "success",
             "family": "advisor_tab",
             "crop": crop,
-            "message": "Environment advisor generated from the live dashboard context.",
+            "message": "환경 어드바이저를 현재 대시보드 문맥으로 생성했습니다.",
             "available_tabs": list(_LANDED_TABS),
             "machine_payload": {
                 "missing_data": missing_data,
@@ -4279,7 +4279,7 @@ def build_advisor_tab_response(
             "status": "success",
             "family": "advisor_tab",
             "crop": crop,
-            "message": "Physiology advisor generated from the live dashboard context.",
+            "message": "생리 어드바이저를 현재 대시보드 문맥으로 생성했습니다.",
             "available_tabs": list(_LANDED_TABS),
             "machine_payload": {
                 "missing_data": _collect_physiology_missing_data_flags(dashboard_payload),
@@ -4332,7 +4332,7 @@ def build_advisor_tab_response(
             "status": "success",
             "family": "advisor_tab",
             "crop": crop,
-            "message": "Cultivation work advisor generated from the live dashboard context.",
+            "message": "작업 어드바이저를 현재 대시보드 문맥으로 생성했습니다.",
             "available_tabs": list(_LANDED_TABS),
             "machine_payload": {
                 "missing_data": _collect_work_missing_data_flags(dashboard_payload),
@@ -4366,7 +4366,7 @@ def build_advisor_tab_response(
             "status": "success",
             "family": "advisor_tab",
             "crop": crop,
-            "message": "Harvest/market advisor generated from the live dashboard context.",
+            "message": "수확/가격 어드바이저를 현재 대시보드 문맥으로 생성했습니다.",
             "available_tabs": list(_LANDED_TABS),
             "machine_payload": {
                 "missing_data": _collect_harvest_market_missing_data_flags(dashboard_payload),
@@ -4408,7 +4408,7 @@ def build_advisor_tab_response(
                 "advisory_surfaces": advisory_surfaces,
                 "model_runtime": _build_unavailable_model_runtime_payload(
                     tab_name=normalized_tab,
-                    reason="Model runtime block is not applicable until the planned advisor tab is landed.",
+                    reason="준비 중인 탭은 실제 계산 엔진이 연결되기 전까지 예측 모델 분석을 붙이지 않습니다.",
                 ),
                 "internal_provenance": _build_internal_provenance(
                     catalog_payload,

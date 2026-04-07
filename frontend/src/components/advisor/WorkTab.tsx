@@ -18,8 +18,6 @@ const WorkTab = (props: WorkTabProps) => {
     const { locale } = useLocale();
     const analysis = props.result?.machine_payload.work_analysis;
     const advisorActions = props.result?.machine_payload.advisor_actions;
-    const retrievalContext = props.result?.machine_payload.retrieval_context;
-    const knowledgeEvidence = props.result?.machine_payload.knowledge_evidence;
     const modelRuntime = props.result?.machine_payload.model_runtime;
     const workEventCompare = props.result?.machine_payload.work_event_compare;
     const copy = locale === 'ko'
@@ -63,14 +61,9 @@ const WorkTab = (props: WorkTabProps) => {
             expectedEffects: '예상 효과',
             checklist: '확인 체크리스트',
             context: '현재 문맥',
-            knowledgeEvidence: '근거 지식',
             urgency: '긴급도',
             confidence: '신뢰도',
             emptyActions: '현재 문맥에서 강한 작업 트리거가 아직 잡히지 않았습니다.',
-            evidenceUnavailable: '이번 실행에서는 작업 지식 검색을 사용할 수 없습니다.',
-            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 작업 근거를 붙이지 못했습니다.',
-            evidenceNoMatches: '현재 작업 문맥과 직접 맞는 추가 작업 근거는 찾지 못했습니다.',
-            evidenceSkipped: '이번 실행에서는 별도 작업 지식 검색이 요청되지 않았습니다.',
             nextDayHarvest: '다음 수확량',
             nextDayEtc: '다음 ETc',
             dailyEnergy: '일일 에너지',
@@ -81,7 +74,7 @@ const WorkTab = (props: WorkTabProps) => {
             vpd: 'VPD',
             rtrDelta: 'RTR 편차',
             forecastHighTemp: '예상 최고기온',
-            availableButNotRun: '결정형 작업 어드바이저는 이미 적용되어 있으며, 실행하면 현재 작업 우선순위를 확인할 수 있습니다.',
+            availableButNotRun: '작업 어드바이저는 이미 적용되어 있으며, 실행하면 현재 작업 우선순위를 확인할 수 있습니다.',
         }
         : {
             title: 'Work',
@@ -118,14 +111,9 @@ const WorkTab = (props: WorkTabProps) => {
             expectedEffects: 'Expected effects',
             checklist: 'Monitoring checklist',
             context: 'Context snapshot',
-            knowledgeEvidence: 'Knowledge evidence',
             urgency: 'Urgency',
             confidence: 'Confidence',
             emptyActions: 'No strong cultivation-work trigger was detected from the current context.',
-            evidenceUnavailable: 'The work-domain knowledge retrieval is currently unavailable for this run.',
-            evidenceDatabaseMissing: 'The knowledge database is not ready, so no work-domain evidence could be attached.',
-            evidenceNoMatches: 'No additional work-domain evidence matched the current cultivation context.',
-            evidenceSkipped: 'No separate work-domain retrieval was requested for this run.',
             nextDayHarvest: 'Next-day harvest',
             nextDayEtc: 'Next-day ETc',
             dailyEnergy: 'Daily energy',
@@ -136,21 +124,8 @@ const WorkTab = (props: WorkTabProps) => {
             vpd: 'VPD',
             rtrDelta: 'RTR delta',
             forecastHighTemp: 'Forecast high temp',
-            availableButNotRun: 'The deterministic work advisor is already landed. Run it to inspect the current cultivation priorities.',
+            availableButNotRun: 'The work advisor is already landed. Run it to inspect the current cultivation priorities.',
         };
-
-    function getRetrievalStatusMessage(status: string | undefined) {
-        switch (status) {
-            case 'retrieval_unavailable':
-                return copy.evidenceUnavailable;
-            case 'database_missing':
-                return copy.evidenceDatabaseMissing;
-            case 'no_matches':
-                return copy.evidenceNoMatches;
-            default:
-                return copy.evidenceSkipped;
-        }
-    }
 
     function formatValue(
         value: number | null | undefined,
@@ -248,48 +223,6 @@ const WorkTab = (props: WorkTabProps) => {
                             <div>{copy.forecastHighTemp}: {formatValue(analysis.context_snapshot.forecast_high_temp_c, 1, ' °C')}</div>
                         </div>
                     </AdvisorActionCard>
-                    {retrievalContext ? (
-                        <AdvisorActionCard
-                            title={copy.knowledgeEvidence}
-                            subtitle={copy.title}
-                            badges={[
-                                getLocalizedTokenLabel(retrievalContext.status, locale),
-                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []).map((item) =>
-                                    getLocalizedTokenLabel(item, locale),
-                                ),
-                            ]}
-                        >
-                            {knowledgeEvidence?.evidence_cards?.length ? (
-                                <div className="space-y-3">
-                                    {knowledgeEvidence.evidence_cards.map((card, index) => (
-                                        <div
-                                            key={`${card.domain ?? card.topic_minor ?? 'evidence'}-${index}`}
-                                            className="rounded-2xl border border-slate-200 bg-white p-4"
-                                        >
-                                            <div className="flex flex-wrap gap-2">
-                                                {card.domain ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.domain, locale)} tone="info" />
-                                                ) : null}
-                                                {card.topic_major ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_major, locale)} tone="success" />
-                                                ) : null}
-                                                {card.topic_minor ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_minor, locale)} tone="neutral" />
-                                                ) : null}
-                                            </div>
-                                            <div className="mt-2 text-sm leading-relaxed text-slate-600">
-                                                {card.evidence_excerpt}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-sm leading-relaxed text-slate-500">
-                                    {getRetrievalStatusMessage(retrievalContext.status)}
-                                </div>
-                            )}
-                        </AdvisorActionCard>
-                    ) : null}
                 </div>
 
                 <div className="space-y-4">

@@ -91,7 +91,7 @@ const AdvisorTabs = ({
     const copy = locale === 'ko'
         ? {
             title: '어드바이저 탭',
-            subtitle: `${cropLabel} 기준 결정형 실행 결과를 확인합니다.`,
+            subtitle: `${cropLabel} 기준으로 지금 필요한 실행안을 확인합니다.`,
             close: '닫기',
             environment: '환경제어',
             physiology: '재배생리',

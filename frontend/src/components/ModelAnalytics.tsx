@@ -17,14 +17,14 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            growthModel: '생육 모델',
+            growthModel: '생육 분석',
             yieldForecast: '수확 예측',
-            aiInference: '모델 해석',
+            aiInference: '예측 모델 분석',
             energyModel: '에너지 모델',
             efficiencyCost: '효율 및 비용',
-            biomassLine: '바이오매스 (g m⁻²)',
+            biomassLine: '건물 생산량 (g m⁻²)',
             stage: '단계',
-            rate: '증가율',
+            rate: '일일 생장량',
             harvestForecast: '수확 예측 (kg)',
             confidence: '신뢰도',
             harvestReady: '수확 가능 과실',

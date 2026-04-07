@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FlaskConical, ShieldCheck, TestTubeDiagonal } from 'lucide-react';
 import type { CropType } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
-import { getCropLabel } from '../utils/displayCopy';
+import { getCropLabel, getLocalizedTokenLabel } from '../utils/displayCopy';
 import type {
     SmartGrowAdvisorySurfaceSummary,
     SmartGrowKnowledgeSummary,
@@ -61,12 +61,11 @@ const SmartGrowSurfacePanel = ({
     const cropLabel = getCropLabel(crop, locale);
     const copy = locale === 'ko'
         ? {
-            title: '스마트그로우 권장 구성',
-            subtitle: `${cropLabel} 기준 결정형 권장 계약을 정리합니다.`,
-            loading: '스마트그로우 권장 구성을 불러오는 중...',
-            unavailable: '스마트그로우 권장 구성을 아직 불러오지 못했습니다.',
-            pendingParser: '일부 PDF 파서는 아직 준비 중입니다.',
-            route: '경로',
+            title: '스마트 제어 구성',
+            subtitle: `${cropLabel} 재배에 쓰는 제어 도구와 입력 항목을 정리합니다.`,
+            loading: '스마트 제어 구성을 불러오는 중...',
+            unavailable: '스마트 제어 구성을 아직 불러오지 못했습니다.',
+            pendingParser: '일부 참고 문서는 아직 정리 중입니다.',
             required: '필수',
             optional: '선택',
             stages: '생육 단계',
@@ -74,15 +73,16 @@ const SmartGrowSurfacePanel = ({
             sourceWater: '원수',
             drainWater: '배액',
             fertilizers: '비료',
-            draftMode: '초안 모드',
-            macroBundle: '매크로 번들',
-            limitation: '제약',
+            draftMode: '처방 방식',
+            macroBundle: '혼합 방식',
+            limitation: '안내',
             ready: '준비됨',
             unavailableStatus: '미준비',
-            empty: '표시할 스마트그로우 권장 구성이 아직 없습니다.',
+            empty: '표시할 스마트 제어 구성이 아직 없습니다.',
             pesticide: '농약 후보',
             nutrient: '양액 레시피',
             nutrientCorrection: '양액 보정',
+            detailHint: '입력 항목과 사용 범위를 확인하세요.',
         }
         : {
             title: 'SmartGrow Advisory Surfaces',
@@ -107,6 +107,7 @@ const SmartGrowSurfacePanel = ({
             pesticide: 'Pesticide lookup',
             nutrient: 'Nutrient recipe',
             nutrientCorrection: 'Nutrient correction',
+            detailHint: 'Review inputs and supported usage.',
         };
 
     const surfaces = summary?.surfaces ?? [];
@@ -184,7 +185,7 @@ const SmartGrowSurfacePanel = ({
                                                     {labels[surface.key]}
                                                 </div>
                                                 <div className="mt-1 text-xs text-slate-500">
-                                                    {surface.route ?? 'n/a'}
+                                                    {copy.detailHint}
                                                 </div>
                                             </div>
                                         </div>
@@ -203,19 +204,17 @@ const SmartGrowSurfacePanel = ({
                                 <h3 className="text-lg font-semibold text-slate-900">
                                     {labels[activeSurface.key]}
                                 </h3>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    {copy.route}: <code className="rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">{activeSurface.route ?? 'n/a'}</code>
-                                </p>
+                                <p className="mt-1 text-sm text-slate-500">{copy.detailHint}</p>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {activeSurface.draftMode ? (
                                     <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-700">
-                                        {copy.draftMode}: {activeSurface.draftMode}
+                                        {copy.draftMode}: {getLocalizedTokenLabel(activeSurface.draftMode, locale)}
                                     </span>
                                 ) : null}
                                 {activeSurface.macroBundleMode ? (
                                     <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700">
-                                        {copy.macroBundle}: {activeSurface.macroBundleMode}
+                                        {copy.macroBundle}: {getLocalizedTokenLabel(activeSurface.macroBundleMode, locale)}
                                     </span>
                                 ) : null}
                             </div>

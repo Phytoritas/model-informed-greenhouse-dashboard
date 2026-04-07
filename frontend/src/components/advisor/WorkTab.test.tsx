@@ -136,7 +136,7 @@ describe('WorkTab', () => {
         renderWorkTab(result);
 
         expect(screen.getAllByText('No persisted model snapshot is available.')).toHaveLength(2);
-        expect(screen.queryByText(/Agronomy/i)).toBeNull();
+        expect(screen.queryByText('Knowledge evidence')).toBeNull();
         expect(screen.queryByText('Thin 1 fruit')).toBeNull();
     });
 });
