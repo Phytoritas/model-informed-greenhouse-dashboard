@@ -704,3 +704,74 @@ def test_advisor_tab_endpoint_forwards_greenhouse_id(
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert captured["greenhouse_id"] == "gh-1"
+
+
+def test_exact_advisor_surface_routes_delegate_with_greenhouse_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend_main = _backend_main()
+    captured: list[tuple[str, dict[str, object]]] = []
+
+    def _capture(label: str):
+        def _handler(**kwargs):
+            captured.append((label, kwargs))
+            return {
+                "status": "success",
+                "family": label,
+                "crop": kwargs["crop"],
+            }
+
+        return _handler
+
+    monkeypatch.setattr(
+        backend_main,
+        "build_environment_advisor_response",
+        _capture("advisor_environment"),
+    )
+    monkeypatch.setattr(
+        backend_main,
+        "build_physiology_advisor_response",
+        _capture("advisor_physiology"),
+    )
+    monkeypatch.setattr(
+        backend_main,
+        "build_work_tradeoff_advisor_response",
+        _capture("advisor_work_tradeoff"),
+    )
+    monkeypatch.setattr(
+        backend_main,
+        "build_harvest_advisor_response",
+        _capture("advisor_harvest"),
+    )
+    monkeypatch.setattr(
+        backend_main,
+        "_augment_dashboard_with_knowledge_context",
+        lambda crop, dashboard: dashboard or {},
+    )
+    client = TestClient(get_app())
+
+    for route, family in (
+        ("/api/advisor/environment", "advisor_environment"),
+        ("/api/advisor/physiology", "advisor_physiology"),
+        ("/api/advisor/work-tradeoff", "advisor_work_tradeoff"),
+        ("/api/advisor/harvest", "advisor_harvest"),
+    ):
+        response = client.post(
+            route,
+            json={
+                "crop": "cucumber",
+                "greenhouse_id": "gh-1",
+                "dashboard": {},
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["family"] == family
+
+    assert [label for label, _ in captured] == [
+        "advisor_environment",
+        "advisor_physiology",
+        "advisor_work_tradeoff",
+        "advisor_harvest",
+    ]
+    assert all(kwargs["greenhouse_id"] == "gh-1" for _, kwargs in captured)

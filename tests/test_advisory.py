@@ -670,12 +670,18 @@ def test_knowledge_catalog_exposes_advisory_surfaces(synthetic_knowledge_assets)
 
     assert payload["summary"]["advisory_surface_names"] == [
         "environment",
+        "harvest",
         "nutrient",
         "nutrient_correction",
         "pesticide",
+        "physiology",
         "work",
     ]
     assert payload["advisory_surfaces"]["environment"]["route"] == "/api/environment/recommend"
+    assert (
+        payload["advisory_surfaces"]["environment"]["exact_route"]
+        == "/api/advisor/environment"
+    )
     assert (
         payload["advisory_surfaces"]["environment"]["delegate_route"]
         == "/api/advisor/tab/environment"
@@ -683,6 +689,11 @@ def test_knowledge_catalog_exposes_advisory_surfaces(synthetic_knowledge_assets)
     assert (
         payload["advisory_surfaces"]["environment"]["coverage"]["advisory_mode"]
         == "dashboard_fed_deterministic"
+    )
+    assert payload["advisory_surfaces"]["physiology"]["route"] == "/api/advisor/physiology"
+    assert (
+        payload["advisory_surfaces"]["physiology"]["delegate_route"]
+        == "/api/advisor/tab/physiology"
     )
     assert payload["advisory_surfaces"]["pesticide"]["route"] == "/api/pesticides/recommend"
     assert payload["advisory_surfaces"]["pesticide"]["coverage"]["target_names"]
@@ -722,8 +733,14 @@ def test_knowledge_catalog_exposes_advisory_surfaces(synthetic_knowledge_assets)
         "working_solution_volume_l"
     ]
     assert payload["advisory_surfaces"]["work"]["route"] == "/api/work/recommend"
+    assert payload["advisory_surfaces"]["work"]["exact_route"] == "/api/advisor/work-tradeoff"
     assert payload["advisory_surfaces"]["work"]["delegate_route"] == "/api/advisor/tab/work"
     assert payload["advisory_surfaces"]["work"]["coverage"]["signals"]
+    assert payload["advisory_surfaces"]["harvest"]["route"] == "/api/advisor/harvest"
+    assert (
+        payload["advisory_surfaces"]["harvest"]["delegate_route"]
+        == "/api/advisor/tab/harvest_market"
+    )
 
 
 def test_crop_knowledge_context_includes_deterministic_advisory_summary(synthetic_knowledge_assets) -> None:
@@ -733,6 +750,12 @@ def test_crop_knowledge_context_includes_deterministic_advisory_summary(syntheti
     assert payload["deterministic_advisory"]["environment"]["request_contract"]["required"] == [
         "crop"
     ]
+    assert (
+        payload["deterministic_advisory"]["environment"]["exact_route"]
+        == "/api/advisor/environment"
+    )
+    assert payload["deterministic_advisory"]["physiology"]["status"] == "ready"
+    assert payload["deterministic_advisory"]["physiology"]["route"] == "/api/advisor/physiology"
     assert payload["deterministic_advisory"]["pesticide"]["status"] == "ready"
     assert payload["deterministic_advisory"]["pesticide"]["request_contract"]["required"] == [
         "crop",
@@ -760,6 +783,9 @@ def test_crop_knowledge_context_includes_deterministic_advisory_summary(syntheti
     )
     assert payload["deterministic_advisory"]["work"]["status"] == "ready"
     assert payload["deterministic_advisory"]["work"]["request_contract"]["required"] == ["crop"]
+    assert payload["deterministic_advisory"]["work"]["exact_route"] == "/api/advisor/work-tradeoff"
+    assert payload["deterministic_advisory"]["harvest"]["status"] == "ready"
+    assert payload["deterministic_advisory"]["harvest"]["route"] == "/api/advisor/harvest"
 
 
 def test_recommendation_limit_helper_clamps_to_api_bounds() -> None:

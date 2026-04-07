@@ -2071,6 +2071,61 @@ def test_build_work_event_compare_payload_supports_tomato_fruit_thinning_candida
     assert thinning_option["immediate_state_delta"]["fruit_load_delta"] < 0
 
 
+def test_build_work_tradeoff_advisor_response_extracts_compare_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_build_advisor_tab_response(**kwargs):
+        captured.update(kwargs)
+        return {
+            "status": "success",
+            "family": "advisor_tab",
+            "crop": kwargs["crop"],
+            "message": "tab message",
+            "machine_payload": {
+                "work_analysis": {
+                    "summary": "work summary",
+                    "confidence": 0.41,
+                },
+                "work_event_compare": {
+                    "summary": "compare summary",
+                    "current_state": {"leaf_count": 16, "lai": 1.42},
+                    "options": [{"action": "유지", "yield_delta_14d": 0.0, "risk": "low"}],
+                    "recommended_action": "유지",
+                    "confidence": 0.78,
+                },
+                "model_runtime": {"status": "ready"},
+            },
+            "orchestration": {
+                "entrypoint": "/api/advisor/tab/work",
+                "available_tabs": ["work"],
+            },
+        }
+
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_advisor_tab_response",
+        _fake_build_advisor_tab_response,
+    )
+
+    payload = advisor_orchestration.build_work_tradeoff_advisor_response(
+        crop="cucumber",
+        greenhouse_id="gh-1",
+        dashboard={"data": {"temperature": 24.0}},
+    )
+
+    assert captured["tab_name"] == "work"
+    assert captured["greenhouse_id"] == "gh-1"
+    assert payload["family"] == "advisor_work_tradeoff"
+    assert payload["summary"] == "compare summary"
+    assert payload["current_state"]["leaf_count"] == 16
+    assert payload["recommended_action"] == "유지"
+    assert payload["confidence"] == 0.78
+    assert payload["orchestration"]["entrypoint"] == "/api/advisor/work-tradeoff"
+    assert payload["orchestration"]["delegates_to"] == "/api/advisor/tab/work"
+
+
 def test_build_advisor_tab_response_rejects_unknown_tabs() -> None:
     with pytest.raises(ValueError, match="Unsupported advisor tab"):
         advisor_orchestration.build_advisor_tab_response(

@@ -20,9 +20,13 @@ from .services.advisory_api import (
 )
 from .services.advisor_orchestration import (
     build_advisor_chat_response,
+    build_environment_advisor_response,
     build_environment_recommendation_response,
+    build_harvest_advisor_response,
+    build_physiology_advisor_response,
     build_advisor_summary_response,
     build_advisor_tab_response,
+    build_work_tradeoff_advisor_response,
     build_work_recommendation_response,
 )
 from .services.openai_service import generate_consulting, generate_chat_reply
@@ -85,6 +89,12 @@ class AdvisorTabRequest(BaseModel):
     drain_water_mmol_l: Optional[Dict[str, float]] = None
     working_solution_volume_l: Optional[float] = None
     stock_ratio: Optional[float] = None
+
+
+class AdvisorSurfaceRequest(BaseModel):
+    crop: str
+    greenhouse_id: Optional[str] = None
+    dashboard: Optional[Dict[str, Any]] = None
 
 
 class EnvironmentRecommendationRequest(BaseModel):
@@ -1584,6 +1594,62 @@ async def advisor_chat(req: AdvisorChatRequest):
             status_code=500,
             detail=f"Advisor chat failed: {exc}",
         ) from exc
+
+
+@app.post("/api/advisor/environment")
+async def advisor_environment(req: AdvisorSurfaceRequest):
+    """Return the additive environment advisor surface with the exact directive route."""
+    _validate_crop(req.crop)
+    try:
+        return build_environment_advisor_response(
+            crop=req.crop,
+            greenhouse_id=req.greenhouse_id,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/advisor/physiology")
+async def advisor_physiology(req: AdvisorSurfaceRequest):
+    """Return the additive physiology advisor surface with the exact directive route."""
+    _validate_crop(req.crop)
+    try:
+        return build_physiology_advisor_response(
+            crop=req.crop,
+            greenhouse_id=req.greenhouse_id,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/advisor/work-tradeoff")
+async def advisor_work_tradeoff(req: AdvisorSurfaceRequest):
+    """Return the work-tradeoff advisor contract over persisted work-event compare outputs."""
+    _validate_crop(req.crop)
+    try:
+        return build_work_tradeoff_advisor_response(
+            crop=req.crop,
+            greenhouse_id=req.greenhouse_id,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/advisor/harvest")
+async def advisor_harvest(req: AdvisorSurfaceRequest):
+    """Return the additive harvest advisor surface with the exact directive route."""
+    _validate_crop(req.crop)
+    try:
+        return build_harvest_advisor_response(
+            crop=req.crop,
+            greenhouse_id=req.greenhouse_id,
+            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/environment/recommend")
