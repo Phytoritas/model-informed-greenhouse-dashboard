@@ -662,3 +662,45 @@ def test_rtr_profiles_endpoint_returns_payload_shape(
         == "heuristic-fallback"
     )
     assert payload["profiles"]["Cucumber"]["calibration"]["windowCount"] == 0
+
+
+def test_advisor_tab_endpoint_forwards_greenhouse_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend_main = _backend_main()
+    captured: dict[str, object] = {}
+
+    def _fake_build_advisor_tab_response(**kwargs):
+        captured.update(kwargs)
+        return {
+            "status": "success",
+            "family": "advisor_tab",
+            "crop": kwargs["crop"],
+            "tab_name": kwargs["tab_name"],
+            "machine_payload": {},
+        }
+
+    monkeypatch.setattr(
+        backend_main,
+        "build_advisor_tab_response",
+        _fake_build_advisor_tab_response,
+    )
+    monkeypatch.setattr(
+        backend_main,
+        "_augment_dashboard_with_knowledge_context",
+        lambda crop, dashboard: dashboard or {},
+    )
+    client = TestClient(get_app())
+
+    response = client.post(
+        "/api/advisor/tab/work",
+        json={
+            "crop": "cucumber",
+            "greenhouse_id": "gh-1",
+            "dashboard": {},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert captured["greenhouse_id"] == "gh-1"

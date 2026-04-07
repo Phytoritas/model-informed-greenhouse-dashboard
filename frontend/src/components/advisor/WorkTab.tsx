@@ -20,10 +20,24 @@ const WorkTab = (props: WorkTabProps) => {
     const retrievalContext = props.result?.machine_payload.retrieval_context;
     const knowledgeEvidence = props.result?.machine_payload.knowledge_evidence;
     const modelRuntime = props.result?.machine_payload.model_runtime;
+    const workEventCompare = props.result?.machine_payload.work_event_compare;
     const copy = locale === 'ko'
         ? {
             title: '재배작업',
             summary: '작업 요약',
+            workEventCompare: '작업 이벤트 비교',
+            compareHistory: '최근 작업 이력',
+            compareCurrentState: '비교 기준 상태',
+            compareRecommended: '권장 조치',
+            compareUnavailable: '저장된 model snapshot이 아직 없어 작업 이벤트 replay compare를 만들 수 없습니다.',
+            compareYield7d: '7일 수량',
+            compareYield14d: '14일 수량',
+            compareCanopyA: '72h canopy A',
+            compareBalance: '균형 점수',
+            compareRisk: '리스크',
+            compareOperatorNote: '해석',
+            compareImmediateDelta: '즉시 상태 변화',
+            compareNoHistory: '아직 저장된 작업 이력이 없습니다.',
             actionTimeline: '행동 계획',
             actionNow: '지금 조치',
             actionToday: '오늘 조치',
@@ -66,6 +80,19 @@ const WorkTab = (props: WorkTabProps) => {
         : {
             title: 'Work',
             summary: 'Work summary',
+            workEventCompare: 'Work-event compare',
+            compareHistory: 'Recent work history',
+            compareCurrentState: 'Baseline state',
+            compareRecommended: 'Recommended action',
+            compareUnavailable: 'No persisted model snapshot is available for work-event replay compare yet.',
+            compareYield7d: '7d yield',
+            compareYield14d: '14d yield',
+            compareCanopyA: '72h canopy A',
+            compareBalance: 'Balance score',
+            compareRisk: 'Risk',
+            compareOperatorNote: 'Interpretation',
+            compareImmediateDelta: 'Immediate state delta',
+            compareNoHistory: 'No persisted work event has been logged yet.',
             actionTimeline: 'Action timeline',
             actionNow: 'Now',
             actionToday: 'Today',
@@ -128,6 +155,37 @@ const WorkTab = (props: WorkTabProps) => {
             return '-';
         }
         return `${value.toFixed(digits)}${unit}`;
+    }
+
+    function formatSignedValue(
+        value: number | null | undefined,
+        digits = 2,
+        unit = '',
+    ) {
+        if (value === null || value === undefined || Number.isNaN(value)) {
+            return '-';
+        }
+        const prefix = value > 0 ? '+' : '';
+        return `${prefix}${value.toFixed(digits)}${unit}`;
+    }
+
+    function formatDeltaLabel(key: string) {
+        switch (key) {
+            case 'leaf_count_delta':
+                return locale === 'ko' ? '엽수' : 'Leaf count';
+            case 'lai_delta':
+                return 'LAI';
+            case 'fruit_load_delta':
+                return locale === 'ko' ? '착과 부하' : 'Fruit load';
+            case 'sink_demand_delta':
+                return locale === 'ko' ? 'sink demand' : 'Sink demand';
+            case 'source_capacity_delta':
+                return locale === 'ko' ? 'source capacity' : 'Source capacity';
+            case 'fruit_partition_ratio_delta':
+                return locale === 'ko' ? 'fruit partition' : 'Fruit partition';
+            default:
+                return key;
+        }
     }
 
     if (props.status !== 'error' && analysis) {
@@ -221,6 +279,93 @@ const WorkTab = (props: WorkTabProps) => {
                 <div className="space-y-4">
                     {modelRuntime !== undefined ? (
                         <AdvisorModelRuntimePanel runtime={modelRuntime} />
+                    ) : null}
+                    {workEventCompare ? (
+                        <AdvisorActionCard
+                            title={copy.workEventCompare}
+                            subtitle={workEventCompare.summary}
+                            badges={[
+                                workEventCompare.status,
+                                `${copy.confidence}:${Math.round((workEventCompare.confidence ?? 0) * 100)}%`,
+                                ...(workEventCompare.recommended_action
+                                    ? [`${copy.compareRecommended}:${workEventCompare.recommended_action}`]
+                                    : []),
+                            ]}
+                        >
+                            {workEventCompare.status === 'history-unavailable' ? (
+                                <div className="text-sm leading-relaxed text-slate-500">
+                                    {workEventCompare.summary || copy.compareUnavailable}
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-3">
+                                        <div>{copy.compareCurrentState}: {formatValue(workEventCompare.current_state.leaf_count, 0)}</div>
+                                        <div>LAI: {formatValue(workEventCompare.current_state.lai, 2)}</div>
+                                        <div>{copy.harvestableFruits}: {formatValue(workEventCompare.current_state.fruit_load, 0)}</div>
+                                        <div>{copy.activeTrusses}: {formatValue(workEventCompare.current_state.active_trusses, 0)}</div>
+                                        <div>{copy.compareBalance}: {formatSignedValue(workEventCompare.current_state.source_sink_balance, 2)}</div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                            {copy.compareHistory}
+                                        </div>
+                                        {workEventCompare.history.length ? (
+                                            <div className="flex flex-wrap gap-2">
+                                                {workEventCompare.history.map((item) => (
+                                                    <AdvisorConfidenceBadge
+                                                        key={`${item.event_time ?? item.action}-${item.action}`}
+                                                        label={item.action}
+                                                        tone="neutral"
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm text-slate-500">{copy.compareNoHistory}</div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid gap-3 xl:grid-cols-3">
+                                        {workEventCompare.options.map((option) => (
+                                            <div
+                                                key={`${option.comparison_kind}-${option.action}`}
+                                                className="rounded-2xl border border-slate-200 bg-white p-4"
+                                            >
+                                                <div className="flex flex-wrap gap-2">
+                                                    <AdvisorConfidenceBadge label={option.action} tone="success" />
+                                                    <AdvisorConfidenceBadge
+                                                        label={`${copy.compareRisk}:${option.risk}`}
+                                                        tone={option.risk === 'high' ? 'warning' : option.risk === 'medium' ? 'info' : 'neutral'}
+                                                    />
+                                                </div>
+                                                <div className="mt-3 space-y-2 text-sm text-slate-600">
+                                                    <div>
+                                                        <span className="font-semibold text-slate-900">{copy.compareOperatorNote}: </span>
+                                                        {option.operator_note}
+                                                    </div>
+                                                    <div>{copy.compareYield7d}: {formatSignedValue(option.expected_yield_delta_7d, 2, ' kg')}</div>
+                                                    <div>{copy.compareYield14d}: {formatSignedValue(option.expected_yield_delta_14d, 2, ' kg')}</div>
+                                                    <div>{copy.compareCanopyA}: {formatSignedValue(option.expected_canopy_a_delta_72h, 2)}</div>
+                                                    <div>{copy.compareBalance}: {formatSignedValue(option.expected_source_sink_balance_delta, 3)}</div>
+                                                    <div className="space-y-2">
+                                                        <div className="font-semibold text-slate-900">{copy.compareImmediateDelta}</div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {Object.entries(option.immediate_state_delta ?? {}).map(([key, value]) => (
+                                                                <AdvisorConfidenceBadge
+                                                                    key={key}
+                                                                    label={`${formatDeltaLabel(key)} ${formatSignedValue(value, 2)}`}
+                                                                    tone="neutral"
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </AdvisorActionCard>
                     ) : null}
                     {advisorActions ? (
                         <AdvisorActionTimeline

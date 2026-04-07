@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "phase7-work-event-driven-compare-loop-opened",
+  "current_stage": "phase7c-work-event-compare-hardened",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
   "active_issue": 21,
   "active_branch": "feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs",
-  "implementation_blocked": true,
-  "next_action": "Issue #21 is now the active bounded loop. Keep the existing control-scenario `model_runtime` panel intact, then define and land the first additive work-event-driven compare contract that replays persisted `crop_work_events` plus candidate `leaf_removal` / `fruit_thinning` actions into shared-snapshot advisor payloads and tests before frontend expansion.",
+  "implementation_blocked": false,
+  "next_action": "Issue #21 now has its first additive work-event compare slice plus reviewer-driven hardening: greenhouse-scoped replay lookup, malformed payload tolerance, store-unavailable degrade paths, and endpoint forwarding smoke coverage are landed. The next bounded step is still deeper hardening: tighten candidate agronomy/ranking and decide whether to add frontend component-test infrastructure before opening the issue #21 PR.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "GitHub issue #21 as the first post-merge follow-up over the April 7, 2026 model-first SmartGrow directive; issue #19 is merged into main at ecbd9b7"
 }
