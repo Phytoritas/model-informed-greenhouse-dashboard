@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
+import logging
 from typing import Any, Optional
 
 from .advisor_context_builder import (
@@ -66,6 +67,7 @@ _MODEL_RUNTIME_CONTROL_LABELS = {
     "screen_close": "screen closing",
 }
 _WORK_EVENT_COMPARE_HORIZONS_HOURS = (24, 72, 168, 336)
+logger = logging.getLogger(__name__)
 
 
 def _normalize_tab_name(tab_name: str) -> str:
@@ -2622,7 +2624,13 @@ def _build_work_event_compare_payload(
             baseline_snapshot_record = store.load_snapshot(str(current_state["latest_snapshot_id"]))
         if baseline_snapshot_record is None:
             baseline_snapshot_record = store.latest_snapshot(resolved_greenhouse_id, crop)
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "Work-event compare store access degraded for greenhouse=%s crop=%s: %s",
+            resolved_greenhouse_id,
+            crop,
+            exc,
+        )
         return {
             "payload": _build_unavailable_work_event_compare_payload(
                 reason="Persisted work-event compare 저장소를 불러오지 못해 replay compare를 잠시 비활성화했습니다.",
@@ -2839,7 +2847,14 @@ def _build_work_event_compare_payload(
                 "options": option_provenance,
             },
         }
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "Work-event compare build degraded for greenhouse=%s crop=%s baseline_snapshot=%s: %s",
+            resolved_greenhouse_id,
+            crop,
+            baseline_snapshot_id,
+            exc,
+        )
         return {
             "payload": _build_unavailable_work_event_compare_payload(
                 reason="저장된 작업 이력 또는 state 형식이 불완전해 work-event replay compare를 잠시 비활성화했습니다.",
