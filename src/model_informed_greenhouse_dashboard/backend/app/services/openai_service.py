@@ -99,6 +99,20 @@ def _system_prompt(crop: str, language: str = "ko") -> str:
     )
 
 
+def _knowledge_context_block(dashboard: Dict[str, Any]) -> str:
+    knowledge = dashboard.get("knowledge") if isinstance(dashboard, dict) else None
+    if not knowledge:
+        return ""
+
+    return (
+        "Knowledge context when present:\n"
+        "- `knowledge` summarizes the local tomato/cucumber agronomy corpus that lives under the repository data/ directory.\n"
+        "- Use it as crop-specific background context, but do not claim that deterministic pesticide, nutrient, or environment engines are already complete unless the dashboard payload explicitly includes their outputs.\n"
+        "- Do not expose raw provenance identifiers in the user-facing answer.\n"
+        f"- Knowledge JSON:\n{json.dumps(knowledge, ensure_ascii=False)}\n\n"
+    )
+
+
 def _consult_markdown_template(crop: str, language: str = "ko") -> str:
     crop_norm = (crop or "").strip().lower()
     if crop_norm == "tomato":
@@ -188,6 +202,7 @@ def generate_consulting(
     model: str = DEFAULT_MODEL,
 ) -> str:
     """Generate consulting text based on the current dashboard snapshot."""
+    knowledge_block = _knowledge_context_block(dashboard)
     prompt = (
         f"Crop: {crop}\n"
         "Units & key mapping (dashboard JSON):\n"
@@ -209,10 +224,13 @@ def generate_consulting(
         "- weather.current.temperature_c / humidity / cloud / wind plus next 3 daily forecasts for the live Daegu outside outlook\n"
         "- rtr.profile.* for the calibrated RTR line metadata\n"
         "- rtr.live.targetTempC / deltaTempC / balanceState / radiationSumMjM2D / averageTempC for the current 24 h balance\n"
-        "- rtr.forecastTargets[*].targetTempC / radiationSumMjM2D for the next 3 days\n\n"
+        "- rtr.forecastTargets[*].targetTempC / radiationSumMjM2D for the next 3 days\n"
+        "- knowledge.* for crop-scoped local corpus availability and workbook/manual scope\n\n"
+        f"{knowledge_block}"
         "Priority rules:\n"
         "- If weather or rtr fields are present, explicitly mention them in Executive Summary and Recommendations.\n"
         "- Use weather and rtr as the primary live steering context when present.\n"
+        "- If knowledge is present, use it as crop-specific agronomy background without pretending that unimplemented deterministic engines already produced outputs.\n"
         "- Use recentSummary as supporting evidence, not as the primary signal, when weather/rtr are available.\n\n"
         "The dashboard JSON includes a compact `recentSummary` (last ~60 points) with "
         "trend/step-change stats to avoid sending raw arrays.\n\n"
@@ -243,6 +261,7 @@ def generate_chat_reply(
 ) -> str:
     """Generate a chat reply using the conversation and optional dashboard context."""
     ctx = dashboard or {}
+    knowledge_block = _knowledge_context_block(ctx)
     input_messages: List[Dict[str, str]] = [
         {
             "role": "user",
@@ -263,10 +282,13 @@ def generate_chat_reply(
                 "- weather.current / weather.daily: live Daegu outside weather context\n"
                 "- rtr.profile: calibrated RTR line metadata\n"
                 "- rtr.live: current rolling-24 h RTR status\n"
-                "- rtr.forecastTargets: next 3 forecast-linked RTR targets\n\n"
+                "- rtr.forecastTargets: next 3 forecast-linked RTR targets\n"
+                "- knowledge: crop-scoped local corpus summary for tomato/cucumber manuals and workbooks\n\n"
+                f"{knowledge_block}"
                 "Priority rules:\n"
                 "- If weather or rtr fields are present, explicitly use them in the answer.\n"
                 "- When steering advice is requested, prioritize weather and rtr over recentSummary-only trend reading.\n"
+                "- If knowledge is present, use it as agronomy background context without inventing missing deterministic rule/calculator outputs.\n"
                 "- Use recentSummary as supporting evidence, not the primary signal, when weather/rtr are available.\n\n"
                 f"Crop: {crop}\n"
                 f"Dashboard JSON:\n{json.dumps(ctx, ensure_ascii=False)}"

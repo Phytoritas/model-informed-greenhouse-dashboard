@@ -376,7 +376,11 @@ class CucumberAdapter(ModelAdapter):
                     "last_datetime": (
                         self._last_datetime.isoformat() if self._last_datetime else None
                     ),
+                    "last_state": copy.deepcopy(self._last_state),
                     "daily_cache": copy.deepcopy(self._daily_cache),
+                    "previous_day": copy.deepcopy(self._previous_day),
+                    "cumulative": copy.deepcopy(self._cumulative),
+                    "leaf_prune_baseline": self._leaf_prune_baseline,
                     "area_m2": self.area_m2,
                     "plant_density": self.plant_density,
                 }
@@ -395,7 +399,13 @@ class CucumberAdapter(ModelAdapter):
             meta = state.pop("_adapter_meta", {})
             if meta.get("last_datetime"):
                 self._last_datetime = datetime.fromisoformat(meta["last_datetime"])
+            self._last_state = meta.get("last_state")
             self._daily_cache = meta.get("daily_cache", {})
+            self._previous_day = meta.get("previous_day", {})
+            self._cumulative = meta.get("cumulative", {})
+            self._leaf_prune_baseline = float(
+                meta.get("leaf_prune_baseline", getattr(self.model, "remaining_leaves", 0))
+            )
             self.area_m2 = meta.get("area_m2", self.area_m2)
             self.plant_density = meta.get("plant_density", self.plant_density)
 

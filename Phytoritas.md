@@ -5,103 +5,164 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `#16`
-- Active branch: `data/16-show-wholesale-produce-prices-alongside-retail-market-panel`
+- Active issue: `#19`
+- Active branch: `feat/19-implement-model-first-smartgrow-advisor-with-crop-physiology-gas-exchange-and-sensitivity-engines`
+- Preserved baseline issue: `#18`
 
 ## Identity
-This repository hosts a model-informed greenhouse dashboard that combines greenhouse telemetry, crop-state model outputs, and decision-friendly summaries in one reproducible workspace.
+This repository now carries three simultaneous truths:
+- the validated dashboard runtime, WebSocket telemetry flow, weather/RTR/market panels, crop switching, and current AI consult/chat experience
+- the landed SmartGrow knowledge, workbook, routed retrieval, and bounded advisor-tab surfaces from issue `#18`
+- the new April 7, 2026 SmartGrow directive that changes the mainline from knowledge-first expansion to model-actuated advisory
 
-The current refactor intake source is `C:\Users\yhmoo\OneDrive\Model\10_Projects\10_AI_Platform\dashboard-eng_1.1`, which provides a working greenhouse dashboard backend, legacy crop models, and a Vite-based frontend. The target repository must absorb that project into the current blueprint, package conventions, and validation ladder instead of copying the source tree verbatim.
+The new mainline is `model-first, RAG-explained`.
+Numerical judgment must come from crop physiology models, gas exchange, scenario simulation, local sensitivity, and constraint-aware recommendation.
+Retrieval remains useful, but only as explanation, guardrail, and provenance support.
 
-The first objective is still not a production deployment. The first objective is to lock the dashboard scope, data contracts, model-context seams, migration boundaries, and validation loop before broad UI or integration work begins.
+## Existing Baseline To Preserve
+- `src/model_informed_greenhouse_dashboard/backend/app/main.py` already exposes the running FastAPI surface and current advisor routes
+- `src/model_informed_greenhouse_dashboard/backend/app/services/knowledge_*` and `advisor_*` already provide the issue `#18` knowledge/advisory baseline
+- `src/model_informed_greenhouse_dashboard/models/legacy/TomatoModel.py` and `src/model_informed_greenhouse_dashboard/models/legacy/CucumberModel.py` contain donor logic for crop growth and canopy physiology
+- `frontend/src/components/advisor/` and related hooks already provide the current tab shell and execution workspace
+- `tests/test_advisory.py`, `tests/test_advisor_orchestration.py`, `tests/test_knowledge_*`, and `tests/test_smoke.py` lock the current contracts
 
-## Source Intake
-- Source project: `dashboard-eng_1.1`
-- Source runtime surfaces:
-  - FastAPI backend for simulation, forecasting, irrigation, energy, and decision APIs
-  - Standalone tomato and cucumber model implementations
-  - Vite frontend for dashboard UI
-  - Legacy Next.js frontend kept only as reference, not as the primary migration target
-- Canonical frontend path: source `frontend/` (Vite React app)
-- Migration principle:
-  - preserve working service boundaries where they are defensible
-  - isolate legacy model code behind adapters
-  - translate pathing, config layout, and package imports into this repository's structure
-  - localize presentation aliases so canonical model symbols stay at adapter boundaries
+Issue `#19` must preserve that baseline while redirecting the architecture toward reusable crop-model and model-runtime services.
 
-## Operating Boundary
-Blueprint artifacts come before broad implementation. Until the first implementation gate passes, the repository may add:
-- architecture and planning documents
-- harness runtime state under `.rah/`
-- glossary and canonical IO definitions
-- package, API, and service scaffolds
-- bounded smoke tests and fixtures
-
-It may not:
-- hard-code greenhouse-specific business logic without an explicit contract
-- blindly mirror the source project directory layout if it conflicts with repo conventions
-- mix core model symbols with UI-only aliases outside adapter boundaries
-- promise live integrations, alerting workflows, or deployment behavior before the contracts exist
+## Directive Summary
+The new SmartGrow lane must eventually provide:
+- cucumber growth simulation with thermal time, node/leaf development, rank-specific leaf area, LAI, source capacity, sink demand, dry-matter partitioning, defoliation state transitions, and 14-day event effects
+- tomato growth simulation with truss cohorts, temperature-driven development, source-sink competition, fruit thinning events, and yield/size tradeoff trajectories
+- coupled FvCB + Ball-Berry gas exchange with canopy integration across upper/middle/bottom or rank-specific layers
+- scenario simulation, local sensitivity, trust-region handling, optimizer/constraint logic, and recommendation scoring
+- event-sourced work metadata for `leaf_removal`, `fruit_thinning`, `harvest`, `pruning`, `training`, `pollination`, irrigation and climate-strategy changes
+- model-aware advisor APIs and frontend tabs that show actions, tradeoffs, confidence, and counterfactual comparison without exposing raw provenance in the UI
 
 ## Source Of Truth
 1. `Phytoritas.md`
-2. `docs/architecture/00_workspace_audit.md`
-3. `docs/architecture/01_system_brief.md`
-4. `docs/canonical_io.md`
-5. `docs/variable_glossary.md`
-6. Repo code and tests
+2. GitHub issue `#19`
+3. `docs/architecture/architecture/adrs/ADR-001-adopt-model-first-smartgrow-advisory.md`
+4. `docs/architecture/architecture/module_specs/module-001-model-first-smartgrow-runtime.md`
+5. `docs/architecture/00_workspace_audit.md`
+6. `docs/architecture/01_system_brief.md`
+7. `docs/architecture/gap_register.md`
+8. Repo code and tests
 
 Conflict rule:
-- explicit data contracts override ad hoc notebook or dashboard assumptions
-- model-layer canonical names override presentation aliases at the adapter boundary
-- architecture artifacts under `docs/architecture/` explain migration intent; `.rah/` only tracks runtime control state
+- issue `#19` defines the new mainline
+- issue `#18` defines the preserved knowledge/RAG/advisory baseline, not the next architecture center
+- current runtime contracts stay authoritative until a new model-first contract is explicitly landed and validated
+- `.rah/` must report the real gate state honestly even when older issue `#18` phases remain landed in code
 
-## Stage Goals
-1. Audit the current scaffold repo and the source project, then record the migration deltas explicitly.
-2. Establish the target package, API, config, and frontend boundaries before broad file import.
-3. Migrate the Python backend runtime and legacy crop models into a package-safe structure.
-4. Define canonical input and output contracts for telemetry, model results, thresholds, and summaries.
-5. Land the first bounded dashboard slice with representative smoke coverage.
-6. Land the canonical frontend workspace once the backend and contracts are stable enough to validate against.
-7. Close the loop with browser-level integration smoke and any follow-up chunking or UI hardening that smoke reveals.
+## Non-Negotiables
+- Do not break the current dashboard, WebSocket rendering, weather/RTR/market panels, crop switching, or existing AI consult/chat flows
+- Do not let the LLM invent pesticide, nutrient, environment, or work recommendations that should come from deterministic engines
+- Do not surface source citations or raw provenance IDs in the user-facing UI
+- Do not promote a recommendation unless bounded scenario results, local sensitivity direction, and constraints agree
+- Do not silently impute missing work metadata; lower confidence and ask follow-up questions instead
+- Treat `leaf_removal` and `fruit_thinning` as state-transition events, not static copy text
+
+## Target Architecture
+### Backend services
+- `backend/app/services/crop_models/`
+  - `cucumber_growth_model.py`
+  - `tomato_growth_model.py`
+  - `gas_exchange_fvcb.py`
+  - `stomatal_ball_berry.py`
+  - `canopy_integration.py`
+  - `dry_matter_partition.py`
+  - `thermal_time.py`
+- `backend/app/services/model_runtime/`
+  - `model_state_store.py`
+  - `scenario_runner.py`
+  - `sensitivity_engine.py`
+  - `optimizer.py`
+  - `constraint_engine.py`
+- `backend/app/services/advisory/`
+  - `physiology_advisor.py`
+  - `environment_advisor.py`
+  - `work_tradeoff_advisor.py`
+  - `harvest_advisor.py`
+  - `explanation_builder.py`
+- `backend/app/services/rag/`
+  - `retriever.py`
+  - `context_builder.py`
+  - `assistant_router.py`
+
+### Data and persistence targets
+- `crop_model_states`
+- `crop_model_snapshots`
+- `crop_work_events`
+- `gas_exchange_observations`
+- `scenario_runs`
+- `scenario_outputs`
+- `sensitivity_outputs`
+- `advisor_recommendations`
+- `advisor_provenance`
+- `assistant_sessions`
+
+### API targets
+- `POST /api/models/snapshot`
+- `POST /api/models/replay`
+- `POST /api/models/scenario`
+- `POST /api/models/sensitivity`
+- `POST /api/advisor/physiology`
+- `POST /api/advisor/environment`
+- `POST /api/advisor/work-tradeoff`
+- `POST /api/advisor/harvest`
+- `POST /api/advisor/chat`
+
+## Phased Delivery
+### Phase 0. Harness realignment
+- open a new issue/branch for the model-first requirement
+- rewrite blueprint, system brief, gap register, ADRs, module specs, and `.rah` state around issue `#19`
+- freeze issue `#18` as a preserved baseline instead of the active architecture target
+
+### Phase 1. Model state and work-event foundation
+- wrap legacy tomato/cucumber models behind explicit service interfaces
+- define canonical crop-model state payloads, snapshot contracts, and work-event schemas
+- add a bounded `model_state_store` seam and explicit persistence-adapter contract
+- define `leaf_removal` and `fruit_thinning` state transitions with confidence handling
+
+### Phase 2. Gas exchange and runtime core
+- extract reusable FvCB, Ball-Berry, and canopy-integration services
+- add scenario runner, sensitivity engine, trust-region handling, and constraint surfaces
+- expose `/api/models/*` routes and persist scenario/sensitivity outputs
+
+### Phase 3. Advisor contract migration
+- feed model runtime outputs into physiology, environment, work-tradeoff, harvest, and assistant flows
+- keep current UI tabs as the shell, but replace pending or heuristic internals with model-backed payloads
+- add counterfactual compare, sensitivity ranking, and action-card contracts
+
+### Phase 4. Optimization and infrastructure promotion
+- deepen optimizer/constraint logic
+- promote persistence from the current bounded adapters toward the prompt's Postgres/pgvector/Redis target without invalidating earlier local validation
+- expand regression coverage and operational docs
 
 ## Decision Gates
-### Gate A. Source intake lock
-- Do not treat the source project as ready to copy until its modules, configs, and runtime assumptions are inventoried.
+### Gate A. Issue and blueprint lock
+- no new model-first implementation before issue `#19`, this blueprint, the new ADR, and the module spec all agree on scope
 
-### Gate B. Contract lock
-- Do not begin broad implementation before telemetry, model, and dashboard contracts are explicit.
+### Gate B. Baseline preservation lock
+- issue `#18` knowledge/RAG/advisor surfaces are preserved as the compatibility baseline, not deleted or silently repurposed
 
-### Gate C. Naming lock
-- Model-layer symbols follow the workspace glossary rules.
-- Legacy model names may remain inside isolated legacy modules, but adapter outputs and public contracts must use the canonical vocabulary.
-- UI aliases stay localized to adapter or presenter boundaries.
+### Gate C. Phase-1 foundation lock
+- no scenario/sensitivity/UI expansion before canonical state payloads, work-event schemas, and the persistence-adapter contract exist
 
-### Gate D. Boundary lock
-- Model computation, aggregation, and presentation remain separated.
-- Backend runtime migration must preserve explicit seams between ingestion, adapters, services, API schemas, and UI-facing payloads.
+### Gate D. Model-first recommendation lock
+- no recommendation is treated as production-ready until model outputs, bounded scenarios, local sensitivity, and constraint checks are all explicit
 
 ### Gate E. Validation lock
-- Each bounded slice must ship with at least one smoke test or regression check.
+- every bounded slice must run the repo validation ladder and add targeted regression coverage for the new seam
 
 ## Validation Loop
-- `frontend tsc -b`
-- `frontend eslint`
-- `frontend vite build`
-- `poetry run pytest`
 - `poetry run ruff check .`
-- Add one representative dashboard smoke path before opening large UI work.
-- Track browser-level UI smoke as a separate gate after frontend build validation lands.
-- Update README and docs whenever the architecture or contract changes.
-
-## Recursive Improvement Cycle
-1. Compare the current repo state against the blueprint and the source-project intake delta.
-2. Update docs, gate state, or glossary before broad code changes.
-3. Implement the smallest deterministic slice that closes the earliest migration gap.
-4. Add or expand smoke coverage.
-5. Re-run quality checks and record the next unresolved gap.
+- `poetry run pytest`
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run build`
+- targeted model/runtime tests for cucumber defoliation, tomato thinning, gas-exchange stability, sensitivity trust-region behavior, and advisor snapshot sharing
 
 ## Immediate Next Action
-- Issue `#16` is now the active delivery loop: the KAMIS market branch expands the existing produce-price panel from retail-only cards into retail+wholesale featured snapshots while keeping the 14-day / 3y-5y-10y trend overlay explicitly retail-only.
-- The exact next step is commit/push on `data/16-show-wholesale-produce-prices-alongside-retail-market-panel`, then open a PR and watch push + pull_request GitHub Actions before closing the loop.
-- After issue `#16` is delivered, the next unresolved technical gap reverts to RTR calibration input quality: replace the concept-demo windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods and rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
+- Hold issue `#18` as the preserved knowledge/RAG baseline and do not continue its nutrient-calculator mainline on this issue
+- Use ADR-001 and module-001 as the architecture boundary for issue `#19`
+- Keep `implementation_blocked=true` until the phase-1 persistence-adapter choice and migration seam are frozen in code
+- Then land the bounded phase-1 slice: `model_state_store`, crop snapshot schema, work-event schema, legacy model wrapper seams, and `/api/models/snapshot` plus `/api/models/replay` contracts before scenario/sensitivity or frontend expansion
