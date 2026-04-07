@@ -5,6 +5,7 @@ import type {
     AdvancedModelMetrics,
     CropType,
     ForecastData,
+    ProducePricesPayload,
     RtrProfile,
     WeatherOutlook,
 } from '../types';
@@ -26,6 +27,7 @@ interface ChatAssistantProps {
     crop: CropType;
     forecast?: ForecastData | null;
     history?: SensorData[];
+    producePrices?: ProducePricesPayload | null;
     weather?: WeatherOutlook | null;
     rtrProfile?: RtrProfile | null;
     smartGrowSummary?: SmartGrowKnowledgeSummary | null;
@@ -76,6 +78,7 @@ const ChatAssistant = ({
     crop,
     forecast,
     history = [],
+    producePrices = null,
     weather = null,
     rtrProfile = null,
     smartGrowSummary = null,
@@ -286,6 +289,7 @@ const ChatAssistant = ({
                         crop,
                         history,
                         forecast,
+                        producePrices,
                         weather,
                         rtrProfile,
                     }),

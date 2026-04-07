@@ -416,6 +416,16 @@ def _scope_slug(crop_scope: str | None) -> str:
     return crop_scope or _ALL_SCOPE
 
 
+def _public_path(path: Path | str) -> str:
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        return candidate.as_posix()
+    try:
+        return candidate.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return candidate.name
+
+
 def knowledge_db_path(crop_scope: str | None) -> Path:
     return KNOWLEDGE_DB_DIR / f"knowledge_db_{_scope_slug(crop_scope)}.sqlite3"
 
@@ -491,7 +501,7 @@ def inspect_knowledge_database(crop: str | None = None) -> dict[str, Any]:
         return {
             "status": "missing",
             "crop_scope": crop_scope,
-            "path": str(path),
+            "path": _public_path(path),
             "schema_version": SCHEMA_VERSION,
         }
 
@@ -538,7 +548,7 @@ def inspect_knowledge_database(crop: str | None = None) -> dict[str, Any]:
         "status": "ready",
         "crop_scope": crop_scope,
         "resolved_scope": resolved_scope,
-        "path": str(path),
+        "path": _public_path(path),
         "schema_version": meta_rows.get("schema_version", SCHEMA_VERSION),
         "fts_enabled": fts_enabled,
         "document_count": counts["knowledge_documents"],
@@ -546,7 +556,11 @@ def inspect_knowledge_database(crop: str | None = None) -> dict[str, Any]:
         "entity_count": counts["knowledge_entities"],
         "table_counts": counts,
         "last_built_at": last_run["generated_at"] if last_run else None,
-        "persisted_catalog_path": last_run["persisted_catalog_path"] if last_run else None,
+        "persisted_catalog_path": (
+            _public_path(last_run["persisted_catalog_path"])
+            if last_run and last_run["persisted_catalog_path"]
+            else None
+        ),
         "documents_without_chunks": [row["filename"] for row in chunk_gap_rows],
     }
 
@@ -879,7 +893,11 @@ def query_knowledge_database(
 
     query_terms = route["query_terms"] or _normalize_query_tokens(query_text)
     candidate_limit = max(query_limit * 5, 20)
-    with _connect(Path(database["path"])) as connection:
+    resolved_scope = database.get("resolved_scope", crop or _ALL_SCOPE)
+    actual_db_path = knowledge_db_path(
+        None if resolved_scope == _ALL_SCOPE else resolved_scope
+    )
+    with _connect(actual_db_path) as connection:
         entity_hits = _fetch_entity_hits(
             connection,
             crop=crop,
@@ -1943,6 +1961,8 @@ def rebuild_knowledge_database(payload: dict[str, Any]) -> dict[str, Any]:
 
         for asset in payload.get("assets", []):
             document_id = document_ids[asset["filename"]]
+            if asset.get("readiness") != "ready":
+                continue
             if asset["source_type"] == "csv":
                 _ingest_telemetry_asset(
                     connection,
@@ -1959,7 +1979,11 @@ def rebuild_knowledge_database(payload: dict[str, Any]) -> dict[str, Any]:
                 )
 
         pesticide_document_id = document_ids.get("농약 솔루션_260326_v1.xlsx")
-        if pesticide_document_id:
+        pesticide_asset = next(
+            (asset for asset in payload.get("assets", []) if asset["filename"] == "농약 솔루션_260326_v1.xlsx"),
+            None,
+        )
+        if pesticide_document_id and pesticide_asset and pesticide_asset.get("readiness") == "ready":
             _ingest_pesticide_rows(
                 connection,
                 crop_scope=crop_scope,
@@ -1967,7 +1991,11 @@ def rebuild_knowledge_database(payload: dict[str, Any]) -> dict[str, Any]:
             )
 
         nutrient_document_id = document_ids.get("양액처방_계산시트_V2.0.xlsx")
-        if nutrient_document_id:
+        nutrient_asset = next(
+            (asset for asset in payload.get("assets", []) if asset["filename"] == "양액처방_계산시트_V2.0.xlsx"),
+            None,
+        )
+        if nutrient_document_id and nutrient_asset and nutrient_asset.get("readiness") == "ready":
             _ingest_nutrient_rows(
                 connection,
                 crop_scope=crop_scope,

@@ -4,6 +4,7 @@ import type {
     AdvancedModelMetrics,
     ForecastData,
     CropType,
+    ProducePricesPayload,
     RtrProfile,
     WeatherOutlook,
 } from '../types';
@@ -66,6 +67,7 @@ export const useAiAssistant = () => {
         crop: CropType,
         history: SensorData[] = [],
         forecast?: ForecastData | null,
+        producePrices?: ProducePricesPayload | null,
         weather?: WeatherOutlook | null,
         rtrProfile?: RtrProfile | null,
         callback?: (recommendations: string[]) => void
@@ -82,6 +84,7 @@ export const useAiAssistant = () => {
                 crop,
                 history,
                 forecast,
+                producePrices,
                 weather,
                 rtrProfile,
             });

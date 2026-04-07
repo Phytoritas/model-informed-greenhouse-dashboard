@@ -8,7 +8,7 @@ def setup_function() -> None:
     clear_workbook_preview_cache()
 
 
-def test_pesticide_workbook_preview_is_crop_scoped() -> None:
+def test_pesticide_workbook_preview_is_crop_scoped(synthetic_knowledge_assets) -> None:
     preview = build_workbook_previews("tomato")["pesticide"]
 
     assert preview["status"] == "ready"
@@ -25,7 +25,7 @@ def test_pesticide_workbook_preview_is_crop_scoped() -> None:
     assert preview["crop_view"]["registration_status_counts"]["label-check-required"] >= 1
 
 
-def test_nutrient_workbook_preview_includes_recipe_guardrails() -> None:
+def test_nutrient_workbook_preview_includes_recipe_guardrails(synthetic_knowledge_assets) -> None:
     preview = build_workbook_previews("cucumber")["nutrient"]
 
     assert preview["status"] == "ready"
