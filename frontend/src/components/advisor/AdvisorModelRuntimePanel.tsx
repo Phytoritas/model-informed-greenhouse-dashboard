@@ -1,0 +1,428 @@
+import type { ModelRuntimePayload } from '../../hooks/useSmartGrowAdvisor';
+import { useLocale } from '../../i18n/LocaleProvider';
+import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
+
+interface AdvisorModelRuntimePanelProps {
+    runtime?: ModelRuntimePayload | null;
+}
+
+const CONTROL_LABELS = {
+    co2_setpoint_day: { ko: '주간 CO2', en: 'Day CO2' },
+    temperature_day: { ko: '주간 온도', en: 'Day temperature' },
+    temperature_night: { ko: '야간 온도', en: 'Night temperature' },
+    rh_target: { ko: 'RH target', en: 'RH target' },
+    screen_close: { ko: '스크린 폐쇄', en: 'Screen close' },
+} as const;
+
+const TIME_WINDOW_LABELS = {
+    now: { ko: '지금', en: 'Now' },
+    today: { ko: '오늘', en: 'Today' },
+    this_week: { ko: '이번주', en: 'This week' },
+} as const;
+
+function formatNumber(
+    value: number | null | undefined,
+    digits = 1,
+    unit = '',
+) {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+        return '-';
+    }
+    return `${value.toFixed(digits)}${unit}`;
+}
+
+function clampPercent(value: number) {
+    return Math.max(8, Math.min(100, value));
+}
+
+const AdvisorModelRuntimePanel = ({
+    runtime = null,
+}: AdvisorModelRuntimePanelProps) => {
+    const { locale } = useLocale();
+    const copy = locale === 'ko'
+        ? {
+            title: 'Model Runtime',
+            subtitleReady: 'bounded scenario + local sensitivity',
+            subtitleFallback: 'monitoring-first runtime surface',
+            noRuntime: '이번 응답에는 model runtime block이 아직 없습니다.',
+            statusReady: 'scenario linked',
+            statusFallback: 'monitoring-first',
+            stateTitle: '현재 모델 상태',
+            sensitivityTitle: '민감도 TOP3 레버',
+            compareTitle: 'counterfactual compare',
+            constraintsTitle: '제약 상태',
+            observed: '관측 신호',
+            lai: 'LAI',
+            balance: 'source/sink',
+            canopyA: 'canopy A',
+            limiting: '병목',
+            leafLayers: '상·중·하엽 activity',
+            inferred: '보정 필드',
+            missing: '누락 필드',
+            recommended: '추천',
+            compareEmpty: '아직 강한 bounded option이 정렬되지 않았습니다.',
+            yield7d: '7일 수확',
+            yield14d: '14일 수확',
+            energy: '에너지',
+            balanceDelta: '균형 회복',
+            elasticity: 'elasticity',
+            trust: 'trust region',
+            alignment: 'scenario align',
+            violations: '위반',
+            noViolations: '위반 없음',
+            fallbackHint: '현재는 모델 입력이 부분적이라 방향성과 상태만 노출합니다.',
+        }
+        : {
+            title: 'Model runtime',
+            subtitleReady: 'bounded scenario + local sensitivity',
+            subtitleFallback: 'monitoring-first runtime surface',
+            noRuntime: 'No model runtime block is attached to this response yet.',
+            statusReady: 'scenario linked',
+            statusFallback: 'monitoring-first',
+            stateTitle: 'Current model state',
+            sensitivityTitle: 'Top-3 levers',
+            compareTitle: 'Counterfactual compare',
+            constraintsTitle: 'Constraint status',
+            observed: 'Observed signal',
+            lai: 'LAI',
+            balance: 'Source/sink',
+            canopyA: 'Canopy A',
+            limiting: 'Bottleneck',
+            leafLayers: 'Upper / middle / bottom activity',
+            inferred: 'Inferred fields',
+            missing: 'Missing fields',
+            recommended: 'Recommended',
+            compareEmpty: 'No strong bounded option has been ranked yet.',
+            yield7d: '7d yield',
+            yield14d: '14d yield',
+            energy: 'Energy',
+            balanceDelta: 'Balance recovery',
+            elasticity: 'Elasticity',
+            trust: 'Trust region',
+            alignment: 'Scenario align',
+            violations: 'Violations',
+            noViolations: 'No violations',
+            fallbackHint: 'The current runtime only exposes state and directionality because model inputs are partial.',
+        };
+
+    if (!runtime) {
+        return (
+            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="text-sm text-slate-600">{copy.noRuntime}</div>
+            </section>
+        );
+    }
+
+    const state = runtime.state_snapshot ?? {};
+    const topLevers = runtime.sensitivity?.top_levers ?? [];
+    const compareOptions = runtime.scenario?.options?.length
+        ? runtime.scenario.options
+        : runtime.recommendations ?? [];
+    const recommendedAction = runtime.scenario?.recommended?.action ?? null;
+    const maxElasticity = Math.max(
+        ...topLevers.map((lever) => Math.abs(Number(lever.elasticity ?? 0))),
+        0.01,
+    );
+    const violations = runtime.constraint_checks?.violated_constraints ?? [];
+    const observedSignalScore = Number(state.observed_signal_score ?? 0);
+    const layerActivity = [
+        { key: 'upper', value: Number(state.upper_leaf_activity ?? 0), tone: 'from-emerald-300 to-emerald-500' },
+        { key: 'middle', value: Number(state.middle_leaf_activity ?? 0), tone: 'from-sky-300 to-sky-500' },
+        { key: 'bottom', value: Number(state.bottom_leaf_activity ?? 0), tone: 'from-amber-300 to-amber-500' },
+    ] as const;
+
+    return (
+        <section className="rounded-[30px] border border-slate-900/5 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-5 text-white shadow-[0_20px_60px_rgba(15,23,42,0.28)]">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="max-w-2xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200/80">
+                        {copy.title}
+                    </div>
+                    <h3 className="mt-2 text-xl font-semibold">
+                        {runtime.status === 'ready' ? copy.subtitleReady : copy.subtitleFallback}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                        {runtime.summary}
+                    </p>
+                    {runtime.status !== 'ready' ? (
+                        <p className="mt-2 text-xs leading-relaxed text-emerald-100/80">
+                            {copy.fallbackHint}
+                        </p>
+                    ) : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <AdvisorConfidenceBadge
+                        label={runtime.status === 'ready' ? copy.statusReady : copy.statusFallback}
+                        tone={runtime.status === 'ready' ? 'success' : 'warning'}
+                    />
+                    <AdvisorConfidenceBadge
+                        label={`${copy.observed}:${Math.round(observedSignalScore * 100)}%`}
+                        tone="info"
+                    />
+                    {recommendedAction ? (
+                        <AdvisorConfidenceBadge label={copy.recommended} tone="success" />
+                    ) : null}
+                    {violations.length ? (
+                        <AdvisorConfidenceBadge
+                            label={`${copy.violations}:${violations.length}`}
+                            tone="warning"
+                        />
+                    ) : null}
+                </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
+                <div className="space-y-4">
+                    <div className="rounded-[24px] border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+                            {copy.stateTitle}
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                    {copy.lai}
+                                </div>
+                                <div className="mt-2 text-lg font-semibold">{formatNumber(state.lai, 2)}</div>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                    {copy.balance}
+                                </div>
+                                <div className="mt-2 text-lg font-semibold">
+                                    {formatNumber(state.source_sink_balance, 2)}
+                                </div>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                    {copy.canopyA}
+                                </div>
+                                <div className="mt-2 text-lg font-semibold">
+                                    {formatNumber(state.canopy_net_assimilation_umol_m2_s, 1, ' µmol')}
+                                </div>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                    {copy.limiting}
+                                </div>
+                                <div className="mt-2 text-sm font-semibold uppercase tracking-[0.12em] text-emerald-100">
+                                    {state.limiting_factor ?? '-'}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-4">
+                            <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                {copy.leafLayers}
+                            </div>
+                            <div className="mt-3 space-y-2">
+                                {layerActivity.map((item) => (
+                                    <div key={item.key}>
+                                        <div className="mb-1 flex items-center justify-between text-xs text-slate-200">
+                                            <span className="uppercase tracking-[0.14em]">{item.key}</span>
+                                            <span>{formatNumber(item.value * 100, 0, '%')}</span>
+                                        </div>
+                                        <div className="h-2 rounded-full bg-white/10">
+                                            <div
+                                                className={`h-2 rounded-full bg-gradient-to-r ${item.tone}`}
+                                                style={{ width: `${clampPercent(item.value * 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {state.dashboard_missing_fields?.length || state.inferred_fields?.length ? (
+                        <div className="rounded-[24px] border border-white/10 bg-black/15 p-4">
+                            <div className="flex flex-wrap gap-4">
+                                {state.dashboard_missing_fields?.length ? (
+                                    <div className="space-y-2">
+                                        <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                            {copy.missing}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {state.dashboard_missing_fields.map((item) => (
+                                                <AdvisorConfidenceBadge key={item} label={item} tone="warning" />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : null}
+                                {state.inferred_fields?.length ? (
+                                    <div className="space-y-2">
+                                        <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                            {copy.inferred}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {state.inferred_fields.map((item) => (
+                                                <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
+
+                <div className="space-y-4">
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+                        <div className="rounded-[24px] border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+                                {copy.sensitivityTitle}
+                            </div>
+                            <div className="mt-3 space-y-3">
+                                {topLevers.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-white/15 bg-black/10 px-3 py-3 text-sm text-slate-300">
+                                        {copy.compareEmpty}
+                                    </div>
+                                ) : topLevers.map((lever) => {
+                                    const controlKey = String(lever.control ?? '');
+                                    const localizedControl = CONTROL_LABELS[controlKey as keyof typeof CONTROL_LABELS];
+                                    const width = clampPercent((Math.abs(Number(lever.elasticity ?? 0)) / maxElasticity) * 100);
+                                    return (
+                                        <div
+                                            key={`${controlKey}-${lever.direction}`}
+                                            className="rounded-2xl border border-white/10 bg-black/15 p-4"
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div>
+                                                    <div className="text-sm font-semibold text-white">
+                                                        {localizedControl
+                                                            ? localizedControl[locale]
+                                                            : controlKey}
+                                                    </div>
+                                                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-300">
+                                                        {copy.elasticity}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <AdvisorConfidenceBadge
+                                                        label={String(lever.direction ?? '-')}
+                                                        tone={lever.scenario_alignment ? 'success' : 'warning'}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 h-2 rounded-full bg-white/10">
+                                                <div
+                                                    className="h-2 rounded-full bg-gradient-to-r from-sky-300 to-emerald-400"
+                                                    style={{ width: `${width}%` }}
+                                                />
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-200">
+                                                <span>{formatNumber(lever.elasticity, 2)}</span>
+                                                <span>
+                                                    {copy.trust}:{' '}
+                                                    {formatNumber(lever.trust_region?.low, 0)} to{' '}
+                                                    {formatNumber(lever.trust_region?.high, 0)}
+                                                </span>
+                                                <span>
+                                                    {copy.alignment}:{' '}
+                                                    {lever.scenario_alignment ? 'yes' : 'no'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="rounded-[24px] border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+                                    {copy.compareTitle}
+                                </div>
+                                {recommendedAction ? (
+                                    <AdvisorConfidenceBadge label={copy.recommended} tone="success" />
+                                ) : null}
+                            </div>
+                            <div className="mt-3 space-y-3">
+                                {compareOptions.length === 0 ? (
+                                    <div className="rounded-2xl border border-dashed border-white/15 bg-black/10 px-3 py-3 text-sm text-slate-300">
+                                        {copy.compareEmpty}
+                                    </div>
+                                ) : compareOptions.slice(0, 3).map((option) => {
+                                    const timeWindowKey = option.time_window as keyof typeof TIME_WINDOW_LABELS;
+                                    const timeWindowLabel = TIME_WINDOW_LABELS[timeWindowKey]?.[locale] ?? option.time_window;
+                                    const isRecommended = runtime.scenario?.recommended?.action === option.action;
+                                    const optionViolations = Array.isArray(option.violated_constraints)
+                                        ? option.violated_constraints
+                                        : [];
+                                    return (
+                                        <div
+                                            key={`${option.action}-${option.control}`}
+                                            className={`rounded-2xl border p-4 ${
+                                                isRecommended
+                                                    ? 'border-emerald-300/70 bg-emerald-400/10'
+                                                    : 'border-white/10 bg-black/15'
+                                            }`}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <div className="text-sm font-semibold text-white">
+                                                        {option.action}
+                                                    </div>
+                                                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-300">
+                                                        {timeWindowLabel}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <AdvisorConfidenceBadge
+                                                        label={`score ${formatNumber(option.score, 2)}`}
+                                                        tone={isRecommended ? 'success' : 'info'}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 grid gap-2 text-sm text-slate-200 sm:grid-cols-2">
+                                                <div>{copy.yield7d}: {formatNumber(option.expected_yield_delta_7d, 2, ' kg')}</div>
+                                                <div>{copy.yield14d}: {formatNumber(option.expected_yield_delta_14d, 2, ' kg')}</div>
+                                                <div>{copy.energy}: {formatNumber(option.expected_energy_delta, 2, ' kWh')}</div>
+                                                <div>{copy.balanceDelta}: {formatNumber(option.expected_source_sink_balance_delta, 2)}</div>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {(optionViolations.length
+                                                    ? optionViolations
+                                                    : [{ code: copy.noViolations, severity: 'success', message: copy.noViolations }]
+                                                ).map((violation, index) => (
+                                                    <AdvisorConfidenceBadge
+                                                        key={`${option.action}-${violation.code}-${index}`}
+                                                        label={violation.code}
+                                                        tone={
+                                                            violation.severity === 'high'
+                                                                ? 'danger'
+                                                                : violation.severity === 'medium'
+                                                                    ? 'warning'
+                                                                    : 'success'
+                                                        }
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {violations.length ? (
+                        <div className="rounded-[24px] border border-amber-300/25 bg-amber-400/10 p-4">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">
+                                {copy.constraintsTitle}
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {violations.map((violation, index) => (
+                                    <AdvisorConfidenceBadge
+                                        key={`${violation.code}-${index}`}
+                                        label={`${violation.code}${violation.control ? `:${violation.control}` : ''}`}
+                                        tone={violation.severity === 'high' ? 'danger' : 'warning'}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        </section>
+    );
+};
+
+export default AdvisorModelRuntimePanel;

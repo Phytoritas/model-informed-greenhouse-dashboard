@@ -66,3 +66,32 @@ def test_openai_helper_surfaces_invalid_key(monkeypatch: pytest.MonkeyPatch) -> 
             crop="tomato",
             messages=[{"role": "user", "content": "hi"}],
         )
+
+
+def test_openai_helper_includes_knowledge_context_when_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_client = _FakeOpenAI()
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(ai_service, "OpenAI", lambda: fake_client)
+
+    ai_service.generate_chat_reply(
+        crop="cucumber",
+        messages=[{"role": "user", "content": "What should I watch today?"}],
+        dashboard={
+            "currentData": {},
+            "knowledge": {
+                "titles": ["Cucumber agronomy compendium"],
+                "structured_workbooks": [
+                    {"title": "Nutrient recipe workbook"},
+                ],
+            },
+        },
+        language="en",
+        model="gpt-5.4-mini",
+    )
+
+    assert fake_client.responses.calls
+    first_message = fake_client.responses.calls[0]["input"][0]["content"]
+    assert "Cucumber agronomy compendium" in first_message
+    assert "Nutrient recipe workbook" in first_message

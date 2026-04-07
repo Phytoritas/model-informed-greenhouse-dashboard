@@ -19,6 +19,8 @@ const WeatherOutlookPanel = ({ weather, loading, error }: WeatherOutlookPanelPro
             loading: '대구 실시간 날씨를 불러오는 중...',
             unavailable: '날씨 패널을 불러올 수 없습니다',
             feelsLike: '체감',
+            cachedSummary: '실시간 외부 날씨 연결이 일시적으로 불안정해 최근 대구 캐시 날씨를 표시 중입니다.',
+            fallbackSummary: '실시간 외부 날씨 연결이 일시적으로 불안정해 대체 대구 전망을 표시 중입니다.',
             humidityClouds: '습도 / 운량',
             windRain: '바람 / 강수',
             humidityShort: '습도',
@@ -34,6 +36,8 @@ const WeatherOutlookPanel = ({ weather, loading, error }: WeatherOutlookPanelPro
             loading: 'Loading live Daegu weather...',
             unavailable: 'Weather panel is unavailable',
             feelsLike: 'feels like',
+            cachedSummary: 'Live outside weather is temporarily unstable, so the latest cached Daegu weather snapshot is being shown.',
+            fallbackSummary: 'Live outside weather is temporarily unavailable, so a fallback Daegu outlook is being shown.',
             humidityClouds: 'Humidity / Clouds',
             windRain: 'Wind / Rain',
             humidityShort: 'RH',
@@ -46,11 +50,23 @@ const WeatherOutlookPanel = ({ weather, loading, error }: WeatherOutlookPanelPro
     const formatForecastLabel = (date: string): string =>
         formatLocaleDate(locale, `${date}T00:00:00`, { month: 'short', day: 'numeric', weekday: 'short' });
     const today = weather?.daily[0];
-    const currentWeatherLabel = weather ? getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale) : '';
+    const providerLabel = weather?.source.provider ?? 'Open-Meteo';
+    const providerKey = providerLabel.toLowerCase();
+    const isCachedFallback = providerKey.includes('cached');
+    const isSyntheticFallback = providerKey.includes('fallback');
+    const currentWeatherLabel = weather
+        ? isSyntheticFallback
+            ? weather.current.weather_label
+            : getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)
+        : '';
     const summary = weather
-        ? locale === 'ko'
-            ? `현재 대구는 ${currentWeatherLabel} 상태이며 기온은 ${weather.current.temperature_c.toFixed(1)}°C, 풍속은 ${weather.current.wind_speed_kmh.toFixed(1)} km/h입니다. 오늘은 최고 ${(today?.temperature_max_c ?? weather.current.temperature_c).toFixed(1)}°C / 최저 ${(today?.temperature_min_c ?? weather.current.temperature_c).toFixed(1)}°C, 강수 확률 최대 ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}%가 예상됩니다.`
-            : `Daegu is currently ${currentWeatherLabel.toLowerCase()} at ${weather.current.temperature_c.toFixed(1)}°C with ${weather.current.wind_speed_kmh.toFixed(1)} km/h wind. Today reaches ${(today?.temperature_max_c ?? weather.current.temperature_c).toFixed(1)}°C / ${(today?.temperature_min_c ?? weather.current.temperature_c).toFixed(1)}°C with up to ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}% rain risk.`
+        ? isCachedFallback
+            ? copy.cachedSummary
+            : isSyntheticFallback
+                ? copy.fallbackSummary
+                : locale === 'ko'
+                    ? `현재 대구는 ${currentWeatherLabel} 상태이며 기온은 ${weather.current.temperature_c.toFixed(1)}°C, 풍속은 ${weather.current.wind_speed_kmh.toFixed(1)} km/h입니다. 오늘은 최고 ${(today?.temperature_max_c ?? weather.current.temperature_c).toFixed(1)}°C / 최저 ${(today?.temperature_min_c ?? weather.current.temperature_c).toFixed(1)}°C, 강수 확률 최대 ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}%가 예상됩니다.`
+                    : `Daegu is currently ${currentWeatherLabel.toLowerCase()} at ${weather.current.temperature_c.toFixed(1)}°C with ${weather.current.wind_speed_kmh.toFixed(1)} km/h wind. Today reaches ${(today?.temperature_max_c ?? weather.current.temperature_c).toFixed(1)}°C / ${(today?.temperature_min_c ?? weather.current.temperature_c).toFixed(1)}°C with up to ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}% rain risk.`
         : '';
 
     return (
@@ -64,7 +80,7 @@ const WeatherOutlookPanel = ({ weather, loading, error }: WeatherOutlookPanelPro
                 <p className="mt-1 text-xs text-slate-400">{copy.subtitle}</p>
             </div>
             <div className="rounded-full bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
-                Open-Meteo
+                {providerLabel}
             </div>
         </div>
 

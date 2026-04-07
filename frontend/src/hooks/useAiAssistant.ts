@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type {
     SensorData,
     AdvancedModelMetrics,
@@ -10,17 +10,55 @@ import type {
 import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
 import { buildAiDashboardContext } from '../utils/aiDashboardContext';
+import type { ModelRuntimePayload } from './useSmartGrowAdvisor';
 
 type ConsultResponse = {
     detail?: string;
     message?: string;
     text?: string;
+    machine_payload?: {
+        actions?: Array<{
+            title?: string;
+            message?: string;
+        }>;
+        model_runtime?: ModelRuntimePayload | null;
+    };
 };
+
+function extractRecommendationCandidates(response: ConsultResponse | null): string[] {
+    const actions = response?.machine_payload?.actions ?? [];
+    const structuredActions = actions
+        .map((action) => (action.title || action.message || '').trim())
+        .filter(Boolean);
+    if (structuredActions.length > 0) {
+        return structuredActions.slice(0, 5);
+    }
+
+    const text = (response?.text || '').replace(/\r\n/g, '\n');
+    if (!text) {
+        return [];
+    }
+
+    const recommendationMatch = text.match(
+        /^##\s+Recommendations(?:\s*\(.*?\))?\s*\n([\s\S]*?)(?:\n##\s+|\s*$)/im,
+    );
+    const recommendationBlock = recommendationMatch?.[1] ?? text;
+
+    return recommendationBlock
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => /^([-*]|\d+\.)\s+/.test(line))
+        .map((line) => line.replace(/^([-*]|\d+\.)\s+/, '').trim())
+        .filter(Boolean)
+        .slice(0, 5);
+}
 
 export const useAiAssistant = () => {
     const { locale } = useLocale();
     const [aiAnalysis, setAiAnalysis] = useState<string>("");
+    const [aiModelRuntime, setAiModelRuntime] = useState<ModelRuntimePayload | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const requestIdRef = useRef(0);
 
     const analyzeData = useCallback(async (
         data: SensorData,
@@ -32,7 +70,10 @@ export const useAiAssistant = () => {
         rtrProfile?: RtrProfile | null,
         callback?: (recommendations: string[]) => void
     ) => {
+        requestIdRef.current += 1;
+        const requestId = requestIdRef.current;
         setIsAnalyzing(true);
+        setAiModelRuntime(null);
         try {
             const cropKey = crop.toLowerCase();
             const dashboard = buildAiDashboardContext({
@@ -44,7 +85,7 @@ export const useAiAssistant = () => {
                 weather,
                 rtrProfile,
             });
-            const res = await fetch(`${API_URL}/ai/consult`, {
+            const res = await fetch(`${API_URL}/advisor/summary`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ crop: cropKey, dashboard, language: locale })
@@ -62,23 +103,36 @@ export const useAiAssistant = () => {
                 throw new Error(message);
             }
 
+            if (requestId !== requestIdRef.current) {
+                return;
+            }
             setAiAnalysis(json?.text || "");
-            if (callback) callback([]);
+            setAiModelRuntime(json?.machine_payload?.model_runtime ?? null);
+            if (callback) {
+                callback(extractRecommendationCandidates(json));
+            }
         } catch (e) {
+            if (requestId !== requestIdRef.current) {
+                return;
+            }
             const message =
                 e instanceof Error ? e.message : locale === 'ko' ? '알 수 없는 오류가 발생했습니다.' : 'An unknown error occurred.';
+            setAiModelRuntime(null);
             setAiAnalysis(
                 locale === 'ko'
                     ? `AI 컨설팅을 사용할 수 없습니다: ${message}`
                     : `AI consulting is unavailable: ${message}`,
             );
         } finally {
-            setIsAnalyzing(false);
+            if (requestId === requestIdRef.current) {
+                setIsAnalyzing(false);
+            }
         }
     }, [locale]);
 
     return {
         aiAnalysis,
+        aiModelRuntime,
         isAnalyzing,
         analyzeData
     };

@@ -77,11 +77,19 @@ type BackendPayload = {
 
 type NullableByCrop<T> = Record<CropType, T | null>;
 type ArrayByCrop<T> = Record<CropType, T[]>;
+type TelemetryStatus = 'loading' | 'live' | 'stale' | 'offline';
+type TelemetryState = {
+    status: TelemetryStatus;
+    lastMessageAt: number | null;
+};
+type TelemetryByCrop = Record<CropType, TelemetryState>;
 
 const AREA_M2 = 3305.8;
 const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_HISTORY_POINTS = 288;
 const STREAM_COMMIT_INTERVAL_MS = 250;
+const STREAM_STALE_THRESHOLD_MS = 15_000;
+const TELEMETRY_HEALTH_POLL_MS = 2_000;
 
 const appendUniquePoint = <T extends { timestamp: number }>(series: T[], point: T): T[] => {
     const nextSeries = [...series];
@@ -144,6 +152,10 @@ export const useGreenhouse = () => {
     const [forecastByCrop, setForecastByCrop] = useState<NullableByCrop<ForecastData>>({
         Tomato: null,
         Cucumber: null,
+    });
+    const [telemetryStateByCrop, setTelemetryStateByCrop] = useState<TelemetryByCrop>({
+        Tomato: { status: 'loading', lastMessageAt: null },
+        Cucumber: { status: 'loading', lastMessageAt: null },
     });
     const liveStateRef = useRef<{
         currentDataByCrop: NullableByCrop<SensorData>;
@@ -348,6 +360,13 @@ export const useGreenhouse = () => {
 
         ws.onopen = () => {
             console.log(`Connected to ${cropAtConnection} simulation WebSocket`);
+            setTelemetryStateByCrop((prev) => ({
+                ...prev,
+                [cropAtConnection]: {
+                    ...prev[cropAtConnection],
+                    status: prev[cropAtConnection].lastMessageAt === null ? 'loading' : 'stale',
+                },
+            }));
         };
 
         ws.onmessage = (event) => {
@@ -371,6 +390,13 @@ export const useGreenhouse = () => {
                 const now = Date.now();
                 const elapsed = now - lastFlushTimes[cropAtConnection];
                 const pendingTimer = flushTimers[cropAtConnection];
+                setTelemetryStateByCrop((prev) => ({
+                    ...prev,
+                    [cropAtConnection]: {
+                        status: 'live',
+                        lastMessageAt: now,
+                    },
+                }));
 
                 if (elapsed >= STREAM_COMMIT_INTERVAL_MS) {
                     if (pendingTimer !== null) {
@@ -406,6 +432,13 @@ export const useGreenhouse = () => {
                 return;
             }
             console.log(`Disconnected from ${cropAtConnection} simulation WebSocket`);
+            setTelemetryStateByCrop((prev) => ({
+                ...prev,
+                [cropAtConnection]: {
+                    ...prev[cropAtConnection],
+                    status: 'offline',
+                },
+            }));
             // Attempt to reconnect or handle gracefully
         };
 
@@ -431,6 +464,36 @@ export const useGreenhouse = () => {
             }
         };
     }, [flushCropState, mapPayloadToData, selectedCrop]);
+
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            setTelemetryStateByCrop((prev) => {
+                const current = prev[selectedCrop];
+                if (!current || current.status === 'offline' || current.lastMessageAt === null) {
+                    return prev;
+                }
+
+                const nextStatus: TelemetryStatus =
+                    Date.now() - current.lastMessageAt > STREAM_STALE_THRESHOLD_MS
+                        ? 'stale'
+                        : 'live';
+
+                if (nextStatus === current.status) {
+                    return prev;
+                }
+
+                return {
+                    ...prev,
+                    [selectedCrop]: {
+                        ...current,
+                        status: nextStatus,
+                    },
+                };
+            });
+        }, TELEMETRY_HEALTH_POLL_MS);
+
+        return () => window.clearInterval(timer);
+    }, [selectedCrop]);
 
     // Restore crop-specific controls when the user switches crop tabs
     useEffect(() => {
@@ -617,6 +680,7 @@ export const useGreenhouse = () => {
     return {
         selectedCrop,
         setSelectedCrop,
+        telemetry: telemetryStateByCrop[selectedCrop],
         currentData: currentData || defaultData,
         modelMetrics: {
             ...selectedMetrics,
