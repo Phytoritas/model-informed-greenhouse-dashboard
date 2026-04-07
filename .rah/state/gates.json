@@ -88,8 +88,12 @@
     "note": "Issue #21 now adds `ModelStateStore.load_current_state()` plus `list_work_events()`, an additive backend `work_event_compare` replay-diff contract over persisted snapshots and bounded `leaf_removal` / `fruit_thinning` candidates, and a dedicated `WorkTab` compare block beside the existing control-scenario runtime panel."
   },
   "work_event_compare_hardening": {
+    "status": "pass",
+    "note": "Greenhouse scoping, malformed payload tolerance, store-unavailable degrade behavior, endpoint forwarding, crop-specific cucumber/tomato candidate agronomy, ranking, additive compare detail fields, backend matrix coverage, and a minimal frontend Vitest/RTL `WorkTab` component harness are now landed and locally validated."
+  },
+  "issue21_pr_validation": {
     "status": "pending",
-    "note": "Greenhouse scoping, malformed payload tolerance, store-unavailable degrade behavior, endpoint forwarding, crop-specific cucumber/tomato candidate agronomy, ranking, additive compare detail fields, and backend matrix coverage are now landed; dedicated frontend component-test infrastructure and broader reuse outside the `work` tab remain follow-up work."
+    "note": "PR #22 is open for issue #21; the next gate is remote GitHub Actions plus review over the now-green local ladder, not more bounded architecture work."
   },
   "exact_advisor_surface_routes": {
     "status": "pass",
