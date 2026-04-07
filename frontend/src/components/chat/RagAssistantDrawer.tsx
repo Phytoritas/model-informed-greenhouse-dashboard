@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, X, BookOpenText } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import type { CropType } from '../../types';
-import { getCropLabel } from '../../utils/displayCopy';
+import { getCropLabel, getLocalizedTokenLabel } from '../../utils/displayCopy';
 import {
     useRagAssistant,
     type RagAssistantFilters,
@@ -85,14 +85,15 @@ const RagAssistantDrawer = ({
     const cropLabel = getCropLabel(crop, locale);
     const copy = locale === 'ko'
         ? {
-            title: 'RAG 지식 검색',
+            title: '지식 검색',
             subtitle:
-                '문서와 워크북에서 관련 지식만 조회합니다. 아직 AI 최종 응답에 자동 주입되지는 않습니다.',
+                '문서와 워크북에서 관련 지식만 조회합니다. 아직 최종 응답에 자동 반영되지는 않습니다.',
             placeholder: `${cropLabel} 재배 지식을 검색하세요`,
             search: '검색',
             close: '닫기',
-            route: 'knowledge route',
-            queryMode: 'retrieval mode',
+            route: '지식 경로',
+            queryMode: '검색 방식',
+            routeValue: '지식 검색 API',
             noResults: '일치하는 지식 조각을 찾지 못했습니다. 검색어를 더 구체적으로 바꿔보세요.',
             loading: '지식 조각을 검색하는 중...',
             resultCount: '검색 결과',
@@ -116,6 +117,7 @@ const RagAssistantDrawer = ({
             close: 'Close',
             route: 'knowledge route',
             queryMode: 'retrieval mode',
+            routeValue: 'Knowledge query API',
             noResults: 'No matching knowledge chunks were found. Try a more specific query.',
             loading: 'Searching persisted knowledge chunks...',
             resultCount: 'Results',
@@ -176,8 +178,8 @@ const RagAssistantDrawer = ({
             key: 'nutrient',
             label: locale === 'ko' ? '양액' : 'Nutrient',
             description: locale === 'ko' ? '레시피, 원수, 배액, 비료 관련 워크북을 우선 조회합니다.' : 'Prioritize nutrient workbook rows for recipes, water, and fertilizer guidance.',
-            placeholder: locale === 'ko' ? `${cropLabel} 양액 guardrail 기준` : `${cropLabel} nutrient guardrail guidance`,
-            suggestion: locale === 'ko' ? `${cropLabel} 양액 guardrail 기준` : `${cropLabel} nutrient guardrail guidance`,
+            placeholder: locale === 'ko' ? `${cropLabel} 양액 경계 조건 기준` : `${cropLabel} nutrient guardrail guidance`,
+            suggestion: locale === 'ko' ? `${cropLabel} 양액 경계 조건 기준` : `${cropLabel} nutrient guardrail guidance`,
             filters: {
                 source_types: ['xlsx'],
                 asset_families: ['nutrient_workbook'],
@@ -373,11 +375,11 @@ const RagAssistantDrawer = ({
                             <span>{copy.resultCount}: {returnedCount}</span>
                             {lastQueryMode ? (
                                 <span className="rounded-full bg-slate-100 px-2 py-1 normal-case tracking-normal text-slate-700">
-                                    {copy.queryMode}: {lastQueryMode}
+                                    {copy.queryMode}: {getLocalizedTokenLabel(lastQueryMode, locale)}
                                 </span>
                             ) : null}
                             <span className="rounded-full bg-slate-100 px-2 py-1 normal-case tracking-normal text-slate-700">
-                                {copy.route}: /api/knowledge/query
+                                {copy.route}: {copy.routeValue}
                             </span>
                         </div>
                         <p className="mt-2 text-sm font-semibold text-slate-900">{lastQuery}</p>

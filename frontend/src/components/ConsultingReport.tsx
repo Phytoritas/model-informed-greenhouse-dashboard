@@ -19,8 +19,8 @@ const ConsultingReport = ({ analysis, metrics, crop }: ConsultingReportProps) =>
         ? {
             title: '컨설팅 리포트',
             executiveSummary: '핵심 요약',
-            aiNotes: 'AI 컨설팅 메모',
-            waiting: 'AI 컨설팅 결과를 기다리는 중...',
+            aiNotes: '모델 해석 메모',
+            waiting: '모델 해석 결과를 기다리는 중...',
             favorable: '양호한 편',
             stable: '안정적',
             yieldOutlook: '수확 전망',

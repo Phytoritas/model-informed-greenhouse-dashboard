@@ -141,7 +141,7 @@ export const useAiAssistant = () => {
             setAiModelRuntime(null);
             setAiAnalysis(
                 locale === 'ko'
-                    ? `AI 컨설팅을 사용할 수 없습니다: ${message}`
+                    ? `모델 상담을 사용할 수 없습니다: ${message}`
                     : `AI consulting is unavailable: ${message}`,
             );
         } finally {

@@ -196,12 +196,12 @@ const ChatAssistant = ({
             placeholder: '예: 지금 CO2를 100ppm 더 올리면 어떻게 되나요?',
             noResponse: '응답이 없습니다.',
             unknownError: '알 수 없는 오류가 발생했습니다.',
-            aiUnavailable: 'AI 채팅을 사용할 수 없습니다',
+            aiUnavailable: '모델 상담을 사용할 수 없습니다',
             smartGrowTitle: '스마트그로우 결정형 상태',
             smartGrowLoading: '결정형 상태를 불러오는 중...',
             smartGrowUnavailable: '결정형 상태를 아직 불러오지 못했습니다.',
             smartGrowBoundary:
-                '현재 병해충 후보, 양액 레시피, macro-only 양액 보정 초안을 참조할 수 있습니다.',
+                '현재 병해충 후보, 양액 레시피, 다량원소 중심 양액 보정 초안을 참조할 수 있습니다.',
             knowledgeSearch: '지식 검색',
             runtimeTitle: '모델 런타임',
             runtimeReady: '시나리오 연동',
@@ -223,7 +223,7 @@ const ChatAssistant = ({
             weekTitle: '이번 주',
             confidenceLabel: '신뢰도',
             promptPesticide: `${cropLabel} 흰가루병 후보 농약을 요약해줘`,
-            promptNutrient: `${cropLabel} 현재 단계 양액 레시피와 guardrail을 정리해줘`,
+            promptNutrient: `${cropLabel} 현재 단계 양액 레시피와 경계 조건을 정리해줘`,
             promptCorrection: `${cropLabel} 양액 보정 초안의 수동 검토 경계를 설명해줘`,
         }
         : {

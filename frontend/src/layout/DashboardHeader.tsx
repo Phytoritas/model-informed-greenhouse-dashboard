@@ -34,6 +34,7 @@ export default function DashboardHeader({
     getCropLabel,
 }: DashboardHeaderProps) {
     const brandName = locale === 'ko' ? '스마트그로우' : 'SmartGrow';
+    const brandSuffix = locale === 'ko' ? '도우미' : 'AI';
 
     return (
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm">
@@ -44,7 +45,7 @@ export default function DashboardHeader({
                     </div>
                     <div>
                         <h1 className="tracking-tight text-xl font-bold text-slate-800">
-                            {brandName} <span className="text-green-600">AI</span>
+                            {brandName} <span className="text-green-600">{brandSuffix}</span>
                         </h1>
                         <p className="hidden text-xs text-slate-500 sm:block">{brandTagline}</p>
                     </div>

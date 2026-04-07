@@ -436,11 +436,11 @@ const WorkTab = (props: WorkTabProps) => {
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.primaryConstraint}: </span>
-                                    {analysis.current_state.primary_constraint}
+                                    {getLocalizedTokenLabel(analysis.current_state.primary_constraint, locale)}
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.laborStrategy}: </span>
-                                    {analysis.current_state.labor_strategy}
+                                    {getLocalizedTokenLabel(analysis.current_state.labor_strategy, locale)}
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.workloadBalance}: </span>
@@ -448,7 +448,7 @@ const WorkTab = (props: WorkTabProps) => {
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.deviation}: </span>
-                                    {analysis.current_state.deviation}
+                                    {getLocalizedTokenLabel(analysis.current_state.deviation, locale)}
                                 </div>
                                 <div className="space-y-2">
                                     <div className="font-semibold text-slate-900">{copy.riskFlags}</div>
