@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #21 and branch `feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs` now own the next bounded follow-up loop after the merged issue #19 delivery."
+    "note": "Issue #21 and branch `feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs` owned the bounded follow-up loop after issue #19; that loop is now merged into `main` via PR #22 and no new active issue has been opened yet."
   },
   "harness_setup": {
     "status": "pass",
@@ -92,8 +92,8 @@
     "note": "Greenhouse scoping, malformed payload tolerance, store-unavailable degrade behavior, endpoint forwarding, crop-specific cucumber/tomato candidate agronomy, ranking, additive compare detail fields, backend matrix coverage, and a minimal frontend Vitest/RTL `WorkTab` component harness are now landed and locally validated."
   },
   "issue21_pr_validation": {
-    "status": "pending",
-    "note": "PR #22 is open for issue #21; the next gate is remote GitHub Actions plus review over the now-green local ladder, not more bounded architecture work."
+    "status": "pass",
+    "note": "PR #22 merged issue #21 into `main` after the green local ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) and successful GitHub Actions backend/frontend validation."
   },
   "exact_advisor_surface_routes": {
     "status": "pass",
