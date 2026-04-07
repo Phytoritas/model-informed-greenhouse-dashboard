@@ -79,6 +79,10 @@
     "status": "pass",
     "note": "Sensor-card / AI-advisor height coupling decoupled via `items-start`, `auto-rows-fr` removal, `max-h` cap on advisor wrapper, and internal scroll boundaries in AiAdvisor. Validated with lint, build, and before/after screenshots at 1920x1080."
   },
+  "issue19_pr_validation": {
+    "status": "pass",
+    "note": "The latest issue #19 local ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) and PR #20 GitHub Actions push/pull_request runs are green after the knowledge-test stabilization, market-summary refresh fix, and knowledge-status sanitization hardening."
+  },
   "rtr_good_production_windows_followup": {
     "status": "blocked",
     "note": "Issue #3 remains blocked on grower-approved periods and is tracked separately from issue #19."
