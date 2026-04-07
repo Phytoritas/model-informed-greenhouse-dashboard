@@ -14,6 +14,7 @@
 - The `work` advisor now emits additive `machine_payload.work_event_compare` payloads that replay the latest stored snapshot into maintain / candidate-event / defer options for cucumber `leaf_removal` and tomato `fruit_thinning`
 - `WorkTab` now renders a dedicated work-event compare block beside the existing control-scenario runtime panel instead of overloading `AdvisorModelRuntimePanel`
 - Hardening fixes now keep replay compare greenhouse-scoped, tolerate malformed persisted event payloads without taking down the whole work tab, degrade cleanly when the state store is unavailable, and lock the request contract with a `/api/advisor/tab/work` greenhouse-forwarding smoke test
+- Exact additive `/api/advisor/environment`, `/api/advisor/physiology`, `/api/advisor/work-tradeoff`, and `/api/advisor/harvest` routes now exist over the same model-aware tab surfaces, `/api/advisor/work-tradeoff` flattens `work_event_compare` into the directive-aligned top-level tradeoff contract, and `/api/knowledge/status` now advertises the exact routes alongside the preserved legacy seams
 - Validated: `poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`
 
 ## Exact Restart Step
@@ -22,5 +23,6 @@
 3. Treat the current backend compare contract and `WorkTab` compare block as the new baseline; do not fold it back into the generic control-scenario runtime panel.
 4. Next hardening slice should tighten candidate generation and ranking, especially around cucumber minimum leaf-count behavior and tomato cohort selection heuristics.
 5. Frontend component coverage for `work_event_compare` is still absent because the repo currently has no frontend test harness beyond lint/build; decide whether to introduce a minimal Vitest/RTL setup as a separate bounded slice or keep relying on API/backend smoke for issue `#21`.
-6. Decide whether to open the issue `#21` PR now or after one more bounded polish slice.
-7. Keep issue `#3` isolated as the separate blocked RTR follow-up lane.
+6. The next high-value backend slice is to make the cucumber/tomato tradeoff candidates less heuristic and more directive-aligned, including stronger minimum-leaf and sink-overload scenario matrices.
+7. Decide whether to open the issue `#21` PR now or after one more bounded polish slice.
+8. Keep issue `#3` isolated as the separate blocked RTR follow-up lane.

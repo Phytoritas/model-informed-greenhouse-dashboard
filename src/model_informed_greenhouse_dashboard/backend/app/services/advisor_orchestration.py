@@ -4042,12 +4042,14 @@ def _build_dedicated_recommendation_response(
     entrypoint: str,
     tab_name: str,
     crop: str,
+    greenhouse_id: Optional[str] = None,
     dashboard: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     payload = dict(
         build_advisor_tab_response(
             tab_name=tab_name,
             crop=crop,
+            greenhouse_id=greenhouse_id,
             dashboard=dashboard,
         )
     )
@@ -4087,3 +4089,85 @@ def build_work_recommendation_response(
         crop=crop,
         dashboard=dashboard,
     )
+
+
+def build_environment_advisor_response(
+    *,
+    crop: str,
+    greenhouse_id: Optional[str] = None,
+    dashboard: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    return _build_dedicated_recommendation_response(
+        family="advisor_environment",
+        entrypoint="/api/advisor/environment",
+        tab_name="environment",
+        crop=crop,
+        greenhouse_id=greenhouse_id,
+        dashboard=dashboard,
+    )
+
+
+def build_physiology_advisor_response(
+    *,
+    crop: str,
+    greenhouse_id: Optional[str] = None,
+    dashboard: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    return _build_dedicated_recommendation_response(
+        family="advisor_physiology",
+        entrypoint="/api/advisor/physiology",
+        tab_name="physiology",
+        crop=crop,
+        greenhouse_id=greenhouse_id,
+        dashboard=dashboard,
+    )
+
+
+def build_harvest_advisor_response(
+    *,
+    crop: str,
+    greenhouse_id: Optional[str] = None,
+    dashboard: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    return _build_dedicated_recommendation_response(
+        family="advisor_harvest",
+        entrypoint="/api/advisor/harvest",
+        tab_name="harvest_market",
+        crop=crop,
+        greenhouse_id=greenhouse_id,
+        dashboard=dashboard,
+    )
+
+
+def build_work_tradeoff_advisor_response(
+    *,
+    crop: str,
+    greenhouse_id: Optional[str] = None,
+    dashboard: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    payload = _build_dedicated_recommendation_response(
+        family="advisor_work_tradeoff",
+        entrypoint="/api/advisor/work-tradeoff",
+        tab_name="work",
+        crop=crop,
+        greenhouse_id=greenhouse_id,
+        dashboard=dashboard,
+    )
+    machine_payload = payload.get("machine_payload", {})
+    compare_payload = machine_payload.get("work_event_compare", {})
+    work_analysis = machine_payload.get("work_analysis", {})
+    return {
+        "status": payload.get("status", "success"),
+        "family": "advisor_work_tradeoff",
+        "crop": crop,
+        "summary": compare_payload.get("summary")
+        or work_analysis.get("summary")
+        or payload.get("message"),
+        "current_state": compare_payload.get("current_state", {}),
+        "options": compare_payload.get("options", []),
+        "recommended_action": compare_payload.get("recommended_action"),
+        "confidence": compare_payload.get("confidence", work_analysis.get("confidence", 0.0)),
+        "analysis": work_analysis,
+        "model_runtime": machine_payload.get("model_runtime"),
+        "orchestration": payload.get("orchestration", {}),
+    }

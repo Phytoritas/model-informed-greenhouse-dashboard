@@ -91,6 +91,10 @@
     "status": "pending",
     "note": "Reviewer-found greenhouse scoping, malformed payload tolerance, store-unavailable degrade behavior, and endpoint forwarding are now hardened and smoke-tested, but richer candidate agronomy/ranking and dedicated frontend component-test infrastructure are still follow-up work."
   },
+  "exact_advisor_surface_routes": {
+    "status": "pass",
+    "note": "Exact additive `/api/advisor/environment`, `/api/advisor/physiology`, `/api/advisor/work-tradeoff`, and `/api/advisor/harvest` routes now delegate over the landed model-aware tab surfaces, `/api/advisor/work-tradeoff` flattens the persisted compare contract into the directive-aligned summary/current_state/options response shape, and `/api/knowledge/status` advertises the exact routes alongside the preserved legacy seams."
+  },
   "rtr_good_production_windows_followup": {
     "status": "blocked",
     "note": "Issue #3 remains blocked on grower-approved periods and is tracked separately from issue #19."

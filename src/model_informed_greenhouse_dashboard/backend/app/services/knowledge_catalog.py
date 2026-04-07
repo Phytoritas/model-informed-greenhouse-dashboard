@@ -560,10 +560,11 @@ def _build_advisory_surface_summary(
         "environment": {
             "status": "ready",
             "route": "/api/environment/recommend",
+            "exact_route": "/api/advisor/environment",
             "delegate_route": "/api/advisor/tab/environment",
             "request_contract": {
                 "required": ["crop"],
-                "optional": ["dashboard"],
+                "optional": ["greenhouse_id", "dashboard"],
             },
             "coverage": {
                 "dashboard_domains": ["data", "currentData", "metrics", "weather", "rtr"],
@@ -571,7 +572,33 @@ def _build_advisory_surface_summary(
                 "advisory_mode": "dashboard_fed_deterministic",
             },
             "limitations": [
-                "The route reuses the landed environment tab payload and stays monitoring-first when inside telemetry is incomplete.",
+                "The legacy route reuses the landed environment tab payload and stays monitoring-first when inside telemetry is incomplete.",
+                "The exact route is additive and delegates over the same model-aware tab surface rather than a separate advisor service package.",
+            ],
+        },
+        "physiology": {
+            "status": "ready",
+            "route": "/api/advisor/physiology",
+            "delegate_route": "/api/advisor/tab/physiology",
+            "request_contract": {
+                "required": ["crop"],
+                "optional": ["greenhouse_id", "dashboard"],
+            },
+            "coverage": {
+                "dashboard_domains": ["data", "currentData", "metrics", "weather", "rtr"],
+                "signals": [
+                    "node_appearance_rate",
+                    "lai",
+                    "source_sink_balance",
+                    "fruit_partition_ratio",
+                    "upper_leaf_activity",
+                    "middle_leaf_activity",
+                    "bottom_leaf_activity",
+                ],
+                "advisory_mode": "model_first_tab_surface",
+            },
+            "limitations": [
+                "The route is additive over the landed physiology tab surface, and the underlying advisor split remains orchestrator-centric.",
             ],
         },
         "pesticide": {
@@ -653,10 +680,11 @@ def _build_advisory_surface_summary(
         "work": {
             "status": "ready",
             "route": "/api/work/recommend",
+            "exact_route": "/api/advisor/work-tradeoff",
             "delegate_route": "/api/advisor/tab/work",
             "request_contract": {
                 "required": ["crop"],
-                "optional": ["dashboard"],
+                "optional": ["greenhouse_id", "dashboard"],
             },
             "coverage": {
                 "dashboard_domains": ["data", "currentData", "metrics", "weather", "rtr"],
@@ -664,7 +692,31 @@ def _build_advisory_surface_summary(
                 "advisory_mode": "dashboard_fed_deterministic",
             },
             "limitations": [
-                "The route reuses the landed work tab payload and prioritizes tasks from the current dashboard instead of historical work-log replay.",
+                "The legacy route reuses the landed work tab payload and prioritizes tasks from the current dashboard instead of historical work-log replay.",
+                "The exact route is additive and exposes the persisted work-event compare payload as a top-level tradeoff contract.",
+            ],
+        },
+        "harvest": {
+            "status": "ready",
+            "route": "/api/advisor/harvest",
+            "delegate_route": "/api/advisor/tab/harvest_market",
+            "request_contract": {
+                "required": ["crop"],
+                "optional": ["greenhouse_id", "dashboard"],
+            },
+            "coverage": {
+                "dashboard_domains": ["data", "currentData", "metrics", "weather", "rtr", "producePrices"],
+                "signals": [
+                    "forecast",
+                    "producePrices",
+                    "fruit_load",
+                    "harvest_projection",
+                    "market_context",
+                ],
+                "advisory_mode": "model_first_tab_surface",
+            },
+            "limitations": [
+                "The route is additive over the landed harvest-market tab surface and still inherits its orchestrator-centric payload assembly.",
             ],
         },
     }
