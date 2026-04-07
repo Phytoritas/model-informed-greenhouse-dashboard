@@ -1,21 +1,17 @@
 {
   "status": "pass",
-  "checked_at": "2026-04-05",
+  "checked_at": "2026-04-07",
   "checks": {
     "architecture_spine": "pass",
     "runtime_sidecar": "pass",
     "json_state_parse": "pass",
     "issue_branch_linkage": "pass",
-    "backend_slice_validation": "pass",
-    "frontend_scope": "pass",
-    "frontend_migration": "pass",
-    "browser_smoke": "pass",
-    "bundle_review": "pass",
-    "local_validation_ladder": "pass"
+    "model_first_blueprint_alignment": "pass",
+    "implementation_gate_honesty": "pass"
   },
   "warnings": [
-    "Issue #16 is locally validated but not yet delivered through commit/push/PR/remote CI; the active loop extends the KAMIS market panel with retail/wholesale snapshots, a market toggle, and a frontend fail-soft compatibility path for staggered backend/frontend rollouts.",
-    "Issue #3 remains blocked because configs/rtr_good_windows.yaml still contains concept-demo windows; final RTR calibration sign-off remains pending until grower-approved good-production periods are available.",
-    "The KAMIS live produce price panel uses the official docs sample credentials (`test/test`) unless repo-root .env overrides them with issued `KAMIS_API_KEY` and `KAMIS_API_ID` values."
+    "Issue #18 remains an open preserved baseline but is no longer the active architecture mainline for the new SmartGrow requirement.",
+    "The phase-1 model-runtime seam, reusable gas-exchange service layer, bounded scenario/sensitivity runtime, additive advisor-contract realignment, dashboard summary runtime surface, tab consumers, Assistant runtime strip, and weather fallback resilience are now landed in the current bounded lane.",
+    "There is still no dedicated frontend interaction-test harness for the new summary runtime strip, so current regression coverage relies on backend pytest plus frontend lint/build rather than component-level UI tests."
   ]
 }

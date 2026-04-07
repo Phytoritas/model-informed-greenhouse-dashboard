@@ -5,90 +5,82 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #16 and branch `data/16-show-wholesale-produce-prices-alongside-retail-market-panel` were created with the repo helper script before the KAMIS wholesale market expansion slice landed."
+    "note": "Issue #19 and branch `feat/19-implement-model-first-smartgrow-advisor-with-crop-physiology-gas-exchange-and-sensitivity-engines` now own the new model-first SmartGrow requirement."
   },
   "harness_setup": {
     "status": "pass",
-    "note": "docs/architecture and .rah starter surfaces were initialized."
+    "note": "docs/architecture and .rah remain initialized and reusable."
   },
-  "workspace_audit": {
+  "preserved_issue18_baseline": {
     "status": "pass",
-    "note": "Target/source delta is captured in docs/architecture/00_workspace_audit.md."
+    "note": "The landed knowledge/RAG/workbook/advisor seams from issue #18 are preserved as the compatibility baseline instead of the active architecture target."
   },
-  "system_brief": {
+  "model_first_prompt_intake": {
     "status": "pass",
-    "note": "Target boundaries are captured in docs/architecture/01_system_brief.md."
+    "note": "The April 7, 2026 model-first SmartGrow directive is now reflected in the blueprint, system brief, gap register, ADR, and module spec."
+  },
+  "model_first_blueprint_alignment": {
+    "status": "pass",
+    "note": "Root and architecture blueprints now redirect the mainline toward crop models, gas exchange, scenarios, sensitivities, constraints, and model-aware advisor surfaces."
+  },
+  "model_first_adr": {
+    "status": "pass",
+    "note": "ADR-001 records the model-first, RAG-explained architecture decision."
+  },
+  "phase1_module_spec": {
+    "status": "pass",
+    "note": "Module-001 defines the bounded phase-1 state/event/runtime foundation for issue #19."
   },
   "implementation_gate": {
     "status": "pass",
-    "note": "The backend package migration slice, config contract, and smoke validation all landed."
+    "note": "The phase-1 persistence adapter is frozen as a separate SQLite sidecar at `artifacts/models/model_runtime.sqlite3`, and the migration seam is landed through `crop_models/`, `model_runtime/`, and `POST /api/models/snapshot|replay`."
   },
-  "frontend_scope": {
+  "legacy_model_inventory": {
     "status": "pass",
-    "note": "The source frontend/ Vite app is the canonical UI migration path."
+    "note": "Legacy tomato and cucumber model files remain available as donor logic for the new crop-model service layer."
   },
-  "frontend_migration": {
+  "crop_model_service_layer": {
     "status": "pass",
-    "note": "The canonical Vite frontend has been migrated into frontend/, sample CSV fixtures were copied into data/, and local typecheck/lint/build all passed."
+    "note": "Dedicated `crop_models/` wrappers now expose normalized cucumber and tomato state snapshots plus `leaf_removal` / `fruit_thinning` event application over the existing adapter seam."
   },
-  "browser_smoke": {
+  "work_event_state_store": {
     "status": "pass",
-    "note": "Live browser smokes passed for the canonical dashboard runtime, the RTR panel extension, and the KAMIS produce price panel. For issue #16 specifically, a live 127.0.0.1:8000/4173 smoke confirmed the frontend no longer crashes when a still-retail-only backend payload is served, and a Playwright-mocked smoke confirmed the new wholesale tab renders wholesale cards plus the retail-only trend notice; screenshots were saved under artifacts/browser-smoke/issue16-wholesale-market-panel.png and artifacts/browser-smoke/issue16-wholesale-panel-mocked.png."
+    "note": "A canonical `ModelStateStore` now persists `crop_model_states`, `crop_model_snapshots`, and `crop_work_events` in a dedicated SQLite sidecar, with replay-tested before/after snapshot linkage."
   },
-  "bundle_review": {
+  "gas_exchange_service_layer": {
     "status": "pass",
-    "note": "Lazy boundaries plus explicit vendor chunk grouping reduced the production bundle into sub-500 kB chunks, and a built-preview browser smoke passed without runtime errors."
+    "note": "Reusable `gas_exchange_fvcb.py`, `stomatal_ball_berry.py`, and `canopy_integration.py` are now exposed through `crop_models/`, and the cucumber/tomato snapshot wrappers consume them to publish upper/middle/bottom leaf activity plus limiting-factor summaries."
   },
-  "rtr_panel_extension": {
+  "scenario_sensitivity_runtime": {
     "status": "pass",
-    "note": "The existing Daegu weather panel was preserved and a neighboring rolling-24h RTR monitor was adopted using a WUR/TomatoesNZ-style example strategy line plus forecast-linked steering targets."
+    "note": "The first backend-only `scenario_runner.py`, `sensitivity_engine.py`, and `constraint_engine.py` slice is now landed with additive `POST /api/models/scenario` plus `POST /api/models/sensitivity`, SQLite persistence for `scenario_runs`/`scenario_outputs`/`sensitivity_outputs`, and targeted sign/trust-region/scenario-alignment tests."
   },
-  "rtr_calibration_pipeline": {
+  "advisor_contract_realignment": {
     "status": "pass",
-    "note": "RTR coefficients were externalized into configs/rtr_profiles.json, exposed through /api/rtr/profiles, and backed by a calibration script plus daily-aggregation fitting utilities. A dry-run calibration against the sample CSVs completed successfully into artifacts/rtr-calibration/test_rtr_profiles.json."
+    "note": "Current `/api/advisor/*`, `/api/environment/recommend`, and `/api/work/recommend` flows now preserve the issue #18 field names while additively attaching a model-first `machine_payload.model_runtime` block built from the landed bounded scenario/sensitivity runtime, plus fallback-safe summary/chat envelopes and contract-locking orchestration tests."
   },
-  "rtr_curated_window_contract": {
+  "ui_counterfactual_surface": {
     "status": "pass",
-    "note": "Curated good-production windows now live in configs/rtr_good_windows.yaml, the calibration service can prefer those windows before applying the existing quality filters, and the CLI exposes --windows plus --selection-mode without changing the runtime /api/rtr/profiles contract."
+    "note": "The `environment`, `physiology`, and `work` advisor tabs now render additive `machine_payload.model_runtime` through a shared counterfactual/sensitivity panel, while preserving the existing issue #18 analysis and action cards as the compatibility shell."
   },
-  "rtr_curated_profiles": {
+  "assistant_harvest_runtime_alignment": {
     "status": "pass",
-    "note": "The concept-demo good-production windows were enabled, configs/rtr_profiles.json was regenerated from them, and a temp-port browser smoke confirmed the RTR panel now renders House-fit status with curated-window metadata."
+    "note": "The `harvest_market` tab now consumes the shared runtime panel, and the Assistant/chat UX now keeps `machine_payload.model_runtime` beside each AI reply through a compact snapshot-aware runtime strip without replacing the legacy text flow."
   },
-  "ai_rtr_context": {
+  "summary_runtime_surface": {
     "status": "pass",
-    "note": "Frontend AI consult/chat payloads now include compact Daegu weather context plus RTR profile/live/forecast summaries, and the OpenAI prompt contract explicitly documents those fields."
+    "note": "The dashboard-level `AiAdvisor` summary surface now threads `/api/advisor/summary` `machine_payload.model_runtime` into a compact model-first runtime strip, while `useAiAssistant` clears stale runtime on new requests and ignores late summary responses from older refreshes or crop switches."
   },
-  "ai_live_validation": {
+  "weather_panel_resilience": {
     "status": "pass",
-    "note": "Representative live OpenAI consult/chat calls succeeded with the repo-local OPENAI_API_KEY, including a post-PR-refresh re-smoke after CI preparation; the outputs used live weather plus RTR steering context instead of falling back to a recentSummary-only reading."
+    "note": "Daegu weather fetches now fall back to cached or synthetic payloads when Open-Meteo times out or 502s, and the weather panel exposes cached/fallback provider status instead of presenting degraded data as live."
   },
-  "github_ci_workflow": {
+  "frontend_uiux_layout_polish": {
     "status": "pass",
-    "note": "A GitHub Actions CI workflow now mirrors the local validation ladder with backend Poetry ruff/pytest and frontend npm lint/build jobs on push and pull_request events."
+    "note": "Sensor-card / AI-advisor height coupling decoupled via `items-start`, `auto-rows-fr` removal, `max-h` cap on advisor wrapper, and internal scroll boundaries in AiAdvisor. Validated with lint, build, and before/after screenshots at 1920x1080."
   },
-  "github_project_sync": {
-    "status": "pass",
-    "note": "Issue #16 was created via the repo helper script and synced into the GitHub project as the active KAMIS wholesale-price enhancement loop while issue #3 remains the blocked follow-up for RTR good-production windows."
-  },
-  "live_produce_price_panel": {
-    "status": "pass",
-    "note": "A KAMIS-backed `/api/market/produce` endpoint, frontend polling hook, and dashboard panel now surface curated live tomato/cucumber market prices with docs-sample auth fallback, and issue #16 extends that payload to publish both retail and wholesale featured snapshots."
-  },
-  "produce_price_trend_overlay": {
-    "status": "pass",
-    "note": "Issue #8 already landed the trailing 14-day actual trend plus forward 14-day 3y/5y/10y seasonal-normal overlays from KAMIS `periodRetailProductList`, issue #10 hardened that panel so card snapshots survive trend failures, and issue #16 now makes the retail-only trend basis explicit whenever the user switches the card rail over to wholesale prices."
-  },
-  "dashboard_layout_rebalance": {
-    "status": "pass",
-    "note": "Issue #12 widens the overall dashboard shell, moves the AI advisor into its own responsive column above the weather/produce/RTR row, and gives the produce-price chart a dedicated wide chart area so cards and graph height scale more naturally on desktop while still stacking cleanly on mobile."
-  },
-  "produce_price_wholesale_market": {
-    "status": "pass",
-    "note": "Issue #16 expands the KAMIS panel so the backend exposes `markets.retail` and `markets.wholesale`, the frontend can toggle between those snapshots without losing the retail trend chart, and the hook backfills missing `markets` fields so staggered frontend/backend restarts do not crash the panel."
-  },
-  "delivery_pr_sync": {
-    "status": "pending",
-    "note": "Issue #16 is locally implemented and validated, but the KAMIS wholesale-price expansion branch state has not been committed/pushed or opened as a PR yet."
+  "rtr_good_production_windows_followup": {
+    "status": "blocked",
+    "note": "Issue #3 remains blocked on grower-approved periods and is tracked separately from issue #19."
   }
 }

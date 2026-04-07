@@ -1,8 +1,10 @@
+import asyncio
+
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from model_informed_greenhouse_dashboard import get_app
-from model_informed_greenhouse_dashboard.backend.app import main as backend_main
 from model_informed_greenhouse_dashboard.backend.app.config import (
     greenhouse_config,
     settings,
@@ -12,8 +14,22 @@ from model_informed_greenhouse_dashboard.backend.app.services.rtr_profiles impor
 )
 
 
+def _backend_main():
+    from model_informed_greenhouse_dashboard.backend.app import main as backend_main
+
+    return backend_main
+
+
+def _weather_service():
+    from model_informed_greenhouse_dashboard.backend.app.services import weather as weather_service
+
+    return weather_service
+
+
 @pytest.fixture(autouse=True)
 def reset_runtime_state() -> None:
+    backend_main = _backend_main()
+
     for crop in ("tomato", "cucumber"):
         crop_state = backend_main.app_state[crop]
         crop_state["simulator"] = None
@@ -54,6 +70,8 @@ def test_status_endpoint_initializes_crop_slots() -> None:
 
 
 def test_status_marks_completed_replays_as_completed() -> None:
+    backend_main = _backend_main()
+
     class DummySimulator:
         def __init__(self) -> None:
             self.running = True
@@ -108,6 +126,7 @@ def test_crop_config_update_is_queued_when_adapter_is_inactive() -> None:
 
 
 def test_prune_endpoint_queues_reset_before_cucumber_simulation_start() -> None:
+    backend_main = _backend_main()
     client = TestClient(get_app())
 
     response = client.post("/api/crop/prune?crop=cucumber")
@@ -119,6 +138,7 @@ def test_prune_endpoint_queues_reset_before_cucumber_simulation_start() -> None:
 
 
 def test_ops_config_update_can_target_single_crop() -> None:
+    backend_main = _backend_main()
     client = TestClient(get_app())
 
     response = client.post(
@@ -160,6 +180,52 @@ def test_ai_consult_degrades_gracefully_without_openai_key(
     assert "Missing OpenAI API key" in payload["text"]
 
 
+def test_ai_consult_injects_crop_scoped_knowledge_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend_main = _backend_main()
+    captured: dict[str, object] = {}
+
+    def fake_generate_consulting(*, crop: str, dashboard: dict, language: str) -> str:
+        captured["crop"] = crop
+        captured["dashboard"] = dashboard
+        captured["language"] = language
+        return "ok"
+
+    monkeypatch.setattr(backend_main, "generate_consulting", fake_generate_consulting)
+    client = TestClient(get_app())
+
+    response = client.post(
+        "/api/ai/consult",
+        json={
+            "crop": "tomato",
+            "dashboard": {"data": {}, "metrics": {}},
+            "language": "en",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    dashboard = captured["dashboard"]
+    assert isinstance(dashboard, dict)
+    assert dashboard["knowledge"]["crop"] == "tomato"
+    assert dashboard["knowledge"]["asset_count"] >= 1
+    structured_workbooks = dashboard["knowledge"]["structured_workbooks"]
+    assert any(
+        workbook["asset_family"] == "pesticide_workbook"
+        and workbook["preview"]["family"] == "pesticide"
+        and workbook["preview"]["target_names"]
+        for workbook in structured_workbooks
+    )
+    assert any(
+        workbook["asset_family"] == "nutrient_workbook"
+        and workbook["preview"]["family"] == "nutrient"
+        and workbook["preview"]["stages"]
+        for workbook in structured_workbooks
+    )
+
+
 def test_ai_chat_degrades_gracefully_without_openai_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -182,9 +248,31 @@ def test_ai_chat_degrades_gracefully_without_openai_key(
     assert "Missing OpenAI API key" in payload["text"]
 
 
+def test_knowledge_status_endpoint_returns_crop_scoped_catalog() -> None:
+    client = TestClient(get_app())
+
+    response = client.get("/api/knowledge/status?crop=cucumber")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["crop_scope"] == "cucumber"
+    assert payload["summary"]["asset_count"] >= 1
+    assert all("cucumber" in asset["crop_scopes"] for asset in payload["assets"])
+    assert payload["summary"]["normalized_workbook_families"] == ["nutrient", "pesticide"]
+    assert payload["summary"]["database_status"] == payload["database"]["status"]
+    assert payload["database"]["status"] in {"missing", "ready"}
+    assert payload["database"]["schema_version"].startswith("smartgrow-knowledge-db-")
+    assert payload["normalized_previews"]["pesticide"]["crop_view"]["crop"] == "cucumber"
+    assert payload["normalized_previews"]["pesticide"]["crop_view"]["target_names"]
+    assert payload["normalized_previews"]["nutrient"]["crop_view"]["recipe_count"] >= 1
+
+
 def test_daegu_weather_endpoint_returns_live_shape(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    backend_main = _backend_main()
+
     async def fake_fetch() -> dict:
         return {
             "location": {
@@ -243,9 +331,123 @@ def test_daegu_weather_endpoint_returns_live_shape(
     assert payload["daily"][0]["shortwave_radiation_sum_mj_m2"] == 14.2
 
 
+def test_daegu_weather_endpoint_returns_fallback_payload_when_upstream_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    weather_service = _weather_service()
+
+    class FailingAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def get(self, *args, **kwargs):
+            raise httpx.ReadTimeout("Open-Meteo timed out")
+
+    monkeypatch.setattr(weather_service.httpx, "AsyncClient", FailingAsyncClient)
+    monkeypatch.setattr(
+        weather_service,
+        "_weather_cache",
+        {"expires_at": 0.0, "payload": None},
+    )
+    client = TestClient(get_app())
+
+    response = client.get("/api/weather/daegu")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["source"]["provider"] == "Open-Meteo fallback"
+    assert payload["location"]["name"] == "Daegu"
+    assert len(payload["daily"]) == 3
+
+
+def test_daegu_weather_service_reuses_stale_cache_when_upstream_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    weather_service = _weather_service()
+
+    class FailingAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def get(self, *args, **kwargs):
+            raise httpx.ConnectError("Open-Meteo upstream is unavailable")
+
+    cached_payload = {
+        "location": {
+            "name": "Daegu",
+            "country": "South Korea",
+            "latitude": 35.8714,
+            "longitude": 128.6014,
+            "timezone": "Asia/Seoul",
+        },
+        "source": {
+            "provider": "Open-Meteo",
+            "docs_url": "https://open-meteo.com/en/docs",
+            "fetched_at": "2026-04-03T09:00",
+        },
+        "summary": "Cached Daegu summary.",
+        "current": {
+            "time": "2026-04-03T09:00",
+            "weather_code": 1,
+            "weather_label": "Mainly clear",
+            "temperature_c": 18.2,
+            "apparent_temperature_c": 18.0,
+            "relative_humidity_pct": 49.0,
+            "precipitation_mm": 0.0,
+            "cloud_cover_pct": 22.0,
+            "wind_speed_kmh": 7.5,
+            "wind_direction_deg": 160.0,
+            "is_day": True,
+        },
+        "daily": [
+            {
+                "date": "2026-04-03",
+                "weather_code": 1,
+                "weather_label": "Mainly clear",
+                "temperature_max_c": 21.0,
+                "temperature_min_c": 9.5,
+                "shortwave_radiation_sum_mj_m2": 15.5,
+                "precipitation_probability_max_pct": 18.0,
+                "precipitation_sum_mm": 0.0,
+                "wind_speed_max_kmh": 14.0,
+                "sunshine_duration_h": 8.1,
+            }
+        ],
+    }
+
+    monkeypatch.setattr(weather_service.httpx, "AsyncClient", FailingAsyncClient)
+    monkeypatch.setattr(
+        weather_service,
+        "_weather_cache",
+        {"expires_at": 0.0, "payload": cached_payload},
+    )
+
+    payload = asyncio.run(weather_service.fetch_daegu_weather_outlook(force_refresh=True))
+
+    assert payload["source"]["provider"] == "Open-Meteo cached"
+    assert payload["current"]["temperature_c"] == 18.2
+    assert payload["summary"].lower().startswith("live open-meteo weather")
+    assert weather_service._weather_cache["payload"]["source"]["provider"] == "Open-Meteo"
+
+
 def test_live_produce_prices_endpoint_returns_shape(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    backend_main = _backend_main()
+
     async def fake_fetch() -> dict:
         return {
             "source": {
@@ -403,6 +605,8 @@ def test_live_produce_prices_endpoint_returns_shape(
 def test_rtr_profiles_endpoint_returns_payload_shape(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    backend_main = _backend_main()
+
     monkeypatch.setattr(
         backend_main,
         "load_rtr_profiles",
