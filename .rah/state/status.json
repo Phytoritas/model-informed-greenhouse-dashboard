@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "phase7f-work-event-compare-component-harness-landed",
+  "current_stage": "issue21-merged-post-validation-sync",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
-  "active_issue": 21,
-  "active_branch": "feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs",
+  "active_issue": null,
+  "active_branch": "main",
   "implementation_blocked": false,
-  "next_action": "Issue #21 now also lands a minimal Vitest/RTL frontend component harness for `WorkTab` `work_event_compare`, so the remaining step is PR #22 validation and review over the now-green local ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`).",
+  "next_action": "Issue #21 is merged via PR #22 after green local and GitHub validation. No new bounded implementation loop is open yet; if work continues, open a new issue before more non-trivial changes and choose the next lane explicitly (for example: advisor service split behind exact routes, scenario-runtime consumption depth, or broader work-event compare reuse).",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "GitHub issue #21 as the first post-merge follow-up over the April 7, 2026 model-first SmartGrow directive; issue #19 is merged into main at ecbd9b7"
+  "directive_file": "GitHub issue #21 delivered and merged into main at 441800e as the first post-issue-19 follow-up over the April 7, 2026 model-first SmartGrow directive"
 }
