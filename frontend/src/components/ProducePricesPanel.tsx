@@ -449,7 +449,7 @@ const TrendChart = ({
 
 const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps) => {
     const { locale } = useLocale();
-    const [selectedMarket, setSelectedMarket] = useState<ProduceMarketKey>('retail');
+    const [selectedMarket, setSelectedMarket] = useState<ProduceMarketKey>('wholesale');
     const copy = locale === 'ko'
         ? {
             title: '실시간 농산물 가격',

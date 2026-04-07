@@ -3802,14 +3802,14 @@ def _build_harvest_market_tab_payload(
     retail_day_over_day_pct = _coerce_float(retail_item.get("day_over_day_pct"))
     wholesale_price_krw = _coerce_float(wholesale_item.get("current_price_krw"))
     wholesale_day_over_day_pct = _coerce_float(wholesale_item.get("day_over_day_pct"))
-    price_direction = str(retail_item.get("direction") or wholesale_item.get("direction") or "").strip() or None
+    price_direction = str(wholesale_item.get("direction") or retail_item.get("direction") or "").strip() or None
     market_reference_day = str(
         (market.get("source", {}) if isinstance(market, dict) else {}).get("latest_day") or ""
     ).strip() or None
     primary_display_name = str(
-        retail_item.get("display_name") or wholesale_item.get("display_name") or ""
+        wholesale_item.get("display_name") or retail_item.get("display_name") or ""
     ).strip()
-    primary_market_key = str(retail_item.get("market_key") or wholesale_item.get("market_key") or "").strip() or None
+    primary_market_key = str(wholesale_item.get("market_key") or retail_item.get("market_key") or "").strip() or None
     primary_trend = (
         trend_lookup.get(primary_display_name, trend_items[0] if trend_items else {})
         if primary_market_key == trend_market_key
@@ -3838,13 +3838,14 @@ def _build_harvest_market_tab_payload(
             and vpd_kpa <= 0.45
         )
     )
+    primary_day_over_day_pct = wholesale_day_over_day_pct if wholesale_day_over_day_pct is not None else retail_day_over_day_pct
     market_favorable = bool(
-        (retail_day_over_day_pct is not None and retail_day_over_day_pct >= 3)
+        (primary_day_over_day_pct is not None and primary_day_over_day_pct >= 3)
         or price_direction == "up"
         or seasonal_bias == "above-seasonal-normal"
     )
     market_soft = bool(
-        (retail_day_over_day_pct is not None and retail_day_over_day_pct <= -3)
+        (primary_day_over_day_pct is not None and primary_day_over_day_pct <= -3)
         or price_direction == "down"
         or seasonal_bias == "below-seasonal-normal"
     )
