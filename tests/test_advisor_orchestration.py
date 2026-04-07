@@ -1041,7 +1041,7 @@ def test_build_advisor_tab_response_lands_harvest_market_with_dashboard_context(
     assert analysis["market_watchlist"][0]["seasonal_bias"] == "above-seasonal-normal"
     assert analysis["priority_actions"]
     assert analysis["context_snapshot"]["retail_price_krw"] == pytest.approx(4280.0)
-    assert analysis["summary"].startswith("Harvest/market advisor combined")
+    assert analysis["summary"].startswith("수확/가격 어드바이저가 수확 전망")
     assert (
         payload["machine_payload"]["internal_provenance"]["knowledge_query_turn"]["chunk_ids"]
         == [41]
@@ -1081,8 +1081,8 @@ def test_build_advisor_tab_response_harvest_market_stays_monitoring_first_withou
     ]
     analysis = payload["machine_payload"]["harvest_market_analysis"]
     assert analysis["urgency"] == "low"
-    assert analysis["summary"].startswith("Harvest/market advisor is in monitoring-first mode")
-    assert "시장 가격 snapshot이 부족" in analysis["current_state"]["market_outlook"]
+    assert analysis["summary"].startswith("수확 전망과 가격 정보가 모두 부족해")
+    assert "시장 가격 정보가 부족" in analysis["current_state"]["market_outlook"]
     assert analysis["priority_actions"][0]["title"] == "시장 데이터 복구"
     assert analysis["context_snapshot"]["retail_price_krw"] is None
 
@@ -1283,10 +1283,10 @@ def test_build_advisor_tab_response_environment_stays_monitoring_first_without_i
     analysis = payload["machine_payload"]["environment_analysis"]
     assert analysis["mode"] == "monitoring-first"
     assert analysis["urgency"] == "low"
-    assert "실내 환경 telemetry 부족" in analysis["current_state"]["diagnosis"]
+    assert "실내 환경 데이터 부족" in analysis["current_state"]["diagnosis"]
     assert analysis["current_state"]["operating_mode"] == "monitoring-first"
     assert "inside-climate-missing" in analysis["current_state"]["risk_flags"]
-    assert analysis["summary"].startswith("Environment advisor is in monitoring-first mode")
+    assert analysis["summary"].startswith("실내 기후 데이터가 부족해 환경 어드바이저를")
     assert analysis["context_snapshot"]["inside_vpd_kpa"] is None
 
 
@@ -1471,7 +1471,7 @@ def test_build_advisor_tab_response_lands_physiology_with_dashboard_context(
     analysis = payload["machine_payload"]["physiology_analysis"]
     assert analysis["urgency"] == "high"
     assert analysis["current_state"]["balance_state"] == "stress-watch"
-    assert "active trusses 9" in analysis["current_state"]["crop_specific_context"]
+    assert "활성 화방 9개" in analysis["current_state"]["crop_specific_context"]
     assert analysis["supporting_signals"]
     assert analysis["follow_up_actions"]
     assert analysis["context_snapshot"]["canopy_air_delta_c"] == pytest.approx(1.4)
@@ -1517,8 +1517,8 @@ def test_build_advisor_tab_response_physiology_stays_monitoring_first_without_co
     analysis = payload["machine_payload"]["physiology_analysis"]
     assert analysis["urgency"] == "low"
     assert analysis["current_state"]["balance_state"] == "monitoring-first"
-    assert "생리 telemetry 부족" in analysis["current_state"]["diagnosis"]
-    assert analysis["follow_up_actions"][0]["title"] == "핵심 생리 telemetry 복구"
+    assert "생리 데이터 부족" in analysis["current_state"]["diagnosis"]
+    assert analysis["follow_up_actions"][0]["title"] == "핵심 생리 데이터 복구"
     assert analysis["context_snapshot"]["canopy_temp_c"] is None
 
 
@@ -2091,7 +2091,7 @@ def test_build_advisor_tab_response_work_degrades_compare_when_store_is_unavaila
     assert payload["status"] == "success"
     assert compare["status"] == "history-unavailable"
     assert compare["options"] == []
-    assert "잠시 비활성화" in compare["summary"]
+    assert "잠시 중단" in compare["summary"]
     assert payload["machine_payload"]["internal_provenance"]["work_event_compare"][
         "status"
     ] == "store-unavailable"

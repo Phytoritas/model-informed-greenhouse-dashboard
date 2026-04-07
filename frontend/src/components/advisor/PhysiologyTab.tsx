@@ -16,8 +16,6 @@ interface PhysiologyTabProps {
 const PhysiologyTab = (props: PhysiologyTabProps) => {
     const { locale } = useLocale();
     const analysis = props.result?.machine_payload.physiology_analysis;
-    const retrievalContext = props.result?.machine_payload.retrieval_context;
-    const knowledgeEvidence = props.result?.machine_payload.knowledge_evidence;
     const modelRuntime = props.result?.machine_payload.model_runtime;
     const copy = locale === 'ko'
         ? {
@@ -28,7 +26,6 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             actions: '다음 조치',
             checklist: '확인 체크리스트',
             context: '현재 문맥',
-            knowledgeEvidence: '근거 지식',
             urgency: '긴급도',
             confidence: '신뢰도',
             diagnosis: '진단',
@@ -36,10 +33,6 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             deviation: '편차 / 설명',
             hypotheses: '원인 가설',
             cropContext: '작물 문맥',
-            evidenceUnavailable: '이번 실행에서는 생리 지식 검색을 사용할 수 없습니다.',
-            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 생리 근거를 붙이지 못했습니다.',
-            evidenceNoMatches: '현재 생리 문맥과 직접 맞는 추가 생리 근거는 찾지 못했습니다.',
-            evidenceSkipped: '이번 실행에서는 별도 생리 지식 검색이 요청되지 않았습니다.',
             insideTemp: '실내 온도',
             insideHumidity: '실내 습도',
             canopyTemp: '캐노피 온도',
@@ -62,7 +55,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             vpdTrend: 'VPD 추세',
             transpirationTrend: '증산 추세',
             photosynthesisTrend: '광합성 추세',
-            availableButNotRun: '결정형 생리 어드바이저는 이미 적용되어 있으며, 실행하면 현재 생육 균형 해석을 확인할 수 있습니다.',
+            availableButNotRun: '생리 어드바이저는 이미 적용되어 있으며, 실행하면 현재 생육 균형 해석을 확인할 수 있습니다.',
         }
         : {
             title: 'Physiology',
@@ -72,7 +65,6 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             actions: 'Follow-up actions',
             checklist: 'Monitoring checklist',
             context: 'Context snapshot',
-            knowledgeEvidence: 'Knowledge evidence',
             urgency: 'Urgency',
             confidence: 'Confidence',
             diagnosis: 'Diagnosis',
@@ -80,10 +72,6 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             deviation: 'Deviation / explanation',
             hypotheses: 'Cause hypotheses',
             cropContext: 'Crop context',
-            evidenceUnavailable: 'The physiology-domain knowledge retrieval is currently unavailable for this run.',
-            evidenceDatabaseMissing: 'The knowledge database is not ready, so no physiology-domain evidence could be attached.',
-            evidenceNoMatches: 'No additional physiology-domain evidence matched the current crop-balance context.',
-            evidenceSkipped: 'No separate physiology-domain retrieval was requested for this run.',
             insideTemp: 'Inside temp',
             insideHumidity: 'Inside humidity',
             canopyTemp: 'Canopy temp',
@@ -106,21 +94,8 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             vpdTrend: 'VPD trend',
             transpirationTrend: 'Transpiration trend',
             photosynthesisTrend: 'Photosynthesis trend',
-            availableButNotRun: 'The deterministic physiology advisor is already landed. Run it to inspect the current crop-balance interpretation.',
+            availableButNotRun: 'The physiology advisor is already landed. Run it to inspect the current crop-balance interpretation.',
         };
-
-    function getRetrievalStatusMessage(status: string | undefined) {
-        switch (status) {
-            case 'retrieval_unavailable':
-                return copy.evidenceUnavailable;
-            case 'database_missing':
-                return copy.evidenceDatabaseMissing;
-            case 'no_matches':
-                return copy.evidenceNoMatches;
-            default:
-                return copy.evidenceSkipped;
-        }
-    }
 
     function formatValue(
         value: number | null | undefined,
@@ -167,7 +142,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                             </div>
                             <div>
                                 <span className="font-semibold text-slate-900">{copy.balanceState}: </span>
-                                {analysis.current_state.balance_state}
+                                {getLocalizedTokenLabel(analysis.current_state.balance_state, locale)}
                             </div>
                             <div>
                                 <span className="font-semibold text-slate-900">{copy.deviation}: </span>
@@ -224,48 +199,6 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                             <div>{copy.photosynthesisTrend}: {getLocalizedTokenLabel(analysis.context_snapshot.photosynthesis_trend ?? '-', locale)}</div>
                         </div>
                     </AdvisorActionCard>
-                    {retrievalContext ? (
-                        <AdvisorActionCard
-                            title={copy.knowledgeEvidence}
-                            subtitle={copy.title}
-                            badges={[
-                                getLocalizedTokenLabel(retrievalContext.status, locale),
-                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []).map((item) =>
-                                    getLocalizedTokenLabel(item, locale),
-                                ),
-                            ]}
-                        >
-                            {knowledgeEvidence?.evidence_cards?.length ? (
-                                <div className="space-y-3">
-                                    {knowledgeEvidence.evidence_cards.map((card, index) => (
-                                        <div
-                                            key={`${card.domain ?? card.topic_minor ?? 'evidence'}-${index}`}
-                                            className="rounded-2xl border border-slate-200 bg-white p-4"
-                                        >
-                                            <div className="flex flex-wrap gap-2">
-                                                {card.domain ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.domain, locale)} tone="info" />
-                                                ) : null}
-                                                {card.topic_major ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_major, locale)} tone="success" />
-                                                ) : null}
-                                                {card.topic_minor ? (
-                                                    <AdvisorConfidenceBadge label={getLocalizedTokenLabel(card.topic_minor, locale)} tone="neutral" />
-                                                ) : null}
-                                            </div>
-                                            <div className="mt-2 text-sm leading-relaxed text-slate-600">
-                                                {card.evidence_excerpt}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-sm leading-relaxed text-slate-500">
-                                    {getRetrievalStatusMessage(retrievalContext.status)}
-                                </div>
-                            )}
-                        </AdvisorActionCard>
-                    ) : null}
                 </div>
 
                 <div className="space-y-4">

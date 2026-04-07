@@ -56,9 +56,9 @@ const getLocalizedSourceNote = (profile: RtrProfile, locale: 'en' | 'ko'): strin
     const { calibration } = profile;
     if (calibration.mode === 'fitted') {
         if (calibration.selectionSource === 'curated-windows') {
-            return `고생산 구간 ${calibration.windowCount ?? 0}개에서 quality-filtered 일별 RTR 포인트 ${calibration.sampleDays}개를 사용해 보정한 하우스 맞춤 RTR 선입니다.`;
+            return `고생산 구간 ${calibration.windowCount ?? 0}개에서 유효 RTR 데이터 ${calibration.sampleDays}개를 사용해 보정한 하우스 맞춤 RTR 선입니다.`;
         }
-        return `이 하우스의 quality-filtered 일별 RTR 포인트 ${calibration.sampleDays}개를 사용해 보정한 하우스 맞춤 RTR 선입니다.`;
+        return `이 하우스의 유효 RTR 데이터 ${calibration.sampleDays}개를 사용해 보정한 하우스 맞춤 RTR 선입니다.`;
     }
 
     if (calibration.mode === 'insufficient-data') {

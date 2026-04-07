@@ -22,18 +22,18 @@ const AdvisorLandedTabStatePanel = ({
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            stateDescriptionLoading: '결정형 어드바이저가 현재 대시보드 문맥으로 새 응답을 생성하고 있습니다.',
-            stateDescriptionReady: '이 어드바이저 패널은 이미 적용되어 있으며, 실행하면 최신 결정형 가이드를 확인할 수 있습니다.',
-            landedAdvisor: '적용된 어드바이저',
+            stateDescriptionLoading: '현재 대시보드 문맥으로 최신 조치를 다시 계산하고 있습니다.',
+            stateDescriptionReady: '이 어드바이저 패널은 이미 적용되어 있으며, 실행하면 최신 실행안을 확인할 수 있습니다.',
+            landedAdvisor: '실행 준비된 어드바이저',
             landed: '적용됨',
-            deterministic: '결정형',
+            deterministic: '실행형',
             runLoading: '어드바이저 실행 중...',
             run: '어드바이저 실행',
             executionFailed: '실행 실패',
             executionState: '실행 상태',
             refreshing: '새로 계산 중',
             ready: '준비됨',
-            landedContract: '이 탭은 임시 화면이 아니라 실제 적용된 결정형 계약을 사용합니다.',
+            landedContract: '이 탭은 임시 화면이 아니라 실제 계산 결과를 사용합니다.',
             rerunHint: '대시보드 문맥이 바뀌면 어드바이저를 다시 실행하세요.',
         }
         : {

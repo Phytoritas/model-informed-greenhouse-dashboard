@@ -26,17 +26,18 @@ const AdvisorPendingTabPanel = ({
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            plannedDomain: '예정된 도메인',
-            promptLevelTab: '프롬프트 수준 탭',
-            enginePending: '엔진 대기',
-            checking: '현재 경계 확인 중...',
-            run: '현재 경계 확인',
+            plannedDomain: '준비 중인 기능',
+            promptLevelTab: '준비 단계',
+            enginePending: '계산 준비 중',
+            checking: '현재 사용 가능 범위를 확인 중...',
+            run: '사용 가능 범위 확인',
             failed: '실행 실패',
-            idleDescription: '이 프롬프트 수준 탭은 화면만 먼저 올라와 있고, 결정형 엔진은 아직 적용되지 않았습니다. 현재 백엔드 계약과 누락 표면은 경계 확인으로 확인할 수 있습니다.',
-            currentBoundary: '현재 계약 경계',
-            tabKey: '탭 키',
-            catalogVersion: '카탈로그 버전',
-            existingTabs: '현재 어드바이저 탭',
+            idleDescription: '이 기능은 화면 준비가 먼저 끝났고, 실제 계산 엔진은 아직 연결 중입니다. 사용 가능 범위를 확인하면 현재 준비된 기능을 볼 수 있습니다.',
+            currentBoundary: '현재 사용 가능 범위',
+            tabKey: '탭',
+            catalogVersion: '기준 버전',
+            existingTabs: '현재 사용 가능 탭',
+            available: '사용 가능',
         }
         : {
             plannedDomain: 'Planned Domain',
@@ -50,6 +51,7 @@ const AdvisorPendingTabPanel = ({
             tabKey: 'Tab key',
             catalogVersion: 'Catalog version',
             existingTabs: 'Existing advisor tabs',
+            available: 'Available',
         };
 
     return (
@@ -103,7 +105,7 @@ const AdvisorPendingTabPanel = ({
                             {result.available_tabs.map((tab) => (
                                 <AdvisorConfidenceBadge
                                     key={tab}
-                                    label={`${locale === 'ko' ? '사용 가능' : 'Available'}: ${getLocalizedTokenLabel(tab, locale)}`}
+                                    label={`${copy.available}: ${getLocalizedTokenLabel(tab, locale)}`}
                                     tone="success"
                                 />
                             ))}
@@ -118,14 +120,9 @@ const AdvisorPendingTabPanel = ({
                         <AdvisorActionCard
                             title={copy.currentBoundary}
                             subtitle={result.message}
-                            badges={result.machine_payload.internal_provenance?.pending_parsers ?? []}
                         >
                             <div className="space-y-2 text-sm text-slate-600">
                                 <div>{copy.tabKey}: {result.tab_name}</div>
-                                <div>
-                                    {copy.catalogVersion}:{' '}
-                                    {result.machine_payload.internal_provenance?.catalog_version ?? '-'}
-                                </div>
                                 <div>
                                     {copy.existingTabs}: {result.available_tabs.join(', ') || '-'}
                                 </div>
