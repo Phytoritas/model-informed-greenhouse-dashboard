@@ -322,7 +322,7 @@ function App() {
   const [shouldRenderChat, setShouldRenderChat] = useState(false);
   const [isRagAssistantOpen, setIsRagAssistantOpen] = useState(false);
   const [shouldRenderRagAssistant, setShouldRenderRagAssistant] = useState(false);
-  const [isAdvisorTabsOpen, setIsAdvisorTabsOpen] = useState(false);
+  const [isAdvisorTabsOpen, setIsAdvisorTabsOpen] = useState(true);
   const [telemetryClock, setTelemetryClock] = useState(() => Date.now());
   const advisorTabsAnchorRef = useRef<HTMLDivElement | null>(null);
   const lastAutoAnalysisRef = useRef<Record<CropType, { telemetryTimestamp: number; marketFetchedAt: string | null }>>({
