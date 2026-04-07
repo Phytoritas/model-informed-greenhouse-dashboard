@@ -89,7 +89,7 @@
   },
   "work_event_compare_hardening": {
     "status": "pending",
-    "note": "Reviewer-found greenhouse scoping, malformed payload tolerance, store-unavailable degrade behavior, and endpoint forwarding are now hardened and smoke-tested, but richer candidate agronomy/ranking and dedicated frontend component-test infrastructure are still follow-up work."
+    "note": "Greenhouse scoping, malformed payload tolerance, store-unavailable degrade behavior, endpoint forwarding, crop-specific cucumber/tomato candidate agronomy, ranking, additive compare detail fields, and backend matrix coverage are now landed; dedicated frontend component-test infrastructure and broader reuse outside the `work` tab remain follow-up work."
   },
   "exact_advisor_surface_routes": {
     "status": "pass",

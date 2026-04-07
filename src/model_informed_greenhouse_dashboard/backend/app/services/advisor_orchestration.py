@@ -2412,7 +2412,7 @@ def _build_physiology_tab_payload(
     }
 
 
-def _work_event_compare_candidates(
+def _work_event_compare_candidates_legacy(
     *,
     crop: str,
     baseline_snapshot_record: dict[str, Any],
@@ -2526,6 +2526,232 @@ def _work_event_compare_candidates(
     return candidates
 
 
+def _work_event_compare_state_balance(state: dict[str, Any]) -> float:
+    source_capacity = _coerce_float(state.get("source_capacity")) or 0.0
+    sink_demand = _coerce_float(state.get("sink_demand")) or 0.0
+    if source_capacity <= 0.0 and sink_demand <= 0.0:
+        return 0.0
+    return (source_capacity - sink_demand) / max(1.0, source_capacity + sink_demand)
+
+
+def _tomato_sink_overload_score(
+    state: dict[str, Any],
+    active_cohort: dict[str, Any] | None,
+) -> float:
+    fruit_load = _coerce_float(state.get("fruit_load")) or 0.0
+    fruit_partition_ratio = _coerce_float(state.get("current_fruit_partition_ratio")) or 0.0
+    source_sink_balance = _work_event_compare_state_balance(state)
+    active_fruits = _safe_int((active_cohort or {}).get("n_fruits"), default=_safe_int(fruit_load))
+    return round(
+        _clamp(
+            (0.35 * _clamp((fruit_load - 9.0) / 6.0, 0.0, 1.0))
+            + (0.25 * _clamp((fruit_partition_ratio - 0.42) / 0.2, 0.0, 1.0))
+            + (0.25 * _clamp((-source_sink_balance) / 0.25, 0.0, 1.0))
+            + (0.15 * _clamp((active_fruits - 4.0) / 2.0, 0.0, 1.0)),
+            0.0,
+            1.0,
+        ),
+        6,
+    )
+
+
+def _work_event_compare_candidates(
+    *,
+    crop: str,
+    baseline_snapshot_record: dict[str, Any],
+    recent_events: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    state = _coerce_dict(
+        _coerce_dict(baseline_snapshot_record.get("normalized_snapshot")).get("state")
+    )
+    candidates: list[dict[str, Any]] = []
+
+    if crop == "tomato":
+        active_cohorts = sorted(
+            [
+                cohort
+                for cohort in state.get("truss_cohorts", [])
+                if isinstance(cohort, dict)
+                and cohort.get("active")
+                and _safe_int(cohort.get("n_fruits")) > 0
+            ],
+            key=lambda cohort: (
+                _safe_int(cohort.get("n_fruits")),
+                _coerce_float(cohort.get("tdvs")) or 0.0,
+            ),
+            reverse=True,
+        )
+        active_cohort = active_cohorts[0] if active_cohorts else None
+        current_fruits = (
+            _safe_int(active_cohort.get("n_fruits"))
+            if active_cohort
+            else _safe_int(state.get("fruit_load"))
+        )
+        sink_overload_score = _tomato_sink_overload_score(state, active_cohort)
+        candidates.append(
+            {
+                "comparison_kind": "maintain",
+                "action": "\ud604\uc7ac \ucc29\uacfc\uc218 \uc720\uc9c0",
+                "event_type": None,
+                "event_payload": None,
+                "operator_note": "\ud604\uc7ac \ud654\ubc29 \ucc29\uacfc\uc218\ub97c \uadf8\ub300\ub85c \ub450\uace0 baseline\uacfc \ube44\uad50\ud569\ub2c8\ub2e4.",
+                "agronomy_flags": ["sink-overload-high"] if sink_overload_score >= 0.58 else ["sink-overload-low"],
+            }
+        )
+        if active_cohort and current_fruits > 1:
+            candidates.append(
+                {
+                    "comparison_kind": "candidate_event",
+                    "action": "1\uacfc \uac10\uacfc",
+                    "event_type": "fruit_thinning",
+                    "event_payload": {
+                        "event_type": "fruit_thinning",
+                        "cohort_id": _safe_int(active_cohort.get("cohort_id")),
+                        "fruits_removed_count": 1,
+                        "target_fruits_per_truss": current_fruits - 1,
+                        "reason_code": "issue21_work_event_compare",
+                        "operator": "advisor",
+                        "confidence": 0.74 if recent_events else 0.62,
+                    },
+                    "operator_note": (
+                        "\ud604\uc7ac \ud654\ubc29 sink overload \uc644\ud654\ub97c \uc704\ud574 1\uacfc \uac10\uacfc replay diff\ub97c \ube44\uad50\ud569\ub2c8\ub2e4."
+                        if sink_overload_score >= 0.5
+                        else "\uc989\uc2dc \uac10\uacfc\ubcf4\ub2e4 \ub2e4\uc74c \ud654\ubc29 \uc870\uc815\uc774 \uc720\ub825\ud55c \uc0c1\ud0dc\uc5d0\uc11c 1\uacfc \uac10\uacfc \uc2dc\ub098\ub9ac\uc624\ub97c \ube44\uad50\ud569\ub2c8\ub2e4."
+                    ),
+                    "agronomy_flags": (
+                        ["sink-overload-high", "active-cohort-priority"]
+                        if sink_overload_score >= 0.5
+                        else ["sink-overload-low", "thin-too-early-risk"]
+                    ),
+                }
+            )
+        candidates.append(
+            {
+                "comparison_kind": "planning_adjustment",
+                "action": "\ub2e4\uc74c \ud654\ubc29\uc5d0\uc11c \uc870\uc815",
+                "event_type": None,
+                "event_payload": None,
+                "operator_note": "\uc9c0\uae08 \ud654\ubc29\ubcf4\ub2e4 \ub2e4\uc74c \ud654\ubc29\uc5d0\uc11c \ucc29\uacfc\uc218\ub97c \ub2e4\uc2dc \ub9de\ucd94\ub294 planning option\uc785\ub2c8\ub2e4.",
+                "agronomy_flags": ["next-truss-adjust"],
+            }
+        )
+        candidates.append(
+            {
+                "comparison_kind": "defer",
+                "action": "\uac10\uacfc \ubcf4\ub958",
+                "event_type": None,
+                "event_payload": None,
+                "operator_note": "\ub2e4\uc74c \ud654\ubc29 \uc0c1\ud0dc\uac00 \ub354 \uc120\uba85\ud574\uc9c8 \ub54c\uae4c\uc9c0 \uc989\uc2dc \uac10\uacfc\ub97c \ubcf4\ub958\ud569\ub2c8\ub2e4.",
+                "agronomy_flags": ["defer-and-monitor"],
+            }
+        )
+        return candidates
+
+    current_leaf_count = _safe_int(state.get("leaf_count"))
+    recent_leaf_event = next(
+        (event for event in recent_events if event.get("event_type") == "leaf_removal"),
+        None,
+    )
+    recent_removed_count = _safe_int(
+        _coerce_dict((recent_leaf_event or {}).get("payload")).get("leaves_removed_count"),
+        default=2,
+    )
+    recent_removed_count = max(1, min(recent_removed_count, 3))
+    removable_leaves = max(0, current_leaf_count - 15)
+    lai = _coerce_float(state.get("lai")) or 0.0
+    fruit_load = _coerce_float(state.get("fruit_load")) or 0.0
+    bottom_leaf_activity = _coerce_float(state.get("bottom_leaf_activity")) or 0.0
+    source_sink_balance = _work_event_compare_state_balance(state)
+    source_limited = source_sink_balance <= -0.08
+    dense_canopy = current_leaf_count >= 18 or lai >= 1.45
+    lower_canopy_shaded = bottom_leaf_activity <= 0.18
+    fruit_pressure = fruit_load >= 14.0
+
+    candidates.append(
+        {
+            "comparison_kind": "maintain",
+            "action": "\uc720\uc9c0",
+            "event_type": None,
+            "event_payload": None,
+            "operator_note": "\ud604\uc7ac \uc5fd\uc218\ub97c \uc720\uc9c0\ud558\uace0 baseline\uacfc \ube44\uad50\ud569\ub2c8\ub2e4.",
+            "agronomy_flags": ["source-protection"] if source_limited or fruit_pressure else ["steady-canopy"],
+        }
+    )
+
+    mild_removed_count = 0
+    if removable_leaves > 0:
+        mild_removed_count = 2 if dense_canopy and lower_canopy_shaded and removable_leaves >= 2 else 1
+        if source_limited or fruit_pressure:
+            mild_removed_count = min(mild_removed_count, 1)
+        if recent_removed_count >= 2 and removable_leaves >= 2 and not source_limited:
+            mild_removed_count = max(mild_removed_count, 2)
+        mild_removed_count = min(mild_removed_count, removable_leaves)
+
+    aggressive_removed_count = 0
+    if removable_leaves >= 2 and dense_canopy and lower_canopy_shaded:
+        aggressive_removed_count = min(removable_leaves, max(mild_removed_count + 1, 2))
+        if source_limited or fruit_pressure:
+            aggressive_removed_count = min(aggressive_removed_count, 2)
+        if aggressive_removed_count <= mild_removed_count:
+            aggressive_removed_count = 0
+
+    if mild_removed_count > 0:
+        candidates.append(
+            {
+                "comparison_kind": "candidate_event",
+                "action": f"\ud558\uc704\uc5fd {mild_removed_count}\ub9e4 \uc81c\uac70",
+                "event_type": "leaf_removal",
+                "event_payload": {
+                    "event_type": "leaf_removal",
+                    "leaves_removed_count": mild_removed_count,
+                    "target_leaf_count": current_leaf_count - mild_removed_count,
+                    "reason_code": "issue21_work_event_compare",
+                    "operator": "advisor",
+                    "confidence": 0.74 if recent_events else 0.62,
+                },
+                "operator_note": (
+                    "\ud558\uc5fd \uc74c\uc601\uc740 \ud06c\uc9c0\ub9cc source \uc5ec\uc720\uac00 \uc801\uc5b4 \uc18c\ud3ed \uc801\uc5fd\ub9cc \ube44\uad50\ud569\ub2c8\ub2e4."
+                    if source_limited or fruit_pressure
+                    else "\ud558\uc5fd \uc74c\uc601 \uc644\ud654\uc640 canopy \uc815\ub9ac\ub97c \uc704\ud55c \uc18c\ud3ed \uc801\uc5fd \uc2dc\ub098\ub9ac\uc624\uc785\ub2c8\ub2e4."
+                ),
+                "agronomy_flags": (
+                    ["lower-canopy-shade", "source-limited"]
+                    if source_limited or fruit_pressure
+                    else ["lower-canopy-shade", "mild-defoliation"]
+                ),
+            }
+        )
+    if aggressive_removed_count > 0:
+        candidates.append(
+            {
+                "comparison_kind": "candidate_event",
+                "action": f"\ud558\uc704\uc5fd {aggressive_removed_count}\ub9e4 \uc81c\uac70",
+                "event_type": "leaf_removal",
+                "event_payload": {
+                    "event_type": "leaf_removal",
+                    "leaves_removed_count": aggressive_removed_count,
+                    "target_leaf_count": current_leaf_count - aggressive_removed_count,
+                    "reason_code": "issue21_work_event_compare",
+                    "operator": "advisor",
+                    "confidence": 0.68 if recent_events else 0.56,
+                },
+                "operator_note": "\uc5fd\uc218\uac00 \ucda9\ubd84\ud558\uace0 \ud558\uc5fd \uae30\uc5ec\uac00 \ub0ae\uc740 \uacbd\uc6b0\uc758 \uac15\ud55c \uc801\uc5fd \ube44\uad50 \uc2dc\ub098\ub9ac\uc624\uc785\ub2c8\ub2e4.",
+                "agronomy_flags": ["lower-canopy-shade", "aggressive-defoliation"],
+            }
+        )
+    candidates.append(
+        {
+            "comparison_kind": "defer",
+            "action": "\uc801\uc5fd \ubcf4\ub958",
+            "event_type": None,
+            "event_payload": None,
+            "operator_note": "\ub2e4\uc74c \uc791\uc5c5 \ucc3d\uae4c\uc9c0 \uc801\uc5fd\uc744 \ubcf4\ub958\ud558\uace0 \uad00\ubd80\ud558 \ubcc0\ud654\ub97c \ub354 \uc9c0\ucf1c\ubd05\ub2c8\ub2e4.",
+            "agronomy_flags": ["defer-and-monitor"],
+        }
+    )
+    return candidates
+
+
 def _build_work_event_state_delta(
     *,
     crop: str,
@@ -2581,11 +2807,103 @@ def _build_work_event_state_delta(
     }
 
 
+def _score_work_event_option(
+    *,
+    crop: str,
+    baseline_state: dict[str, Any],
+    option: dict[str, Any],
+    baseline_72h: dict[str, Any],
+    baseline_168h: dict[str, Any],
+    baseline_336h: dict[str, Any],
+    scenario_72h: dict[str, Any],
+    scenario_168h: dict[str, Any],
+    scenario_336h: dict[str, Any],
+    penalties: dict[str, Any],
+    confidence: float,
+) -> float:
+    score = _score_runtime_option(
+        baseline_72h=baseline_72h,
+        baseline_168h=baseline_168h,
+        baseline_336h=baseline_336h,
+        scenario_72h=scenario_72h,
+        scenario_168h=scenario_168h,
+        scenario_336h=scenario_336h,
+        penalties=penalties,
+        confidence=confidence,
+    )
+    kind = str(option.get("comparison_kind") or "")
+    immediate_delta = _coerce_dict(option.get("immediate_state_delta"))
+    source_sink_balance = _work_event_compare_state_balance(baseline_state)
+    has_high_violation = any(
+        violation.get("severity") == "high"
+        for violation in option.get("violated_constraints", [])
+    )
+    if has_high_violation:
+        score -= 0.2
+
+    if crop == "tomato":
+        active_cohort = next(
+            (
+                cohort
+                for cohort in baseline_state.get("truss_cohorts", [])
+                if isinstance(cohort, dict)
+                and cohort.get("active")
+                and _safe_int(cohort.get("n_fruits")) > 0
+            ),
+            None,
+        )
+        sink_overload_score = _tomato_sink_overload_score(baseline_state, active_cohort)
+        fruit_load = _coerce_float(baseline_state.get("fruit_load")) or 0.0
+        fruit_load_after = fruit_load + (_coerce_float(immediate_delta.get("fruit_load_delta")) or 0.0)
+        if kind == "candidate_event":
+            score += 0.09 * sink_overload_score
+            if sink_overload_score <= 0.28:
+                score -= 0.18
+            if fruit_load_after < 3.0:
+                score -= 0.14
+        elif kind == "planning_adjustment":
+            if sink_overload_score < 0.5:
+                score += 0.06
+        elif kind == "maintain":
+            score += 0.04 if sink_overload_score < 0.35 else -(0.01 * sink_overload_score)
+    else:
+        leaf_count = _safe_int(baseline_state.get("leaf_count"))
+        fruit_load = _coerce_float(baseline_state.get("fruit_load")) or 0.0
+        lai = _coerce_float(baseline_state.get("lai")) or 0.0
+        bottom_leaf_activity = _coerce_float(baseline_state.get("bottom_leaf_activity")) or 0.0
+        leaf_count_after = leaf_count + _safe_int(immediate_delta.get("leaf_count_delta"))
+        if kind == "candidate_event":
+            if leaf_count_after < 15:
+                score -= 0.45
+            elif leaf_count_after == 15:
+                score -= 0.12
+            if bottom_leaf_activity <= 0.18 and lai >= 1.45:
+                score += 0.06
+            if source_sink_balance <= -0.08 and (
+                (_coerce_float(option.get("expected_canopy_a_delta_72h")) or 0.0) < 0.0
+            ):
+                score -= 0.16
+            if fruit_load >= 14.0 and leaf_count_after <= 16:
+                score -= 0.08
+        elif kind == "maintain":
+            if source_sink_balance <= -0.08 or fruit_load >= 14.0:
+                score += 0.05
+        elif kind == "defer":
+            score -= 0.03
+
+    return round(score, 6)
+
+
 def _select_work_event_recommendation(options: list[dict[str, Any]]) -> dict[str, Any] | None:
     if not options:
         return None
 
-    kind_preference = {"maintain": 2, "candidate_event": 1, "defer": 0}
+    kind_preference = {
+        "candidate_event": 3,
+        "maintain": 2,
+        "planning_adjustment": 1,
+        "defer": 0,
+    }
     viable = [
         option
         for option in options
@@ -2598,6 +2916,7 @@ def _select_work_event_recommendation(options: list[dict[str, Any]]) -> dict[str
     return max(
         ranked,
         key=lambda option: (
+            float(option.get("ranking_score") or float("-inf")),
             float(option.get("expected_yield_delta_14d") or 0.0),
             float(option.get("expected_source_sink_balance_delta") or 0.0),
             kind_preference.get(str(option.get("comparison_kind") or ""), -1),
@@ -2739,6 +3058,21 @@ def _build_work_event_compare_payload(
                 336,
             )
             violated_constraints = scenario_payload.get("violated_constraints", [])
+            penalties = _coerce_dict(scenario_payload.get("penalties"))
+            option_confidence = round(
+                float(
+                    scenario_payload.get(
+                        "confidence",
+                        baseline_scenario.get("confidence", 0.0),
+                    )
+                ),
+                6,
+            )
+            immediate_state_delta = _build_work_event_state_delta(
+                crop=crop,
+                baseline_snapshot_record=baseline_snapshot_record,
+                candidate_snapshot_record=candidate_snapshot_record,
+            )
             has_high_violation = any(
                 violation.get("severity") == "high"
                 for violation in violated_constraints
@@ -2747,52 +3081,69 @@ def _build_work_event_compare_payload(
                 float(scenario_336h.get("yield_pred", 0.0))
                 - float(baseline_336h.get("yield_pred", 0.0))
             )
+            expected_fruit_dm_delta_14d = (
+                float(scenario_336h.get("fruit_dm_pred", 0.0))
+                - float(baseline_336h.get("fruit_dm_pred", 0.0))
+            )
+            expected_lai_delta_14d = (
+                float(scenario_336h.get("lai_pred", 0.0))
+                - float(baseline_336h.get("lai_pred", 0.0))
+            )
+            expected_canopy_a_delta_72h = (
+                float(scenario_72h.get("canopy_A_pred", 0.0))
+                - float(baseline_72h.get("canopy_A_pred", 0.0))
+            )
+            expected_balance_delta = (
+                float(scenario_72h.get("source_sink_balance_score", 0.0))
+                - float(baseline_72h.get("source_sink_balance_score", 0.0))
+            )
+            option_payload = {
+                "action": candidate["action"],
+                "comparison_kind": candidate["comparison_kind"],
+                "event_type": candidate["event_type"],
+                "operator_note": candidate["operator_note"],
+                "agronomy_flags": list(candidate.get("agronomy_flags") or []),
+                "expected_yield_delta_7d": round(
+                    float(scenario_168h.get("yield_pred", 0.0))
+                    - float(baseline_168h.get("yield_pred", 0.0)),
+                    6,
+                ),
+                "expected_yield_delta_14d": round(expected_yield_delta_14d, 6),
+                "expected_fruit_dm_delta_14d": round(expected_fruit_dm_delta_14d, 6),
+                "expected_lai_delta_14d": round(expected_lai_delta_14d, 6),
+                "expected_canopy_a_delta_72h": round(expected_canopy_a_delta_72h, 6),
+                "expected_source_sink_balance_delta": round(expected_balance_delta, 6),
+                "immediate_state_delta": immediate_state_delta,
+                "replay_effect": event_effect,
+                "confidence": option_confidence,
+                "violated_constraints": violated_constraints,
+            }
+            option_payload["ranking_score"] = _score_work_event_option(
+                crop=crop,
+                baseline_state=_coerce_dict(
+                    _coerce_dict(baseline_snapshot_record.get("normalized_snapshot")).get("state")
+                ),
+                option=option_payload,
+                baseline_72h=baseline_72h,
+                baseline_168h=baseline_168h,
+                baseline_336h=baseline_336h,
+                scenario_72h=scenario_72h,
+                scenario_168h=scenario_168h,
+                scenario_336h=scenario_336h,
+                penalties=penalties,
+                confidence=option_confidence,
+            )
+            option_payload["risk"] = (
+                "high"
+                if has_high_violation
+                or expected_yield_delta_14d < -0.15
+                or option_payload["ranking_score"] < -0.08
+                else "medium"
+                if violated_constraints or option_payload["ranking_score"] < 0.03
+                else "low"
+            )
             compare_options.append(
-                {
-                    "action": candidate["action"],
-                    "comparison_kind": candidate["comparison_kind"],
-                    "event_type": candidate["event_type"],
-                    "operator_note": candidate["operator_note"],
-                    "risk": (
-                        "high"
-                        if has_high_violation or expected_yield_delta_14d < -0.15
-                        else "medium"
-                        if violated_constraints
-                        else "low"
-                    ),
-                    "expected_yield_delta_7d": round(
-                        float(scenario_168h.get("yield_pred", 0.0))
-                        - float(baseline_168h.get("yield_pred", 0.0)),
-                        6,
-                    ),
-                    "expected_yield_delta_14d": round(expected_yield_delta_14d, 6),
-                    "expected_canopy_a_delta_72h": round(
-                        float(scenario_72h.get("canopy_A_pred", 0.0))
-                        - float(baseline_72h.get("canopy_A_pred", 0.0)),
-                        6,
-                    ),
-                    "expected_source_sink_balance_delta": round(
-                        float(scenario_72h.get("source_sink_balance_score", 0.0))
-                        - float(baseline_72h.get("source_sink_balance_score", 0.0)),
-                        6,
-                    ),
-                    "immediate_state_delta": _build_work_event_state_delta(
-                        crop=crop,
-                        baseline_snapshot_record=baseline_snapshot_record,
-                        candidate_snapshot_record=candidate_snapshot_record,
-                    ),
-                    "replay_effect": event_effect,
-                    "confidence": round(
-                        float(
-                            scenario_payload.get(
-                                "confidence",
-                                baseline_scenario.get("confidence", 0.0),
-                            )
-                        ),
-                        6,
-                    ),
-                    "violated_constraints": violated_constraints,
-                }
+                option_payload
             )
             option_provenance.append(
                 {
@@ -2824,6 +3175,26 @@ def _build_work_event_compare_payload(
         }
         if crop == "tomato":
             current_state_payload["active_trusses"] = baseline_state.get("active_trusses")
+            active_cohort = next(
+                (
+                    cohort
+                    for cohort in baseline_state.get("truss_cohorts", [])
+                    if isinstance(cohort, dict)
+                    and cohort.get("active")
+                    and _safe_int(cohort.get("n_fruits")) > 0
+                ),
+                None,
+            )
+            current_state_payload["sink_overload_score"] = _tomato_sink_overload_score(
+                baseline_state,
+                active_cohort,
+            )
+            current_state_payload["active_cohort_id"] = (
+                None if active_cohort is None else active_cohort.get("cohort_id")
+            )
+        else:
+            current_state_payload["minimum_leaf_guard"] = 15
+            current_state_payload["bottom_leaf_activity"] = baseline_state.get("bottom_leaf_activity")
 
         return {
             "payload": {

@@ -304,6 +304,8 @@ const WorkTab = (props: WorkTabProps) => {
                                         <div>{copy.harvestableFruits}: {formatValue(workEventCompare.current_state.fruit_load, 0)}</div>
                                         <div>{copy.activeTrusses}: {formatValue(workEventCompare.current_state.active_trusses, 0)}</div>
                                         <div>{copy.compareBalance}: {formatSignedValue(workEventCompare.current_state.source_sink_balance, 2)}</div>
+                                        <div>Leaf guard: {formatValue(workEventCompare.current_state.minimum_leaf_guard, 0)}</div>
+                                        <div>Sink overload: {formatValue(workEventCompare.current_state.sink_overload_score, 2)}</div>
                                     </div>
 
                                     <div className="space-y-2">
@@ -345,8 +347,24 @@ const WorkTab = (props: WorkTabProps) => {
                                                     </div>
                                                     <div>{copy.compareYield7d}: {formatSignedValue(option.expected_yield_delta_7d, 2, ' kg')}</div>
                                                     <div>{copy.compareYield14d}: {formatSignedValue(option.expected_yield_delta_14d, 2, ' kg')}</div>
+                                                    <div>14d fruit DM: {formatSignedValue(option.expected_fruit_dm_delta_14d, 2)}</div>
+                                                    <div>14d LAI: {formatSignedValue(option.expected_lai_delta_14d, 2)}</div>
                                                     <div>{copy.compareCanopyA}: {formatSignedValue(option.expected_canopy_a_delta_72h, 2)}</div>
                                                     <div>{copy.compareBalance}: {formatSignedValue(option.expected_source_sink_balance_delta, 3)}</div>
+                                                    {(option.agronomy_flags?.length ?? 0) > 0 ? (
+                                                        <div className="space-y-2">
+                                                            <div className="font-semibold text-slate-900">Agronomy</div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {(option.agronomy_flags ?? []).map((flag: string) => (
+                                                                    <AdvisorConfidenceBadge
+                                                                        key={flag}
+                                                                        label={flag}
+                                                                        tone="neutral"
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
                                                     <div className="space-y-2">
                                                         <div className="font-semibold text-slate-900">{copy.compareImmediateDelta}</div>
                                                         <div className="flex flex-wrap gap-2">

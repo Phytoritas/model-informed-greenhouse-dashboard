@@ -658,6 +658,10 @@ export type PlannedAdvisorTabPayload = {
                 fruit_load?: number | null;
                 active_trusses?: number | null;
                 source_sink_balance?: number | null;
+                minimum_leaf_guard?: number | null;
+                bottom_leaf_activity?: number | null;
+                sink_overload_score?: number | null;
+                active_cohort_id?: number | null;
             };
             options: Array<{
                 action: string;
@@ -669,9 +673,13 @@ export type PlannedAdvisorTabPayload = {
                 expected_yield_delta_14d?: number | null;
                 expected_canopy_a_delta_72h?: number | null;
                 expected_source_sink_balance_delta?: number | null;
+                expected_fruit_dm_delta_14d?: number | null;
+                expected_lai_delta_14d?: number | null;
                 immediate_state_delta?: Record<string, number | null | undefined>;
                 replay_effect?: Record<string, unknown> | null;
                 confidence?: number | null;
+                agronomy_flags?: string[];
+                ranking_score?: number | null;
                 violated_constraints: Array<{
                     severity?: string;
                     constraint?: string;

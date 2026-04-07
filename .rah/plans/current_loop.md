@@ -2,7 +2,7 @@
 
 ## Earliest Pending Gate
 - `work_event_compare_hardening` is now the active pending gate for issue `#21`
-- The first additive work-event compare slice is landed and reviewer hardening is in place, but candidate depth, dedicated component coverage, and broader reuse are still follow-up work
+- The additive work-event compare slice, reviewer hardening, crop-specific candidate agronomy/ranking, and backend matrix tests are landed, but dedicated component coverage and broader reuse are still follow-up work
 
 ## Landed Before This Loop
 - Issue `#19` is merged into `main` at `ecbd9b7` via PR `#20`, so the model-first runtime foundations, additive advisor contracts, model-aware frontend surfaces, knowledge/advisor CI hardening, and weather-panel resilience are now the fixed baseline
@@ -15,14 +15,17 @@
 - `WorkTab` now renders a dedicated work-event compare block beside the existing control-scenario runtime panel instead of overloading `AdvisorModelRuntimePanel`
 - Hardening fixes now keep replay compare greenhouse-scoped, tolerate malformed persisted event payloads without taking down the whole work tab, degrade cleanly when the state store is unavailable, and lock the request contract with a `/api/advisor/tab/work` greenhouse-forwarding smoke test
 - Exact additive `/api/advisor/environment`, `/api/advisor/physiology`, `/api/advisor/work-tradeoff`, and `/api/advisor/harvest` routes now exist over the same model-aware tab surfaces, `/api/advisor/work-tradeoff` flattens `work_event_compare` into the directive-aligned top-level tradeoff contract, and `/api/knowledge/status` now advertises the exact routes alongside the preserved legacy seams
+- Cucumber work-event compare now enforces a 15-leaf guard, surfaces agronomy flags plus 14-day fruit-DM/LAI deltas, and matrix-tests 12/15/18 leaf scenarios so over-defoliation stays out of the recommended path
+- Tomato work-event compare now scores maintain / thin / defer / next-truss planning options with sink-overload-aware ranking, exposes sink-overload state in the compare payload, and matrix-tests lighter versus heavier fruit-load cases so `1과 감과` only rises when overload pressure is real
+- The frontend typed contract now absorbs the richer work-event compare fields and `WorkTab` renders the new agronomy flags, 14-day fruit-DM delta, 14-day LAI delta, leaf guard, and sink-overload values without breaking the existing work surface
 - Validated: `poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`
 
 ## Exact Restart Step
 1. Continue on issue `#21` and branch `feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs`.
 2. Keep issue `#19` merged mainline and issue `#18` compatibility surfaces fixed; do not regress existing summary/chat/tab runtime consumers while extending the work-tradeoff path.
 3. Treat the current backend compare contract and `WorkTab` compare block as the new baseline; do not fold it back into the generic control-scenario runtime panel.
-4. Next hardening slice should tighten candidate generation and ranking, especially around cucumber minimum leaf-count behavior and tomato cohort selection heuristics.
+4. Crop-specific candidate generation and ranking are now the baseline; do not revert the 15-leaf cucumber guard, sink-overload-aware tomato ordering, or the additive compare detail fields without replacing them with stricter logic.
 5. Frontend component coverage for `work_event_compare` is still absent because the repo currently has no frontend test harness beyond lint/build; decide whether to introduce a minimal Vitest/RTL setup as a separate bounded slice or keep relying on API/backend smoke for issue `#21`.
-6. The next high-value backend slice is to make the cucumber/tomato tradeoff candidates less heuristic and more directive-aligned, including stronger minimum-leaf and sink-overload scenario matrices.
-7. Decide whether to open the issue `#21` PR now or after one more bounded polish slice.
+6. If another backend slice is needed before PR, keep it bounded to explicit agronomy/ranking refinements rather than reopening the generic compare contract.
+7. Decide whether to open the issue `#21` PR now or after the frontend component-test decision is settled.
 8. Keep issue `#3` isolated as the separate blocked RTR follow-up lane.
