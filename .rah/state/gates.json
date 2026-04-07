@@ -84,8 +84,12 @@
     "note": "Issue #19 is closed and PR #20 is merged after the final local validation ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) plus green GitHub Actions push/pull_request runs."
   },
   "work_event_compare_loop": {
+    "status": "pass",
+    "note": "Issue #21 now adds `ModelStateStore.load_current_state()` plus `list_work_events()`, an additive backend `work_event_compare` replay-diff contract over persisted snapshots and bounded `leaf_removal` / `fruit_thinning` candidates, and a dedicated `WorkTab` compare block beside the existing control-scenario runtime panel."
+  },
+  "work_event_compare_hardening": {
     "status": "pending",
-    "note": "The current `work` advisor already renders control-based `model_runtime.scenario.options` through the shared runtime panel, but it still depends on deterministic planning heuristics and has no read path over persisted `crop_work_events`. Issue #21 must add an additive work-event-driven compare contract for bounded `leaf_removal` / `fruit_thinning` candidate replay."
+    "note": "Reviewer-found greenhouse scoping, malformed payload tolerance, store-unavailable degrade behavior, and endpoint forwarding are now hardened and smoke-tested, but richer candidate agronomy/ranking and dedicated frontend component-test infrastructure are still follow-up work."
   },
   "rtr_good_production_windows_followup": {
     "status": "blocked",

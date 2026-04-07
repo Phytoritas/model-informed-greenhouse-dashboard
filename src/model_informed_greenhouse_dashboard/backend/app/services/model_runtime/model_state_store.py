@@ -342,6 +342,71 @@ class ModelStateStore:
 
         return self.load_snapshot(str(row["snapshot_id"]))
 
+    def load_current_state(self, greenhouse_id: str, crop: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT greenhouse_id, crop, latest_snapshot_id, latest_event_id, updated_at
+                FROM crop_model_states
+                WHERE greenhouse_id = ? AND crop = ?
+                """,
+                (greenhouse_id, crop),
+            ).fetchone()
+
+        if row is None:
+            return None
+
+        return {
+            "greenhouse_id": row["greenhouse_id"],
+            "crop": row["crop"],
+            "latest_snapshot_id": row["latest_snapshot_id"],
+            "latest_event_id": row["latest_event_id"],
+            "updated_at": row["updated_at"],
+        }
+
+    def list_work_events(
+        self,
+        greenhouse_id: str,
+        crop: str,
+        *,
+        limit: int = 10,
+        event_type: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = """
+            SELECT event_id, greenhouse_id, crop, event_time, event_type, operator,
+                   reason_code, confidence, before_snapshot_id, after_snapshot_id,
+                   payload_json, created_at
+            FROM crop_work_events
+            WHERE greenhouse_id = ? AND crop = ?
+        """
+        params: list[Any] = [greenhouse_id, crop]
+        if event_type:
+            query += " AND event_type = ?"
+            params.append(event_type)
+        query += " ORDER BY event_time DESC, created_at DESC LIMIT ?"
+        params.append(max(1, int(limit)))
+
+        with self._connect() as connection:
+            rows = connection.execute(query, params).fetchall()
+
+        return [
+            {
+                "event_id": row["event_id"],
+                "greenhouse_id": row["greenhouse_id"],
+                "crop": row["crop"],
+                "event_time": row["event_time"],
+                "event_type": row["event_type"],
+                "operator": row["operator"],
+                "reason_code": row["reason_code"],
+                "confidence": row["confidence"],
+                "before_snapshot_id": row["before_snapshot_id"],
+                "after_snapshot_id": row["after_snapshot_id"],
+                "payload": _load_json(row["payload_json"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+
     def persist_work_event(
         self,
         *,

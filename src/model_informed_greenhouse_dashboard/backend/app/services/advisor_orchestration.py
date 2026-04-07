@@ -19,6 +19,7 @@ from .advisory_api import (
 from .decision import DecisionSupport
 from .knowledge_catalog import build_knowledge_catalog
 from .model_runtime.constraint_engine import CONTROL_SPECS
+from .model_runtime.model_state_store import ModelStateStore
 from .model_runtime.scenario_runner import run_bounded_scenario
 from .model_runtime.sensitivity_engine import compute_local_sensitivities
 from .openai_service import generate_chat_reply, generate_consulting
@@ -64,6 +65,7 @@ _MODEL_RUNTIME_CONTROL_LABELS = {
     "rh_target": "RH target",
     "screen_close": "screen closing",
 }
+_WORK_EVENT_COMPARE_HORIZONS_HOURS = (24, 72, 168, 336)
 
 
 def _normalize_tab_name(tab_name: str) -> str:
@@ -201,6 +203,17 @@ def _coerce_float(value: Any) -> float | None:
     return numeric
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    numeric = _coerce_float(value)
+    if numeric is None:
+        return default
+    return int(numeric)
+
+
+def _coerce_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(high, value))
 
@@ -334,6 +347,125 @@ def _build_unavailable_model_runtime_payload(
             "dashboard_missing_fields": list(dashboard_missing_fields or []),
             "inferred_fields": list(inferred_fields or []),
         },
+    }
+
+
+def _parse_runtime_datetime(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value)
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc)
+
+
+def _clone_compare_adapter_from_raw_state(crop: str, raw_state: dict[str, Any]):
+    if crop == "tomato":
+        from ..adapters.tomato import TomatoAdapter
+
+        adapter = TomatoAdapter()
+    else:
+        from ..adapters.cucumber import CucumberAdapter
+
+        adapter = CucumberAdapter()
+
+    adapter.load_state(deepcopy(raw_state))
+    return adapter
+
+
+def _build_compare_snapshot_record(
+    *,
+    crop: str,
+    greenhouse_id: str,
+    adapter: Any,
+    snapshot_time: datetime,
+    snapshot_id: str,
+    source: str,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if crop == "tomato":
+        from .crop_models.tomato_growth_model import build_tomato_snapshot
+
+        normalized_snapshot = build_tomato_snapshot(
+            adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=snapshot_time,
+        )
+    else:
+        from .crop_models.cucumber_growth_model import build_cucumber_snapshot
+
+        normalized_snapshot = build_cucumber_snapshot(
+            adapter,
+            greenhouse_id=greenhouse_id,
+            snapshot_time=snapshot_time,
+        )
+
+    return {
+        "snapshot_id": snapshot_id,
+        "greenhouse_id": greenhouse_id,
+        "crop": crop,
+        "snapshot_time": snapshot_time.isoformat(),
+        "source": source,
+        "adapter_name": getattr(adapter, "name", crop),
+        "adapter_version": getattr(adapter, "version", "1.0.0"),
+        "normalized_snapshot": normalized_snapshot,
+        "raw_adapter_state": adapter.dump_state(),
+        "metadata": metadata or {},
+    }
+
+
+def _describe_logged_work_event(event: dict[str, Any]) -> str:
+    payload = _coerce_dict(event.get("payload"))
+    event_type = str(event.get("event_type") or "")
+    if event_type == "leaf_removal":
+        removed = _safe_int(payload.get("leaves_removed_count"))
+        target_leaf_count = _safe_int(payload.get("target_leaf_count"), default=-1)
+        if removed > 0:
+            return f"하위엽 {removed}매 제거"
+        if target_leaf_count > 0:
+            return f"목표 엽수 {target_leaf_count}매"
+        return "적엽 기록"
+    if event_type == "fruit_thinning":
+        removed = _safe_int(payload.get("fruits_removed_count"))
+        target_fruits = _safe_int(payload.get("target_fruits_per_truss"), default=-1)
+        if removed > 0:
+            return f"{removed}과 감과"
+        if target_fruits > 0:
+            return f"화방당 {target_fruits}과 목표"
+        return "감과 기록"
+    return event_type or "work_event"
+
+
+def _summarize_work_event_history(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "event_time": event.get("event_time"),
+            "event_type": event.get("event_type"),
+            "action": _describe_logged_work_event(event),
+            "operator": event.get("operator"),
+            "reason_code": event.get("reason_code"),
+            "confidence": event.get("confidence"),
+        }
+        for event in events
+    ]
+
+
+def _build_unavailable_work_event_compare_payload(
+    *,
+    reason: str,
+    history: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "status": "history-unavailable",
+        "summary": reason,
+        "history": history,
+        "current_state": {},
+        "options": [],
+        "recommended_action": None,
+        "confidence": 0.0,
     }
 
 
@@ -2278,6 +2410,450 @@ def _build_physiology_tab_payload(
     }
 
 
+def _work_event_compare_candidates(
+    *,
+    crop: str,
+    baseline_snapshot_record: dict[str, Any],
+    recent_events: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    state = _coerce_dict(
+        _coerce_dict(baseline_snapshot_record.get("normalized_snapshot")).get("state")
+    )
+    candidates: list[dict[str, Any]] = []
+
+    if crop == "tomato":
+        active_cohort = next(
+            (
+                cohort
+                for cohort in state.get("truss_cohorts", [])
+                if isinstance(cohort, dict)
+                and cohort.get("active")
+                and _safe_int(cohort.get("n_fruits")) > 0
+            ),
+            None,
+        )
+        current_fruits = (
+            _safe_int(active_cohort.get("n_fruits"))
+            if active_cohort
+            else _safe_int(state.get("fruit_load"))
+        )
+        candidates.append(
+            {
+                "comparison_kind": "maintain",
+                "action": "현재 착과수 유지",
+                "event_type": None,
+                "event_payload": None,
+                "operator_note": "현재 착과수를 그대로 유지하며 baseline을 비교합니다.",
+            }
+        )
+        if active_cohort and current_fruits > 1:
+            candidates.append(
+                {
+                    "comparison_kind": "candidate_event",
+                    "action": "1과 감과",
+                    "event_type": "fruit_thinning",
+                    "event_payload": {
+                        "event_type": "fruit_thinning",
+                        "cohort_id": _safe_int(active_cohort.get("cohort_id")),
+                        "fruits_removed_count": 1,
+                        "target_fruits_per_truss": current_fruits - 1,
+                        "reason_code": "issue21_work_event_compare",
+                        "operator": "advisor",
+                        "confidence": 0.72 if recent_events else 0.6,
+                    },
+                    "operator_note": "현재 활성 화방에서 1과 감과했을 때의 replay diff를 비교합니다.",
+                }
+            )
+        candidates.append(
+            {
+                "comparison_kind": "defer",
+                "action": "감과 보류",
+                "event_type": None,
+                "event_payload": None,
+                "operator_note": "다음 화방 상태가 더 선명해질 때까지 즉시 감과를 보류합니다.",
+            }
+        )
+        return candidates
+
+    current_leaf_count = _safe_int(state.get("leaf_count"))
+    recent_leaf_event = next(
+        (event for event in recent_events if event.get("event_type") == "leaf_removal"),
+        None,
+    )
+    default_removed_count = _safe_int(
+        _coerce_dict((recent_leaf_event or {}).get("payload")).get("leaves_removed_count"),
+        default=2,
+    )
+    default_removed_count = max(1, min(default_removed_count, 3))
+    candidates.append(
+        {
+            "comparison_kind": "maintain",
+            "action": "유지",
+            "event_type": None,
+            "event_payload": None,
+            "operator_note": "현재 엽수를 유지하며 baseline을 비교합니다.",
+        }
+    )
+    target_leaf_count = max(15, current_leaf_count - default_removed_count)
+    if target_leaf_count < current_leaf_count:
+        candidates.append(
+            {
+                "comparison_kind": "candidate_event",
+                "action": f"하위엽 {current_leaf_count - target_leaf_count}매 제거",
+                "event_type": "leaf_removal",
+                "event_payload": {
+                    "event_type": "leaf_removal",
+                    "leaves_removed_count": current_leaf_count - target_leaf_count,
+                    "target_leaf_count": target_leaf_count,
+                    "reason_code": "issue21_work_event_compare",
+                    "operator": "advisor",
+                    "confidence": 0.72 if recent_events else 0.6,
+                },
+                "operator_note": "현재 상태에서 소폭 적엽했을 때의 replay diff를 비교합니다.",
+            }
+        )
+    candidates.append(
+        {
+            "comparison_kind": "defer",
+            "action": "적엽 보류",
+            "event_type": None,
+            "event_payload": None,
+            "operator_note": "다음 작업창까지 적엽을 보류하고 광/부하 변화를 더 지켜봅니다.",
+        }
+    )
+    return candidates
+
+
+def _build_work_event_state_delta(
+    *,
+    crop: str,
+    baseline_snapshot_record: dict[str, Any],
+    candidate_snapshot_record: dict[str, Any],
+) -> dict[str, Any]:
+    baseline_state = baseline_snapshot_record.get("normalized_snapshot", {}).get("state", {})
+    candidate_state = candidate_snapshot_record.get("normalized_snapshot", {}).get("state", {})
+    if crop == "tomato":
+        return {
+            "fruit_load_delta": round(
+                float(candidate_state.get("fruit_load", 0.0))
+                - float(baseline_state.get("fruit_load", 0.0)),
+                6,
+            ),
+            "sink_demand_delta": round(
+                float(candidate_state.get("sink_demand", 0.0))
+                - float(baseline_state.get("sink_demand", 0.0)),
+                6,
+            ),
+            "fruit_partition_ratio_delta": round(
+                float(candidate_state.get("current_fruit_partition_ratio", 0.0))
+                - float(baseline_state.get("current_fruit_partition_ratio", 0.0)),
+                6,
+            ),
+            "source_capacity_delta": round(
+                float(candidate_state.get("source_capacity", 0.0))
+                - float(baseline_state.get("source_capacity", 0.0)),
+                6,
+            ),
+        }
+    return {
+        "leaf_count_delta": round(
+            float(candidate_state.get("leaf_count", 0.0))
+            - float(baseline_state.get("leaf_count", 0.0)),
+            6,
+        ),
+        "lai_delta": round(
+            float(candidate_state.get("lai", 0.0))
+            - float(baseline_state.get("lai", 0.0)),
+            6,
+        ),
+        "source_capacity_delta": round(
+            float(candidate_state.get("source_capacity", 0.0))
+            - float(baseline_state.get("source_capacity", 0.0)),
+            6,
+        ),
+        "sink_demand_delta": round(
+            float(candidate_state.get("sink_demand", 0.0))
+            - float(baseline_state.get("sink_demand", 0.0)),
+            6,
+        ),
+    }
+
+
+def _select_work_event_recommendation(options: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not options:
+        return None
+
+    kind_preference = {"maintain": 2, "candidate_event": 1, "defer": 0}
+    viable = [
+        option
+        for option in options
+        if not any(
+            violation.get("severity") == "high"
+            for violation in option.get("violated_constraints", [])
+        )
+    ]
+    ranked = viable or options
+    return max(
+        ranked,
+        key=lambda option: (
+            float(option.get("expected_yield_delta_14d") or 0.0),
+            float(option.get("expected_source_sink_balance_delta") or 0.0),
+            kind_preference.get(str(option.get("comparison_kind") or ""), -1),
+        ),
+    )
+
+def _build_work_event_compare_payload(
+    crop: str,
+    greenhouse_id: Optional[str] = None,
+) -> dict[str, Any]:
+    resolved_greenhouse_id = greenhouse_id or crop
+    history: list[dict[str, Any]] = []
+    recent_events: list[dict[str, Any]] = []
+    baseline_snapshot_record: dict[str, Any] | None = None
+    baseline_snapshot_id: str | None = None
+
+    try:
+        store = ModelStateStore()
+        current_state = store.load_current_state(resolved_greenhouse_id, crop)
+        recent_events = store.list_work_events(resolved_greenhouse_id, crop, limit=3)
+        history = _summarize_work_event_history(recent_events)
+
+        if current_state:
+            baseline_snapshot_record = store.load_snapshot(str(current_state["latest_snapshot_id"]))
+        if baseline_snapshot_record is None:
+            baseline_snapshot_record = store.latest_snapshot(resolved_greenhouse_id, crop)
+    except Exception:
+        return {
+            "payload": _build_unavailable_work_event_compare_payload(
+                reason="Persisted work-event compare 저장소를 불러오지 못해 replay compare를 잠시 비활성화했습니다.",
+                history=history,
+            ),
+            "internal_provenance": {
+                "status": "store-unavailable",
+                "greenhouse_id": resolved_greenhouse_id,
+                "history_event_ids": [event.get("event_id") for event in recent_events],
+                "baseline_snapshot_id": None,
+            },
+        }
+
+    if baseline_snapshot_record is None:
+        return {
+            "payload": _build_unavailable_work_event_compare_payload(
+                reason="Persisted model snapshot이 없어 work-event replay compare를 만들 수 없습니다. 먼저 `/api/models/snapshot` 또는 `/api/models/replay`로 baseline state를 저장해야 합니다.",
+                history=history,
+            ),
+            "internal_provenance": {
+                "status": "history-unavailable",
+                "greenhouse_id": resolved_greenhouse_id,
+                "history_event_ids": [event.get("event_id") for event in recent_events],
+                "baseline_snapshot_id": None,
+            },
+        }
+
+    try:
+        baseline_scenario = run_bounded_scenario(
+            baseline_snapshot_record,
+            controls={},
+            horizons_hours=list(_WORK_EVENT_COMPARE_HORIZONS_HOURS),
+        )
+        baseline_72h = _scenario_row_by_horizon(baseline_scenario.get("baseline_outputs", []), 72)
+        baseline_168h = _scenario_row_by_horizon(
+            baseline_scenario.get("baseline_outputs", []),
+            168,
+        )
+        baseline_336h = _scenario_row_by_horizon(
+            baseline_scenario.get("baseline_outputs", []),
+            336,
+        )
+
+        compare_options: list[dict[str, Any]] = []
+        option_provenance: list[dict[str, Any]] = []
+        baseline_snapshot_id = str(baseline_snapshot_record.get("snapshot_id") or "")
+        baseline_snapshot_time = _parse_runtime_datetime(
+            baseline_snapshot_record.get("snapshot_time")
+            or baseline_snapshot_record.get("captured_at")
+        )
+
+        for index, candidate in enumerate(
+            _work_event_compare_candidates(
+                crop=crop,
+                baseline_snapshot_record=baseline_snapshot_record,
+                recent_events=recent_events,
+            )
+        ):
+            event_payload = candidate.get("event_payload")
+            candidate_snapshot_record = baseline_snapshot_record
+            event_effect: dict[str, Any] | None = None
+            scenario_payload = baseline_scenario
+
+            if event_payload:
+                adapter = _clone_compare_adapter_from_raw_state(
+                    crop,
+                    baseline_snapshot_record["raw_adapter_state"],
+                )
+                if crop == "tomato":
+                    from .crop_models.tomato_growth_model import apply_tomato_work_event
+
+                    event_effect = apply_tomato_work_event(adapter, event_payload)
+                else:
+                    from .crop_models.cucumber_growth_model import apply_cucumber_work_event
+
+                    event_effect = apply_cucumber_work_event(adapter, event_payload)
+
+                candidate_snapshot_record = _build_compare_snapshot_record(
+                    crop=crop,
+                    greenhouse_id=resolved_greenhouse_id,
+                    adapter=adapter,
+                    snapshot_time=baseline_snapshot_time,
+                    snapshot_id=f"{baseline_snapshot_id or crop}-candidate-{index}",
+                    source=f"work_event_compare:{candidate['comparison_kind']}",
+                    metadata={
+                        "synthetic_work_event_compare": True,
+                        "baseline_snapshot_id": baseline_snapshot_id,
+                    },
+                )
+                scenario_payload = run_bounded_scenario(
+                    candidate_snapshot_record,
+                    controls={},
+                    horizons_hours=list(_WORK_EVENT_COMPARE_HORIZONS_HOURS),
+                )
+
+            scenario_72h = _scenario_row_by_horizon(
+                scenario_payload.get("baseline_outputs", []),
+                72,
+            )
+            scenario_168h = _scenario_row_by_horizon(
+                scenario_payload.get("baseline_outputs", []),
+                168,
+            )
+            scenario_336h = _scenario_row_by_horizon(
+                scenario_payload.get("baseline_outputs", []),
+                336,
+            )
+            violated_constraints = scenario_payload.get("violated_constraints", [])
+            has_high_violation = any(
+                violation.get("severity") == "high"
+                for violation in violated_constraints
+            )
+            expected_yield_delta_14d = (
+                float(scenario_336h.get("yield_pred", 0.0))
+                - float(baseline_336h.get("yield_pred", 0.0))
+            )
+            compare_options.append(
+                {
+                    "action": candidate["action"],
+                    "comparison_kind": candidate["comparison_kind"],
+                    "event_type": candidate["event_type"],
+                    "operator_note": candidate["operator_note"],
+                    "risk": (
+                        "high"
+                        if has_high_violation or expected_yield_delta_14d < -0.15
+                        else "medium"
+                        if violated_constraints
+                        else "low"
+                    ),
+                    "expected_yield_delta_7d": round(
+                        float(scenario_168h.get("yield_pred", 0.0))
+                        - float(baseline_168h.get("yield_pred", 0.0)),
+                        6,
+                    ),
+                    "expected_yield_delta_14d": round(expected_yield_delta_14d, 6),
+                    "expected_canopy_a_delta_72h": round(
+                        float(scenario_72h.get("canopy_A_pred", 0.0))
+                        - float(baseline_72h.get("canopy_A_pred", 0.0)),
+                        6,
+                    ),
+                    "expected_source_sink_balance_delta": round(
+                        float(scenario_72h.get("source_sink_balance_score", 0.0))
+                        - float(baseline_72h.get("source_sink_balance_score", 0.0)),
+                        6,
+                    ),
+                    "immediate_state_delta": _build_work_event_state_delta(
+                        crop=crop,
+                        baseline_snapshot_record=baseline_snapshot_record,
+                        candidate_snapshot_record=candidate_snapshot_record,
+                    ),
+                    "replay_effect": event_effect,
+                    "confidence": round(
+                        float(
+                            scenario_payload.get(
+                                "confidence",
+                                baseline_scenario.get("confidence", 0.0),
+                            )
+                        ),
+                        6,
+                    ),
+                    "violated_constraints": violated_constraints,
+                }
+            )
+            option_provenance.append(
+                {
+                    "action": candidate["action"],
+                    "comparison_kind": candidate["comparison_kind"],
+                    "baseline_snapshot_id": baseline_snapshot_id,
+                    "candidate_snapshot_id": candidate_snapshot_record.get("snapshot_id"),
+                    "event_payload": event_payload,
+                }
+            )
+
+        recommended = _select_work_event_recommendation(compare_options)
+        baseline_state = _coerce_dict(
+            _coerce_dict(baseline_snapshot_record.get("normalized_snapshot")).get("state")
+        )
+        current_state_payload = {
+            "leaf_count": baseline_state.get("leaf_count"),
+            "lai": baseline_state.get("lai"),
+            "fruit_load": baseline_state.get("fruit_load"),
+            "source_sink_balance": round(
+                float(
+                    _coerce_dict(baseline_scenario.get("runtime_inputs")).get(
+                        "source_sink_balance",
+                        0.0,
+                    )
+                ),
+                6,
+            ),
+        }
+        if crop == "tomato":
+            current_state_payload["active_trusses"] = baseline_state.get("active_trusses")
+
+        return {
+            "payload": {
+                "status": "ready",
+                "summary": (
+                    "Persisted model snapshot과 work-event history를 기준으로 additive replay compare를 구성했습니다."
+                    if history
+                    else "Persisted model snapshot을 기준으로 첫 work-event replay compare를 구성했습니다. 아직 저장된 작업 이력은 없습니다."
+                ),
+                "history": history,
+                "current_state": current_state_payload,
+                "options": compare_options,
+                "recommended_action": None if recommended is None else recommended.get("action"),
+                "confidence": round(float(baseline_scenario.get("confidence", 0.0)), 6),
+            },
+            "internal_provenance": {
+                "status": "ready",
+                "greenhouse_id": resolved_greenhouse_id,
+                "baseline_snapshot_id": baseline_snapshot_id,
+                "history_event_ids": [event.get("event_id") for event in recent_events],
+                "options": option_provenance,
+            },
+        }
+    except Exception:
+        return {
+            "payload": _build_unavailable_work_event_compare_payload(
+                reason="저장된 작업 이력 또는 state 형식이 불완전해 work-event replay compare를 잠시 비활성화했습니다.",
+                history=history,
+            ),
+            "internal_provenance": {
+                "status": "compare-build-failed",
+                "greenhouse_id": resolved_greenhouse_id,
+                "history_event_ids": [event.get("event_id") for event in recent_events],
+                "baseline_snapshot_id": baseline_snapshot_id,
+            },
+        }
+
+
 def _build_work_tab_payload(
     *,
     crop: str,
@@ -3198,6 +3774,7 @@ def build_advisor_tab_response(
     *,
     tab_name: str,
     crop: str,
+    greenhouse_id: Optional[str] = None,
     target: Optional[str] = None,
     limit: int = 5,
     stage: Optional[str] = None,
@@ -3329,10 +3906,20 @@ def build_advisor_tab_response(
             crop=crop,
             dashboard=dashboard_payload,
         )
+        work_event_compare = _build_work_event_compare_payload(
+            crop,
+            greenhouse_id=greenhouse_id,
+        )
         retrieval_context = build_tab_advisor_context(
             crop=crop,
             tab_name=normalized_tab,
         )
+        internal_provenance = _build_internal_provenance(
+            catalog_payload,
+            advisory_surfaces,
+            retrieval_context=retrieval_context,
+        )
+        internal_provenance["work_event_compare"] = work_event_compare["internal_provenance"]
         payload = {
             "status": "success",
             "family": "advisor_tab",
@@ -3355,11 +3942,8 @@ def build_advisor_tab_response(
                     tab_name=normalized_tab,
                 ),
                 "work_analysis": work_analysis,
-                "internal_provenance": _build_internal_provenance(
-                    catalog_payload,
-                    advisory_surfaces,
-                    retrieval_context=retrieval_context,
-                ),
+                "work_event_compare": work_event_compare["payload"],
+                "internal_provenance": internal_provenance,
             },
         }
     elif normalized_tab == "harvest_market":

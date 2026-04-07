@@ -75,6 +75,7 @@ class AdvisorChatRequest(BaseModel):
 
 class AdvisorTabRequest(BaseModel):
     crop: str
+    greenhouse_id: Optional[str] = None
     target: Optional[str] = None
     limit: int = 5
     stage: Optional[str] = None
@@ -1516,6 +1517,7 @@ async def advisor_tab(tab_name: str, req: AdvisorTabRequest):
         return build_advisor_tab_response(
             tab_name=tab_name,
             crop=req.crop,
+            greenhouse_id=req.greenhouse_id,
             target=req.target,
             limit=req.limit,
             stage=req.stage,
