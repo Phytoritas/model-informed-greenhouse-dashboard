@@ -85,7 +85,7 @@
   },
   "issue23_pr_validation": {
     "status": "pending",
-    "note": "PR #24 is already open, but a follow-up local hardening slice now adds Korean-visible-UI cleanup across App/header/advisor/chat/RAG surfaces plus localized WorkTab token rendering and refreshed Vitest expectations. The local ladder is green again; next step is commit + push this slice so remote validation can rerun."
+    "note": "PR #24 head `7abf02a` now includes the Korean-visible-UI cleanup across App/header/advisor/chat/RAG surfaces plus localized WorkTab token rendering and refreshed Vitest expectations. The local ladder is green, screenshots remain under `screenshots/`, and GitHub Actions are rerunning before merge-time truth sync can close issue #23."
   },
   "issue19_pr_validation": {
     "status": "pass",
