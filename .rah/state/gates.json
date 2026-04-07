@@ -79,6 +79,14 @@
     "status": "pass",
     "note": "Sensor-card / AI-advisor height coupling decoupled via `items-start`, `auto-rows-fr` removal, `max-h` cap on advisor wrapper, and internal scroll boundaries in AiAdvisor. Validated with lint, build, and before/after screenshots at 1920x1080."
   },
+  "issue23_frontend_stabilization": {
+    "status": "pass",
+    "note": "Issue #23 local stabilization now adds `AppShell` plus shared loading/drawer fallbacks, Korean-first structured advisory display payloads across summary/chat, availability-aware chart nulling through `fieldAvailability`, per-field telemetry timestamps for KPI age labels, offline-over-missing summary precedence, mobile locale controls, localized cleanup across analytics/advisor surfaces, and an additional hardening pass that localizes visible SmartGrow/advisor copy plus stage/medium/common token labels while keeping the full local ladder green."
+  },
+  "issue23_pr_validation": {
+    "status": "pending",
+    "note": "Local validation is green, but the branch still needs commit/push/PR plus any final screenshot attachment before GitHub Actions and merge-time truth sync can close issue #23."
+  },
   "issue19_pr_validation": {
     "status": "pass",
     "note": "Issue #19 is closed and PR #20 is merged after the final local validation ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) plus green GitHub Actions push/pull_request runs."

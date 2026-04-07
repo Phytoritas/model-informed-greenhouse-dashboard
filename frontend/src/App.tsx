@@ -1,26 +1,39 @@
 import { Suspense, lazy, useCallback, useDeferredValue, useEffect, useRef, useState } from 'react';
-import { Thermometer, Droplets, CloudFog, Sun, Sprout, MessageCircle, Activity, Leaf } from 'lucide-react';
+import { Thermometer, Droplets, CloudFog, Sun, Activity, Leaf } from 'lucide-react';
 import AdvisorTabs from './components/advisor/AdvisorTabs';
 import ControlPanel from './components/ControlPanel';
 import CropDetails from './components/CropDetails';
+import AdvisorPanelFallback from './features/advisor/AdvisorPanelFallback';
+import LoadingSkeleton from './features/common/LoadingSkeleton';
+import OverviewStrip from './features/overview/OverviewStrip';
+import OverlayDrawerFallback from './features/chat/OverlayDrawerFallback';
 import { useGreenhouse } from './hooks/useGreenhouse';
 import { useAiAssistant } from './hooks/useAiAssistant';
 import { useProducePrices } from './hooks/useProducePrices';
 import { useRtrProfiles } from './hooks/useRtrProfiles';
 import { useSmartGrowKnowledge } from './hooks/useSmartGrowKnowledge';
 import { useWeatherOutlook } from './hooks/useWeatherOutlook';
-import type { CropType, SensorData } from './types';
+import AppShell from './layout/AppShell';
+import DashboardHeader from './layout/DashboardHeader';
+import MainDashboard from './layout/MainDashboard';
+import type { CropType, SensorData, SensorFieldAvailability, SensorFieldKey, SensorFieldState, TelemetryStatus } from './types';
 import type { AppLocale } from './i18n/locale';
 import { useLocale } from './i18n/LocaleProvider';
+import { formatLocaleTime } from './i18n/locale';
 import {
   getCropLabel,
   getDashboardSensorCopy,
   getDevelopmentStageLabel,
   NUMERIC_IDEAL_RANGES,
 } from './utils/displayCopy';
-import KpiStrip from './components/KpiStrip';
 import type { KpiTileData } from './components/KpiStrip';
-import { deriveSensorStatus, buildStatusSummary } from './utils/sensorStatus';
+import {
+  buildDataStateSummary,
+  buildStatusSummary,
+  deriveSensorFieldState,
+  deriveSensorStatus,
+  getSensorFieldStateLabel,
+} from './utils/sensorStatus';
 
 const AiAdvisor = lazy(() => import('./components/AiAdvisor'));
 const Charts = lazy(() => import('./components/Charts'));
@@ -33,53 +46,6 @@ const SmartGrowSurfacePanel = lazy(() => import('./components/SmartGrowSurfacePa
 const WeatherOutlookPanel = lazy(() => import('./components/WeatherOutlookPanel'));
 const ProducePricesPanel = lazy(() => import('./components/ProducePricesPanel'));
 const RTROutlookPanel = lazy(() => import('./components/RTROutlookPanel'));
-
-interface LoadingPanelProps {
-  title: string;
-  loadingMessage: string;
-  minHeightClassName?: string;
-  className?: string;
-}
-
-const LoadingPanel = ({
-  title,
-  loadingMessage,
-  minHeightClassName = 'min-h-[240px]',
-  className = '',
-}: LoadingPanelProps) => (
-  <div className={`rounded-xl border border-slate-100 bg-white p-6 shadow-sm animate-pulse ${minHeightClassName} ${className}`.trim()}>
-    <div className="h-5 w-40 rounded bg-slate-200" />
-    <p className="mt-4 text-sm font-medium text-slate-500">{title}</p>
-    <div className="mt-4 space-y-3">
-      <div className="h-3 rounded bg-slate-100" />
-      <div className="h-3 w-11/12 rounded bg-slate-100" />
-      <div className="h-3 w-4/5 rounded bg-slate-100" />
-    </div>
-    <div className="mt-6 grid grid-cols-2 gap-3">
-      <div className="h-24 rounded-lg bg-slate-100" />
-      <div className="h-24 rounded-lg bg-slate-100" />
-    </div>
-    <p className="mt-4 text-xs text-slate-400">{loadingMessage}</p>
-  </div>
-);
-
-const AiAdvisorFallback = () => (
-  <div className="h-full rounded-xl bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white shadow-sm animate-pulse">
-    <div className="h-5 w-28 rounded bg-white/20" />
-    <div className="mt-4 rounded-lg bg-white/10 p-4">
-      <div className="space-y-3">
-        <div className="h-3 rounded bg-white/20" />
-        <div className="h-3 w-11/12 rounded bg-white/20" />
-        <div className="h-3 w-3/4 rounded bg-white/20" />
-      </div>
-    </div>
-  </div>
-);
-
-interface ChatAssistantFallbackProps {
-  onClose: () => void;
-  locale: AppLocale;
-}
 
 const CHAT_ASSISTANT_FALLBACK_COPY = {
   en: {
@@ -100,9 +66,11 @@ const APP_COPY = {
     systemOnline: 'System Online',
     askAiAssistant: 'Ask AI Assistant',
     sensorLive: 'Live',
+    sensorDelayed: 'Delayed',
     sensorLoading: 'Loading',
     sensorStale: 'Stale',
     sensorOffline: 'Offline',
+    sensorMissing: 'Missing',
     sensorReceiving: 'Receiving data',
     sensorUnavailable: 'No live data',
     sensorUpdated: 'Updated',
@@ -122,21 +90,23 @@ const APP_COPY = {
     liveProducePrices: 'Live Produce Prices',
     daeguLiveWeather: 'Daegu Live Weather',
     rtrStrategy: 'RTR Strategy',
-    smartGrowSurfaceTitle: 'SmartGrow Advisory Surfaces',
+    smartGrowSurfaceTitle: 'SmartGrow Advisory Surface',
     advancedModelAnalyticsLoading: 'Advanced Model Analytics module loading...',
     yieldForecastLoading: 'Yield Forecast module loading...',
     consultingReportLoading: 'Consulting Report module loading...',
-    smartGrowSurfaceLoading: 'SmartGrow advisory surface module loading...',
+    smartGrowSurfaceLoading: 'Loading SmartGrow advisory surface...',
     realTimeEnvironmentalAnalysisLoading: 'Real-time Environmental Analysis module loading...',
     liveProducePricesLoading: 'Live Produce Prices module loading...',
     daeguLiveWeatherLoading: 'Daegu Live Weather module loading...',
     rtrStrategyLoading: 'RTR Strategy module loading...',
   },
   ko: {
-    sensorLive: '수신중',
+    sensorLive: '실시간',
+    sensorDelayed: '지연',
     sensorLoading: '로딩중',
-    sensorStale: '지연',
+    sensorStale: '오래됨',
     sensorOffline: '오프라인',
+    sensorMissing: '미수신',
     sensorReceiving: '데이터 수신 중',
     sensorUnavailable: '실시간 데이터 없음',
     sensorUpdated: '최근 수집',
@@ -159,39 +129,17 @@ const APP_COPY = {
     liveProducePrices: '실시간 농산물 가격',
     daeguLiveWeather: '대구 실시간 날씨',
     rtrStrategy: 'RTR 전략',
-    smartGrowSurfaceTitle: 'SmartGrow Advisory Surfaces',
+    smartGrowSurfaceTitle: '스마트그로우 권장 구성',
     advancedModelAnalyticsLoading: '고급 모델 분석 모듈을 불러오는 중...',
     yieldForecastLoading: '수확 전망 모듈을 불러오는 중...',
     consultingReportLoading: '컨설팅 리포트 모듈을 불러오는 중...',
-    smartGrowSurfaceLoading: 'SmartGrow advisory surface 모듈을 불러오는 중...',
+    smartGrowSurfaceLoading: '스마트그로우 권장 구성 모듈을 불러오는 중...',
     realTimeEnvironmentalAnalysisLoading: '실시간 환경 분석 모듈을 불러오는 중...',
     liveProducePricesLoading: '실시간 농산물 가격 모듈을 불러오는 중...',
     daeguLiveWeatherLoading: '대구 실시간 날씨 모듈을 불러오는 중...',
     rtrStrategyLoading: 'RTR 전략 모듈을 불러오는 중...',
   },
 } as const;
-
-const ChatAssistantFallback = ({ onClose, locale }: ChatAssistantFallbackProps) => {
-  const copy = CHAT_ASSISTANT_FALLBACK_COPY[locale];
-
-  return (
-  <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-96 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-    <div className="flex items-center justify-between bg-slate-900 p-4 text-white">
-      <span className="font-medium">{copy.title}</span>
-      <button onClick={onClose} className="text-slate-300 hover:text-white">{copy.close}</button>
-    </div>
-    <div className="flex flex-1 items-center justify-center bg-slate-50 text-sm text-slate-500">
-      {copy.loading}
-    </div>
-  </div>
-  );
-};
-
-interface RagAssistantFallbackProps {
-  onClose: () => void;
-  locale: AppLocale;
-  stacked?: boolean;
-}
 
 const RAG_ASSISTANT_FALLBACK_COPY = {
   en: {
@@ -205,25 +153,6 @@ const RAG_ASSISTANT_FALLBACK_COPY = {
     loading: '지식 검색 drawer를 불러오는 중...',
   },
 } as const;
-
-const RagAssistantFallback = ({ onClose, locale, stacked = false }: RagAssistantFallbackProps) => {
-  const copy = RAG_ASSISTANT_FALLBACK_COPY[locale];
-  const sideClassName = stacked ? 'md:right-[26rem]' : 'md:right-6';
-
-  return (
-    <div
-      className={`fixed bottom-6 left-4 right-4 z-50 flex h-[560px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl md:left-auto md:w-[420px] ${sideClassName}`.trim()}
-    >
-      <div className="flex items-center justify-between bg-slate-900 p-4 text-white">
-        <span className="font-medium">{copy.title}</span>
-        <button onClick={onClose} className="text-slate-300 hover:text-white">{copy.close}</button>
-      </div>
-      <div className="flex flex-1 items-center justify-center bg-slate-50 text-sm text-slate-500">
-        {copy.loading}
-      </div>
-    </div>
-  );
-};
 
 const AUTO_ANALYSIS_INTERVAL_MS = 30 * 60 * 1000;
 type SensorMetricKey = 'temperature' | 'humidity' | 'co2' | 'light' | 'vpd' | 'stomatalConductance';
@@ -249,8 +178,11 @@ function findPointAtOrBefore(history: SensorData[], targetTimestamp: number): Se
 }
 
 function buildSensorTrendSummary(history: SensorData[], key: SensorMetricKey): SensorTrendSummary {
-  const lastPoint = history[history.length - 1];
-  const sparklineValues = history
+  const availableHistory = history.filter(
+    (point) => point.fieldAvailability?.[key] !== false,
+  );
+  const lastPoint = availableHistory[availableHistory.length - 1];
+  const sparklineValues = availableHistory
     .slice(-18)
     .map((point) => point[key])
     .filter((value) => Number.isFinite(value));
@@ -264,8 +196,8 @@ function buildSensorTrendSummary(history: SensorData[], key: SensorMetricKey): S
     };
   }
 
-  const oneHourPoint = findPointAtOrBefore(history, lastPoint.timestamp - 60 * 60 * 1000);
-  const sixHourPoint = findPointAtOrBefore(history, lastPoint.timestamp - 6 * 60 * 60 * 1000);
+  const oneHourPoint = findPointAtOrBefore(availableHistory, lastPoint.timestamp - 60 * 60 * 1000);
+  const sixHourPoint = findPointAtOrBefore(availableHistory, lastPoint.timestamp - 6 * 60 * 60 * 1000);
   const delta1h = oneHourPoint ? lastPoint[key] - oneHourPoint[key] : null;
   const slope6h = sixHourPoint
     ? (lastPoint[key] - sixHourPoint[key]) / Math.max((lastPoint.timestamp - sixHourPoint.timestamp) / 3_600_000, 1e-9)
@@ -300,6 +232,23 @@ function formatRelativeAge(ageMs: number, locale: AppLocale): string {
   return locale === 'ko' ? `${minutes}분 전` : `${minutes}m ago`;
 }
 
+function formatLastCollectedAt(
+  timestamp: number | null,
+  clock: number,
+  locale: AppLocale,
+): string | null {
+  if (!timestamp) {
+    return null;
+  }
+
+  const absolute = formatLocaleTime(locale, timestamp, {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const relative = formatRelativeAge(Math.max(0, clock - timestamp), locale);
+  return `${absolute} · ${relative}`;
+}
+
 function formatSignedMetric(value: number | null, fractionDigits = 1): string | null {
   if (value === null || !Number.isFinite(value)) {
     return null;
@@ -307,6 +256,14 @@ function formatSignedMetric(value: number | null, fractionDigits = 1): string | 
 
   const sign = value > 0 ? '+' : '';
   return `${sign}${value.toFixed(fractionDigits)}`;
+}
+
+function resolveSensorDisplayState(
+  fieldKey: SensorFieldKey,
+  telemetryStatus: TelemetryStatus,
+  availability: SensorFieldAvailability,
+): SensorFieldState {
+  return deriveSensorFieldState(availability[fieldKey], telemetryStatus);
 }
 
 function App() {
@@ -325,6 +282,8 @@ function App() {
     selectedCrop,
     setSelectedCrop,
     telemetry,
+    sensorFieldAvailability,
+    sensorFieldTimestamps,
     setTempSettings,
     growthDay,
     startDateLabel,
@@ -333,6 +292,7 @@ function App() {
 
   const {
     aiAnalysis,
+    aiDisplay,
     aiModelRuntime,
     isAnalyzing,
     analyzeData
@@ -374,9 +334,6 @@ function App() {
   const deferredForecast = useDeferredValue(forecast);
   const deferredModelMetrics = useDeferredValue(modelMetrics);
   const hasTelemetryData = history.length > 0 || telemetry.lastMessageAt !== null;
-  const telemetryAgeLabel = telemetry.lastMessageAt
-    ? formatRelativeAge(Math.max(0, telemetryClock - telemetry.lastMessageAt), locale)
-    : null;
   const unresolvedSensorValue = telemetry.status === 'offline'
     ? copy.sensorUnavailable
     : copy.sensorReceiving;
@@ -399,62 +356,109 @@ function App() {
   };
 
   const cropRanges = NUMERIC_IDEAL_RANGES[selectedCrop];
-  const tempStatus = deriveSensorStatus(hasTelemetryData ? currentData.temperature : null, cropRanges.temperature);
-  const humidityStatus = deriveSensorStatus(hasTelemetryData ? currentData.humidity : null, cropRanges.humidity);
-  const co2Status = deriveSensorStatus(hasTelemetryData ? currentData.co2 : null, cropRanges.co2);
-  const lightStatus = deriveSensorStatus(hasTelemetryData ? currentData.light : null, cropRanges.light);
-  const vpdStatus = deriveSensorStatus(hasTelemetryData ? currentData.vpd : null, cropRanges.vpd);
-  const stomatalStatus = deriveSensorStatus(hasTelemetryData ? currentData.stomatalConductance : null, cropRanges.stomatalConductance);
-  const kpiStatusSummary = buildStatusSummary([tempStatus, humidityStatus, co2Status, lightStatus], locale);
+  const temperatureState = resolveSensorDisplayState('temperature', telemetry.status, sensorFieldAvailability);
+  const humidityState = resolveSensorDisplayState('humidity', telemetry.status, sensorFieldAvailability);
+  const co2State = resolveSensorDisplayState('co2', telemetry.status, sensorFieldAvailability);
+  const lightState = resolveSensorDisplayState('light', telemetry.status, sensorFieldAvailability);
+  const vpdState = resolveSensorDisplayState('vpd', telemetry.status, sensorFieldAvailability);
+  const stomatalState = resolveSensorDisplayState('stomatalConductance', telemetry.status, sensorFieldAvailability);
+  const tempStatus = deriveSensorStatus(
+    sensorFieldAvailability.temperature && hasTelemetryData ? currentData.temperature : null,
+    cropRanges.temperature,
+  );
+  const humidityStatus = deriveSensorStatus(
+    sensorFieldAvailability.humidity && hasTelemetryData ? currentData.humidity : null,
+    cropRanges.humidity,
+  );
+  const co2Status = deriveSensorStatus(
+    sensorFieldAvailability.co2 && hasTelemetryData ? currentData.co2 : null,
+    cropRanges.co2,
+  );
+  const lightStatus = deriveSensorStatus(
+    sensorFieldAvailability.light && hasTelemetryData ? currentData.light : null,
+    cropRanges.light,
+  );
+  const vpdStatus = deriveSensorStatus(
+    sensorFieldAvailability.vpd && hasTelemetryData ? currentData.vpd : null,
+    cropRanges.vpd,
+  );
+  const stomatalStatus = deriveSensorStatus(
+    sensorFieldAvailability.stomatalConductance && hasTelemetryData ? currentData.stomatalConductance : null,
+    cropRanges.stomatalConductance,
+  );
+  const dataStateSummary = buildDataStateSummary(
+    [temperatureState, humidityState, co2State, lightState],
+    locale,
+  );
+  const healthSummary = buildStatusSummary([tempStatus, humidityStatus, co2Status, lightStatus], locale);
+  const kpiStatusSummary = [temperatureState, humidityState, co2State, lightState].some(
+    (state) => state === 'missing' || state === 'offline',
+  )
+    ? dataStateSummary
+    : `${dataStateSummary} · ${healthSummary}`;
+  const buildFieldAgeLabel = (fieldKey: SensorFieldKey): string | null =>
+    formatLastCollectedAt(sensorFieldTimestamps[fieldKey], telemetryClock, locale);
+  const buildKpiValue = (fieldKey: SensorFieldKey, value: number) => {
+    const state = resolveSensorDisplayState(fieldKey, telemetry.status, sensorFieldAvailability);
+    return state === 'missing' ? unresolvedSensorValue : value;
+  };
 
   const primaryKpiTiles: KpiTileData[] = [
     {
       key: 'temperature',
       label: sensorCopy.temperature.title,
-      value: hasTelemetryData ? currentData.temperature : unresolvedSensorValue,
+      value: hasTelemetryData ? buildKpiValue('temperature', currentData.temperature) : unresolvedSensorValue,
       unit: sensorCopy.temperature.unit,
-      status: tempStatus,
+      availabilityState: temperatureState,
+      availabilityLabel: getSensorFieldStateLabel(temperatureState, locale),
+      healthStatus: tempStatus,
       trend: temperatureTrend.trend,
-      trendDetail: buildTrendDetail(temperatureTrend, sensorCopy.temperature.unit),
+      trendDetail: temperatureState === 'missing' ? '' : buildTrendDetail(temperatureTrend, sensorCopy.temperature.unit),
       icon: Thermometer,
       color: 'bg-orange-500',
-      lastReceived: telemetryAgeLabel,
+      lastReceived: buildFieldAgeLabel('temperature'),
     },
     {
       key: 'humidity',
       label: sensorCopy.humidity.title,
-      value: hasTelemetryData ? currentData.humidity : unresolvedSensorValue,
+      value: hasTelemetryData ? buildKpiValue('humidity', currentData.humidity) : unresolvedSensorValue,
       unit: sensorCopy.humidity.unit,
-      status: humidityStatus,
+      availabilityState: humidityState,
+      availabilityLabel: getSensorFieldStateLabel(humidityState, locale),
+      healthStatus: humidityStatus,
       trend: humidityTrend.trend,
-      trendDetail: buildTrendDetail(humidityTrend, sensorCopy.humidity.unit),
+      trendDetail: humidityState === 'missing' ? '' : buildTrendDetail(humidityTrend, sensorCopy.humidity.unit),
       icon: Droplets,
       color: 'bg-blue-500',
-      lastReceived: telemetryAgeLabel,
+      lastReceived: buildFieldAgeLabel('humidity'),
     },
     {
       key: 'co2',
       label: sensorCopy.carbonDioxide.title,
-      value: hasTelemetryData ? currentData.co2 : unresolvedSensorValue,
+      value: hasTelemetryData ? buildKpiValue('co2', currentData.co2) : unresolvedSensorValue,
       unit: sensorCopy.carbonDioxide.unit,
-      status: co2Status,
+      availabilityState: co2State,
+      availabilityLabel: getSensorFieldStateLabel(co2State, locale),
+      healthStatus: co2Status,
       trend: co2Trend.trend,
-      trendDetail: buildTrendDetail(co2Trend, sensorCopy.carbonDioxide.unit),
+      trendDetail: co2State === 'missing' ? '' : buildTrendDetail(co2Trend, sensorCopy.carbonDioxide.unit),
       icon: CloudFog,
       color: 'bg-slate-600',
-      lastReceived: telemetryAgeLabel,
+      lastReceived: buildFieldAgeLabel('co2'),
     },
     {
       key: 'light',
       label: sensorCopy.light.title,
-      value: hasTelemetryData ? currentData.light : unresolvedSensorValue,
+      value: hasTelemetryData ? buildKpiValue('light', currentData.light) : unresolvedSensorValue,
       unit: sensorCopy.light.unit,
-      status: lightStatus,
+      availabilityState: lightState,
+      availabilityLabel: getSensorFieldStateLabel(lightState, locale),
+      healthStatus: lightStatus,
       trend: lightTrend.trend,
-      trendDetail: buildTrendDetail(lightTrend, sensorCopy.light.unit),
+      trendDetail: lightState === 'missing' ? '' : buildTrendDetail(lightTrend, sensorCopy.light.unit),
       icon: Sun,
       color: 'bg-yellow-500',
-      lastReceived: telemetryAgeLabel,
+      lastReceived: buildFieldAgeLabel('light'),
     },
   ];
 
@@ -462,30 +466,52 @@ function App() {
     {
       key: 'vpd',
       label: sensorCopy.vpd.title,
-      value: hasTelemetryData ? currentData.vpd : unresolvedSensorValue,
+      value: hasTelemetryData ? buildKpiValue('vpd', currentData.vpd) : unresolvedSensorValue,
       unit: sensorCopy.vpd.unit,
-      status: vpdStatus,
+      availabilityState: vpdState,
+      availabilityLabel: getSensorFieldStateLabel(vpdState, locale),
+      healthStatus: vpdStatus,
       trend: vpdTrend.trend,
-      trendDetail: buildTrendDetail(vpdTrend, sensorCopy.vpd.unit, 2),
+      trendDetail: vpdState === 'missing' ? '' : buildTrendDetail(vpdTrend, sensorCopy.vpd.unit, 2),
       icon: Activity,
       color: 'bg-purple-500',
-      lastReceived: telemetryAgeLabel,
+      lastReceived: buildFieldAgeLabel('vpd'),
       fractionDigits: 2,
     },
     {
       key: 'stomatalConductance',
       label: sensorCopy.stomatalConductance.title,
-      value: hasTelemetryData ? currentData.stomatalConductance : unresolvedSensorValue,
+      value: hasTelemetryData ? buildKpiValue('stomatalConductance', currentData.stomatalConductance) : unresolvedSensorValue,
       unit: sensorCopy.stomatalConductance.unit,
-      status: stomatalStatus,
+      availabilityState: stomatalState,
+      availabilityLabel: getSensorFieldStateLabel(stomatalState, locale),
+      healthStatus: stomatalStatus,
       trend: stomatalTrend.trend,
-      trendDetail: buildTrendDetail(stomatalTrend, sensorCopy.stomatalConductance.unit, 3),
+      trendDetail: stomatalState === 'missing' ? '' : buildTrendDetail(stomatalTrend, sensorCopy.stomatalConductance.unit, 3),
       icon: Leaf,
       color: 'bg-green-500',
-      lastReceived: telemetryAgeLabel,
+      lastReceived: buildFieldAgeLabel('stomatalConductance'),
       fractionDigits: 3,
     },
   ];
+  const telemetryHeaderTone = telemetry.status === 'live'
+    ? 'bg-emerald-500'
+    : telemetry.status === 'delayed'
+      ? 'bg-amber-500'
+      : telemetry.status === 'stale'
+        ? 'bg-orange-500'
+        : telemetry.status === 'offline'
+          ? 'bg-rose-500'
+          : 'bg-slate-400 animate-pulse';
+  const telemetryHeaderLabel = telemetry.status === 'live'
+    ? copy.sensorLive
+    : telemetry.status === 'delayed'
+      ? copy.sensorDelayed
+      : telemetry.status === 'stale'
+        ? copy.sensorStale
+        : telemetry.status === 'offline'
+          ? copy.sensorOffline
+          : copy.sensorLoading;
 
   const handleChatToggle = () => {
     if (!shouldRenderChat) {
@@ -607,85 +633,36 @@ function App() {
   }, [currentData.timestamp, handleAnalyze, hasTelemetryData, history, producePrices, selectedCrop, telemetry.status]);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 font-sans">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-green-600 p-2 rounded-lg shadow-lg shadow-green-200">
-              <Sprout className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-800 tracking-tight">SmartGrow <span className="text-green-600">AI</span></h1>
-              <p className="text-xs text-slate-500 hidden sm:block">{copy.brandTagline}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 sm:flex">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{copy.language}</span>
-              <div className="flex rounded-md bg-slate-100 p-1">
-                {(['en', 'ko'] as AppLocale[]).map((targetLocale) => (
-                  <button
-                    key={targetLocale}
-                    onClick={() => setLocale(targetLocale)}
-                    className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                      locale === targetLocale
-                        ? 'bg-white text-green-700 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    {targetLocale === 'en' ? 'EN' : '한국어'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Crop Selector */}
-            <div className="flex bg-slate-100 p-1 rounded-lg">
-              {(['Cucumber', 'Tomato'] as CropType[]).map((crop) => (
-                <button
-                  key={crop}
-                  onClick={() => setSelectedCrop(crop)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${selectedCrop === crop
-                    ? 'bg-white text-green-700 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                >
-                  {getCropLabel(crop, locale)}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              {copy.systemOnline}
-            </div>
-            <button
-              onClick={handleChatToggle}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors font-medium ${isChatOpen ? 'bg-green-100 text-green-700' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span>{copy.askAiAssistant}</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1720px] px-4 py-8 sm:px-6 lg:px-8">
-        {/* KPI Strip — 4 primary + expandable secondary */}
-        <div className="mb-8">
-          <KpiStrip
+    <AppShell
+      header={(
+        <DashboardHeader
+          brandTagline={copy.brandTagline}
+          languageLabel={copy.language}
+          systemOnlineLabel={copy.systemOnline}
+          assistantLabel={copy.askAiAssistant}
+          locale={locale}
+          selectedCrop={selectedCrop}
+          telemetryToneClass={telemetryHeaderTone}
+          telemetryLabel={telemetryHeaderLabel}
+          isChatOpen={isChatOpen}
+          onLocaleChange={setLocale}
+          onCropChange={setSelectedCrop}
+          onAssistantToggle={handleChatToggle}
+          getCropLabel={getCropLabel}
+        />
+      )}
+    >
+      <MainDashboard
+        overview={(
+          <OverviewStrip
             statusSummary={kpiStatusSummary}
             telemetryStatus={telemetry.status}
             primaryTiles={primaryKpiTiles}
             secondaryTiles={secondaryKpiTiles}
           />
-        </div>
-
-        {/* Central Area: left 2/3 content + right 1/3 sticky sidebar */}
-        <div className="mb-8 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
-          {/* Left 2/3: CropDetails, ModelAnalytics, Charts */}
-          <div className="space-y-8">
+        )}
+        leftColumn={(
+          <>
             <CropDetails
               crop={selectedCrop}
               currentData={currentData}
@@ -693,11 +670,11 @@ function App() {
             />
 
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Activity className="w-5 h-5 text-slate-500" />
+              <div className="mb-4 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-slate-500" />
                 <h2 className="text-lg font-semibold text-slate-800">{copy.advancedModelAnalytics}: {getCropLabel(selectedCrop, locale)}</h2>
               </div>
-              <Suspense fallback={<LoadingPanel title={copy.advancedModelAnalytics} loadingMessage={copy.advancedModelAnalyticsLoading} minHeightClassName="min-h-[320px]" />}>
+              <Suspense fallback={<LoadingSkeleton title={copy.advancedModelAnalytics} loadingMessage={copy.advancedModelAnalyticsLoading} minHeightClassName="min-h-[320px]" />}>
                 <ModelAnalytics
                   crop={selectedCrop}
                   metrics={deferredModelMetrics}
@@ -707,17 +684,18 @@ function App() {
               </Suspense>
             </div>
 
-            <Suspense fallback={<LoadingPanel title={copy.realTimeEnvironmentalAnalysis} loadingMessage={copy.realTimeEnvironmentalAnalysisLoading} minHeightClassName="min-h-[540px]" />}>
+            <Suspense fallback={<LoadingSkeleton title={copy.realTimeEnvironmentalAnalysis} loadingMessage={copy.realTimeEnvironmentalAnalysisLoading} minHeightClassName="min-h-[540px]" />}>
               <Charts data={deferredHistory} />
             </Suspense>
-          </div>
-
-          {/* Right 1/3: AI Advisor + compact Weather + compact RTR */}
-          <div className="xl:sticky xl:top-20 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto space-y-4">
-            <div className="min-h-[320px] max-h-[480px]">
-              <Suspense fallback={<AiAdvisorFallback />}>
+          </>
+        )}
+        rightSidebar={(
+          <>
+            <div className="max-h-[480px] min-h-[320px]">
+              <Suspense fallback={<AdvisorPanelFallback />}>
                 <AiAdvisor
                   analysis={aiAnalysis}
+                  display={aiDisplay}
                   modelRuntime={aiModelRuntime}
                   isLoading={isAnalyzing}
                   onRefresh={handleAnalyze}
@@ -730,7 +708,7 @@ function App() {
               </Suspense>
             </div>
 
-            <Suspense fallback={<LoadingPanel title={copy.daeguLiveWeather} loadingMessage={copy.daeguLiveWeatherLoading} minHeightClassName="min-h-[200px]" />}>
+            <Suspense fallback={<LoadingSkeleton title={copy.daeguLiveWeather} loadingMessage={copy.daeguLiveWeatherLoading} minHeightClassName="min-h-[200px]" />}>
               <WeatherOutlookPanel
                 weather={weather}
                 loading={isWeatherLoading}
@@ -739,7 +717,7 @@ function App() {
               />
             </Suspense>
 
-            <Suspense fallback={<LoadingPanel title={copy.rtrStrategy} loadingMessage={copy.rtrStrategyLoading} minHeightClassName="min-h-[200px]" />}>
+            <Suspense fallback={<LoadingSkeleton title={copy.rtrStrategy} loadingMessage={copy.rtrStrategyLoading} minHeightClassName="min-h-[200px]" />}>
               <RTROutlookPanel
                 crop={selectedCrop}
                 currentData={currentData}
@@ -754,103 +732,115 @@ function App() {
                 compact
               />
             </Suspense>
-          </div>
-        </div>
+          </>
+        )}
+        lowerFold={(
+          <>
+            <div className="mb-8">
+              <Suspense fallback={<LoadingSkeleton title={copy.smartGrowSurfaceTitle} loadingMessage={copy.smartGrowSurfaceLoading} minHeightClassName="min-h-[320px]" />}>
+                <SmartGrowSurfacePanel
+                  crop={selectedCrop}
+                  summary={smartGrowSummary}
+                  loading={isSmartGrowLoading}
+                  error={smartGrowError}
+                />
+              </Suspense>
+            </div>
 
-        {/* Lower fold: SmartGrow, AdvisorTabs, Prices, Forecast, Report, Controls */}
-        <div className="mb-8">
-          <Suspense fallback={<LoadingPanel title={copy.smartGrowSurfaceTitle} loadingMessage={copy.smartGrowSurfaceLoading} minHeightClassName="min-h-[320px]" />}>
-            <SmartGrowSurfacePanel
-              crop={selectedCrop}
-              summary={smartGrowSummary}
-              loading={isSmartGrowLoading}
-              error={smartGrowError}
-            />
-          </Suspense>
-        </div>
+            <div ref={advisorTabsAnchorRef} className="mb-8">
+              <AdvisorTabs
+                key={selectedCrop}
+                crop={selectedCrop}
+                summary={smartGrowSummary}
+                currentData={currentData}
+                metrics={deferredModelMetrics}
+                history={deferredHistory}
+                forecast={deferredForecast}
+                producePrices={producePrices}
+                weather={weather}
+                rtrProfile={rtrProfilesPayload?.profiles[selectedCrop] ?? null}
+                isOpen={isAdvisorTabsOpen}
+                onClose={() => setIsAdvisorTabsOpen(false)}
+              />
+            </div>
 
-        <div ref={advisorTabsAnchorRef} className="mb-8">
-          <AdvisorTabs
-            key={selectedCrop}
-            crop={selectedCrop}
-            summary={smartGrowSummary}
-            currentData={currentData}
-            metrics={deferredModelMetrics}
-            history={deferredHistory}
-            forecast={deferredForecast}
-            producePrices={producePrices}
-            weather={weather}
-            rtrProfile={rtrProfilesPayload?.profiles[selectedCrop] ?? null}
-            isOpen={isAdvisorTabsOpen}
-            onClose={() => setIsAdvisorTabsOpen(false)}
-          />
-        </div>
+            <div className="mb-8">
+              <Suspense fallback={<LoadingSkeleton title={copy.liveProducePrices} loadingMessage={copy.liveProducePricesLoading} minHeightClassName="min-h-[420px]" />}>
+                <ProducePricesPanel
+                  prices={producePrices}
+                  loading={isProducePricesLoading}
+                  error={producePricesError}
+                />
+              </Suspense>
+            </div>
 
-        <div className="mb-8">
-          <Suspense fallback={<LoadingPanel title={copy.liveProducePrices} loadingMessage={copy.liveProducePricesLoading} minHeightClassName="min-h-[420px]" />}>
-            <ProducePricesPanel
-              prices={producePrices}
-              loading={isProducePricesLoading}
-              error={producePricesError}
-            />
-          </Suspense>
-        </div>
+            <div className="mb-8">
+              <Suspense fallback={<LoadingSkeleton title={copy.yieldForecast} loadingMessage={copy.yieldForecastLoading} minHeightClassName="min-h-[280px]" />}>
+                <ForecastPanel forecast={deferredForecast} crop={selectedCrop} />
+              </Suspense>
+            </div>
 
-        <div className="mb-8">
-          <Suspense fallback={<LoadingPanel title={copy.yieldForecast} loadingMessage={copy.yieldForecastLoading} minHeightClassName="min-h-[280px]" />}>
-            <ForecastPanel forecast={deferredForecast} crop={selectedCrop} />
-          </Suspense>
-        </div>
-
-        <div className="mb-8">
-          <Suspense fallback={<LoadingPanel title={copy.consultingReport} loadingMessage={copy.consultingReportLoading} minHeightClassName="min-h-[320px]" />}>
-            <ConsultingReport
-              analysis={aiAnalysis}
-              metrics={deferredModelMetrics}
-              currentData={currentData}
-              crop={selectedCrop}
-            />
-          </Suspense>
-        </div>
-
-        {/* Bottom: Controls + Status */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ControlPanel
-              status={controls}
-              onToggle={toggleControl}
-              onSettingsChange={setTempSettings}
-            />
-          </div>
-          <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                  <Leaf className="w-4 h-4 text-green-600" />
-                  {copy.cropStatus}: {getCropLabel(selectedCrop, locale)}
-                </h4>
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-                  {getDevelopmentStageLabel(modelMetrics.growth.developmentStage, locale)}
-                </span>
+            <div className="mb-8">
+              <Suspense fallback={<LoadingSkeleton title={copy.consultingReport} loadingMessage={copy.consultingReportLoading} minHeightClassName="min-h-[320px]" />}>
+                <ConsultingReport
+                  analysis={aiAnalysis}
+                  metrics={deferredModelMetrics}
+                  currentData={currentData}
+                  crop={selectedCrop}
+                />
+              </Suspense>
+            </div>
+          </>
+        )}
+        bottomRow={(
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <ControlPanel
+                status={controls}
+                onToggle={toggleControl}
+                onSettingsChange={setTempSettings}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                    <Leaf className="h-4 w-4 text-green-600" />
+                    {copy.cropStatus}: {getCropLabel(selectedCrop, locale)}
+                  </h4>
+                  <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                    {getDevelopmentStageLabel(modelMetrics.growth.developmentStage, locale)}
+                  </span>
+                </div>
+                <div className="mb-1 h-2.5 w-full rounded-full bg-slate-100">
+                  <div className="h-2.5 rounded-full bg-green-600" style={{ width: '75%' }}></div>
+                </div>
+                <p className="flex justify-between text-xs text-slate-500">
+                  <span>{copy.growthCycle}</span>
+                  <span>
+                    {growthDay ? (locale === 'ko' ? `${growthDay}일차` : `Day ${growthDay}`) : '-'}
+                    {startDateLabel ? ` (${copy.since} ${startDateLabel})` : ''}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-slate-500">{copy.simTime}: {currentDateLabel}</p>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 mb-1">
-                <div className="bg-green-600 h-2.5 rounded-full" style={{ width: '75%' }}></div>
-              </div>
-              <p className="text-xs text-slate-500 flex justify-between">
-                <span>{copy.growthCycle}</span>
-                <span>
-                  {growthDay ? (locale === 'ko' ? `${growthDay}일차` : `Day ${growthDay}`) : '-'}
-                  {startDateLabel ? ` (${copy.since} ${startDateLabel})` : ''}
-                </span>
-              </p>
-              <p className="text-xs text-slate-500 mt-1">{copy.simTime}: {currentDateLabel}</p>
             </div>
           </div>
-        </div>
-      </main>
+        )}
+      />
 
       {shouldRenderChat ? (
-        <Suspense fallback={<ChatAssistantFallback onClose={() => setIsChatOpen(false)} locale={locale} />}>
+        <Suspense
+          fallback={(
+            <OverlayDrawerFallback
+              title={CHAT_ASSISTANT_FALLBACK_COPY[locale].title}
+              closeLabel={CHAT_ASSISTANT_FALLBACK_COPY[locale].close}
+              loadingLabel={CHAT_ASSISTANT_FALLBACK_COPY[locale].loading}
+              onClose={() => setIsChatOpen(false)}
+              variant="chat"
+            />
+          )}
+        >
           <ChatAssistant
             isOpen={isChatOpen}
             onClose={() => setIsChatOpen(false)}
@@ -872,10 +862,13 @@ function App() {
       {shouldRenderRagAssistant ? (
         <Suspense
           fallback={
-            <RagAssistantFallback
+            <OverlayDrawerFallback
+              title={RAG_ASSISTANT_FALLBACK_COPY[locale].title}
+              closeLabel={RAG_ASSISTANT_FALLBACK_COPY[locale].close}
+              loadingLabel={RAG_ASSISTANT_FALLBACK_COPY[locale].loading}
               onClose={() => setIsRagAssistantOpen(false)}
-              locale={locale}
               stacked={isChatOpen}
+              variant="rag"
             />
           }
         >
@@ -888,7 +881,7 @@ function App() {
           />
         </Suspense>
       ) : null}
-    </div>
+    </AppShell>
   );
 }
 

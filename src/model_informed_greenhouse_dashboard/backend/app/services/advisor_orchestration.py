@@ -23,7 +23,11 @@ from .model_runtime.constraint_engine import CONTROL_SPECS
 from .model_runtime.model_state_store import ModelStateStore
 from .model_runtime.scenario_runner import run_bounded_scenario
 from .model_runtime.sensitivity_engine import compute_local_sensitivities
-from .openai_service import generate_chat_reply, generate_consulting
+from .openai_service import (
+    build_advisory_display_payload,
+    generate_chat_reply,
+    generate_consulting,
+)
 
 
 _LANDED_TABS = (
@@ -4080,11 +4084,21 @@ def build_advisor_summary_response(
         dashboard=dashboard,
         tab_name="summary",
     )
+    context_completeness = _context_completeness(dashboard)
     text = generate_consulting(
         crop=crop,
         dashboard=_inject_advisor_retrieval_context(dashboard, retrieval_context),
         language=language,
     )
+    display = build_advisory_display_payload(
+        text,
+        language=language,
+        confidence=context_completeness,
+    )
+    structured_actions = [
+        {"title": action, "message": action}
+        for action in [*display.get("actions_now", []), *display.get("actions_today", [])]
+    ]
 
     return {
         "status": "success",
@@ -4094,12 +4108,13 @@ def build_advisor_summary_response(
         "machine_payload": {
             "summary": "SmartGrow advisor summary generated from the live dashboard and crop-scoped local knowledge context.",
             "domains": domains,
-            "context_completeness": _context_completeness(dashboard),
-            "actions": [],
+            "context_completeness": context_completeness,
+            "actions": structured_actions,
             "missing_data": missing_data,
             "retrieval_context": retrieval_context.get("summary", {}),
             "advisory_surfaces": advisory_surfaces,
             "model_runtime": model_runtime,
+            "display": display,
             "internal_provenance": _build_internal_provenance(
                 catalog_payload,
                 advisory_surfaces,
@@ -4135,6 +4150,11 @@ def build_advisor_chat_response(
         dashboard=_inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
         language=language,
     )
+    display = build_advisory_display_payload(
+        text,
+        language=language,
+        confidence=_context_completeness(dashboard_payload),
+    )
 
     return {
         "status": "success",
@@ -4147,6 +4167,7 @@ def build_advisor_chat_response(
             "missing_data": _collect_missing_data_flags(dashboard_payload),
             "retrieval_context": retrieval_context.get("summary", {}),
             "model_runtime": model_runtime,
+            "display": display,
             "internal_provenance": _build_internal_provenance(
                 catalog_payload,
                 advisory_surfaces,
