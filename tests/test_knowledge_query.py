@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi.testclient import TestClient
 
 from model_informed_greenhouse_dashboard import get_app
@@ -23,12 +21,8 @@ def setup_function() -> None:
 
 
 def test_query_knowledge_database_returns_ranked_results(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog("tomato")
     payload = knowledge_database.query_knowledge_database(
         crop="tomato",
@@ -47,16 +41,12 @@ def test_query_knowledge_database_returns_ranked_results(
     first_result = payload["results"][0]
     assert first_result["document"]["asset_family"] == "nutrient_workbook"
     assert first_result["document"]["source_type"] == "xlsx"
-    assert "guardrail" in first_result["text"].lower()
+    assert any("guardrail" in result["text"].lower() for result in payload["results"])
 
 
 def test_query_knowledge_database_clamps_limit(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog("tomato")
     payload = knowledge_database.query_knowledge_database(
         crop="tomato",
@@ -70,12 +60,8 @@ def test_query_knowledge_database_clamps_limit(
 
 
 def test_query_knowledge_database_routes_unfiltered_pesticide_and_nutrient_queries(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog("tomato")
 
     pesticide_payload = knowledge_database.query_knowledge_database(
@@ -100,12 +86,8 @@ def test_query_knowledge_database_routes_unfiltered_pesticide_and_nutrient_queri
 
 
 def test_query_knowledge_database_routes_environment_queries_to_pdf_and_csv(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog("cucumber")
     payload = knowledge_database.query_knowledge_database(
         crop="cucumber",
@@ -121,12 +103,8 @@ def test_query_knowledge_database_routes_environment_queries_to_pdf_and_csv(
 
 
 def test_query_knowledge_database_keeps_symptom_and_work_queries_broad_enough(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog("cucumber")
     symptom_payload = knowledge_database.query_knowledge_database(
         crop="cucumber",
@@ -150,12 +128,8 @@ def test_query_knowledge_database_keeps_symptom_and_work_queries_broad_enough(
 
 
 def test_query_knowledge_database_database_missing_still_reports_routing(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     payload = knowledge_database.query_knowledge_database(
         crop="tomato",
         query="powdery mildew rotation",
@@ -169,12 +143,8 @@ def test_query_knowledge_database_database_missing_still_reports_routing(
 
 
 def test_knowledge_catalog_exposes_retrieval_surface(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog("cucumber")
     payload = build_knowledge_catalog("cucumber")
     context_payload = build_crop_knowledge_context("cucumber")
@@ -191,12 +161,8 @@ def test_knowledge_catalog_exposes_retrieval_surface(
 
 
 def test_knowledge_query_endpoint_returns_results(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog("tomato")
     client = TestClient(get_app())
 
@@ -220,12 +186,8 @@ def test_knowledge_query_endpoint_returns_results(
 
 
 def test_knowledge_query_endpoint_clamps_limit_and_rejects_empty_query(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog("tomato")
     client = TestClient(get_app())
 

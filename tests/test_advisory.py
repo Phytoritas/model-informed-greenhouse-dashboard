@@ -684,7 +684,7 @@ def test_single_fertilizer_draft_blocks_projected_guardrail_breaches() -> None:
     )
 
 
-def test_knowledge_catalog_exposes_advisory_surfaces() -> None:
+def test_knowledge_catalog_exposes_advisory_surfaces(synthetic_knowledge_assets) -> None:
     payload = build_knowledge_catalog("cucumber")
 
     assert payload["summary"]["advisory_surface_names"] == [
@@ -745,7 +745,7 @@ def test_knowledge_catalog_exposes_advisory_surfaces() -> None:
     assert payload["advisory_surfaces"]["work"]["coverage"]["signals"]
 
 
-def test_crop_knowledge_context_includes_deterministic_advisory_summary() -> None:
+def test_crop_knowledge_context_includes_deterministic_advisory_summary(synthetic_knowledge_assets) -> None:
     payload = build_crop_knowledge_context("tomato")
 
     assert payload["deterministic_advisory"]["environment"]["status"] == "ready"

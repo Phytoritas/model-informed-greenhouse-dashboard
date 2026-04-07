@@ -243,6 +243,16 @@ def _path_for_spec(spec: dict[str, Any]) -> Path:
     return DATA_ROOT / spec["filename"]
 
 
+def _public_path(path: Path | str) -> str:
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        return candidate.as_posix()
+    try:
+        return candidate.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return candidate.name
+
+
 def _open_csv_reader(path: Path):
     last_exc: Exception | None = None
     for encoding in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
@@ -398,8 +408,8 @@ def _build_knowledge_catalog_uncached(crop: str | None = None) -> dict[str, Any]
         "catalog_version": CATALOG_VERSION,
         "generated_at": datetime.now(UTC).isoformat(),
         "crop_scope": crop or "all",
-        "directive_file": str(DIRECTIVE_FILE),
-        "data_root": str(DATA_ROOT),
+        "directive_file": _public_path(DIRECTIVE_FILE),
+        "data_root": _public_path(DATA_ROOT),
         "summary": {
             "asset_count": len(assets),
             "by_source_type": dict(source_counts),
@@ -442,7 +452,7 @@ def persist_knowledge_catalog(payload: dict[str, Any]) -> str:
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    return str(output_path)
+    return _public_path(output_path)
 
 
 def rebuild_knowledge_catalog(crop: str | None = None) -> dict[str, Any]:

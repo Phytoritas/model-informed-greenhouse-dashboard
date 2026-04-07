@@ -21,17 +21,14 @@ def setup_function() -> None:
 
 
 def test_rebuild_knowledge_catalog_creates_sqlite_database(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     payload = rebuild_knowledge_catalog("tomato")
 
     assert payload["database"]["status"] == "ready"
     assert payload["summary"]["database_status"] == "ready"
-    db_path = Path(payload["database"]["path"])
+    assert not Path(payload["database"]["path"]).is_absolute()
+    db_path = knowledge_database.knowledge_db_path("tomato")
     assert db_path.exists()
     assert payload["database"]["document_count"] >= 1
     assert payload["database"]["chunk_count"] >= 1
@@ -57,12 +54,8 @@ def test_rebuild_knowledge_catalog_creates_sqlite_database(
 
 
 def test_build_knowledge_catalog_reports_existing_database_summary(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuilt = rebuild_knowledge_catalog("cucumber")
     payload = build_knowledge_catalog("cucumber")
     context_payload = build_crop_knowledge_context("cucumber")
@@ -75,12 +68,8 @@ def test_build_knowledge_catalog_reports_existing_database_summary(
 
 
 def test_crop_scoped_catalog_falls_back_to_all_scope_database(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
     rebuild_knowledge_catalog()
     payload = build_knowledge_catalog("tomato")
 
@@ -89,14 +78,10 @@ def test_crop_scoped_catalog_falls_back_to_all_scope_database(
 
 
 def test_inspect_knowledge_database_self_heals_missing_new_tables(
-    monkeypatch,
-    tmp_path: Path,
+    synthetic_knowledge_assets,
 ) -> None:
-    monkeypatch.setattr(knowledge_catalog, "CATALOG_OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(knowledge_database, "KNOWLEDGE_DB_DIR", tmp_path)
-
-    rebuilt = rebuild_knowledge_catalog("tomato")
-    db_path = Path(rebuilt["database"]["path"])
+    rebuild_knowledge_catalog("tomato")
+    db_path = knowledge_database.knowledge_db_path("tomato")
 
     with sqlite3.connect(db_path) as connection:
         connection.execute("DROP TABLE greenhouse_control_events")

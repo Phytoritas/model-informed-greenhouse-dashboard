@@ -478,6 +478,7 @@ function App() {
       selectedCrop,
       history,
       forecast,
+      producePrices,
       weather,
       rtrProfilesPayload?.profiles[selectedCrop] ?? null,
       (recommendations) => {
@@ -502,6 +503,7 @@ function App() {
     hasTelemetryData,
     history,
     modelMetrics,
+    producePrices,
     rtrProfilesPayload,
     selectedCrop,
     setControlValue,
@@ -863,6 +865,7 @@ function App() {
             crop={selectedCrop}
             forecast={deferredForecast}
             history={deferredHistory}
+            producePrices={producePrices}
             weather={weather}
             rtrProfile={rtrProfilesPayload?.profiles[selectedCrop] ?? null}
             smartGrowSummary={smartGrowSummary}

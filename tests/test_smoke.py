@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 import httpx
 import pytest
@@ -182,6 +183,7 @@ def test_ai_consult_degrades_gracefully_without_openai_key(
 
 def test_ai_consult_injects_crop_scoped_knowledge_context(
     monkeypatch: pytest.MonkeyPatch,
+    synthetic_knowledge_assets,
 ) -> None:
     backend_main = _backend_main()
     captured: dict[str, object] = {}
@@ -248,7 +250,9 @@ def test_ai_chat_degrades_gracefully_without_openai_key(
     assert "Missing OpenAI API key" in payload["text"]
 
 
-def test_knowledge_status_endpoint_returns_crop_scoped_catalog() -> None:
+def test_knowledge_status_endpoint_returns_crop_scoped_catalog(
+    synthetic_knowledge_assets,
+) -> None:
     client = TestClient(get_app())
 
     response = client.get("/api/knowledge/status?crop=cucumber")
@@ -257,11 +261,14 @@ def test_knowledge_status_endpoint_returns_crop_scoped_catalog() -> None:
     payload = response.json()
     assert payload["status"] == "success"
     assert payload["crop_scope"] == "cucumber"
+    assert not Path(payload["directive_file"]).is_absolute()
+    assert not Path(payload["data_root"]).is_absolute()
     assert payload["summary"]["asset_count"] >= 1
     assert all("cucumber" in asset["crop_scopes"] for asset in payload["assets"])
     assert payload["summary"]["normalized_workbook_families"] == ["nutrient", "pesticide"]
     assert payload["summary"]["database_status"] == payload["database"]["status"]
     assert payload["database"]["status"] in {"missing", "ready"}
+    assert not Path(payload["database"]["path"]).is_absolute()
     assert payload["database"]["schema_version"].startswith("smartgrow-knowledge-db-")
     assert payload["normalized_previews"]["pesticide"]["crop_view"]["crop"] == "cucumber"
     assert payload["normalized_previews"]["pesticide"]["crop_view"]["target_names"]
