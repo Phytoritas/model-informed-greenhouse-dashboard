@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #19 and branch `feat/19-implement-model-first-smartgrow-advisor-with-crop-physiology-gas-exchange-and-sensitivity-engines` now own the new model-first SmartGrow requirement."
+    "note": "Issue #21 and branch `feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs` now own the next bounded follow-up loop after the merged issue #19 delivery."
   },
   "harness_setup": {
     "status": "pass",
@@ -81,7 +81,23 @@
   },
   "issue19_pr_validation": {
     "status": "pass",
-    "note": "The latest issue #19 local ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) and PR #20 GitHub Actions push/pull_request runs are green after the knowledge-test stabilization, market-summary refresh fix, and knowledge-status sanitization hardening."
+    "note": "Issue #19 is closed and PR #20 is merged after the final local validation ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) plus green GitHub Actions push/pull_request runs."
+  },
+  "work_event_compare_loop": {
+    "status": "pass",
+    "note": "Issue #21 now adds `ModelStateStore.load_current_state()` plus `list_work_events()`, an additive backend `work_event_compare` replay-diff contract over persisted snapshots and bounded `leaf_removal` / `fruit_thinning` candidates, and a dedicated `WorkTab` compare block beside the existing control-scenario runtime panel."
+  },
+  "work_event_compare_hardening": {
+    "status": "pass",
+    "note": "Greenhouse scoping, malformed payload tolerance, store-unavailable degrade behavior, endpoint forwarding, crop-specific cucumber/tomato candidate agronomy, ranking, additive compare detail fields, backend matrix coverage, and a minimal frontend Vitest/RTL `WorkTab` component harness are now landed and locally validated."
+  },
+  "issue21_pr_validation": {
+    "status": "pending",
+    "note": "PR #22 is open for issue #21; the next gate is remote GitHub Actions plus review over the now-green local ladder, not more bounded architecture work."
+  },
+  "exact_advisor_surface_routes": {
+    "status": "pass",
+    "note": "Exact additive `/api/advisor/environment`, `/api/advisor/physiology`, `/api/advisor/work-tradeoff`, and `/api/advisor/harvest` routes now delegate over the landed model-aware tab surfaces, `/api/advisor/work-tradeoff` flattens the persisted compare contract into the directive-aligned summary/current_state/options response shape, and `/api/knowledge/status` advertises the exact routes alongside the preserved legacy seams."
   },
   "rtr_good_production_windows_followup": {
     "status": "blocked",

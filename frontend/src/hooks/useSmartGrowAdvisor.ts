@@ -641,6 +641,54 @@ export type PlannedAdvisorTabPayload = {
                 missing_work_signals?: string[];
             };
         };
+        work_event_compare?: {
+            status: string;
+            summary: string;
+            history: Array<{
+                event_time?: string | null;
+                event_type?: string | null;
+                action: string;
+                operator?: string | null;
+                reason_code?: string | null;
+                confidence?: number | null;
+            }>;
+            current_state: {
+                leaf_count?: number | null;
+                lai?: number | null;
+                fruit_load?: number | null;
+                active_trusses?: number | null;
+                source_sink_balance?: number | null;
+                minimum_leaf_guard?: number | null;
+                bottom_leaf_activity?: number | null;
+                sink_overload_score?: number | null;
+                active_cohort_id?: number | null;
+            };
+            options: Array<{
+                action: string;
+                comparison_kind: string;
+                event_type?: string | null;
+                operator_note: string;
+                risk: string;
+                expected_yield_delta_7d?: number | null;
+                expected_yield_delta_14d?: number | null;
+                expected_canopy_a_delta_72h?: number | null;
+                expected_source_sink_balance_delta?: number | null;
+                expected_fruit_dm_delta_14d?: number | null;
+                expected_lai_delta_14d?: number | null;
+                immediate_state_delta?: Record<string, number | null | undefined>;
+                replay_effect?: Record<string, unknown> | null;
+                confidence?: number | null;
+                agronomy_flags?: string[];
+                ranking_score?: number | null;
+                violated_constraints: Array<{
+                    severity?: string;
+                    constraint?: string;
+                    message?: string;
+                }>;
+            }>;
+            recommended_action?: string | null;
+            confidence: number;
+        };
         harvest_market_analysis?: {
             summary: string;
             urgency: string;
