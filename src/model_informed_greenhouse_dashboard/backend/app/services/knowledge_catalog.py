@@ -361,7 +361,7 @@ def _build_asset_entry(spec: dict[str, Any]) -> dict[str, Any]:
     entry = {
         "id": _slugify(Path(spec["filename"]).stem),
         "filename": spec["filename"],
-        "relative_path": path.relative_to(REPO_ROOT).as_posix(),
+        "relative_path": _public_path(path),
         "title": spec["title"],
         "crop_scopes": spec["crop_scopes"],
         "asset_family": spec["asset_family"],

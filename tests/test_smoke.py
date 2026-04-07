@@ -27,6 +27,12 @@ def _weather_service():
     return weather_service
 
 
+def _knowledge_catalog_service():
+    from model_informed_greenhouse_dashboard.backend.app.services import knowledge_catalog
+
+    return knowledge_catalog
+
+
 @pytest.fixture(autouse=True)
 def reset_runtime_state() -> None:
     backend_main = _backend_main()
@@ -269,10 +275,32 @@ def test_knowledge_status_endpoint_returns_crop_scoped_catalog(
     assert payload["summary"]["database_status"] == payload["database"]["status"]
     assert payload["database"]["status"] in {"missing", "ready"}
     assert not Path(payload["database"]["path"]).is_absolute()
+    assert all(not Path(asset["relative_path"]).is_absolute() for asset in payload["assets"])
     assert payload["database"]["schema_version"].startswith("smartgrow-knowledge-db-")
     assert payload["normalized_previews"]["pesticide"]["crop_view"]["crop"] == "cucumber"
     assert payload["normalized_previews"]["pesticide"]["crop_view"]["target_names"]
     assert payload["normalized_previews"]["nutrient"]["crop_view"]["recipe_count"] >= 1
+
+
+def test_knowledge_status_endpoint_sanitizes_asset_paths_outside_repo(
+    monkeypatch: pytest.MonkeyPatch,
+    synthetic_knowledge_assets,
+) -> None:
+    knowledge_catalog = _knowledge_catalog_service()
+    external_repo_root = synthetic_knowledge_assets["repo_root"] / "outside-root"
+    external_repo_root.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(knowledge_catalog, "REPO_ROOT", external_repo_root)
+    knowledge_catalog._build_knowledge_catalog_cached.cache_clear()
+    client = TestClient(get_app())
+
+    response = client.get("/api/knowledge/status?crop=tomato")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert all(not Path(asset["relative_path"]).is_absolute() for asset in payload["assets"])
+    assert payload["directive_file"] == "codex_rag_advisor_prompt_smartgrow.md"
+    assert payload["data_root"] == "data"
 
 
 def test_daegu_weather_endpoint_returns_live_shape(
