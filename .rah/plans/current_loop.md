@@ -20,6 +20,6 @@
   - Korean visible-UI hardening across advisor tabs, SmartGrow labels, work-event compare labels, and stage/medium display helpers
 
 ## Exact Restart Step
-1. Review the working tree and stage the current local frontend stabilization pass on `feat/23-dashboard-layout-kpi-first-hierarchy`.
-2. Commit, push the branch, and open the PR.
-3. Wait for GitHub Actions validation before merge-time harness sync.
+1. Watch PR `#24` GitHub Actions until backend/frontend validation settles.
+2. If remote checks fail, fix only the reported regression and rerun the local ladder for the touched surface.
+3. Once PR validation is green, sync harness truth again and proceed to review/merge.

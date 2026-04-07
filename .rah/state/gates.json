@@ -85,7 +85,7 @@
   },
   "issue23_pr_validation": {
     "status": "pending",
-    "note": "Local validation is green, but the branch still needs commit/push/PR plus any final screenshot attachment before GitHub Actions and merge-time truth sync can close issue #23."
+    "note": "Commit `5b1d1b1` is pushed on `feat/23-dashboard-layout-kpi-first-hierarchy`, PR #24 is open, local validation is green, and representative screenshots exist under `screenshots/`; GitHub Actions still need to finish before merge-time truth sync can close issue #23."
   },
   "issue19_pr_validation": {
     "status": "pass",
