@@ -9,6 +9,21 @@ from .lagrangian_optimizer import optimize_rtr_targets
 from .objective_terms import evaluate_rtr_candidate
 
 
+def _scenario_confidence(candidate: Mapping[str, Any]) -> float:
+    risk_flags = candidate["feasibility"]["risk_flags"]
+    confidence_penalty = float(candidate["constraint_checks"]["confidence_penalty"])
+    return round(
+        max(
+            0.2,
+            min(
+                0.98,
+                1.0 - confidence_penalty - (0.05 * len(risk_flags)),
+            ),
+        ),
+        6,
+    )
+
+
 def run_rtr_scenarios(
     *,
     context,
@@ -60,12 +75,15 @@ def run_rtr_scenarios(
                 "respiration": result["flux_projection"]["respiration_umol_m2_s"],
                 "energy_kwh_m2_day": result["objective_breakdown"]["energy_cost"],
                 "labor_index": result["objective_breakdown"]["labor_index"],
+                "yield_proxy_basis_net_assim": result["flux_projection"]["net_assim_umol_m2_s"],
                 "yield_trend": (
                     "up"
                     if result["flux_projection"]["carbon_margin"] >= 0 and result["node_summary"]["target_hit"]
                     else "guarded"
                 ),
                 "recommendation_badge": "recommended" if mode == optimization_inputs.optimization_mode else "compare",
+                "confidence": _scenario_confidence(result),
+                "risk_flags": result["feasibility"]["risk_flags"],
                 "objective_breakdown": result["objective_breakdown"],
             }
         )
@@ -101,12 +119,15 @@ def run_rtr_scenarios(
             "respiration": baseline_eval["flux_projection"]["respiration_umol_m2_s"],
             "energy_kwh_m2_day": baseline_eval["objective_breakdown"]["energy_cost"],
             "labor_index": baseline_eval["objective_breakdown"]["labor_index"],
+            "yield_proxy_basis_net_assim": baseline_eval["flux_projection"]["net_assim_umol_m2_s"],
             "yield_trend": (
                 "up"
                 if baseline_eval["flux_projection"]["carbon_margin"] >= 0 and baseline_eval["node_summary"]["target_hit"]
                 else "guarded"
             ),
             "recommendation_badge": "baseline",
+            "confidence": _scenario_confidence(baseline_eval),
+            "risk_flags": baseline_eval["feasibility"]["risk_flags"],
             "objective_breakdown": baseline_eval["objective_breakdown"],
         },
     )

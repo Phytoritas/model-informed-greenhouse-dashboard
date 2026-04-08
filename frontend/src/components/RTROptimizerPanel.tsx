@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Activity,
     ArrowDownRight,
@@ -17,6 +17,7 @@ import type {
     RtrProfile,
     SensorData,
     TemperatureSettings,
+    TelemetryStatus,
     WeatherOutlook,
 } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
@@ -30,6 +31,7 @@ interface RTROptimizerPanelProps {
     crop: CropType;
     currentData: SensorData;
     history: SensorData[];
+    telemetryStatus?: TelemetryStatus;
     temperatureSettings: TemperatureSettings;
     weather: WeatherOutlook | null;
     loading: boolean;
@@ -164,6 +166,130 @@ function getSensitivityTargetLabel(code: string, locale: 'en' | 'ko'): string {
     return (locale === 'ko' ? koMap[code] : enMap[code]) ?? code;
 }
 
+function getRiskSeverityClass(severity: string): string {
+    if (severity === 'high') {
+        return 'border-rose-200 bg-rose-50 text-rose-800';
+    }
+    if (severity === 'medium') {
+        return 'border-amber-200 bg-amber-50 text-amber-800';
+    }
+    return 'border-slate-200 bg-slate-50 text-slate-700';
+}
+
+function getRiskFlagTitle(code: string, locale: 'en' | 'ko'): string {
+    const koMap: Record<string, string> = {
+        trust_region_exceeded: '신뢰 구간 초과',
+        disease_risk_high: '습도 병해 위험',
+        screen_humidity_coupling: '스크린-습도 결합 위험',
+        heat_stress_risk: '고온 스트레스 위험',
+        cold_stress_risk: '저온 스트레스 위험',
+        night_cold_risk: '야간 저온 위험',
+        source_loss_risk: '광원 부족 위험',
+    };
+    const enMap: Record<string, string> = {
+        trust_region_exceeded: 'Trust region exceeded',
+        disease_risk_high: 'Disease-risk humidity',
+        screen_humidity_coupling: 'Screen humidity coupling',
+        heat_stress_risk: 'Heat stress risk',
+        cold_stress_risk: 'Cold stress risk',
+        night_cold_risk: 'Night cold risk',
+        source_loss_risk: 'Source loss risk',
+    };
+
+    return (locale === 'ko' ? koMap[code] : enMap[code]) ?? code;
+}
+
+function getRiskFlagMessage(
+    riskFlag: Record<string, unknown>,
+    locale: 'en' | 'ko',
+): string {
+    const code = String(riskFlag.code ?? '');
+    const control = riskFlag.control ? ` (${String(riskFlag.control)})` : '';
+    const koMap: Record<string, string> = {
+        trust_region_exceeded: `현재 제어안이 신뢰 가능한 변경 폭을 벗어났습니다${control}.`,
+        disease_risk_high: '목표 습도가 병해 위험 상한에 가까워 추가 보수 운전이 필요합니다.',
+        screen_humidity_coupling: '스크린과 습도 상승이 함께 작동해 하위 군락 습도 위험이 커집니다.',
+        heat_stress_risk: '주간 목표온도가 작물 스트레스 상한에 가까워 추가 상향을 제한했습니다.',
+        cold_stress_risk: '주간 목표온도가 회복 가능 구간 아래로 내려가 더 낮추지 않았습니다.',
+        night_cold_risk: '야간 목표온도가 안전 하한에 가까워 추가 하향을 제한했습니다.',
+        source_loss_risk: '현재 source 부족 상태에서 추가 스크린 닫힘이 더 불리해집니다.',
+    };
+    const fallback = typeof riskFlag.message === 'string' ? riskFlag.message : '-';
+    return locale === 'ko' ? (koMap[code] ?? fallback) : fallback;
+}
+
+function getTelemetryWarningCopy(status: TelemetryStatus, locale: 'en' | 'ko'): string | null {
+    if (status === 'stale') {
+        return locale === 'ko'
+            ? '센서 수신이 오래되어 RTR 최적화 신뢰도가 낮아졌습니다. 최신 측정이 들어오면 다시 계산하세요.'
+            : 'Sensor telemetry is stale, so RTR optimization confidence is reduced until a fresh snapshot arrives.';
+    }
+    if (status === 'delayed') {
+        return locale === 'ko'
+            ? '센서 수신이 지연되고 있어 현재 추천은 보수적으로 해석하는 것이 좋습니다.'
+            : 'Sensor telemetry is delayed, so interpret the current recommendation conservatively.';
+    }
+    if (status === 'offline') {
+        return locale === 'ko'
+            ? '센서가 오프라인 상태라 RTR 최적화는 마지막 유효 스냅샷 기준으로만 계산됩니다.'
+            : 'Sensors are offline, so RTR optimization is running only on the last valid snapshot.';
+    }
+    return null;
+}
+
+function getScenarioBadgeLabel(value: string, locale: 'en' | 'ko'): string {
+    const koMap: Record<string, string> = {
+        baseline: '기준선',
+        recommended: '권장',
+        compare: '비교',
+        custom: '사용자',
+    };
+    const enMap: Record<string, string> = {
+        baseline: 'Baseline',
+        recommended: 'Recommended',
+        compare: 'Compare',
+        custom: 'Custom',
+    };
+    return (locale === 'ko' ? koMap[value] : enMap[value]) ?? value;
+}
+
+function getScenarioBadgeClass(value: string): string {
+    if (value === 'recommended') {
+        return 'bg-emerald-100 text-emerald-800';
+    }
+    if (value === 'baseline') {
+        return 'bg-slate-200 text-slate-700';
+    }
+    if (value === 'custom') {
+        return 'bg-violet-100 text-violet-800';
+    }
+    return 'bg-sky-100 text-sky-800';
+}
+
+function getYieldTrendLabel(value: string, locale: 'en' | 'ko'): string {
+    const koMap: Record<string, string> = {
+        up: '수확 상승',
+        stable: '수확 유지',
+        guarded: '수확 방어',
+    };
+    const enMap: Record<string, string> = {
+        up: 'Yield up',
+        stable: 'Yield stable',
+        guarded: 'Yield guarded',
+    };
+    return (locale === 'ko' ? koMap[value] : enMap[value]) ?? value;
+}
+
+function getYieldTrendClass(value: string): string {
+    if (value === 'up') {
+        return 'bg-emerald-50 text-emerald-700';
+    }
+    if (value === 'guarded') {
+        return 'bg-amber-50 text-amber-700';
+    }
+    return 'bg-slate-100 text-slate-700';
+}
+
 function renderCropSpecificInsight(
     insight: RtrCropSpecificInsight | null,
     locale: 'en' | 'ko',
@@ -239,6 +365,7 @@ const RTROptimizerPanel = ({
     crop,
     currentData,
     history,
+    telemetryStatus = 'live',
     temperatureSettings,
     weather,
     loading,
@@ -253,8 +380,16 @@ const RTROptimizerPanel = ({
     const { locale } = useLocale();
     const { areaByCrop, setActualAreaM2, setActualAreaPyeong, syncAreaMeta } = useAreaUnit();
     const areaState = areaByCrop[crop];
+    const defaultCustomLabel = locale === 'ko' ? '사용자 비교' : 'Custom compare';
     const optimizerEnabled = profileLoading ? false : (profile?.optimizer?.enabled ?? optimizerEnabledProp ?? false);
     const defaultMode = defaultModeProp ?? profile?.optimizer?.default_mode ?? DEFAULT_OPTIMIZATION_MODE;
+    const [customScenarioDraft, setCustomScenarioDraft] = useState({
+        label: '',
+        dayMinTempC: '',
+        nightMinTempC: '',
+        ventBiasC: '',
+        screenBiasPct: '',
+    });
     const {
         stateResponse,
         optimizeResponse,
@@ -264,10 +399,13 @@ const RTROptimizerPanel = ({
         setTargetNodeDevelopmentPerDay,
         optimizationMode,
         setOptimizationMode,
+        customScenario,
+        setCustomScenario,
         includeEnergyCost,
         setIncludeEnergyCost,
         includeLaborCost,
         setIncludeLaborCost,
+        telemetryOptimizationBlocked,
         loading: optimizerLoading,
         loadingState,
         loadingOptimize,
@@ -280,6 +418,7 @@ const RTROptimizerPanel = ({
         actualAreaSource: areaState.source,
         optimizerEnabled,
         defaultMode,
+        telemetryStatus,
     });
     const isProfilePending = profileLoading && profile === null;
     const isProfileUnavailable = !profileLoading && profile === null;
@@ -298,6 +437,11 @@ const RTROptimizerPanel = ({
             cropInsight: '작물별 해석',
             setpoints: '추천 설정값',
             scenarios: '시나리오 비교',
+            customScenarioTitle: '사용자 비교 시나리오',
+            customScenarioBody: '기준선과 권장안 사이에서 원하는 설정값을 직접 넣어 비교 행으로 추가합니다.',
+            customLabel: '비교 이름',
+            customApply: '비교에 반영',
+            customReset: '초기화',
             baselineCard: '기준선 비교 카드',
             refresh: '다시 계산',
             includeEnergy: '에너지 비용 포함',
@@ -306,9 +450,12 @@ const RTROptimizerPanel = ({
             nightMin: '야간 최소 온도',
             ventBias: '환기 편차',
             screenBias: '스크린 편차',
+            holdTime: '유지 시간',
+            changeLimit: '변경 제한',
             carbonMargin: '탄소 마진',
             assimilationGain: '광합성 이득',
             respirationCost: '호흡 손실',
+            sinkOverload: 'sink 과부하 위험',
             energyCost: '에너지 비용',
             laborCost: '작업부하',
             targetHit: '목표 충족',
@@ -323,7 +470,10 @@ const RTROptimizerPanel = ({
             carbonHeader: '탄소',
             respHeader: '호흡',
             energyHeader: '에너지',
+            yieldHeader: '수확량',
             laborHeader: '작업',
+            telemetryBlockedTitle: '실시간 수신이 오래돼 RTR 최적화를 잠시 제한합니다.',
+            telemetryBlockedBody: '센서가 stale/offline 상태이면 마지막 스냅샷으로 새 최적화를 밀지 않고, 기준선 비교 카드만 유지합니다.',
             disabledTitle: 'RTR 기준선 모니터',
             disabledBody: '이 프로파일은 아직 optimizer를 켜지 않아 기준선 모니터만 제공합니다.',
             profileLoadingTitle: 'RTR 프로파일 준비 중',
@@ -345,6 +495,11 @@ const RTROptimizerPanel = ({
             cropInsight: 'Crop-specific insight',
             setpoints: 'Setpoint result',
             scenarios: 'Scenario compare',
+            customScenarioTitle: 'Custom compare scenario',
+            customScenarioBody: 'Add your own setpoint row to compare it against the baseline and optimizer recommendation.',
+            customLabel: 'Scenario label',
+            customApply: 'Apply compare row',
+            customReset: 'Reset',
             baselineCard: 'Baseline comparison card',
             refresh: 'Refresh',
             includeEnergy: 'Include energy cost',
@@ -353,9 +508,12 @@ const RTROptimizerPanel = ({
             nightMin: 'Night minimum',
             ventBias: 'Vent bias',
             screenBias: 'Screen bias',
+            holdTime: 'Hold time',
+            changeLimit: 'Change limit',
             carbonMargin: 'Carbon margin',
             assimilationGain: 'Assimilation gain',
             respirationCost: 'Respiration cost',
+            sinkOverload: 'Sink overload risk',
             energyCost: 'Energy cost',
             laborCost: 'Labor load',
             targetHit: 'Target hit',
@@ -370,7 +528,10 @@ const RTROptimizerPanel = ({
             carbonHeader: 'Carbon',
             respHeader: 'Resp',
             energyHeader: 'Energy',
+            yieldHeader: 'Yield',
             laborHeader: 'Labor',
+            telemetryBlockedTitle: 'RTR optimization is temporarily gated by stale telemetry.',
+            telemetryBlockedBody: 'When sensors are stale or offline, the panel keeps the baseline comparison card visible instead of pushing a fresh optimizer run.',
             disabledTitle: 'Baseline RTR monitor',
             disabledBody: 'This profile keeps the optimizer disabled, so only the baseline RTR monitor is shown.',
             profileLoadingTitle: 'RTR profile loading',
@@ -446,9 +607,35 @@ const RTROptimizerPanel = ({
 
     const warningBadges = optimizeResponse?.warning_badges ?? [];
     const scenarioRows = scenarioResponse?.scenarios ?? [];
+    const riskFlags = optimizeResponse?.feasibility.risk_flags ?? [];
+    const hasOptimizerSurface = optimizeResponse !== null || scenarioResponse !== null || sensitivityResponse !== null;
     const targetHit = optimizeResponse?.feasibility.target_node_hit ?? false;
     const confidence = optimizeResponse?.feasibility.confidence ?? null;
     const waitingForTarget = !loadingState && targetNodeDevelopmentPerDay === null;
+    const telemetryWarning = getTelemetryWarningCopy(telemetryStatus, locale);
+    const lowConfidence = confidence !== null && confidence < 0.75;
+    const controlGuidance = useMemo(() => {
+        if (optimizeResponse?.control_guidance) {
+            return optimizeResponse.control_guidance;
+        }
+        if (!profile?.optimizer) {
+            return null;
+        }
+        return {
+            target_horizon: 'today' as const,
+            day_hold_hours: 14,
+            night_hold_hours: 10,
+            change_limit_C_per_step: profile.optimizer.temp_slew_rate_C_per_step,
+            max_delta_temp_C: profile.optimizer.max_delta_temp_C,
+            max_rtr_ratio_delta: profile.optimizer.max_rtr_ratio_delta,
+        };
+    }, [optimizeResponse, profile]);
+
+    const hasCustomScenarioDraft =
+        customScenarioDraft.dayMinTempC.trim().length > 0
+        || customScenarioDraft.nightMinTempC.trim().length > 0
+        || customScenarioDraft.ventBiasC.trim().length > 0
+        || customScenarioDraft.screenBiasPct.trim().length > 0;
 
     if (isProfilePending) {
         return (
@@ -490,6 +677,33 @@ const RTROptimizerPanel = ({
         );
     }
 
+    if (telemetryStatus === 'offline' || (telemetryStatus === 'stale' && !hasOptimizerSurface)) {
+        return (
+            <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
+                <div className="mb-4 rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                    <p className="font-semibold text-slate-900">{copy.telemetryBlockedTitle}</p>
+                    <p className="mt-1">{copy.telemetryBlockedBody}</p>
+                    {telemetryWarning ? (
+                        <p className="mt-2 text-xs text-slate-600">{telemetryWarning}</p>
+                    ) : null}
+                </div>
+                <RTROutlookPanel
+                    crop={crop}
+                    currentData={currentData}
+                    history={history}
+                    temperatureSettings={temperatureSettings}
+                    weather={weather}
+                    loading={loading}
+                    error={error}
+                    profile={profile}
+                    profileLoading={profileLoading}
+                    profileError={profileError}
+                    compact={compact}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -505,7 +719,7 @@ const RTROptimizerPanel = ({
                 <button
                     type="button"
                     onClick={() => void refreshOptimization()}
-                    disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget}
+                    disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget || telemetryOptimizationBlocked}
                     className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 >
                     {copy.refresh}
@@ -522,6 +736,18 @@ const RTROptimizerPanel = ({
                         {copy.waitingTarget}
                     </div>
                 ) : null}
+                {telemetryWarning ? (
+                    <div className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">
+                        {telemetryWarning}
+                    </div>
+                ) : null}
+                {lowConfidence ? (
+                    <div className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">
+                        {locale === 'ko'
+                            ? `현재 RTR 추천 신뢰도가 ${formatNumber(confidence * 100, 0, locale)}%로 낮아 작업 이벤트와 최신 센서를 다시 확인하는 것이 좋습니다.`
+                            : `RTR confidence is currently ${formatNumber(confidence * 100, 0, locale)}%, so refresh work events and telemetry before applying aggressive changes.`}
+                    </div>
+                ) : null}
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <label className="rounded-lg bg-slate-50 p-3 text-xs font-medium text-slate-600">
@@ -529,6 +755,7 @@ const RTROptimizerPanel = ({
                         <input
                             aria-label={copy.targetNode}
                             inputMode="decimal"
+                            disabled={telemetryOptimizationBlocked}
                             className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                             value={targetNodeDevelopmentPerDay ?? ''}
                             onChange={(event) => {
@@ -581,6 +808,7 @@ const RTROptimizerPanel = ({
                             key={mode}
                             type="button"
                             onClick={() => setOptimizationMode(mode)}
+                            disabled={telemetryOptimizationBlocked}
                             className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                                 optimizationMode === mode
                                     ? 'bg-emerald-600 text-white'
@@ -594,6 +822,7 @@ const RTROptimizerPanel = ({
                         <input
                             type="checkbox"
                             checked={includeEnergyCost}
+                            disabled={telemetryOptimizationBlocked}
                             onChange={(event) => setIncludeEnergyCost(event.target.checked)}
                         />
                         {copy.includeEnergy}
@@ -602,6 +831,7 @@ const RTROptimizerPanel = ({
                         <input
                             type="checkbox"
                             checked={includeLaborCost}
+                            disabled={telemetryOptimizationBlocked}
                             onChange={(event) => setIncludeLaborCost(event.target.checked)}
                         />
                         {copy.includeLabor}
@@ -620,12 +850,43 @@ const RTROptimizerPanel = ({
                         ))}
                     </div>
                 ) : null}
+                {riskFlags.length > 0 ? (
+                    <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="mb-3 flex items-center gap-2">
+                            <BadgeAlert className="h-4 w-4 text-amber-600" />
+                            <h4 className="text-sm font-semibold text-slate-900">
+                                {locale === 'ko' ? '제약 및 위험 경고' : 'Constraint and risk warnings'}
+                            </h4>
+                        </div>
+                        <div className="space-y-2">
+                            {riskFlags.map((riskFlag, index) => {
+                                const code = String(riskFlag.code ?? `risk-${index}`);
+                                const severity = String(riskFlag.severity ?? 'info');
+                                return (
+                                    <div
+                                        key={`${code}-${index}`}
+                                        className={`rounded-lg border px-3 py-2 text-xs leading-5 ${getRiskSeverityClass(severity)}`}
+                                    >
+                                        <p className="font-semibold">
+                                            {getRiskFlagTitle(code, locale)}
+                                        </p>
+                                        <p className="mt-1">
+                                            {getRiskFlagMessage(riskFlag, locale)}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                ) : null}
 
                 <AreaUnitPanel
                     crop={crop}
                     canonicalAreaM2={areaState.canonicalAreaM2}
                     actualAreaM2={areaState.actualAreaM2}
                     actualAreaPyeong={areaState.actualAreaPyeong}
+                    source={areaState.source}
+                    unitsM2={optimizeResponse?.units_m2 ?? null}
                     projection={optimizeResponse?.actual_area_projection ?? null}
                     onActualAreaM2Change={(value) => setActualAreaM2(crop, value)}
                     onActualAreaPyeongChange={(value) => setActualAreaPyeong(crop, value)}
@@ -647,15 +908,40 @@ const RTROptimizerPanel = ({
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.carbonMargin}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{optimizeResponse?.feasibility.carbon_margin_positive ? copy.yes : copy.no}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(optimizeResponse?.flux_projection.carbon_margin, 3, locale)}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {optimizeResponse?.feasibility.carbon_margin_positive ? copy.yes : copy.no}
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.sinkOverload}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(optimizeResponse?.objective_breakdown.sink_overload_penalty, 3, locale)}
+                            </div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.energyCost}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.objective_breakdown.energy_cost, 3, locale)} {copy.energyUnit}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(optimizeResponse?.objective_breakdown.energy_cost, 3, locale)} {copy.energyUnit}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {locale === 'ko'
+                                    ? `실면적 기준 ${formatNumber(optimizeResponse?.actual_area_projection.energy_kwh_day, 1, locale)} kWh/일`
+                                    : `${formatNumber(optimizeResponse?.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day @ actual area`}
+                            </div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.laborCost}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.objective_breakdown.labor_index, 3, locale)}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(optimizeResponse?.objective_breakdown.labor_index, 3, locale)}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {locale === 'ko'
+                                    ? `실면적 기준 ${formatNumber(optimizeResponse?.actual_area_projection.labor_index_day, 1, locale)} /일`
+                                    : `${formatNumber(optimizeResponse?.actual_area_projection.labor_index_day, 1, locale)} /day @ actual area`}
+                            </div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.targetHit}</div>
@@ -694,7 +980,7 @@ const RTROptimizerPanel = ({
                         <Thermometer className="h-4 w-4 text-emerald-600" />
                         <h4 className="text-sm font-semibold text-slate-900">{copy.setpoints}</h4>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.dayMin}</div>
                             <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.day_min_temp_C, 1, locale)}°C</div>
@@ -710,6 +996,31 @@ const RTROptimizerPanel = ({
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.screenBias}</div>
                             <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.screen_bias_pct, 1, locale)}%</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.holdTime}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {controlGuidance
+                                    ? locale === 'ko'
+                                        ? `주간 ${formatNumber(controlGuidance.day_hold_hours, 0, locale)}h / 야간 ${formatNumber(controlGuidance.night_hold_hours, 0, locale)}h`
+                                        : `Day ${formatNumber(controlGuidance.day_hold_hours, 0, locale)}h / Night ${formatNumber(controlGuidance.night_hold_hours, 0, locale)}h`
+                                    : '-'}
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.changeLimit}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {controlGuidance
+                                    ? `${formatNumber(controlGuidance.change_limit_C_per_step, 2, locale)}°C/step`
+                                    : '-'}
+                            </div>
+                            {controlGuidance ? (
+                                <div className="mt-1 text-[11px] text-slate-500">
+                                    {locale === 'ko'
+                                        ? `총 변경 한도 ±${formatNumber(controlGuidance.max_delta_temp_C, 1, locale)}°C`
+                                        : `Max total delta ±${formatNumber(controlGuidance.max_delta_temp_C, 1, locale)}°C`}
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 </section>
@@ -742,6 +1053,116 @@ const RTROptimizerPanel = ({
                         <CircleGauge className="h-4 w-4 text-emerald-600" />
                         <h4 className="text-sm font-semibold text-slate-900">{copy.scenarios}</h4>
                     </div>
+                    <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                        <div className="mb-3">
+                            <p className="text-sm font-semibold text-slate-900">{copy.customScenarioTitle}</p>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">{copy.customScenarioBody}</p>
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.customLabel}</span>
+                                <input
+                                    aria-label={copy.customLabel}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    disabled={telemetryOptimizationBlocked}
+                                    placeholder={defaultCustomLabel}
+                                    value={customScenarioDraft.label}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, label: event.target.value }))}
+                                />
+                            </label>
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.dayMin}</span>
+                                <input
+                                    aria-label={`${copy.dayMin} custom`}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    value={customScenarioDraft.dayMinTempC}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, dayMinTempC: event.target.value }))}
+                                />
+                            </label>
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.nightMin}</span>
+                                <input
+                                    aria-label={`${copy.nightMin} custom`}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    value={customScenarioDraft.nightMinTempC}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, nightMinTempC: event.target.value }))}
+                                />
+                            </label>
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.ventBias}</span>
+                                <input
+                                    aria-label={`${copy.ventBias} custom`}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    value={customScenarioDraft.ventBiasC}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, ventBiasC: event.target.value }))}
+                                />
+                            </label>
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.screenBias}</span>
+                                <input
+                                    aria-label={`${copy.screenBias} custom`}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    value={customScenarioDraft.screenBiasPct}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, screenBiasPct: event.target.value }))}
+                                />
+                            </label>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const parseOptionalNumber = (value: string) => {
+                                        const parsed = Number(value);
+                                        return Number.isFinite(parsed) ? parsed : undefined;
+                                    };
+                                    setCustomScenario(
+                                        hasCustomScenarioDraft
+                                            ? {
+                                                label: customScenarioDraft.label.trim() || defaultCustomLabel,
+                                                day_min_temp_C: parseOptionalNumber(customScenarioDraft.dayMinTempC),
+                                                night_min_temp_C: parseOptionalNumber(customScenarioDraft.nightMinTempC),
+                                                vent_bias_C: parseOptionalNumber(customScenarioDraft.ventBiasC),
+                                                screen_bias_pct: parseOptionalNumber(customScenarioDraft.screenBiasPct),
+                                            }
+                                            : null,
+                                    );
+                                }}
+                                disabled={!hasCustomScenarioDraft || telemetryOptimizationBlocked}
+                                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                            >
+                                {copy.customApply}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setCustomScenario(null);
+                                    setCustomScenarioDraft({
+                                        label: '',
+                                        dayMinTempC: '',
+                                        nightMinTempC: '',
+                                        ventBiasC: '',
+                                        screenBiasPct: '',
+                                    });
+                                }}
+                                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                            >
+                                {copy.customReset}
+                            </button>
+                            {customScenario ? (
+                                <span className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-[11px] font-medium text-sky-800">
+                                    {getScenarioLabel(customScenario.label, locale)}
+                                </span>
+                            ) : null}
+                        </div>
+                    </div>
                     {scenarioRows.length === 0 ? (
                         <p className="text-sm text-slate-500">{copy.noScenario}</p>
                     ) : (
@@ -755,6 +1176,7 @@ const RTROptimizerPanel = ({
                                         <th className="px-2 py-2">{copy.carbonHeader}</th>
                                         <th className="px-2 py-2">{copy.respHeader}</th>
                                         <th className="px-2 py-2">{copy.energyHeader}</th>
+                                        <th className="px-2 py-2">{copy.yieldHeader}</th>
                                         <th className="px-2 py-2">{copy.laborHeader}</th>
                                     </tr>
                                 </thead>
@@ -762,14 +1184,73 @@ const RTROptimizerPanel = ({
                                     {scenarioRows.map((row) => (
                                         <tr key={`${row.label}-${row.mode}`} className="border-t border-slate-100">
                                             <td className="px-2 py-2 font-medium text-slate-900">
-                                                {getScenarioLabel(row.label, locale)}
+                                                <div>{getScenarioLabel(row.label, locale)}</div>
+                                                <div className="mt-1 flex flex-wrap gap-1">
+                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getScenarioBadgeClass(row.recommendation_badge)}`}>
+                                                        {getScenarioBadgeLabel(row.recommendation_badge, locale)}
+                                                    </span>
+                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getYieldTrendClass(row.yield_trend)}`}>
+                                                        {getYieldTrendLabel(row.yield_trend, locale)}
+                                                    </span>
+                                                    <span
+                                                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                                            row.confidence >= 0.8
+                                                                ? 'bg-emerald-100 text-emerald-800'
+                                                                : row.confidence >= 0.65
+                                                                    ? 'bg-amber-100 text-amber-800'
+                                                                    : 'bg-slate-200 text-slate-700'
+                                                        }`}
+                                                    >
+                                                        {copy.confidence} {formatNumber(row.confidence * 100, 0, locale)}%
+                                                    </span>
+                                                </div>
+                                                {row.risk_flags.length > 0 ? (
+                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                        {row.risk_flags.slice(0, 2).map((riskFlag, index) => {
+                                                            const code = String(riskFlag.code ?? `row-risk-${index}`);
+                                                            return (
+                                                                <span key={`${row.label}-${code}-${index}`} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
+                                                                    {getRiskFlagTitle(code, locale)}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : null}
                                             </td>
                                             <td className="px-2 py-2">{formatNumber(row.mean_temp_C, 1, locale)}°C</td>
                                             <td className="px-2 py-2">{formatNumber(row.node_rate_day, 3, locale)}</td>
                                             <td className="px-2 py-2">{formatNumber(row.net_carbon, 3, locale)}</td>
                                             <td className="px-2 py-2">{formatNumber(row.respiration, 3, locale)}</td>
-                                            <td className="px-2 py-2">{formatNumber(row.energy_kwh_m2_day, 3, locale)}</td>
-                                            <td className="px-2 py-2">{formatNumber(row.labor_index, 3, locale)}</td>
+                                            <td className="px-2 py-2">
+                                                <div>{formatNumber(row.energy_kwh_m2_day, 3, locale)}</div>
+                                                {row.actual_area_projection ? (
+                                                    <div className="mt-1 text-[10px] text-slate-400">
+                                                        {locale === 'ko'
+                                                            ? `실면적 ${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/일 · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} 원/일`
+                                                            : `${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} KRW/day`}
+                                                    </div>
+                                                ) : null}
+                                            </td>
+                                            <td className="px-2 py-2">
+                                                <div>{formatNumber(row.yield_kg_m2_day, 3, locale)}</div>
+                                                {row.actual_area_projection ? (
+                                                    <div className="mt-1 text-[10px] text-slate-400">
+                                                        {locale === 'ko'
+                                                            ? `실면적 ${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/일 · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/주`
+                                                            : `${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/day · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/week`}
+                                                    </div>
+                                                ) : null}
+                                            </td>
+                                            <td className="px-2 py-2">
+                                                <div>{formatNumber(row.labor_index, 3, locale)}</div>
+                                                {row.actual_area_projection ? (
+                                                    <div className="mt-1 text-[10px] text-slate-400">
+                                                        {locale === 'ko'
+                                                            ? `실면적 ${formatNumber(row.actual_area_projection.labor_index_day, 1, locale)} /일`
+                                                            : `${formatNumber(row.actual_area_projection.labor_index_day, 1, locale)} /day`}
+                                                    </div>
+                                                ) : null}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

@@ -7,6 +7,7 @@ import type {
     RtrScenarioResponse,
     RtrSensitivityResponse,
     RtrStateResponse,
+    TelemetryStatus,
 } from '../types';
 
 interface UseRtrOptimizerOptions {
@@ -17,6 +18,15 @@ interface UseRtrOptimizerOptions {
     actualAreaSource?: 'default' | 'server' | 'local';
     optimizerEnabled?: boolean;
     defaultMode?: RtrOptimizationMode;
+    telemetryStatus?: TelemetryStatus;
+}
+
+interface RtrCustomScenarioDraft {
+    label: string;
+    day_min_temp_C?: number;
+    night_min_temp_C?: number;
+    vent_bias_C?: number;
+    screen_bias_pct?: number;
 }
 
 const DEFAULT_MODE: RtrOptimizationMode = 'balanced';
@@ -37,6 +47,7 @@ export const useRtrOptimizer = ({
     actualAreaSource = 'default',
     optimizerEnabled = true,
     defaultMode = DEFAULT_MODE,
+    telemetryStatus = 'live',
 }: UseRtrOptimizerOptions) => {
     const [stateResponse, setStateResponse] = useState<RtrStateResponse | null>(null);
     const [optimizeResponse, setOptimizeResponse] = useState<RtrOptimizeResponse | null>(null);
@@ -44,6 +55,7 @@ export const useRtrOptimizer = ({
     const [sensitivityResponse, setSensitivityResponse] = useState<RtrSensitivityResponse | null>(null);
     const [targetNodeDevelopmentPerDay, setTargetNodeDevelopmentPerDay] = useState<number | null>(null);
     const [optimizationModeState, setOptimizationModeState] = useState<RtrOptimizationMode>(defaultMode);
+    const [customScenario, setCustomScenario] = useState<RtrCustomScenarioDraft | null>(null);
     const [includeEnergyCost, setIncludeEnergyCost] = useState(true);
     const [includeLaborCost, setIncludeLaborCost] = useState(true);
     const [loadingState, setLoadingState] = useState(true);
@@ -75,6 +87,7 @@ export const useRtrOptimizer = ({
         hasManualTargetRef.current = false;
         hasManualModeRef.current = false;
         setOptimizationModeState(defaultModeRef.current);
+        setCustomScenario(null);
         setIncludeEnergyCost(true);
         setIncludeLaborCost(true);
         setLoadingState(true);
@@ -87,6 +100,8 @@ export const useRtrOptimizer = ({
         }
         setOptimizationModeState(defaultMode);
     }, [defaultMode]);
+
+    const telemetryOptimizationBlocked = telemetryStatus === 'stale' || telemetryStatus === 'offline';
 
     const stateQuery = useMemo(() => {
         const params = new URLSearchParams({ crop });
@@ -141,7 +156,7 @@ export const useRtrOptimizer = ({
     }, [loadingState, stateResponse]);
 
     const requestPayload = useMemo(() => {
-        if (!optimizerEnabled || targetNodeDevelopmentPerDay === null) {
+        if (!optimizerEnabled || telemetryOptimizationBlocked || targetNodeDevelopmentPerDay === null) {
             return null;
         }
 
@@ -165,11 +180,22 @@ export const useRtrOptimizer = ({
         includeLaborCost,
         optimizationModeState,
         optimizerEnabled,
+        telemetryOptimizationBlocked,
         targetNodeDevelopmentPerDay,
     ]);
 
+    const scenarioRequestPayload = useMemo(() => {
+        if (!requestPayload) {
+            return null;
+        }
+        return {
+            ...requestPayload,
+            custom_scenario: customScenario ?? undefined,
+        };
+    }, [customScenario, requestPayload]);
+
     const runOptimizer = useCallback(async () => {
-        if (!optimizerEnabled || !requestPayload) {
+        if (!optimizerEnabled || !requestPayload || !scenarioRequestPayload) {
             return;
         }
 
@@ -186,7 +212,7 @@ export const useRtrOptimizer = ({
                 fetch(`${API_URL}/rtr/scenario`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestPayload),
+                    body: JSON.stringify(scenarioRequestPayload),
                 }).then((response) => readJson<RtrScenarioResponse>(response)),
                 fetch(`${API_URL}/rtr/sensitivity`, {
                     method: 'POST',
@@ -213,17 +239,20 @@ export const useRtrOptimizer = ({
                 setLoadingOptimize(false);
             }
         }
-    }, [optimizerEnabled, requestPayload]);
+    }, [optimizerEnabled, requestPayload, scenarioRequestPayload]);
 
     useEffect(() => {
-        if (!optimizerEnabled || !requestPayload) {
+        if (!optimizerEnabled || targetNodeDevelopmentPerDay === null) {
             setOptimizeResponse(null);
             setScenarioResponse(null);
             setSensitivityResponse(null);
             return;
         }
+        if (telemetryOptimizationBlocked || !requestPayload) {
+            return;
+        }
         void runOptimizer();
-    }, [optimizerEnabled, requestPayload, runOptimizer]);
+    }, [optimizerEnabled, requestPayload, runOptimizer, targetNodeDevelopmentPerDay, telemetryOptimizationBlocked]);
 
     useEffect(() => {
         const areaPersistenceSignature = JSON.stringify({
@@ -286,10 +315,13 @@ export const useRtrOptimizer = ({
         setTargetNodeDevelopmentPerDay: setTargetNodeRate,
         optimizationMode: optimizationModeState,
         setOptimizationMode,
+        customScenario,
+        setCustomScenario,
         includeEnergyCost,
         setIncludeEnergyCost,
         includeLaborCost,
         setIncludeLaborCost,
+        telemetryOptimizationBlocked,
         loading: loadingState || loadingOptimize,
         loadingState,
         loadingOptimize,

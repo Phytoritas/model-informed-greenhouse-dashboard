@@ -1,9 +1,9 @@
 # Current Loop
 
 ## Active State
-- Active issue: `#32`
-- Active branch: `feat/32-harden-rtr-optimizer-frontend-contract-and-loading-gates`
-- The separate calibration follow-up in issue `#3` is still intentionally `Blocked` on grower-approved tomato/cucumber windows; this branch is a frontend hardening follow-up over the already-landed issue `#27` RTR optimizer surface.
+- Active issue: `#34`
+- Active branch: `feat/34-complete-rtr-optimizer-decision-surface-warnings-and-scenario-detail`
+- The separate calibration follow-up in issue `#3` is still intentionally `Blocked` on grower-approved tomato/cucumber windows; this branch is a decision-surface and scenario-detail follow-up over the already-landed issue `#27` and merged issue `#32` RTR optimizer surface.
 
 ## Latest Delivered Baseline
 - `main` already includes the merged issue `#27` RTR optimizer lane:
@@ -14,13 +14,12 @@
 - `configs/rtr_good_windows.yaml` still contains heuristic/demo windows
 - `scripts/calibrate_rtr.py` already supports rerunning the baseline-prior fit from curated windows
 
-## Current Issue #32 Delta
+## Current Issue #34 Delta
 - Landed on this branch:
-  - profile-loading gate so the RTR optimizer surface no longer opens with optimistic `enabled=true` assumptions before `/api/rtr/profiles` resolves
-  - node-target hydration gate so `/api/rtr/state` must supply `predicted_node_rate_day` or the user must enter a target manually before optimizer/scenario/sensitivity requests fire
-  - local-area persistence gate so localStorage-restored `source="local"` values are not immediately POSTed back to `/api/rtr/area-settings` on first mount
-  - raw `/api/rtr/profiles` payload preservation in `useRtrProfiles`
-  - Vitest coverage for the above hook/panel/profile behaviors
+  - stale telemetry now keeps the last valid RTR optimizer surface visible in a read-only state instead of collapsing the panel unless telemetry is fully offline
+  - the shared area panel now distinguishes `default`, `server`, and `local` actual-area sources so users can tell whether projections are placeholders, hydrated house defaults, or manual overrides
+  - scenario rows now expose confidence, risk flags, yield projections, and actual-area energy/yield totals across baseline, optimizer, and custom compare cases
+  - custom scenario compare and blocked-telemetry controls are covered by refreshed frontend hook/component tests plus richer backend scenario route contract tests
 - Local validation is already green:
   - `npm --prefix frontend run test`
   - `npm --prefix frontend run lint`
@@ -31,6 +30,6 @@
   - `poetry run pytest`
 
 ## Exact Next Step
-1. Watch PR `#33` GitHub Actions Backend/Frontend validation to completion.
+1. Watch PR `#35` GitHub Actions Backend/Frontend validation to completion.
 2. If a remote-only failure appears, fix it on the same branch and rerun the local ladder before pushing again.
-3. After PR `#33` merges, return to issue `#3` only when grower-approved calibration windows are actually available.
+3. After PR `#35` merges, return to issue `#3` only when grower-approved calibration windows are actually available.
