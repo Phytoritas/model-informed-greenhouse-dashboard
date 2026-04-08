@@ -383,6 +383,87 @@ def load_rtr_good_windows(config_path: str | Path | None = None) -> Dict[str, An
     return payload
 
 
+def normalize_rtr_good_windows(
+    windows: list[dict[str, Any]] | None,
+    *,
+    greenhouse_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Normalize user-entered RTR good-production windows."""
+    normalized_windows: list[dict[str, Any]] = []
+    for raw_window in windows or []:
+        normalized = _normalize_good_window(raw_window)
+        if normalized is None:
+            continue
+        if greenhouse_id and not normalized.get("houseId"):
+            normalized["houseId"] = greenhouse_id
+        _validate_normalized_good_window(normalized)
+        normalized_windows.append(normalized)
+
+    normalized_windows.sort(
+        key=lambda window: (
+            str(window.get("houseId") or ""),
+            str(window.get("startDate") or ""),
+            str(window.get("endDate") or ""),
+            str(window.get("label") or ""),
+        )
+    )
+    return normalized_windows
+
+
+def filter_rtr_good_windows_for_house(
+    payload: Dict[str, Any],
+    crop: str,
+    greenhouse_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return crop windows scoped to a greenhouse when available."""
+    canonical_crop = _normalize_crop_key(crop)
+    windows = payload.get("crops", {}).get(canonical_crop, [])
+    if greenhouse_id is None:
+        return copy.deepcopy(windows)
+
+    return [
+        copy.deepcopy(window)
+        for window in windows
+        if window.get("houseId") in (None, "", greenhouse_id)
+    ]
+
+
+def upsert_rtr_good_windows(
+    payload: Dict[str, Any] | None,
+    *,
+    crop: str,
+    greenhouse_id: str,
+    windows: list[dict[str, Any]] | None,
+) -> Dict[str, Any]:
+    """Replace the scoped RTR good-production windows for a greenhouse."""
+    canonical_crop = _normalize_crop_key(crop)
+    updated_payload = copy.deepcopy(payload or DEFAULT_RTR_GOOD_WINDOWS_PAYLOAD)
+    updated_payload.setdefault("crops", {}).setdefault(canonical_crop, [])
+    normalized_windows = normalize_rtr_good_windows(windows, greenhouse_id=greenhouse_id)
+    existing_windows = updated_payload["crops"][canonical_crop]
+    retained_windows = [
+        window
+        for window in existing_windows
+        if str(window.get("houseId") or "") != greenhouse_id
+    ]
+    updated_payload["crops"][canonical_crop] = retained_windows + normalized_windows
+    updated_payload["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    return updated_payload
+
+
+def save_rtr_good_windows(
+    payload: Dict[str, Any],
+    config_path: str | Path | None = None,
+) -> Path:
+    """Persist curated RTR good-production windows to YAML."""
+    path = rtr_good_windows_path(config_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(payload, handle, allow_unicode=True, sort_keys=False)
+
+    return path
+
+
 def save_rtr_profiles(
     payload: Dict[str, Any],
     config_path: str | Path | None = None,

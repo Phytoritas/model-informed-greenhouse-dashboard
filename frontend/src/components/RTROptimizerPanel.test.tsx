@@ -26,6 +26,17 @@ vi.mock('./RTROutlookPanel', () => ({
     default: () => <div>기준선 비교 카드 내용</div>,
 }));
 
+vi.mock('./RTRCalibrationWorkspace', () => ({
+    default: ({ onSaved }: { onSaved?: () => void | Promise<void> }) => (
+        <div>
+            <div>RTR calibration workspace stub</div>
+            <button type="button" onClick={() => void onSaved?.()}>
+                calibration saved
+            </button>
+        </div>
+    ),
+}));
+
 const SENSOR_FIXTURE: SensorData = {
     timestamp: Date.now(),
     temperature: 19.2,
@@ -473,6 +484,7 @@ function renderPanel(options?: {
     profile?: RtrProfile | null;
     profileLoading?: boolean;
     telemetryStatus?: TelemetryStatus;
+    onRefreshProfiles?: () => void | Promise<void>;
 }) {
     if (options?.locale) {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, options.locale);
@@ -494,6 +506,7 @@ function renderPanel(options?: {
                     profileLoading={options?.profileLoading ?? false}
                     profileError={null}
                     optimizerEnabled={optimizerEnabled}
+                    onRefreshProfiles={options?.onRefreshProfiles}
                 />
             </AreaUnitProvider>
         </LocaleProvider>,
@@ -545,10 +558,50 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getByText('시나리오 비교')).toBeTruthy();
         expect(screen.getAllByText('균형').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('기준선').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('RTR calibration workspace stub')).toBeTruthy();
         expect(screen.getByText('기준선 비교 카드')).toBeTruthy();
         expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
         expect(screen.getByText('실면적 120.8 kg/일 · 845.6 kg/주')).toBeTruthy();
         expect(screen.getByText('실면적 8,140.2 kWh/일 · 977,880 원/일')).toBeTruthy();
+    });
+
+    it('refreshes profiles and optimizer state after calibration save completes', async () => {
+        const refreshProfiles = vi.fn();
+        const refreshState = vi.fn().mockResolvedValue(undefined);
+        const refreshOptimization = vi.fn().mockResolvedValue(undefined);
+        useRtrOptimizerMock.mockReturnValue({
+            stateResponse: buildStateResponse(),
+            optimizeResponse: buildOptimizeResponse(),
+            scenarioResponse: buildScenarioResponse(),
+            sensitivityResponse: buildSensitivityResponse(),
+            targetNodeDevelopmentPerDay: 0.68,
+            setTargetNodeDevelopmentPerDay: vi.fn(),
+            optimizationMode: 'balanced',
+            setOptimizationMode: vi.fn(),
+            customScenario: null,
+            setCustomScenario: vi.fn(),
+            includeEnergyCost: true,
+            setIncludeEnergyCost: vi.fn(),
+            includeLaborCost: true,
+            setIncludeLaborCost: vi.fn(),
+            telemetryOptimizationBlocked: false,
+            loading: false,
+            loadingState: false,
+            loadingOptimize: false,
+            error: null,
+            refreshState,
+            refreshOptimization,
+        });
+
+        renderPanel({ onRefreshProfiles: refreshProfiles });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'calibration saved' }));
+
+        await waitFor(() => {
+            expect(refreshProfiles).toHaveBeenCalledTimes(1);
+            expect(refreshState).toHaveBeenCalledTimes(1);
+            expect(refreshOptimization).toHaveBeenCalledTimes(1);
+        });
     });
 
     it('syncs server area meta into context and reruns the optimizer with user area overrides', async () => {

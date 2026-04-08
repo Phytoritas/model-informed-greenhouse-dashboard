@@ -278,6 +278,70 @@ export interface RtrProfilesPayload {
     profiles: Record<CropType, RtrProfile>;
 }
 
+export type RtrCalibrationSelectionMode = 'auto' | 'windows-only' | 'heuristic-only';
+
+export interface RtrCalibrationWindow {
+    label?: string | null;
+    startDate: string;
+    endDate: string;
+    enabled: boolean;
+    notes?: string | null;
+    houseId?: string | null;
+    approvalStatus:
+        | 'heuristic-demo'
+        | 'concept-demo'
+        | 'grower-approved'
+        | 'manager-approved'
+        | 'consultant-approved'
+        | 'internal-review';
+    approvalSource?: string | null;
+    approvalReason?: string | null;
+    evidenceNotes?: string | null;
+}
+
+export interface RtrCalibrationEnvironmentSummary {
+    has_environment_history: boolean;
+    start_date: string | null;
+    end_date: string | null;
+    total_rows: number;
+    total_days: number;
+}
+
+export interface RtrCalibrationSelectionSummary {
+    filtered_days: number;
+    pre_filter_days: number;
+    selection_source: 'curated-windows' | 'heuristic-fallback';
+    window_count: number;
+}
+
+export interface RtrCalibrationStateResponse {
+    status: string;
+    crop: CropType;
+    greenhouse_id: string;
+    current_profile: RtrProfile;
+    windows: RtrCalibrationWindow[];
+    environment_summary: RtrCalibrationEnvironmentSummary;
+    available_selection_modes: RtrCalibrationSelectionMode[];
+    selection_mode: RtrCalibrationSelectionMode;
+}
+
+export interface RtrCalibrationPreviewResponse {
+    status: string;
+    crop: CropType;
+    greenhouse_id: string;
+    selection_mode: RtrCalibrationSelectionMode;
+    windows: RtrCalibrationWindow[];
+    preview_profile: RtrProfile;
+    environment_summary: RtrCalibrationEnvironmentSummary;
+    selection_summary: RtrCalibrationSelectionSummary;
+    saved?: boolean;
+    current_profile?: RtrProfile;
+    config_paths?: {
+        windows: string;
+        profiles: string;
+    };
+}
+
 export interface RtrAreaUnitMeta {
     greenhouse_area_m2: number;
     actual_area_m2: number;
