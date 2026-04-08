@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "main-baseline-with-issue37-merged-and-issue3-optional-rtr-calibration-followup",
+  "current_stage": "issue39-pr40-validating-rtr-control-surface-followup",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
-  "active_issue": null,
-  "active_branch": null,
+  "active_issue": 39,
+  "active_branch": "feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces",
   "implementation_blocked": false,
-  "next_action": "Keep `main` at the merged issue #37 baseline. When real grower-approved tomato/cucumber windows are available, reopen the optional RTR calibration content follow-up from a fresh issue-based branch, use the landed calibration workspace or config path to enter those windows, regenerate/refresh the profiles, and rerun RTR validation.",
+  "next_action": "Watch PR #40 remote Backend/Frontend validation. If checks fail, fix only the failing surface on `feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces`; if they pass, merge and reset the baseline back to `main`.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "Post-merge baseline after issue #37 RTR calibration workspace and house-scoped grower-window input lane"
+  "directive_file": "Issue #39 follow-up for RTR scenario offset rows and screen-bias sensitivity surfaces on top of the merged issue #37 baseline"
 }

@@ -24,6 +24,37 @@ def _scenario_confidence(candidate: Mapping[str, Any]) -> float:
     )
 
 
+def _serialize_candidate_scenario(
+    *,
+    label: str,
+    mode: str,
+    candidate: Mapping[str, Any],
+    recommendation_badge: str,
+) -> dict[str, Any]:
+    return {
+        "label": label,
+        "mode": mode,
+        "mean_temp_C": candidate["controls"]["mean_temp_C"],
+        "day_min_temp_C": candidate["controls"]["day_min_temp_C"],
+        "night_min_temp_C": candidate["controls"]["night_min_temp_C"],
+        "node_rate_day": candidate["node_summary"]["predicted_rate_day"],
+        "net_carbon": candidate["flux_projection"]["carbon_margin"],
+        "respiration": candidate["flux_projection"]["respiration_umol_m2_s"],
+        "energy_kwh_m2_day": candidate["objective_breakdown"]["energy_cost"],
+        "labor_index": candidate["objective_breakdown"]["labor_index"],
+        "yield_proxy_basis_net_assim": candidate["flux_projection"]["net_assim_umol_m2_s"],
+        "yield_trend": (
+            "up"
+            if candidate["flux_projection"]["carbon_margin"] >= 0 and candidate["node_summary"]["target_hit"]
+            else "guarded"
+        ),
+        "recommendation_badge": recommendation_badge,
+        "confidence": _scenario_confidence(candidate),
+        "risk_flags": candidate["feasibility"]["risk_flags"],
+        "objective_breakdown": candidate["objective_breakdown"],
+    }
+
+
 def run_rtr_scenarios(
     *,
     context,
@@ -64,28 +95,12 @@ def run_rtr_scenarios(
             optimization_inputs=candidate_inputs,
         )
         scenarios.append(
-            {
-                "label": mode,
-                "mode": "optimizer",
-                "mean_temp_C": result["controls"]["mean_temp_C"],
-                "day_min_temp_C": result["controls"]["day_min_temp_C"],
-                "night_min_temp_C": result["controls"]["night_min_temp_C"],
-                "node_rate_day": result["node_summary"]["predicted_rate_day"],
-                "net_carbon": result["flux_projection"]["carbon_margin"],
-                "respiration": result["flux_projection"]["respiration_umol_m2_s"],
-                "energy_kwh_m2_day": result["objective_breakdown"]["energy_cost"],
-                "labor_index": result["objective_breakdown"]["labor_index"],
-                "yield_proxy_basis_net_assim": result["flux_projection"]["net_assim_umol_m2_s"],
-                "yield_trend": (
-                    "up"
-                    if result["flux_projection"]["carbon_margin"] >= 0 and result["node_summary"]["target_hit"]
-                    else "guarded"
-                ),
-                "recommendation_badge": "recommended" if mode == optimization_inputs.optimization_mode else "compare",
-                "confidence": _scenario_confidence(result),
-                "risk_flags": result["feasibility"]["risk_flags"],
-                "objective_breakdown": result["objective_breakdown"],
-            }
+            _serialize_candidate_scenario(
+                label=mode,
+                mode="optimizer",
+                candidate=result,
+                recommendation_badge="recommended" if mode == optimization_inputs.optimization_mode else "compare",
+            )
         )
 
     baseline_eval = evaluate_rtr_candidate(
@@ -108,29 +123,50 @@ def run_rtr_scenarios(
     )
     scenarios.insert(
         0,
-        {
-            "label": "baseline",
-            "mode": "baseline",
-            "mean_temp_C": baseline_eval["controls"]["mean_temp_C"],
-            "day_min_temp_C": baseline_eval["controls"]["day_min_temp_C"],
-            "night_min_temp_C": baseline_eval["controls"]["night_min_temp_C"],
-            "node_rate_day": baseline_eval["node_summary"]["predicted_rate_day"],
-            "net_carbon": baseline_eval["flux_projection"]["carbon_margin"],
-            "respiration": baseline_eval["flux_projection"]["respiration_umol_m2_s"],
-            "energy_kwh_m2_day": baseline_eval["objective_breakdown"]["energy_cost"],
-            "labor_index": baseline_eval["objective_breakdown"]["labor_index"],
-            "yield_proxy_basis_net_assim": baseline_eval["flux_projection"]["net_assim_umol_m2_s"],
-            "yield_trend": (
-                "up"
-                if baseline_eval["flux_projection"]["carbon_margin"] >= 0 and baseline_eval["node_summary"]["target_hit"]
-                else "guarded"
-            ),
-            "recommendation_badge": "baseline",
-            "confidence": _scenario_confidence(baseline_eval),
-            "risk_flags": baseline_eval["feasibility"]["risk_flags"],
-            "objective_breakdown": baseline_eval["objective_breakdown"],
-        },
+        _serialize_candidate_scenario(
+            label="baseline",
+            mode="baseline",
+            candidate=baseline_eval,
+            recommendation_badge="baseline",
+        ),
     )
+
+    baseline_compare_weights = {
+        "temp": 1.0,
+        "node": 1.0,
+        "carbon": 1.0,
+        "sink": 1.0,
+        "resp": 1.0,
+        "risk": 1.0,
+        "energy": 1.0,
+        "labor": 1.0,
+    }
+    offset_specs = (
+        ("offset_minus_0_3c", -0.3),
+        ("offset_plus_0_3c", 0.3),
+        ("offset_plus_0_6c", 0.6),
+    )
+    offset_rows: list[dict[str, Any]] = []
+    for label, offset_c in offset_specs:
+        offset_candidate = evaluate_rtr_candidate(
+            context=context,
+            optimization_inputs=optimization_inputs,
+            weights=baseline_compare_weights,
+            day_min_temp_c=float(baseline_targets["day_min_temp_C"]) + offset_c,
+            night_min_temp_c=float(baseline_targets["night_min_temp_C"]) + offset_c,
+            co2_target_ppm=float(context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
+            rh_target_pct=float(context.canonical_state["env"]["RH_pct"]),
+        )
+        offset_rows.append(
+            _serialize_candidate_scenario(
+                label=label,
+                mode="offset",
+                candidate=offset_candidate,
+                recommendation_badge="compare",
+            )
+        )
+
+    scenarios[1:1] = offset_rows
     return scenarios
 
 
@@ -146,6 +182,9 @@ def compute_rtr_temperature_sensitivity(
     base_node = float(optimized_candidate["node_summary"]["predicted_rate_day"])
     base_energy = float(optimized_candidate["objective_breakdown"]["energy_cost"])
     base_carbon = float(optimized_candidate["flux_projection"]["carbon_margin"])
+    base_humidity_risk = float(optimized_candidate["objective_breakdown"]["humidity_risk_penalty"])
+    base_disease_penalty = float(optimized_candidate["objective_breakdown"]["disease_penalty"])
+    base_screen = float(optimized_candidate["controls"].get("screen_bias_pct", 0.0))
 
     def _eval(day_c: float, night_c: float):
         return evaluate_rtr_candidate(
@@ -167,8 +206,33 @@ def compute_rtr_temperature_sensitivity(
             rh_target_pct=float(context.canonical_state["env"]["RH_pct"]),
         )
 
+    def _eval_screen(screen_bias_pct: float):
+        return evaluate_rtr_candidate(
+            context=context,
+            optimization_inputs=optimization_inputs,
+            weights={
+                "temp": 1.0,
+                "node": 1.0,
+                "carbon": 1.0,
+                "sink": 1.0,
+                "resp": 1.0,
+                "risk": 1.0,
+                "energy": 1.0,
+                "labor": 1.0,
+            },
+            day_min_temp_c=base_day,
+            night_min_temp_c=base_night,
+            vent_bias_c=float(optimized_candidate["controls"].get("vent_bias_C", 0.0)),
+            screen_bias_pct=screen_bias_pct,
+            co2_target_ppm=float(context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
+            rh_target_pct=float(context.canonical_state["env"]["RH_pct"]),
+        )
+
     warmer = _eval(base_day + step_c, base_night + step_c)
     cooler = _eval(base_day - step_c, base_night - step_c)
+    screen_step_pct = max(1.0, step_c * 10.0)
+    screen_opener = _eval_screen(base_screen + screen_step_pct)
+    screen_closer = _eval_screen(base_screen - screen_step_pct)
     return {
         "crop": optimization_inputs.crop,
         "step_c": step_c,
@@ -263,6 +327,70 @@ def compute_rtr_temperature_sensitivity(
                 "perturbation_size": step_c,
                 "valid": True,
                 "scenario_alignment": warmer["objective_breakdown"]["energy_cost"] >= cooler["objective_breakdown"]["energy_cost"],
+            },
+            {
+                "control": "screen_bias",
+                "target": "humidity_risk_penalty",
+                "derivative": round(
+                    (
+                        float(screen_opener["objective_breakdown"]["humidity_risk_penalty"])
+                        - float(screen_closer["objective_breakdown"]["humidity_risk_penalty"])
+                    ) / (2 * screen_step_pct),
+                    6,
+                ),
+                "elasticity": round(
+                    (
+                        (
+                            (
+                                float(screen_opener["objective_breakdown"]["humidity_risk_penalty"])
+                                - float(screen_closer["objective_breakdown"]["humidity_risk_penalty"])
+                            ) / max(abs(base_humidity_risk), 1e-9)
+                        ) / (2 * screen_step_pct / max(abs(base_screen), 1.0))
+                    ),
+                    6,
+                ),
+                "direction": "increase"
+                if screen_opener["objective_breakdown"]["humidity_risk_penalty"]
+                >= screen_closer["objective_breakdown"]["humidity_risk_penalty"]
+                else "decrease",
+                "trust_region": {"low": -screen_step_pct, "high": screen_step_pct},
+                "method": "finite_difference",
+                "perturbation_size": screen_step_pct,
+                "valid": True,
+                "scenario_alignment": screen_opener["objective_breakdown"]["humidity_risk_penalty"]
+                >= screen_closer["objective_breakdown"]["humidity_risk_penalty"],
+            },
+            {
+                "control": "screen_bias",
+                "target": "disease_penalty",
+                "derivative": round(
+                    (
+                        float(screen_opener["objective_breakdown"]["disease_penalty"])
+                        - float(screen_closer["objective_breakdown"]["disease_penalty"])
+                    ) / (2 * screen_step_pct),
+                    6,
+                ),
+                "elasticity": round(
+                    (
+                        (
+                            (
+                                float(screen_opener["objective_breakdown"]["disease_penalty"])
+                                - float(screen_closer["objective_breakdown"]["disease_penalty"])
+                            ) / max(abs(base_disease_penalty), 1e-9)
+                        ) / (2 * screen_step_pct / max(abs(base_screen), 1.0))
+                    ),
+                    6,
+                ),
+                "direction": "increase"
+                if screen_opener["objective_breakdown"]["disease_penalty"]
+                >= screen_closer["objective_breakdown"]["disease_penalty"]
+                else "decrease",
+                "trust_region": {"low": -screen_step_pct, "high": screen_step_pct},
+                "method": "finite_difference",
+                "perturbation_size": screen_step_pct,
+                "valid": True,
+                "scenario_alignment": screen_opener["objective_breakdown"]["disease_penalty"]
+                >= screen_closer["objective_breakdown"]["disease_penalty"],
             },
         ],
         "base": {
