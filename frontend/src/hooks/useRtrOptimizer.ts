@@ -1,0 +1,275 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { API_URL } from '../config';
+import type {
+    CropType,
+    RtrOptimizationMode,
+    RtrOptimizeResponse,
+    RtrScenarioResponse,
+    RtrSensitivityResponse,
+    RtrStateResponse,
+} from '../types';
+
+interface UseRtrOptimizerOptions {
+    crop: CropType;
+    greenhouseId?: string;
+    actualAreaM2: number | null;
+    actualAreaPyeong: number | null;
+    actualAreaSource?: 'default' | 'server' | 'local';
+    optimizerEnabled?: boolean;
+    defaultMode?: RtrOptimizationMode;
+}
+
+const DEFAULT_MODE: RtrOptimizationMode = 'balanced';
+const DEFAULT_TARGET_NODE_RATE: Record<CropType, number> = {
+    Tomato: 0.45,
+    Cucumber: 0.55,
+};
+
+async function readJson<T>(response: Response): Promise<T> {
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error((data as { detail?: string })?.detail ?? `HTTP ${response.status}`);
+    }
+    return data as T;
+}
+
+export const useRtrOptimizer = ({
+    crop,
+    greenhouseId,
+    actualAreaM2,
+    actualAreaPyeong,
+    actualAreaSource = 'default',
+    optimizerEnabled = true,
+    defaultMode = DEFAULT_MODE,
+}: UseRtrOptimizerOptions) => {
+    const [stateResponse, setStateResponse] = useState<RtrStateResponse | null>(null);
+    const [optimizeResponse, setOptimizeResponse] = useState<RtrOptimizeResponse | null>(null);
+    const [scenarioResponse, setScenarioResponse] = useState<RtrScenarioResponse | null>(null);
+    const [sensitivityResponse, setSensitivityResponse] = useState<RtrSensitivityResponse | null>(null);
+    const [targetNodeDevelopmentPerDay, setTargetNodeDevelopmentPerDay] = useState<number | null>(null);
+    const [optimizationModeState, setOptimizationModeState] = useState<RtrOptimizationMode>(defaultMode);
+    const [includeEnergyCost, setIncludeEnergyCost] = useState(true);
+    const [includeLaborCost, setIncludeLaborCost] = useState(true);
+    const [loadingState, setLoadingState] = useState(true);
+    const [loadingOptimize, setLoadingOptimize] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const stateRequestIdRef = useRef(0);
+    const optimizeRequestIdRef = useRef(0);
+    const hasManualTargetRef = useRef(false);
+    const hasManualModeRef = useRef(false);
+
+    useEffect(() => {
+        setStateResponse(null);
+        setOptimizeResponse(null);
+        setScenarioResponse(null);
+        setSensitivityResponse(null);
+        setTargetNodeDevelopmentPerDay(null);
+        hasManualTargetRef.current = false;
+        hasManualModeRef.current = false;
+        setOptimizationModeState(DEFAULT_MODE);
+        setIncludeEnergyCost(true);
+        setIncludeLaborCost(true);
+        setLoadingState(true);
+        setError(null);
+    }, [crop]);
+
+    useEffect(() => {
+        if (hasManualModeRef.current) {
+            return;
+        }
+        setOptimizationModeState(defaultMode);
+    }, [defaultMode]);
+
+    const stateQuery = useMemo(() => {
+        const params = new URLSearchParams({ crop });
+        if (greenhouseId) {
+            params.set('greenhouse_id', greenhouseId);
+        }
+        return params.toString();
+    }, [crop, greenhouseId]);
+
+    const refreshState = useCallback(async () => {
+        const requestId = stateRequestIdRef.current + 1;
+        stateRequestIdRef.current = requestId;
+        setLoadingState(true);
+        try {
+            const response = await fetch(`${API_URL}/rtr/state?${stateQuery}`);
+            const data = await readJson<RtrStateResponse>(response);
+            if (stateRequestIdRef.current !== requestId) {
+                return;
+            }
+            setStateResponse(data);
+            setError(null);
+        } catch (err) {
+            if (stateRequestIdRef.current !== requestId) {
+                return;
+            }
+            setError(err instanceof Error ? err.message : 'Failed to load RTR state.');
+        } finally {
+            if (stateRequestIdRef.current === requestId) {
+                setLoadingState(false);
+            }
+        }
+    }, [stateQuery]);
+
+    useEffect(() => {
+        void refreshState();
+    }, [refreshState]);
+
+    useEffect(() => {
+        if (targetNodeDevelopmentPerDay !== null && hasManualTargetRef.current) {
+            return;
+        }
+        const predictedRate = stateResponse?.canonical_state?.growth?.predicted_node_rate_day;
+        if (typeof predictedRate === 'number' && Number.isFinite(predictedRate) && predictedRate > 0) {
+            setTargetNodeDevelopmentPerDay(Number(predictedRate.toFixed(3)));
+            return;
+        }
+        if (loadingState) {
+            return;
+        }
+        setTargetNodeDevelopmentPerDay(DEFAULT_TARGET_NODE_RATE[crop]);
+    }, [crop, loadingState, stateResponse, targetNodeDevelopmentPerDay]);
+
+    const requestPayload = useMemo(() => {
+        if (!optimizerEnabled || targetNodeDevelopmentPerDay === null) {
+            return null;
+        }
+
+        return {
+            crop,
+            greenhouse_id: greenhouseId,
+            target_node_development_per_day: targetNodeDevelopmentPerDay,
+            optimization_mode: optimizationModeState,
+            include_energy_cost: includeEnergyCost,
+            include_labor_cost: includeLaborCost,
+            user_actual_area_m2: actualAreaM2 ?? undefined,
+            user_actual_area_pyeong: actualAreaPyeong ?? undefined,
+            target_horizon: 'today',
+        };
+    }, [
+        actualAreaM2,
+        actualAreaPyeong,
+        crop,
+        greenhouseId,
+        includeEnergyCost,
+        includeLaborCost,
+        optimizationModeState,
+        optimizerEnabled,
+        targetNodeDevelopmentPerDay,
+    ]);
+
+    const runOptimizer = useCallback(async () => {
+        if (!optimizerEnabled || !requestPayload) {
+            return;
+        }
+
+        const requestId = optimizeRequestIdRef.current + 1;
+        optimizeRequestIdRef.current = requestId;
+        setLoadingOptimize(true);
+        try {
+            const [optimizeData, scenarioData, sensitivityData] = await Promise.all([
+                fetch(`${API_URL}/rtr/optimize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestPayload),
+                }).then((response) => readJson<RtrOptimizeResponse>(response)),
+                fetch(`${API_URL}/rtr/scenario`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestPayload),
+                }).then((response) => readJson<RtrScenarioResponse>(response)),
+                fetch(`${API_URL}/rtr/sensitivity`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...requestPayload, step_c: 0.3 }),
+                }).then((response) => readJson<RtrSensitivityResponse>(response)),
+            ]);
+
+            if (optimizeRequestIdRef.current !== requestId) {
+                return;
+            }
+
+            setOptimizeResponse(optimizeData);
+            setScenarioResponse(scenarioData);
+            setSensitivityResponse(sensitivityData);
+            setError(null);
+        } catch (err) {
+            if (optimizeRequestIdRef.current !== requestId) {
+                return;
+            }
+            setError(err instanceof Error ? err.message : 'Failed to optimize RTR.');
+        } finally {
+            if (optimizeRequestIdRef.current === requestId) {
+                setLoadingOptimize(false);
+            }
+        }
+    }, [optimizerEnabled, requestPayload]);
+
+    useEffect(() => {
+        if (!optimizerEnabled || !requestPayload) {
+            setOptimizeResponse(null);
+            setScenarioResponse(null);
+            setSensitivityResponse(null);
+            return;
+        }
+        void runOptimizer();
+    }, [optimizerEnabled, requestPayload, runOptimizer]);
+
+    useEffect(() => {
+        if (
+            actualAreaSource !== 'local'
+            || (actualAreaM2 === null && actualAreaPyeong === null)
+            || (loadingState && stateResponse === null)
+        ) {
+            return;
+        }
+        const timer = window.setTimeout(() => {
+            void fetch(`${API_URL}/rtr/area-settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    crop,
+                    greenhouse_id: greenhouseId,
+                    user_actual_area_m2: actualAreaM2 ?? undefined,
+                    user_actual_area_pyeong: actualAreaPyeong ?? undefined,
+                }),
+            }).catch(() => {
+                // Keep local-only storage if persistence fails.
+            });
+        }, 400);
+
+        return () => window.clearTimeout(timer);
+    }, [actualAreaM2, actualAreaPyeong, actualAreaSource, crop, greenhouseId, loadingState, stateResponse]);
+
+    const setTargetNodeRate = useCallback((value: number | null) => {
+        hasManualTargetRef.current = true;
+        setTargetNodeDevelopmentPerDay(value);
+    }, []);
+
+    const setOptimizationMode = useCallback((mode: RtrOptimizationMode) => {
+        hasManualModeRef.current = true;
+        setOptimizationModeState(mode);
+    }, []);
+
+    return {
+        stateResponse,
+        optimizeResponse,
+        scenarioResponse,
+        sensitivityResponse,
+        targetNodeDevelopmentPerDay,
+        setTargetNodeDevelopmentPerDay: setTargetNodeRate,
+        optimizationMode: optimizationModeState,
+        setOptimizationMode,
+        includeEnergyCost,
+        setIncludeEnergyCost,
+        includeLaborCost,
+        setIncludeLaborCost,
+        loading: loadingState || loadingOptimize,
+        loadingState,
+        loadingOptimize,
+        error,
+        refreshState,
+        refreshOptimization: runOptimizer,
+    };
+};
