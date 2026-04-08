@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #21 and branch `feat/21-implement-work-event-driven-compare-loop-for-smartgrow-advisor-tradeoffs` owned the bounded follow-up loop after issue #19; that loop is now merged into `main` via PR #22 and no new active issue has been opened yet."
+    "note": "Issue #23 and branch `feat/23-dashboard-layout-kpi-first-hierarchy` owned the latest bounded dashboard/UI follow-up loop; PR #24 is now merged into `main`, issue #23 is closed, and no new active issue has been opened yet."
   },
   "harness_setup": {
     "status": "pass",
@@ -85,7 +85,7 @@
   },
   "issue23_pr_validation": {
     "status": "pass",
-    "note": "PR #24 now carries the pesticide-advisor grower-detail slice on top of the earlier contextual knowledge-search, SmartGrow quick-action redesign, Korean nutrient-boundary wording, farmer-facing terminology cleanup, hidden evidence/provenance surfaces, and KPI warning-card overlap fix. The latest local ladder is green for the added frontend-localized limitation handling plus legacy-payload regression harness, and refreshed GitHub Actions Backend/Frontend Validation are green on the latest PR #24 head. Screenshots remain under `screenshots/` as local comparison artifacts."
+    "note": "PR #24 merged issue #23 into `main` after the latest local ladder stayed green for the pesticide-advisor limitation localization plus fallback regression harness, and refreshed GitHub Actions Backend/Frontend Validation passed on the final PR head. Screenshots remain under `screenshots/` as local comparison artifacts."
   },
   "issue19_pr_validation": {
     "status": "pass",

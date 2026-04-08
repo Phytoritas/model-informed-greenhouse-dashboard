@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue23-pesticide-advisor-detail-remotely-validated",
+  "current_stage": "issue23-merged-on-main",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
-  "active_issue": 23,
-  "active_branch": "feat/23-dashboard-layout-kpi-first-hierarchy",
+  "active_issue": null,
+  "active_branch": "main",
   "implementation_blocked": false,
-  "next_action": "Review and merge PR #24 now that the pesticide-advisor detail slice and refreshed validation are green, then sync post-merge harness truth on `main`.",
+  "next_action": "Open the next issue before any further non-trivial work; issue #23 is merged and `main` is now the active baseline.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "GitHub issue #23 dashboard layout KPI-first hierarchy restructure"
 }

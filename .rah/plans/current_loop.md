@@ -1,12 +1,12 @@
 # Current Loop
 
 ## Active State
-- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy`, and PR `#24` now carries a follow-up pesticide-advisor detail hardening slice on the latest branch head.
-- The full local validation ladder is green for that slice: `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`. Refreshed Backend/Frontend Validation on PR `#24` are also green on the latest head.
+- Issue `#23` is merged via PR `#24`, and local `main` is fast-forwarded to merge commit `25cabd2`.
+- There is no active implementation loop right now; the issue #23 dashboard/UI/pesticide-advisor slice is the current merged baseline.
 
 ## Latest Delivered Baseline
-- Issue `#21` remains the most recent merged baseline on `main`.
-- Issue `#23` adds:
+- Issue `#23` is now the most recent merged baseline on `main`.
+- That baseline adds:
   - `sensorStatus.ts` utility with `deriveSensorStatus` and `buildStatusSummary`
   - `KpiStrip.tsx` component replacing 6 SensorCards with compact 4-tile + collapsible 2-tile strip
   - `NUMERIC_IDEAL_RANGES` per crop in `displayCopy.ts`
@@ -26,6 +26,6 @@
   - a pesticide-advisor grower-detail pass that prefers Hangul product aliases in Korean mode, adds clearer `제품명/권장 주기/추천 교호안/예비 교호 대안` surfaces, derives grower-facing rotation reasons on the frontend from locale-safe backend codes, localizes backend limitation text on the frontend, and preserves backward compatibility when older payloads omit `rotation_guidance` or `rotation_alternatives`
 
 ## Exact Restart Step
-1. Review and merge PR `#24` if no further issue `#23` grower-facing dashboard follow-up is required.
-2. Fast-forward local `main` after merge.
-3. Sync post-merge harness truth on `main`.
+1. Open a new issue for the next non-trivial change.
+2. Branch from `main`.
+3. Reuse the issue #23 merged baseline unless a new bounded loop explicitly supersedes it.
