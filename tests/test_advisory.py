@@ -33,6 +33,12 @@ def test_recommend_pesticides_returns_crop_scoped_candidates(
     assert payload["rotation_program"]
     assert payload["registration_gate"]["policy"] == "registered_first_manual_review_deferred"
     assert payload["rotation_hardening"]["policy"] == "registered_first_unique_moa"
+    assert payload["rotation_guidance"]["policy_code"] == "registered-first-unique-moa"
+    assert payload["rotation_guidance"]["policy_label"] is None
+    assert payload["rotation_guidance"]["summary"] is None
+    assert payload["rotation_guidance"]["recommended_opening_step_index"] == 1
+    assert payload["rotation_guidance"]["ready_step_count"] >= 0
+    assert payload["rotation_guidance"]["manual_review_step_count"] >= 0
     assert payload["candidate_registration_status_counts"].get(
         "new-registration",
         0,
@@ -50,6 +56,10 @@ def test_recommend_pesticides_returns_crop_scoped_candidates(
         row["moa_code_group"] for row in payload["rotation_program"] if row["moa_code_group"]
     ]
     assert len(returned_moa_groups) == len(set(returned_moa_groups))
+    assert all(row["product_name"] for row in payload["product_recommendations"])
+    assert all("product_names" in row for row in payload["product_recommendations"])
+    assert payload["product_recommendations"][0]["rotation_slot_index"] is not None
+    assert all(row["rotation_step_label"].endswith("단계") for row in payload["rotation_program"])
     assert all(
         row["registration_status"] in payload["registration_status_counts"]
         for row in payload["product_recommendations"] + payload["rotation_program"]
@@ -220,6 +230,16 @@ def test_recommend_pesticides_hardens_rotation_rows_and_manual_review_flags(
     assert payload["rotation_program"][0]["mixing_caution"] == "혼용주의 A"
     assert payload["rotation_program"][1]["moa_code_group"] == "FRAC 아4"
     assert payload["rotation_program"][2]["manual_review_required"] is True
+    assert payload["rotation_program"][0]["rotation_step_label"] == "1단계"
+    assert payload["rotation_program"][0]["rotation_slot_index"] is None
+    assert payload["rotation_program"][0]["product_name"] == "안전A"
+    assert payload["product_recommendations"][0]["product_name"] == "안전A"
+    assert payload["product_recommendations"][0]["notes_farmer_friendly"] is None
+    assert payload["product_recommendations"][0]["reason_codes"] == [
+        "target-match",
+        "cycle-available",
+        "registration-ready",
+    ]
     assert payload["registration_gate"]["manual_review_candidate_count"] == 2
     assert payload["registration_gate"]["returned_manual_review_count"] == 2
     assert payload["rotation_hardening"]["excluded_counts"]["malformed_or_placeholder"] == 1
@@ -229,6 +249,9 @@ def test_recommend_pesticides_hardens_rotation_rows_and_manual_review_flags(
         "FRAC 아4",
         "FRAC 다4",
     ]
+    assert payload["rotation_alternatives"][0]["product_name"] == "안전A"
+    assert payload["rotation_alternatives"][0]["alternative_reason"] is None
+    assert payload["rotation_alternatives"][0]["alternative_reason_code"] == "duplicate-moa"
 
 
 def test_recommend_nutrient_recipe_returns_exact_stage_recipe(

@@ -71,6 +71,235 @@ function setAnalyteValue(
     setter((current) => ({ ...current, [key]: value }));
 }
 
+type PesticideProductRow = PesticideRecommendationPayload['product_recommendations'][number];
+type PesticideRotationRow = PesticideRecommendationPayload['rotation_program'][number];
+type PesticideAlternativeRow = NonNullable<PesticideRecommendationPayload['rotation_alternatives']>[number];
+const HANGUL_PATTERN = /[가-힣]/;
+
+function normalizeAdvisorToken(value: string | null | undefined): string {
+    return value?.trim().toLowerCase().replace(/[_\s]+/g, '-') ?? '';
+}
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+    return values.reduce<string[]>((acc, value) => {
+        const cleaned = value?.trim();
+        if (cleaned && !acc.includes(cleaned)) {
+            acc.push(cleaned);
+        }
+        return acc;
+    }, []);
+}
+
+function parseSequenceIndex(...values: Array<string | number | null | undefined>): number | null {
+    for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value;
+        }
+        if (typeof value === 'string') {
+            const match = value.match(/(\d+)/);
+            if (match) {
+                return Number(match[1]);
+            }
+        }
+    }
+    return null;
+}
+
+function getLocalizedRotationSlotLabel(
+    locale: 'ko' | 'en',
+    row: Pick<PesticideProductRow, 'rotation_slot' | 'rotation_slot_index' | 'rotation_slot_label'>,
+): string | null {
+    const slotIndex = parseSequenceIndex(
+        row.rotation_slot_index,
+        row.rotation_slot,
+        row.rotation_slot_label,
+    );
+    if (slotIndex !== null) {
+        return locale === 'ko' ? `${slotIndex}차` : `Cycle ${slotIndex}`;
+    }
+    return row.rotation_slot_label ?? row.rotation_slot ?? null;
+}
+
+function getLocalizedRotationStepLabel(
+    locale: 'ko' | 'en',
+    row: Pick<PesticideRotationRow, 'rotation_step_index' | 'rotation_step_label'>,
+): string {
+    const stepIndex = parseSequenceIndex(row.rotation_step_index, row.rotation_step_label);
+    if (stepIndex !== null) {
+        return locale === 'ko' ? `${stepIndex}단계` : `Step ${stepIndex}`;
+    }
+    return row.rotation_step_label ?? (locale === 'ko' ? '단계 미정' : 'Unscheduled step');
+}
+
+function isManualReviewRow(
+    row: Pick<PesticideRotationRow, 'registration_status' | 'operational_status'> & { manual_review_required?: boolean },
+): boolean {
+    if (row.manual_review_required) {
+        return true;
+    }
+    const registrationStatus = normalizeAdvisorToken(row.registration_status);
+    const operationalStatus = normalizeAdvisorToken(row.operational_status);
+    return (
+        registrationStatus === 'unknown'
+        || registrationStatus === 'label-check-required'
+        || operationalStatus === 'manual-review-required'
+    );
+}
+
+function buildDisplayProductNames(
+    item: Pick<PesticideProductRow, 'product_name' | 'product_names' | 'product_aliases'>,
+): string[] {
+    return uniqueStrings([
+        item.product_name,
+        ...(item.product_names ?? []),
+        ...(item.product_aliases ?? []),
+    ]);
+}
+
+function buildDisplayTargets(
+    item: Pick<PesticideProductRow, 'matched_targets'>,
+    targetName?: string | null,
+): string[] {
+    return uniqueStrings([...(item.matched_targets ?? []), targetName ?? null]);
+}
+
+function buildProductRecommendationReason(
+    product: PesticideProductRow,
+    locale: 'ko' | 'en',
+): string | null {
+    const parts: string[] = [];
+    const matchedTargets = buildDisplayTargets(product).slice(0, 3);
+    const slotLabel = getLocalizedRotationSlotLabel(locale, product);
+    const cycleLabel = product.cycle_solution ?? product.cycle_recommendation ?? null;
+    if (matchedTargets.length > 0) {
+        parts.push(
+            locale === 'ko'
+                ? `${matchedTargets.join(', ')} 대응`
+                : `Covers ${matchedTargets.join(', ')}`,
+        );
+    }
+    if (slotLabel) {
+        parts.push(locale === 'ko' ? `${slotLabel} 운용 후보` : `${slotLabel} candidate`);
+    }
+    if (cycleLabel) {
+        parts.push(
+            locale === 'ko'
+                ? `권장 주기 ${cycleLabel}`
+                : `Recommended cycle ${cycleLabel}`,
+        );
+    }
+    if (isManualReviewRow(product)) {
+        parts.push(locale === 'ko' ? '라벨 확인 후 사용' : 'Label review before use');
+    } else if (normalizeAdvisorToken(product.registration_status) !== '') {
+        parts.push(locale === 'ko' ? '등록 확인 우선' : 'Registered row prioritized');
+    }
+    return parts.join(' · ') || null;
+}
+
+function buildRotationReason(row: PesticideRotationRow, locale: 'ko' | 'en'): string | null {
+    const parts = uniqueStrings([row.application_point, row.reason, row.notes]);
+    if (parts.length > 0) {
+        return parts.join(' · ');
+    }
+    if (isManualReviewRow(row)) {
+        return locale === 'ko'
+            ? '라벨 확인 뒤 사용 여부를 결정하세요.'
+            : 'Confirm label coverage before use.';
+    }
+    return locale === 'ko'
+        ? '주 교호안 순서에 맞춰 검토하세요.'
+        : 'Review this option within the primary rotation order.';
+}
+
+function buildAlternativeReason(
+    row: PesticideAlternativeRow,
+    locale: 'ko' | 'en',
+): string {
+    const reasonCode = normalizeAdvisorToken(row.alternative_reason_code);
+    if (reasonCode === 'duplicate-moa') {
+        return locale === 'ko'
+            ? '동일 계통이 주 교호안에 있어 예비안으로 남겼습니다.'
+            : 'Kept as a backup because the same MOA already appears in the primary rotation.';
+    }
+    if (reasonCode === 'manual-review' || reasonCode === 'manual-review-required') {
+        return locale === 'ko'
+            ? '등록 또는 라벨 확인이 더 필요해 예비안으로만 남겼습니다.'
+            : 'Kept as a backup because label or registration review is still required.';
+    }
+    return locale === 'ko'
+        ? '주 교호안 뒤에 검토할 추가 대안입니다.'
+        : 'Additional backup option kept outside the primary rotation.';
+}
+
+function buildRotationGuidance(
+    result: PesticideRecommendationPayload,
+    locale: 'ko' | 'en',
+): {
+    summary: string;
+    policyLabel: string;
+    readyStepCount: number;
+    manualReviewStepCount: number;
+    alternativeCount: number;
+    recommendedOpeningStep: string | null;
+} {
+    const rotationProgram = result.rotation_program ?? [];
+    const rotationAlternatives = result.rotation_alternatives ?? [];
+    const readyStepCount = result.rotation_guidance?.ready_step_count
+        ?? rotationProgram.filter((row) => !isManualReviewRow(row)).length;
+    const manualReviewStepCount = result.rotation_guidance?.manual_review_step_count
+        ?? rotationProgram.filter((row) => isManualReviewRow(row)).length;
+    const alternativeCount = result.rotation_guidance?.alternative_count
+        ?? rotationAlternatives.length;
+    const stepCount = result.rotation_guidance?.rotation_step_count ?? rotationProgram.length;
+    const firstReadyRow = rotationProgram.find((row) => !isManualReviewRow(row));
+    const openingStepIndex = parseSequenceIndex(
+        result.rotation_guidance?.recommended_opening_step_index,
+        firstReadyRow?.rotation_step_index,
+        rotationProgram[0]?.rotation_step_index,
+        result.rotation_guidance?.recommended_opening_step,
+    );
+    const recommendedOpeningStep = openingStepIndex !== null
+        ? (locale === 'ko' ? `${openingStepIndex}단계` : `Step ${openingStepIndex}`)
+        : null;
+    const summary = stepCount > 0
+        ? (locale === 'ko'
+            ? `${stepCount}단계 교호안을 정리했습니다. 즉시 사용 단계 ${readyStepCount}개, 라벨 확인 단계 ${manualReviewStepCount}개입니다.`
+            : `Built a ${stepCount}-step rotation. ${readyStepCount} steps are ready and ${manualReviewStepCount} need label review.`)
+        : (locale === 'ko'
+            ? '바로 실행할 교호안이 부족해 제품 후보와 예비 대안을 먼저 확인해야 합니다.'
+            : 'No primary rotation is ready yet; review product candidates and backup options first.');
+    return {
+        summary,
+        policyLabel: locale === 'ko'
+            ? '등록 우선 · 계통 중복 최소화'
+            : 'Registered first · minimize MOA duplication',
+        readyStepCount,
+        manualReviewStepCount,
+        alternativeCount,
+        recommendedOpeningStep,
+    };
+}
+
+function getPreferredProductNames(
+    row: Pick<PesticideProductRow | PesticideRotationRow, 'product_name' | 'product_names' | 'product_aliases'>,
+    locale: 'ko' | 'en',
+) {
+    const allNames = buildDisplayProductNames(row);
+    const fallbackName = row.product_name?.trim() || allNames[0] || '-';
+    const preferredName = (
+        locale === 'ko'
+            ? allNames.find((value) => HANGUL_PATTERN.test(value))
+            : allNames.find((value) => !HANGUL_PATTERN.test(value))
+    ) ?? fallbackName;
+    const aliasNames = allNames.filter((value) => value !== preferredName);
+
+    return {
+        primaryName: preferredName,
+        aliasNames,
+        allNames,
+    };
+}
+
 const AdvisorTabs = ({
     crop,
     summary = null,
@@ -122,6 +351,8 @@ const AdvisorTabs = ({
             limitations: '제약',
             matchedTargets: '매칭 타겟',
             rotation: '교호 대안',
+            rotationGuide: '추천 교호안',
+            rotationAlternatives: '예비 교호 대안',
             recipe: '선택된 처방',
             ecTarget: 'EC 목표',
             guardrails: '경계 조건',
@@ -138,7 +369,27 @@ const AdvisorTabs = ({
             estimatedBatchMass: '추정 투입량',
             dilution: '희석배수',
             application: '살포 방법',
+            applicationPoint: '적용 시점',
+            rotationSlot: '교호 순번',
             mixing: '혼용 주의',
+            aliases: '제품명',
+            cycle: '권장 주기',
+            recommendationReason: '선정 이유',
+            openingStep: '시작 단계',
+            readySteps: '즉시 사용 단계',
+            manualReviewSteps: '라벨 확인 단계',
+            selectionPolicy: '선정 정책',
+            alternativeReason: '대안 사유',
+            policyRegisteredFirstUniqueMoa: '등록 우선 · 계통 중복 최소화',
+            reasonTargetMatchSuffix: '대응',
+            reasonRotationSlotSuffix: '운용 후보',
+            reasonCyclePrefix: '권장 주기',
+            reasonRegistrationReady: '등록 확인 우선',
+            reasonManualReview: '라벨 확인 후 사용',
+            backupDuplicateMoa: '같은 계통이 이미 추천 교호안에 있어 예비 대안으로만 유지했습니다.',
+            backupManualReview: '등록 또는 라벨 확인이 더 필요해 예비 대안으로 유지했습니다.',
+            backupGeneral: '주 교호안 다음 순서에서 검토할 수 있는 추가 대안입니다.',
+            rotationGuideEmpty: '바로 실행할 교호안이 부족해 제품 후보와 예비 대안을 먼저 검토하세요.',
             moaMissing: 'MOA 미상',
             calculationPolicy: '계산 정책',
             workingSolutionShort: '작업액',
@@ -205,6 +456,8 @@ const AdvisorTabs = ({
             limitations: 'Boundary',
             matchedTargets: 'Matched targets',
             rotation: 'Rotation alternatives',
+            rotationGuide: 'Recommended rotation',
+            rotationAlternatives: 'Backup options',
             recipe: 'Selected recipe',
             guardrails: 'Guardrail',
             baselines: 'Baseline',
@@ -220,7 +473,27 @@ const AdvisorTabs = ({
             estimatedBatchMass: 'Estimated batch mass',
             dilution: 'Dilution',
             application: 'Application',
+            applicationPoint: 'Use window',
+            rotationSlot: 'Rotation slot',
             mixing: 'Mixing',
+            aliases: 'Product labels',
+            cycle: 'Recommended cycle',
+            recommendationReason: 'Why this option',
+            openingStep: 'Opening step',
+            readySteps: 'Ready steps',
+            manualReviewSteps: 'Manual-review steps',
+            selectionPolicy: 'Selection policy',
+            alternativeReason: 'Why held as backup',
+            policyRegisteredFirstUniqueMoa: 'Registration first · minimize duplicate modes of action',
+            reasonTargetMatchSuffix: 'coverage',
+            reasonRotationSlotSuffix: 'rotation candidate',
+            reasonCyclePrefix: 'Cycle',
+            reasonRegistrationReady: 'registered first',
+            reasonManualReview: 'label review before use',
+            backupDuplicateMoa: 'The same mode of action is already in the primary rotation, so this stays as a backup only.',
+            backupManualReview: 'Additional registration or label review is still needed, so this stays as a backup only.',
+            backupGeneral: 'An additional backup option to review after the primary rotation.',
+            rotationGuideEmpty: 'There is not enough ready-to-run rotation coverage yet, so review the product shortlist and backup options first.',
             moaMissing: 'MOA n/a',
             calculationPolicy: 'Calculation policy',
             workingSolutionShort: 'working solution',
@@ -408,6 +681,9 @@ const AdvisorTabs = ({
         }
 
         const hasRecommendations = result.product_recommendations.length > 0;
+        const rotationProgram = result.rotation_program ?? [];
+        const rotationAlternatives = result.rotation_alternatives ?? [];
+        const guidance = buildRotationGuidance(result, locale);
         return (
             <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
@@ -423,37 +699,133 @@ const AdvisorTabs = ({
                         </span>
                     ))}
                 </div>
-                {result.product_recommendations.map((product) => (
+                <AdvisorActionCard
+                    title={copy.rotationGuide}
+                    subtitle={guidance.summary}
+                    badges={[
+                        guidance.policyLabel,
+                        `${copy.readySteps} ${guidance.readyStepCount}`,
+                        `${copy.manualReviewSteps} ${guidance.manualReviewStepCount}`,
+                        ...(guidance.recommendedOpeningStep
+                            ? [`${copy.openingStep} ${guidance.recommendedOpeningStep}`]
+                            : []),
+                    ]}
+                >
+                    <div className="grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                        <div>{copy.selectionPolicy}: {guidance.policyLabel}</div>
+                        <div>{copy.matchedTargets}: {result.matched_targets.join(', ') || '-'}</div>
+                    </div>
+                </AdvisorActionCard>
+                {result.product_recommendations.map((product) => {
+                    const productNameView = getPreferredProductNames(product, locale);
+                    const rotationSlotLabel = getLocalizedRotationSlotLabel(locale, product);
+                    const recommendationReason = buildProductRecommendationReason(product, locale) ?? '-';
+                    return (
+                        <AdvisorActionCard
+                            key={`${product.product_name}-${product.rotation_slot ?? 'product'}`}
+                            title={productNameView.primaryName}
+                            subtitle={recommendationReason}
+                            badges={[
+                                product.active_ingredient,
+                                product.moa_code_group ?? copy.moaMissing,
+                                getLocalizedTokenLabel(product.registration_status ?? 'label-check-required', locale),
+                                ...(rotationSlotLabel ? [rotationSlotLabel] : []),
+                            ]}
+                        >
+                            <div className="grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                                <div>{copy.matchedTargets}: {uniqueStrings(product.matched_targets ?? []).join(', ') || '-'}</div>
+                                <div>{copy.cycle}: {product.cycle_solution ?? product.cycle_recommendation ?? '-'}</div>
+                                <div>{copy.dilution}: {product.dilution ?? '-'}</div>
+                                <div>{copy.rotationSlot}: {rotationSlotLabel ?? '-'}</div>
+                                <div className="lg:col-span-2">{copy.aliases}: {productNameView.allNames.join(', ') || '-'}</div>
+                                <div className="lg:col-span-2">{copy.recommendationReason}: {recommendationReason}</div>
+                                <div className="lg:col-span-2">{copy.mixing}: {product.mixing_caution ?? '-'}</div>
+                            </div>
+                        </AdvisorActionCard>
+                    );
+                })}
+                {rotationProgram.length > 0 ? (
                     <AdvisorActionCard
-                        key={product.product_name}
-                        title={product.product_name}
-                        subtitle={product.notes_farmer_friendly}
-                        badges={[
-                            product.active_ingredient,
-                            product.moa_code_group ?? copy.moaMissing,
-                            getLocalizedTokenLabel(product.registration_status ?? copy.labelCheckRequired, locale),
-                        ]}
+                        title={copy.rotation}
+                        subtitle={guidance.summary}
+                        badges={rotationProgram.map(
+                            (row) => row.moa_code_group ?? getLocalizedRotationStepLabel(locale, row),
+                        )}
                     >
-                        <div className="grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
-                            <div>{copy.matchedTargets}: {result.matched_targets.join(', ') || '-'}</div>
-                            <div>{copy.limitations}: {product.cycle_recommendation ?? '-'}</div>
-                            <div>{copy.dilution}: {product.dilution ?? '-'}</div>
-                            <div>{copy.application}: {product.application_method ?? '-'}</div>
-                            <div className="lg:col-span-2">{copy.mixing}: {product.mixing_caution ?? '-'}</div>
+                        <div className="space-y-3">
+                            {rotationProgram.map((row, index) => {
+                                const rowNameView = getPreferredProductNames(row, locale);
+                                const stepLabel = getLocalizedRotationStepLabel(locale, row);
+                                return (
+                                    <div
+                                        key={`${row.rotation_step_index ?? index + 1}-${row.product_name}`}
+                                        className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
+                                    >
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                                {stepLabel}
+                                            </span>
+                                            <span className="text-sm font-semibold text-slate-900">
+                                                {rowNameView.primaryName}
+                                            </span>
+                                            <span className="text-xs text-slate-500">
+                                                {row.active_ingredient}
+                                            </span>
+                                        </div>
+                                        <div className="mt-2 grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                                            <div>{copy.applicationPoint}: {row.application_point ?? row.rotation_slot ?? '-'}</div>
+                                            <div>{copy.cycle}: {row.cycle_solution ?? row.cycle_recommendation ?? '-'}</div>
+                                            <div>{copy.matchedTargets}: {uniqueStrings([...(row.matched_targets ?? []), row.target_name]).join(', ') || '-'}</div>
+                                            <div>{copy.aliases}: {rowNameView.allNames.join(', ') || '-'}</div>
+                                            <div className="lg:col-span-2">{copy.recommendationReason}: {buildRotationReason(row, locale) ?? '-'}</div>
+                                            <div className="lg:col-span-2">{copy.mixing}: {row.mixing_caution ?? '-'}</div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </AdvisorActionCard>
-                ))}
-                {result.rotation_program.length > 0 ? (
+                ) : null}
+                {rotationAlternatives.length > 0 ? (
                     <AdvisorActionCard
-                    title={copy.rotation}
-                    badges={result.rotation_program.map((row) => row.moa_code_group ?? 'MOA')}
+                        title={copy.rotationAlternatives}
+                        subtitle={
+                            locale === 'ko'
+                                ? `주 교호안에 넣지 않은 예비 대안을 ${rotationAlternatives.length}개까지 함께 보여줍니다.`
+                                : `Showing ${rotationAlternatives.length} backup options that stayed outside the primary rotation.`
+                        }
+                        badges={[
+                            `${copy.limit} ${rotationAlternatives.length}`,
+                        ]}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
-                            {result.rotation_program.map((row) => (
-                                <div key={`${row.rotation_slot}-${row.product_name}`}>
-                                    {row.rotation_slot ?? '-'}: {row.product_name} ({row.active_ingredient})
-                                </div>
-                            ))}
+                        <div className="space-y-3">
+                            {rotationAlternatives.map((row, index) => {
+                                const rowNameView = getPreferredProductNames(row, locale);
+                                return (
+                                    <div
+                                        key={`alt-${row.rotation_step_index ?? index + 1}-${row.product_name}`}
+                                        className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3"
+                                    >
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-semibold text-slate-900">
+                                                {rowNameView.primaryName}
+                                            </span>
+                                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                                                {row.moa_code_group ?? copy.moaMissing}
+                                            </span>
+                                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                                                {getLocalizedTokenLabel(row.registration_status ?? 'label-check-required', locale)}
+                                            </span>
+                                        </div>
+                                        <div className="mt-2 grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                                            <div>{copy.applicationPoint}: {row.application_point ?? row.rotation_slot ?? '-'}</div>
+                                            <div>{copy.cycle}: {row.cycle_solution ?? row.cycle_recommendation ?? '-'}</div>
+                                            <div className="lg:col-span-2">{copy.alternativeReason}: {buildAlternativeReason(row, locale)}</div>
+                                            <div className="lg:col-span-2">{copy.aliases}: {rowNameView.allNames.join(', ') || '-'}</div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </AdvisorActionCard>
                 ) : null}
