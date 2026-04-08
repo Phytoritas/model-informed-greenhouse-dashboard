@@ -1,8 +1,8 @@
 # Current Loop
 
 ## Active State
-- Issue `#23` is merged via PR `#24`, and local `main` is fast-forwarded to merge commit `25cabd2`.
-- There is no active implementation loop right now; the issue #23 dashboard/UI/pesticide-advisor slice is the current merged baseline.
+- Issue `#25` is active on branch `fix/25-localize-remaining-grower-facing-advisory-warnings-and-hide-non-actionable-caveats`.
+- The bounded warning-cleanup slice is locally validated. The current state now removes the last grower-visible English/internal caveats, keeps only the actionable pesticide label-check guidance, and records unresolved implementation scope only in internal gap tracking.
 
 ## Latest Delivered Baseline
 - Issue `#23` is now the most recent merged baseline on `main`.
@@ -26,6 +26,6 @@
   - a pesticide-advisor grower-detail pass that prefers Hangul product aliases in Korean mode, adds clearer `제품명/권장 주기/추천 교호안/예비 교호 대안` surfaces, derives grower-facing rotation reasons on the frontend from locale-safe backend codes, localizes backend limitation text on the frontend, and preserves backward compatibility when older payloads omit `rotation_guidance` or `rotation_alternatives`
 
 ## Exact Restart Step
-1. Open a new issue for the next non-trivial change.
-2. Branch from `main`.
-3. Reuse the issue #23 merged baseline unless a new bounded loop explicitly supersedes it.
+1. Finish the issue `#25` copy-cleanup slice by updating regression tests, gap tracking, and remaining grower-facing caveat filters.
+2. Watch PR `#26` remote validation for the issue `#25` branch.
+3. Merge once the remote checks are green, or fix only the failing surface if CI finds drift.

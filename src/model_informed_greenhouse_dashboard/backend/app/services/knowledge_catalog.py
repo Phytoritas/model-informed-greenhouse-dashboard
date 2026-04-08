@@ -621,8 +621,7 @@ def _build_advisory_surface_summary(
                 "rotation_hardening_policy": "registered_first_unique_moa",
             },
             "limitations": [
-                "Deterministic lookup is available, but final product-label verification is still mandatory before operational use.",
-                "Workbook coverage can still contain unknown or label-check-required rows, so the route now returns registered rows first and keeps manual-review burden explicit.",
+                "워크북 기준 농약 후보는 바로 조회할 수 있지만, 실제 사용 전에는 제품 라벨과 등록 여부를 최종 확인하세요.",
             ],
         },
         "nutrient": {

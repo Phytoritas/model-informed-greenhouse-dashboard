@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue23-merged-on-main",
+  "current_stage": "issue25-pr-open-awaiting-remote-validation",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
-  "active_issue": null,
-  "active_branch": "main",
+  "active_issue": 25,
+  "active_branch": "fix/25-localize-remaining-grower-facing-advisory-warnings-and-hide-non-actionable-caveats",
   "implementation_blocked": false,
-  "next_action": "Open the next issue before any further non-trivial work; issue #23 is merged and `main` is now the active baseline.",
+  "next_action": "Watch PR #26 remote validation, fix any CI fallout narrowly if needed, then merge issue #25 once the checks are green.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "GitHub issue #23 dashboard layout KPI-first hierarchy restructure"
+  "directive_file": "GitHub issue #25 localize remaining grower-facing advisory warnings and hide non-actionable caveats"
 }
