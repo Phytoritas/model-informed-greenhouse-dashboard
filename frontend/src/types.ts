@@ -571,7 +571,7 @@ export interface RtrOptimizeResponse {
 
 export interface RtrScenarioRow {
     label: string;
-    mode: RtrSurfaceMode | 'custom';
+    mode: RtrSurfaceMode | 'custom' | 'offset';
     mean_temp_C: number;
     day_min_temp_C: number;
     night_min_temp_C: number;

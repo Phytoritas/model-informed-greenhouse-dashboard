@@ -95,7 +95,20 @@ function getScenarioLabel(label: string, locale: 'en' | 'ko'): string {
         'labor_saving',
         'custom_weights',
         'baseline',
+        'offset_minus_0_3c',
+        'offset_plus_0_3c',
+        'offset_plus_0_6c',
     ]);
+
+    if (label === 'offset_minus_0_3c') {
+        return locale === 'ko' ? '기준선 -0.3°C' : 'Baseline -0.3°C';
+    }
+    if (label === 'offset_plus_0_3c') {
+        return locale === 'ko' ? '기준선 +0.3°C' : 'Baseline +0.3°C';
+    }
+    if (label === 'offset_plus_0_6c') {
+        return locale === 'ko' ? '기준선 +0.6°C' : 'Baseline +0.6°C';
+    }
 
     return knownModes.has(label) ? getModeLabel(label, locale) : label;
 }
@@ -143,11 +156,13 @@ function getSensitivityControlLabel(code: string, locale: 'en' | 'ko'): string {
         temperature_day: '주간 온도',
         temperature_night: '야간 온도',
         temperature_mean: '평균 온도',
+        screen_bias: '스크린 편차',
     };
     const enMap: Record<string, string> = {
         temperature_day: 'Day temperature',
         temperature_night: 'Night temperature',
         temperature_mean: 'Mean temperature',
+        screen_bias: 'Screen bias',
     };
 
     return (locale === 'ko' ? koMap[code] : enMap[code]) ?? code;
@@ -158,11 +173,15 @@ function getSensitivityTargetLabel(code: string, locale: 'en' | 'ko'): string {
         predicted_node_rate_day: '예측 마디 전개',
         carbon_margin: '탄소 마진',
         energy_cost: '에너지 비용',
+        humidity_risk_penalty: '습도 위험 패널티',
+        disease_penalty: '병해 위험 패널티',
     };
     const enMap: Record<string, string> = {
         predicted_node_rate_day: 'Predicted node rate',
         carbon_margin: 'Carbon margin',
         energy_cost: 'Energy cost',
+        humidity_risk_penalty: 'Humidity risk penalty',
+        disease_penalty: 'Disease penalty',
     };
 
     return (locale === 'ko' ? koMap[code] : enMap[code]) ?? code;
