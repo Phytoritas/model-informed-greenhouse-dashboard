@@ -7,7 +7,10 @@ from typing import Any, Mapping
 
 from scipy.optimize import minimize
 
-from .control_effects import build_actuator_availability, build_default_control_candidate
+from .control_effects import (
+    build_actuator_availability,
+    build_baseline_control_candidate,
+)
 from .controller_contract import (
     RTROptimizationInputs,
     RtrControlCandidate,
@@ -123,9 +126,10 @@ def optimize_rtr_targets(
         1.2 if optimization_inputs.crop == "cucumber" else 1.5,
     )
     env = context.canonical_state["env"]
-    baseline_candidate = build_default_control_candidate(
+    baseline_candidate = build_baseline_control_candidate(
         env=env,
         ops_config=context.ops_config,
+        baseline_target_c=float(context.canonical_state["baseline_rtr"]["baseline_target_C"]),
     )
     feasible_weights = build_weight_vector(
         optimizer_defaults,

@@ -189,12 +189,30 @@ def build_post_control_phase_state(
         u_value_override=effective_u_value,
         ach_override=effective_ach,
     )
+    vent_neutral_energy = _estimate_target_hold_compat(
+        estimator=context.energy_estimator,
+        state={"H_W_m2": sensible_heat_post},
+        target_air_c=post_air_temp_c,
+        outside_air_c=outside_temp_c,
+        dt_hours=phase_hours,
+        u_value_override=effective_u_value,
+        ach_override=base_ach * float(screen_effects["ach_factor"]),
+    )
     total_energy_kwh_m2_day = float(post_energy["daily_kWh"]) / max(context.greenhouse_area_m2, 1.0)
     baseline_energy_kwh_m2_day = float(baseline_energy["daily_kWh"]) / max(context.greenhouse_area_m2, 1.0)
-    ventilation_energy_kwh_m2_day = max(0.0, total_energy_kwh_m2_day - baseline_energy_kwh_m2_day)
-    mode = str(post_energy.get("mode", "off"))
-    heating_energy_kwh_m2_day = total_energy_kwh_m2_day if mode == "heating" else 0.0
-    cooling_energy_kwh_m2_day = total_energy_kwh_m2_day if mode == "cooling" else 0.0
+    vent_neutral_energy_kwh_m2_day = float(vent_neutral_energy["daily_kWh"]) / max(context.greenhouse_area_m2, 1.0)
+    ventilation_energy_kwh_m2_day = max(0.0, total_energy_kwh_m2_day - vent_neutral_energy_kwh_m2_day)
+    mode = str(post_energy.get("mode") or "").strip().lower()
+    if mode not in {"heating", "cooling", "off"}:
+        if total_energy_kwh_m2_day <= 1e-9:
+            mode = "off"
+        elif cooling_delta_c > 0:
+            mode = "cooling"
+        else:
+            mode = "heating"
+    thermal_energy_kwh_m2_day = max(0.0, total_energy_kwh_m2_day - ventilation_energy_kwh_m2_day)
+    heating_energy_kwh_m2_day = thermal_energy_kwh_m2_day if mode == "heating" else 0.0
+    cooling_energy_kwh_m2_day = thermal_energy_kwh_m2_day if mode == "cooling" else 0.0
     total_energy_cost_krw_m2_day = total_energy_kwh_m2_day * float(context.cost_per_kwh)
 
     humidity_risk_penalty = max(0.0, (post_rh_pct - 84.0) / 12.0) + max(0.0, 0.45 - post_vpd_kpa)
@@ -236,6 +254,8 @@ def build_post_control_phase_state(
             "cooling_energy_kWh_m2_day": round(cooling_energy_kwh_m2_day, 6),
             "ventilation_energy_kWh_m2_day": round(ventilation_energy_kwh_m2_day, 6),
             "total_energy_kWh_m2_day": round(total_energy_kwh_m2_day, 6),
+            "baseline_energy_kWh_m2_day": round(baseline_energy_kwh_m2_day, 6),
+            "vent_neutral_energy_kWh_m2_day": round(vent_neutral_energy_kwh_m2_day, 6),
             "total_energy_cost_krw_m2_day": round(total_energy_cost_krw_m2_day, 6),
             "mode": mode,
         },

@@ -828,13 +828,14 @@ def _build_rtr_calibration_preview_payload(
 
 
 def _build_rtr_baseline_candidate(context, optimization_inputs):
+    from .services.rtr.control_effects import build_baseline_control_candidate
     from .services.rtr.objective_terms import evaluate_rtr_candidate
 
-    baseline_target_c = float(context.canonical_state["baseline_rtr"]["baseline_target_C"])
-    baseline_day_c = max(float(context.ops_config.get("heating_set_C", baseline_target_c)), baseline_target_c)
-    baseline_night_c = float(context.ops_config.get("heating_set_C", baseline_target_c))
-    baseline_day_cooling_c = max(float(context.ops_config.get("cooling_set_C", baseline_day_c + 7.0)), baseline_day_c + 1.0)
-    baseline_night_cooling_c = max(baseline_day_cooling_c - 1.0, baseline_night_c + 1.0)
+    baseline_candidate = build_baseline_control_candidate(
+        env=context.canonical_state["env"],
+        ops_config=context.ops_config,
+        baseline_target_c=float(context.canonical_state["baseline_rtr"]["baseline_target_C"]),
+    )
     return evaluate_rtr_candidate(
         context=context,
         optimization_inputs=optimization_inputs,
@@ -856,13 +857,38 @@ def _build_rtr_baseline_candidate(context, optimization_inputs):
             "disease": 0.0,
             "stress": 0.0,
         },
-        day_min_temp_c=baseline_day_c,
-        night_min_temp_c=baseline_night_c,
-        day_cooling_target_c=baseline_day_cooling_c,
-        night_cooling_target_c=baseline_night_cooling_c,
-        co2_target_ppm=float(context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
+        day_min_temp_c=baseline_candidate.day_heating_min_temp_C,
+        night_min_temp_c=baseline_candidate.night_heating_min_temp_C,
+        day_cooling_target_c=baseline_candidate.day_cooling_target_C,
+        night_cooling_target_c=baseline_candidate.night_cooling_target_C,
+        co2_target_ppm=baseline_candidate.co2_target_ppm,
         rh_target_pct=float(context.canonical_state["env"]["RH_pct"]),
     )
+
+
+def _resolve_active_rtr_weights(context, optimization_inputs):
+    from .services.rtr.controller_contract import build_weight_vector
+
+    optimizer_defaults = (
+        context.canonical_state.get("optimizer")
+        or context.crop_profile.get("optimizer")
+        or {}
+    )
+    return build_weight_vector(
+        optimizer_defaults,
+        optimization_inputs.optimization_mode,
+        include_energy_cost=optimization_inputs.include_energy_cost,
+        include_labor_cost=optimization_inputs.include_labor_cost,
+        include_cooling_cost=optimization_inputs.include_cooling_cost,
+        custom_weights=optimization_inputs.custom_weights,
+    )
+
+
+def _coalesce_optional_number(*values, default):
+    for value in values:
+        if value is not None:
+            return float(value)
+    return float(default)
 
 
 def _estimate_rtr_yield_proxy_kg_m2_day(context) -> float:
@@ -2560,38 +2586,48 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
     )
     if req.custom_scenario is not None:
         custom = req.custom_scenario
+        active_weights = _resolve_active_rtr_weights(context, optimization_inputs)
         custom_eval = evaluate_rtr_candidate(
             context=context,
             optimization_inputs=optimization_inputs,
-            weights={
-                "temp": 1.0,
-                "node": 1.0,
-                "carbon": 1.0,
-                "sink": 1.0,
-                "resp": 1.0,
-                "risk": 1.0,
-                "energy": 1.0,
-                "labor": 1.0,
-                "assim": 1.0,
-                "yield": 1.0,
-                "heating": 1.0,
-                "cooling": 1.0,
-                "ventilation": 1.0,
-                "humidity": 1.0,
-                "disease": 1.0,
-                "stress": 1.0,
-            },
-            day_min_temp_c=float(custom.day_heating_min_temp_C or custom.day_min_temp_C or context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])),
-            night_min_temp_c=float(custom.night_heating_min_temp_C or custom.night_min_temp_C or context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])),
-            day_cooling_target_c=float(custom.day_cooling_target_C or context.ops_config.get("cooling_set_C", context.canonical_state["env"]["T_air_C"] + 7.0)),
-            night_cooling_target_c=float(custom.night_cooling_target_C or max(float(context.ops_config.get("cooling_set_C", context.canonical_state["env"]["T_air_C"] + 7.0)) - 1.0, float(context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])) + 1.0)),
-            vent_bias_c=float(custom.vent_bias_C or 0.0),
-            screen_bias_pct=float(custom.screen_bias_pct or 0.0),
-            circulation_fan_pct=float(custom.circulation_fan_pct or 35.0),
-            co2_target_ppm=float(custom.co2_target_ppm or context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
-            rh_target_pct=float(custom.rh_target_pct or context.canonical_state["env"]["RH_pct"]),
-            dehumidification_bias=float(custom.dehumidification_bias or 0.0),
-            fogging_or_evap_cooling_intensity=float(custom.fogging_or_evap_cooling_intensity or 0.0),
+            weights=active_weights,
+            day_min_temp_c=_coalesce_optional_number(
+                custom.day_heating_min_temp_C,
+                custom.day_min_temp_C,
+                default=context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"]),
+            ),
+            night_min_temp_c=_coalesce_optional_number(
+                custom.night_heating_min_temp_C,
+                custom.night_min_temp_C,
+                default=context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"]),
+            ),
+            day_cooling_target_c=_coalesce_optional_number(
+                custom.day_cooling_target_C,
+                default=context.ops_config.get("cooling_set_C", context.canonical_state["env"]["T_air_C"] + 7.0),
+            ),
+            night_cooling_target_c=_coalesce_optional_number(
+                custom.night_cooling_target_C,
+                default=max(
+                    float(context.ops_config.get("cooling_set_C", context.canonical_state["env"]["T_air_C"] + 7.0)) - 1.0,
+                    float(context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])) + 1.0,
+                ),
+            ),
+            vent_bias_c=_coalesce_optional_number(custom.vent_bias_C, default=0.0),
+            screen_bias_pct=_coalesce_optional_number(custom.screen_bias_pct, default=0.0),
+            circulation_fan_pct=_coalesce_optional_number(custom.circulation_fan_pct, default=35.0),
+            co2_target_ppm=_coalesce_optional_number(
+                custom.co2_target_ppm,
+                default=context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"]),
+            ),
+            rh_target_pct=_coalesce_optional_number(
+                custom.rh_target_pct,
+                default=context.canonical_state["env"]["RH_pct"],
+            ),
+            dehumidification_bias=_coalesce_optional_number(custom.dehumidification_bias, default=0.0),
+            fogging_or_evap_cooling_intensity=_coalesce_optional_number(
+                custom.fogging_or_evap_cooling_intensity,
+                default=0.0,
+            ),
         )
         custom_constraint_checks = custom_eval.get("constraint_checks", {}) or {}
         custom_feasibility = custom_eval.get("feasibility", {}) or {}
