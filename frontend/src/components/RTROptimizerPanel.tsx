@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
     Activity,
     ArrowDownRight,
@@ -47,10 +47,12 @@ interface RTROptimizerPanelProps {
 }
 
 const MODE_ORDER: RtrOptimizationMode[] = [
-    'growth_priority',
     'balanced',
-    'energy_saving',
-    'labor_saving',
+    'yield_priority',
+    'energy_priority',
+    'labor_priority',
+    'cooling_saving',
+    'heating_saving',
 ];
 const DEFAULT_OPTIMIZATION_MODE: RtrOptimizationMode = 'balanced';
 
@@ -71,6 +73,11 @@ function formatNumber(
 
 function getModeLabel(mode: string, locale: 'en' | 'ko'): string {
     if (locale === 'ko') {
+        if (mode === 'yield_priority' || mode === 'growth_priority') return '수량 우선';
+        if (mode === 'energy_priority' || mode === 'energy_saving') return '에너지 우선';
+        if (mode === 'labor_priority' || mode === 'labor_saving') return '노동 우선';
+        if (mode === 'cooling_saving') return '냉방 절감';
+        if (mode === 'heating_saving') return '난방 절감';
         if (mode === 'growth_priority') return '생장 우선';
         if (mode === 'energy_saving') return '에너지 절감';
         if (mode === 'labor_saving') return '작업 절감';
@@ -79,6 +86,11 @@ function getModeLabel(mode: string, locale: 'en' | 'ko'): string {
         return '균형';
     }
 
+    if (mode === 'yield_priority' || mode === 'growth_priority') return 'Yield';
+    if (mode === 'energy_priority' || mode === 'energy_saving') return 'Energy';
+    if (mode === 'labor_priority' || mode === 'labor_saving') return 'Labor';
+    if (mode === 'cooling_saving') return 'Cooling save';
+    if (mode === 'heating_saving') return 'Heating save';
     if (mode === 'growth_priority') return 'Growth';
     if (mode === 'energy_saving') return 'Energy';
     if (mode === 'labor_saving') return 'Labor';
@@ -93,11 +105,26 @@ function getScenarioLabel(label: string, locale: 'en' | 'ko'): string {
         'balanced',
         'energy_saving',
         'labor_saving',
+        'yield_priority',
+        'energy_priority',
+        'labor_priority',
+        'cooling_saving',
+        'heating_saving',
         'custom_weights',
         'baseline',
         'offset_minus_0_3c',
         'offset_plus_0_3c',
         'offset_plus_0_6c',
+        'heating_weaker',
+        'heating_stronger',
+        'cooling_weaker',
+        'cooling_stronger',
+        'vent_more_open',
+        'vent_more_closed',
+        'screen_more_open',
+        'screen_more_closed',
+        'coordinated_hvac',
+        'optimizer_chosen',
     ]);
 
     if (label === 'offset_minus_0_3c') {
@@ -108,6 +135,36 @@ function getScenarioLabel(label: string, locale: 'en' | 'ko'): string {
     }
     if (label === 'offset_plus_0_6c') {
         return locale === 'ko' ? '기준선 +0.6°C' : 'Baseline +0.6°C';
+    }
+    if (label === 'heating_weaker') {
+        return locale === 'ko' ? '난방 약화' : 'Heating weaker';
+    }
+    if (label === 'heating_stronger') {
+        return locale === 'ko' ? '난방 강화' : 'Heating stronger';
+    }
+    if (label === 'cooling_weaker') {
+        return locale === 'ko' ? '냉방 약화' : 'Cooling weaker';
+    }
+    if (label === 'cooling_stronger') {
+        return locale === 'ko' ? '냉방 강화' : 'Cooling stronger';
+    }
+    if (label === 'vent_more_open') {
+        return locale === 'ko' ? '환기 더 열기' : 'Vent more open';
+    }
+    if (label === 'vent_more_closed') {
+        return locale === 'ko' ? '환기 더 닫기' : 'Vent more closed';
+    }
+    if (label === 'screen_more_open') {
+        return locale === 'ko' ? '스크린 더 열기' : 'Screen more open';
+    }
+    if (label === 'screen_more_closed') {
+        return locale === 'ko' ? '스크린 더 닫기' : 'Screen more closed';
+    }
+    if (label === 'coordinated_hvac') {
+        return locale === 'ko' ? '냉난방 연동' : 'Coordinated HVAC';
+    }
+    if (label === 'optimizer_chosen') {
+        return locale === 'ko' ? '최종 권장안' : 'Optimizer chosen';
     }
 
     return knownModes.has(label) ? getModeLabel(label, locale) : label;
@@ -153,12 +210,30 @@ function getReasonTagLabel(code: string, locale: 'en' | 'ko'): string {
 
 function getSensitivityControlLabel(code: string, locale: 'en' | 'ko'): string {
     const koMap: Record<string, string> = {
+        day_heating_min_temp_C: '주간 난방 기준',
+        night_heating_min_temp_C: '야간 난방 기준',
+        day_cooling_target_C: '주간 냉방 기준',
+        night_cooling_target_C: '야간 냉방 기준',
+        vent_bias_C: '환기 편차',
+        screen_bias_pct: '스크린 편차',
+        circulation_fan_pct: '순환팬 강도',
+        co2_target_ppm: 'CO₂ 목표',
+        target_node_rate_day: '목표 마디 전개',
         temperature_day: '주간 온도',
         temperature_night: '야간 온도',
         temperature_mean: '평균 온도',
         screen_bias: '스크린 편차',
     };
     const enMap: Record<string, string> = {
+        day_heating_min_temp_C: 'Day heating minimum',
+        night_heating_min_temp_C: 'Night heating minimum',
+        day_cooling_target_C: 'Day cooling target',
+        night_cooling_target_C: 'Night cooling target',
+        vent_bias_C: 'Vent bias',
+        screen_bias_pct: 'Screen bias',
+        circulation_fan_pct: 'Circulation fan',
+        co2_target_ppm: 'CO2 target',
+        target_node_rate_day: 'Target node rate',
         temperature_day: 'Day temperature',
         temperature_night: 'Night temperature',
         temperature_mean: 'Mean temperature',
@@ -170,21 +245,47 @@ function getSensitivityControlLabel(code: string, locale: 'en' | 'ko'): string {
 
 function getSensitivityTargetLabel(code: string, locale: 'en' | 'ko'): string {
     const koMap: Record<string, string> = {
+        objective: '목적함수',
         predicted_node_rate_day: '예측 마디 전개',
         carbon_margin: '탄소 마진',
-        energy_cost: '에너지 비용',
+        energy_cost: '총 에너지 비용',
+        heating_energy_cost: '난방 에너지 비용',
+        cooling_energy_cost: '냉방 에너지 비용',
+        labor_penalty: '노동 패널티',
+        humidity_penalty: '습도 위험 패널티',
         humidity_risk_penalty: '습도 위험 패널티',
         disease_penalty: '병해 위험 패널티',
     };
     const enMap: Record<string, string> = {
+        objective: 'Objective',
         predicted_node_rate_day: 'Predicted node rate',
         carbon_margin: 'Carbon margin',
-        energy_cost: 'Energy cost',
+        energy_cost: 'Total energy cost',
+        heating_energy_cost: 'Heating energy cost',
+        cooling_energy_cost: 'Cooling energy cost',
+        labor_penalty: 'Labor penalty',
+        humidity_penalty: 'Humidity risk penalty',
         humidity_risk_penalty: 'Humidity risk penalty',
         disease_penalty: 'Disease penalty',
     };
 
     return (locale === 'ko' ? koMap[code] : enMap[code]) ?? code;
+}
+
+function getScenarioGroupLabel(group: string, locale: 'en' | 'ko'): string {
+    const koMap: Record<string, string> = {
+        baseline: '기준선 비교',
+        hvac: '냉난방 비교',
+        'vent-screen': '환기·스크린 비교',
+        optimizer: '최종 권장안',
+    };
+    const enMap: Record<string, string> = {
+        baseline: 'Baseline rows',
+        hvac: 'HVAC rows',
+        'vent-screen': 'Vent/screen rows',
+        optimizer: 'Optimizer chosen',
+    };
+    return (locale === 'ko' ? koMap[group] : enMap[group]) ?? group;
 }
 
 function getRiskSeverityClass(severity: string): string {
@@ -407,10 +508,14 @@ const RTROptimizerPanel = ({
     const defaultMode = defaultModeProp ?? profile?.optimizer?.default_mode ?? DEFAULT_OPTIMIZATION_MODE;
     const [customScenarioDraft, setCustomScenarioDraft] = useState({
         label: '',
-        dayMinTempC: '',
-        nightMinTempC: '',
+        dayHeatingMinTempC: '',
+        nightHeatingMinTempC: '',
+        dayCoolingTargetC: '',
+        nightCoolingTargetC: '',
         ventBiasC: '',
         screenBiasPct: '',
+        circulationFanPct: '',
+        co2TargetPpm: '',
     });
     const {
         stateResponse,
@@ -425,6 +530,8 @@ const RTROptimizerPanel = ({
         setCustomScenario,
         includeEnergyCost,
         setIncludeEnergyCost,
+        includeCoolingCost,
+        setIncludeCoolingCost,
         includeLaborCost,
         setIncludeLaborCost,
         telemetryOptimizationBlocked,
@@ -457,49 +564,63 @@ const RTROptimizerPanel = ({
             subtitle: `${getCropLabel(crop, locale)} 목표 마디 전개를 위한 최소 충분 온도`,
             targetNode: '목표 마디 전개',
             predictedNode: '현재 예측 전개',
-            recommendedMeanTemp: '추천 평균 온도',
+            recommendedMeanTemp: '추천 최소 평균온도',
             deltaTemp: '기준선 대비 ΔT',
             rtrEquivalent: '최적 RTR 환산값',
             confidence: '신뢰도',
             gainLoss: '이득/손실 균형',
             cropInsight: '작물별 해석',
-            setpoints: '추천 설정값',
+            setpoints: '추천 제어값',
             scenarios: '시나리오 비교',
             customScenarioTitle: '사용자 비교 시나리오',
-            customScenarioBody: '기준선과 권장안 사이에서 원하는 설정값을 직접 넣어 비교 행으로 추가합니다.',
+            customScenarioBody: '난방·냉방·환기·스크린·팬·CO₂ 후보를 직접 넣어 기준선과 권장안 사이에서 비교합니다.',
             customLabel: '비교 이름',
             customApply: '비교에 반영',
             customReset: '초기화',
             baselineCard: '기준선 비교 카드',
             refresh: '다시 계산',
             includeEnergy: '에너지 비용 포함',
+            includeCooling: '냉방 비용 포함',
             includeLabor: '작업부하 포함',
-            dayMin: '주간 최소 온도',
-            nightMin: '야간 최소 온도',
+            dayMin: '주간 최소 평균온도',
+            nightMin: '야간 최소 평균온도',
+            dayHeating: '주간 난방 기준',
+            nightHeating: '야간 난방 기준',
+            dayCooling: '주간 냉방 기준',
+            nightCooling: '야간 냉방 기준',
             ventBias: '환기 편차',
             screenBias: '스크린 편차',
+            circulationFan: '순환팬 강도',
+            co2Target: 'CO₂ 목표',
             holdTime: '유지 시간',
             changeLimit: '변경 제한',
             carbonMargin: '탄소 마진',
             assimilationGain: '광합성 이득',
-            respirationCost: '호흡 손실',
+            respirationCost: '호흡 부담',
             sinkOverload: 'sink 과부하 위험',
-            energyCost: '에너지 비용',
+            energyCost: '총 에너지 비용',
+            heatingEnergy: '난방 에너지',
+            coolingEnergy: '냉방 에너지',
             laborCost: '작업부하',
+            yieldChange: '예상 수량 변화',
+            humidityRisk: '습도 위험',
+            diseaseRisk: '병해/결로 리스크',
+            stressPenalty: '스트레스 패널티',
+            controlEffects: '제어 후 미기상',
             targetHit: '목표 충족',
             yes: '충족',
             no: '보류',
-            sensitivity: '온도 민감도',
+            sensitivity: '제어 민감도',
             noScenario: '시나리오 계산 결과가 아직 없습니다.',
             computing: 'RTR 최적화를 계산하는 중...',
-            modeHeader: '모드',
+            modeHeader: '시나리오',
             meanHeader: '평균온도',
             nodeHeader: '마디/일',
-            carbonHeader: '탄소',
-            respHeader: '호흡',
-            energyHeader: '에너지',
-            yieldHeader: '수확량',
-            laborHeader: '작업',
+            carbonHeader: '탄소/동화',
+            riskHeader: '습도/병해',
+            energyHeader: '냉난방 비용',
+            yieldHeader: '수량 추세',
+            laborHeader: '노동',
             telemetryBlockedTitle: '실시간 수신이 오래돼 RTR 최적화를 잠시 제한합니다.',
             telemetryBlockedBody: '센서가 stale/offline 상태이면 마지막 스냅샷으로 새 최적화를 밀지 않고, 기준선 비교 카드만 유지합니다.',
             disabledTitle: 'RTR 기준선 모니터',
@@ -515,48 +636,62 @@ const RTROptimizerPanel = ({
             subtitle: `Minimum sufficient temperature for ${getCropLabel(crop, locale)} node progression`,
             targetNode: 'Target node rate',
             predictedNode: 'Predicted node rate',
-            recommendedMeanTemp: 'Recommended mean temp',
+            recommendedMeanTemp: 'Recommended minimum mean temp',
             deltaTemp: 'ΔT vs baseline',
             rtrEquivalent: 'Optimized RTR equivalent',
             confidence: 'Confidence',
             gainLoss: 'Gain/loss trade-off',
             cropInsight: 'Crop-specific insight',
-            setpoints: 'Setpoint result',
+            setpoints: 'Control result',
             scenarios: 'Scenario compare',
             customScenarioTitle: 'Custom compare scenario',
-            customScenarioBody: 'Add your own setpoint row to compare it against the baseline and optimizer recommendation.',
+            customScenarioBody: 'Add your own heating, cooling, vent, screen, fan, and CO2 row to compare it against the baseline and optimizer recommendation.',
             customLabel: 'Scenario label',
             customApply: 'Apply compare row',
             customReset: 'Reset',
             baselineCard: 'Baseline comparison card',
             refresh: 'Refresh',
             includeEnergy: 'Include energy cost',
+            includeCooling: 'Include cooling cost',
             includeLabor: 'Include labor load',
-            dayMin: 'Day minimum',
-            nightMin: 'Night minimum',
+            dayMin: 'Minimum mean temp',
+            nightMin: 'Night mean temp',
+            dayHeating: 'Day heating minimum',
+            nightHeating: 'Night heating minimum',
+            dayCooling: 'Day cooling target',
+            nightCooling: 'Night cooling target',
             ventBias: 'Vent bias',
             screenBias: 'Screen bias',
+            circulationFan: 'Circulation fan',
+            co2Target: 'CO2 target',
             holdTime: 'Hold time',
             changeLimit: 'Change limit',
             carbonMargin: 'Carbon margin',
             assimilationGain: 'Assimilation gain',
-            respirationCost: 'Respiration cost',
+            respirationCost: 'Respiration burden',
             sinkOverload: 'Sink overload risk',
-            energyCost: 'Energy cost',
+            energyCost: 'Total energy cost',
+            heatingEnergy: 'Heating energy',
+            coolingEnergy: 'Cooling energy',
             laborCost: 'Labor load',
+            yieldChange: 'Yield change',
+            humidityRisk: 'Humidity risk',
+            diseaseRisk: 'Disease/condensation risk',
+            stressPenalty: 'Stress penalty',
+            controlEffects: 'Post-control microclimate',
             targetHit: 'Target hit',
             yes: 'Hit',
             no: 'Guarded',
-            sensitivity: 'Temperature sensitivity',
+            sensitivity: 'Control sensitivity',
             noScenario: 'Scenario results are not available yet.',
             computing: 'Computing RTR optimizer...',
-            modeHeader: 'Mode',
+            modeHeader: 'Scenario',
             meanHeader: 'Tmean',
             nodeHeader: 'Node/day',
-            carbonHeader: 'Carbon',
-            respHeader: 'Resp',
-            energyHeader: 'Energy',
-            yieldHeader: 'Yield',
+            carbonHeader: 'Carbon/assim',
+            riskHeader: 'Humidity/risk',
+            energyHeader: 'HVAC cost',
+            yieldHeader: 'Yield trend',
             laborHeader: 'Labor',
             telemetryBlockedTitle: 'RTR optimization is temporarily gated by stale telemetry.',
             telemetryBlockedBody: 'When sensors are stale or offline, the panel keeps the baseline comparison card visible instead of pushing a fresh optimizer run.',
@@ -634,11 +769,29 @@ const RTROptimizerPanel = ({
     }, [sensitivityResponse]);
 
     const warningBadges = optimizeResponse?.warning_badges ?? [];
-    const scenarioRows = scenarioResponse?.scenarios ?? [];
+    const scenarioRows = useMemo(() => scenarioResponse?.scenarios ?? [], [scenarioResponse]);
+    const actuatorAvailability =
+        optimizeResponse?.actuator_availability
+        ?? sensitivityResponse?.actuator_availability
+        ?? stateResponse?.actuator_availability
+        ?? null;
+    const groupedScenarioRows = useMemo(() => {
+        const groupOrder = ['baseline', 'hvac', 'vent-screen', 'optimizer'] as const;
+        return groupOrder
+            .map((group) => ({
+                group,
+                rows: scenarioRows.filter((row) => (row.group ?? 'optimizer') === group),
+            }))
+            .filter((entry) => entry.rows.length > 0);
+    }, [scenarioRows]);
     const riskFlags = optimizeResponse?.feasibility.risk_flags ?? [];
     const hasOptimizerSurface = optimizeResponse !== null || scenarioResponse !== null || sensitivityResponse !== null;
     const targetHit = optimizeResponse?.feasibility.target_node_hit ?? false;
     const confidence = optimizeResponse?.feasibility.confidence ?? null;
+    const energySummary = optimizeResponse?.energy_summary ?? null;
+    const laborSummary = optimizeResponse?.labor_summary ?? null;
+    const yieldSummary = optimizeResponse?.yield_summary ?? null;
+    const postControlEnv = optimizeResponse?.control_effect_trace?.env ?? null;
     const waitingForTarget = !loadingState && targetNodeDevelopmentPerDay === null;
     const telemetryWarning = getTelemetryWarningCopy(telemetryStatus, locale);
     const lowConfidence = confidence !== null && confidence < 0.75;
@@ -660,10 +813,14 @@ const RTROptimizerPanel = ({
     }, [optimizeResponse, profile]);
 
     const hasCustomScenarioDraft =
-        customScenarioDraft.dayMinTempC.trim().length > 0
-        || customScenarioDraft.nightMinTempC.trim().length > 0
+        customScenarioDraft.dayHeatingMinTempC.trim().length > 0
+        || customScenarioDraft.nightHeatingMinTempC.trim().length > 0
+        || customScenarioDraft.dayCoolingTargetC.trim().length > 0
+        || customScenarioDraft.nightCoolingTargetC.trim().length > 0
         || customScenarioDraft.ventBiasC.trim().length > 0
-        || customScenarioDraft.screenBiasPct.trim().length > 0;
+        || customScenarioDraft.screenBiasPct.trim().length > 0
+        || customScenarioDraft.circulationFanPct.trim().length > 0
+        || customScenarioDraft.co2TargetPpm.trim().length > 0;
 
     if (isProfilePending) {
         return (
@@ -777,7 +934,7 @@ const RTROptimizerPanel = ({
                     </div>
                 ) : null}
 
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                     <label className="rounded-lg bg-slate-50 p-3 text-xs font-medium text-slate-600">
                         <span>{copy.targetNode}</span>
                         <input
@@ -828,6 +985,63 @@ const RTROptimizerPanel = ({
                             {formatNumber(confidence === null ? null : confidence * 100, 0, locale)}%
                         </div>
                     </div>
+                    <div className="rounded-lg bg-slate-50 p-3">
+                        <div className="text-[11px] text-slate-500">{copy.carbonMargin}</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                            {formatNumber(optimizeResponse?.flux_projection.carbon_margin, 3, locale)}
+                        </div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-3">
+                        <div className="text-[11px] text-slate-500">{copy.heatingEnergy}</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                            {formatNumber(energySummary?.heating_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                            {formatNumber(energySummary?.heating_energy_kWh_m2_day, 3, locale)} kWh/m²/day
+                        </div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-3">
+                        <div className="text-[11px] text-slate-500">{copy.coolingEnergy}</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                            {formatNumber(energySummary?.cooling_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                            {formatNumber(energySummary?.cooling_energy_kWh_m2_day, 3, locale)} kWh/m²/day
+                        </div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-3">
+                        <div className="text-[11px] text-slate-500">{copy.energyCost}</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                            {formatNumber(energySummary?.total_energy_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                            {locale === 'ko'
+                                ? `실면적 ${formatNumber(optimizeResponse?.actual_area_projection.energy_kwh_day, 1, locale)} kWh/일`
+                                : `${formatNumber(optimizeResponse?.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day @ actual area`}
+                        </div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-3">
+                        <div className="text-[11px] text-slate-500">{copy.laborCost}</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                            {formatNumber(laborSummary?.labor_index, 3, locale)}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                            {locale === 'ko'
+                                ? `실면적 ${formatNumber(optimizeResponse?.actual_area_projection.labor_cost_krw_day, 0, locale)} 원/일`
+                                : `${formatNumber(optimizeResponse?.actual_area_projection.labor_cost_krw_day, 0, locale)} KRW/day @ actual area`}
+                        </div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-3">
+                        <div className="text-[11px] text-slate-500">{copy.yieldChange}</div>
+                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                            {formatNumber(yieldSummary?.harvest_trend_delta_pct, 1, locale)}%
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-500">
+                            {locale === 'ko'
+                                ? `실면적 ${formatNumber(optimizeResponse?.actual_area_projection.yield_kg_day, 1, locale)} kg/일`
+                                : `${formatNumber(optimizeResponse?.actual_area_projection.yield_kg_day, 1, locale)} kg/day @ actual area`}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -854,6 +1068,15 @@ const RTROptimizerPanel = ({
                             onChange={(event) => setIncludeEnergyCost(event.target.checked)}
                         />
                         {copy.includeEnergy}
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-slate-600">
+                        <input
+                            type="checkbox"
+                            checked={includeCoolingCost}
+                            disabled={telemetryOptimizationBlocked}
+                            onChange={(event) => setIncludeCoolingCost(event.target.checked)}
+                        />
+                        {copy.includeCooling}
                     </label>
                     <label className="flex items-center gap-2 text-xs text-slate-600">
                         <input
@@ -925,14 +1148,20 @@ const RTROptimizerPanel = ({
                         <Activity className="h-4 w-4 text-emerald-600" />
                         <h4 className="text-sm font-semibold text-slate-900">{copy.gainLoss}</h4>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.assimilationGain}</div>
                             <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.objective_breakdown.assimilation_gain, 3, locale)}</div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {formatNumber(optimizeResponse?.flux_projection.net_assim_umol_m2_s, 2, locale)} μmol/m²/s
+                            </div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.respirationCost}</div>
                             <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.objective_breakdown.respiration_cost, 3, locale)}</div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {formatNumber(optimizeResponse?.flux_projection.respiration_umol_m2_s, 2, locale)} μmol/m²/s
+                            </div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.carbonMargin}</div>
@@ -950,25 +1179,66 @@ const RTROptimizerPanel = ({
                             </div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.energyCost}</div>
+                            <div className="text-[11px] text-slate-500">{copy.heatingEnergy}</div>
                             <div className="mt-1 text-lg font-semibold text-slate-900">
-                                {formatNumber(optimizeResponse?.objective_breakdown.energy_cost, 3, locale)} {copy.energyUnit}
+                                {formatNumber(energySummary?.heating_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
                             </div>
                             <div className="mt-1 text-[11px] text-slate-500">
-                                {locale === 'ko'
-                                    ? `실면적 기준 ${formatNumber(optimizeResponse?.actual_area_projection.energy_kwh_day, 1, locale)} kWh/일`
-                                    : `${formatNumber(optimizeResponse?.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day @ actual area`}
+                                {formatNumber(energySummary?.heating_energy_kWh_m2_day, 3, locale)} kWh/m²/day
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.coolingEnergy}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(energySummary?.cooling_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {formatNumber(energySummary?.cooling_energy_kWh_m2_day, 3, locale)} kWh/m²/day
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.energyCost}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(energySummary?.total_energy_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {formatNumber(energySummary?.total_energy_kWh_m2_day, 3, locale)} kWh/m²/day
                             </div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.laborCost}</div>
                             <div className="mt-1 text-lg font-semibold text-slate-900">
-                                {formatNumber(optimizeResponse?.objective_breakdown.labor_index, 3, locale)}
+                                {formatNumber(laborSummary?.labor_index, 3, locale)}
                             </div>
                             <div className="mt-1 text-[11px] text-slate-500">
-                                {locale === 'ko'
-                                    ? `실면적 기준 ${formatNumber(optimizeResponse?.actual_area_projection.labor_index_day, 1, locale)} /일`
-                                    : `${formatNumber(optimizeResponse?.actual_area_projection.labor_index_day, 1, locale)} /day @ actual area`}
+                                {formatNumber(laborSummary?.labor_hours_m2_day, 3, locale)} h/m²/day
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.humidityRisk}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(optimizeResponse?.objective_breakdown.humidity_risk_penalty, 3, locale)}
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.diseaseRisk}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(optimizeResponse?.objective_breakdown.disease_penalty, 3, locale)}
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.stressPenalty}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(optimizeResponse?.objective_breakdown.stress_penalty, 3, locale)}
+                            </div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.yieldChange}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                                {formatNumber(yieldSummary?.harvest_trend_delta_pct, 1, locale)}%
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                                {formatNumber(yieldSummary?.predicted_yield_kg_m2_day, 3, locale)} kg/m²/day
                             </div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
@@ -1006,16 +1276,52 @@ const RTROptimizerPanel = ({
                 <section className="rounded-xl border border-slate-200 p-4">
                     <div className="mb-3 flex items-center gap-2">
                         <Thermometer className="h-4 w-4 text-emerald-600" />
-                        <h4 className="text-sm font-semibold text-slate-900">{copy.setpoints}</h4>
+                        <h4 className="text-sm font-semibold text-slate-900">{copy.controlEffects}</h4>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                         <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.dayMin}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.day_min_temp_C, 1, locale)}°C</div>
+                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 기온' : 'Post-control air temp'}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.Tin_post_C, 1, locale)}°C</div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.nightMin}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.night_min_temp_C, 1, locale)}°C</div>
+                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 엽온' : 'Post-control leaf temp'}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.Tleaf_post_C, 1, locale)}°C</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 상대습도' : 'Post-control RH'}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.RH_post_pct, 1, locale)}%</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 VPD' : 'Post-control VPD'}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.VPD_post_kPa, 2, locale)} kPa</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 CO₂' : 'Post-control CO2'}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.CO2_post_ppm, 0, locale)} ppm</div>
+                        </div>
+                    </div>
+                </section>
+                <section className="rounded-xl border border-slate-200 p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Thermometer className="h-4 w-4 text-emerald-600" />
+                        <h4 className="text-sm font-semibold text-slate-900">{copy.setpoints}</h4>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.dayHeating}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.day_heating_min_temp_C, 1, locale)}°C</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.nightHeating}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.night_heating_min_temp_C, 1, locale)}°C</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.dayCooling}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.day_cooling_target_C, 1, locale)}°C</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.nightCooling}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.night_cooling_target_C, 1, locale)}°C</div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.ventBias}</div>
@@ -1024,6 +1330,14 @@ const RTROptimizerPanel = ({
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.screenBias}</div>
                             <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.screen_bias_pct, 1, locale)}%</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.circulationFan}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.circulation_fan_pct, 0, locale)}%</div>
+                        </div>
+                        <div className="rounded-lg bg-slate-50 p-3">
+                            <div className="text-[11px] text-slate-500">{copy.co2Target}</div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.co2_target_ppm, 0, locale)} ppm</div>
                         </div>
                         <div className="rounded-lg bg-slate-50 p-3">
                             <div className="text-[11px] text-slate-500">{copy.holdTime}</div>
@@ -1099,25 +1413,47 @@ const RTROptimizerPanel = ({
                                 />
                             </label>
                             <label className="text-xs font-medium text-slate-600">
-                                <span>{copy.dayMin}</span>
+                                <span>{copy.dayHeating}</span>
                                 <input
-                                    aria-label={`${copy.dayMin} custom`}
+                                    aria-label={`${copy.dayHeating} custom`}
                                     inputMode="decimal"
-                                    disabled={telemetryOptimizationBlocked}
+                                    disabled={telemetryOptimizationBlocked || actuatorAvailability?.heating === false}
                                     className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                                    value={customScenarioDraft.dayMinTempC}
-                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, dayMinTempC: event.target.value }))}
+                                    value={customScenarioDraft.dayHeatingMinTempC}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, dayHeatingMinTempC: event.target.value }))}
                                 />
                             </label>
                             <label className="text-xs font-medium text-slate-600">
-                                <span>{copy.nightMin}</span>
+                                <span>{copy.nightHeating}</span>
                                 <input
-                                    aria-label={`${copy.nightMin} custom`}
+                                    aria-label={`${copy.nightHeating} custom`}
                                     inputMode="decimal"
-                                    disabled={telemetryOptimizationBlocked}
+                                    disabled={telemetryOptimizationBlocked || actuatorAvailability?.heating === false}
                                     className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                                    value={customScenarioDraft.nightMinTempC}
-                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, nightMinTempC: event.target.value }))}
+                                    value={customScenarioDraft.nightHeatingMinTempC}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, nightHeatingMinTempC: event.target.value }))}
+                                />
+                            </label>
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.dayCooling}</span>
+                                <input
+                                    aria-label={`${copy.dayCooling} custom`}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked || actuatorAvailability?.cooling === false}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    value={customScenarioDraft.dayCoolingTargetC}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, dayCoolingTargetC: event.target.value }))}
+                                />
+                            </label>
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.nightCooling}</span>
+                                <input
+                                    aria-label={`${copy.nightCooling} custom`}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked || actuatorAvailability?.cooling === false}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    value={customScenarioDraft.nightCoolingTargetC}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, nightCoolingTargetC: event.target.value }))}
                                 />
                             </label>
                             <label className="text-xs font-medium text-slate-600">
@@ -1125,7 +1461,7 @@ const RTROptimizerPanel = ({
                                 <input
                                     aria-label={`${copy.ventBias} custom`}
                                     inputMode="decimal"
-                                    disabled={telemetryOptimizationBlocked}
+                                    disabled={telemetryOptimizationBlocked || actuatorAvailability?.ventilation === false}
                                     className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                                     value={customScenarioDraft.ventBiasC}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, ventBiasC: event.target.value }))}
@@ -1136,10 +1472,32 @@ const RTROptimizerPanel = ({
                                 <input
                                     aria-label={`${copy.screenBias} custom`}
                                     inputMode="decimal"
-                                    disabled={telemetryOptimizationBlocked}
+                                    disabled={telemetryOptimizationBlocked || actuatorAvailability?.thermal_screen === false}
                                     className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                                     value={customScenarioDraft.screenBiasPct}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, screenBiasPct: event.target.value }))}
+                                />
+                            </label>
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.circulationFan}</span>
+                                <input
+                                    aria-label={`${copy.circulationFan} custom`}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked || actuatorAvailability?.circulation_fan === false}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    value={customScenarioDraft.circulationFanPct}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, circulationFanPct: event.target.value }))}
+                                />
+                            </label>
+                            <label className="text-xs font-medium text-slate-600">
+                                <span>{copy.co2Target}</span>
+                                <input
+                                    aria-label={`${copy.co2Target} custom`}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked || actuatorAvailability?.co2 === false}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    value={customScenarioDraft.co2TargetPpm}
+                                    onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, co2TargetPpm: event.target.value }))}
                                 />
                             </label>
                         </div>
@@ -1148,6 +1506,9 @@ const RTROptimizerPanel = ({
                                 type="button"
                                 onClick={() => {
                                     const parseOptionalNumber = (value: string) => {
+                                        if (value.trim().length === 0) {
+                                            return undefined;
+                                        }
                                         const parsed = Number(value);
                                         return Number.isFinite(parsed) ? parsed : undefined;
                                     };
@@ -1155,10 +1516,14 @@ const RTROptimizerPanel = ({
                                         hasCustomScenarioDraft
                                             ? {
                                                 label: customScenarioDraft.label.trim() || defaultCustomLabel,
-                                                day_min_temp_C: parseOptionalNumber(customScenarioDraft.dayMinTempC),
-                                                night_min_temp_C: parseOptionalNumber(customScenarioDraft.nightMinTempC),
+                                                day_heating_min_temp_C: parseOptionalNumber(customScenarioDraft.dayHeatingMinTempC),
+                                                night_heating_min_temp_C: parseOptionalNumber(customScenarioDraft.nightHeatingMinTempC),
+                                                day_cooling_target_C: parseOptionalNumber(customScenarioDraft.dayCoolingTargetC),
+                                                night_cooling_target_C: parseOptionalNumber(customScenarioDraft.nightCoolingTargetC),
                                                 vent_bias_C: parseOptionalNumber(customScenarioDraft.ventBiasC),
                                                 screen_bias_pct: parseOptionalNumber(customScenarioDraft.screenBiasPct),
+                                                circulation_fan_pct: parseOptionalNumber(customScenarioDraft.circulationFanPct),
+                                                co2_target_ppm: parseOptionalNumber(customScenarioDraft.co2TargetPpm),
                                             }
                                             : null,
                                     );
@@ -1174,10 +1539,14 @@ const RTROptimizerPanel = ({
                                     setCustomScenario(null);
                                     setCustomScenarioDraft({
                                         label: '',
-                                        dayMinTempC: '',
-                                        nightMinTempC: '',
+                                        dayHeatingMinTempC: '',
+                                        nightHeatingMinTempC: '',
+                                        dayCoolingTargetC: '',
+                                        nightCoolingTargetC: '',
                                         ventBiasC: '',
                                         screenBiasPct: '',
+                                        circulationFanPct: '',
+                                        co2TargetPpm: '',
                                     });
                                 }}
                                 className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
@@ -1202,84 +1571,115 @@ const RTROptimizerPanel = ({
                                         <th className="px-2 py-2">{copy.meanHeader}</th>
                                         <th className="px-2 py-2">{copy.nodeHeader}</th>
                                         <th className="px-2 py-2">{copy.carbonHeader}</th>
-                                        <th className="px-2 py-2">{copy.respHeader}</th>
+                                        <th className="px-2 py-2">{copy.riskHeader}</th>
                                         <th className="px-2 py-2">{copy.energyHeader}</th>
                                         <th className="px-2 py-2">{copy.yieldHeader}</th>
                                         <th className="px-2 py-2">{copy.laborHeader}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {scenarioRows.map((row) => (
-                                        <tr key={`${row.label}-${row.mode}`} className="border-t border-slate-100">
-                                            <td className="px-2 py-2 font-medium text-slate-900">
-                                                <div>{getScenarioLabel(row.label, locale)}</div>
-                                                <div className="mt-1 flex flex-wrap gap-1">
-                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getScenarioBadgeClass(row.recommendation_badge)}`}>
-                                                        {getScenarioBadgeLabel(row.recommendation_badge, locale)}
-                                                    </span>
-                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getYieldTrendClass(row.yield_trend)}`}>
-                                                        {getYieldTrendLabel(row.yield_trend, locale)}
-                                                    </span>
-                                                    <span
-                                                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                                            row.confidence >= 0.8
-                                                                ? 'bg-emerald-100 text-emerald-800'
-                                                                : row.confidence >= 0.65
-                                                                    ? 'bg-amber-100 text-amber-800'
-                                                                    : 'bg-slate-200 text-slate-700'
-                                                        }`}
-                                                    >
-                                                        {copy.confidence} {formatNumber(row.confidence * 100, 0, locale)}%
-                                                    </span>
-                                                </div>
-                                                {row.risk_flags.length > 0 ? (
-                                                    <div className="mt-1 flex flex-wrap gap-1">
-                                                        {row.risk_flags.slice(0, 2).map((riskFlag, index) => {
-                                                            const code = String(riskFlag.code ?? `row-risk-${index}`);
-                                                            return (
-                                                                <span key={`${row.label}-${code}-${index}`} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
-                                                                    {getRiskFlagTitle(code, locale)}
-                                                                </span>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                ) : null}
-                                            </td>
-                                            <td className="px-2 py-2">{formatNumber(row.mean_temp_C, 1, locale)}°C</td>
-                                            <td className="px-2 py-2">{formatNumber(row.node_rate_day, 3, locale)}</td>
-                                            <td className="px-2 py-2">{formatNumber(row.net_carbon, 3, locale)}</td>
-                                            <td className="px-2 py-2">{formatNumber(row.respiration, 3, locale)}</td>
-                                            <td className="px-2 py-2">
-                                                <div>{formatNumber(row.energy_kwh_m2_day, 3, locale)}</div>
-                                                {row.actual_area_projection ? (
-                                                    <div className="mt-1 text-[10px] text-slate-400">
-                                                        {locale === 'ko'
-                                                            ? `실면적 ${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/일 · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} 원/일`
-                                                            : `${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} KRW/day`}
-                                                    </div>
-                                                ) : null}
-                                            </td>
-                                            <td className="px-2 py-2">
-                                                <div>{formatNumber(row.yield_kg_m2_day, 3, locale)}</div>
-                                                {row.actual_area_projection ? (
-                                                    <div className="mt-1 text-[10px] text-slate-400">
-                                                        {locale === 'ko'
-                                                            ? `실면적 ${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/일 · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/주`
-                                                            : `${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/day · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/week`}
-                                                    </div>
-                                                ) : null}
-                                            </td>
-                                            <td className="px-2 py-2">
-                                                <div>{formatNumber(row.labor_index, 3, locale)}</div>
-                                                {row.actual_area_projection ? (
-                                                    <div className="mt-1 text-[10px] text-slate-400">
-                                                        {locale === 'ko'
-                                                            ? `실면적 ${formatNumber(row.actual_area_projection.labor_index_day, 1, locale)} /일`
-                                                            : `${formatNumber(row.actual_area_projection.labor_index_day, 1, locale)} /day`}
-                                                    </div>
-                                                ) : null}
-                                            </td>
-                                        </tr>
+                                    {groupedScenarioRows.map((groupEntry) => (
+                                        <Fragment key={`scenario-group-${groupEntry.group}`}>
+                                            <tr className="border-t border-slate-200 bg-slate-50">
+                                                <td colSpan={8} className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                                    {getScenarioGroupLabel(groupEntry.group, locale)}
+                                                </td>
+                                            </tr>
+                                            {groupEntry.rows.map((row, index) => (
+                                                <tr key={`${groupEntry.group}-${row.label}-${row.mode}-${index}`} className="border-t border-slate-100">
+                                                    <td className="px-2 py-2 font-medium text-slate-900">
+                                                        <div>{getScenarioLabel(row.label, locale)}</div>
+                                                        <div className="mt-1 flex flex-wrap gap-1">
+                                                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getScenarioBadgeClass(row.recommendation_badge)}`}>
+                                                                {getScenarioBadgeLabel(row.recommendation_badge, locale)}
+                                                            </span>
+                                                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getYieldTrendClass(row.yield_trend)}`}>
+                                                                {getYieldTrendLabel(row.yield_trend, locale)}
+                                                            </span>
+                                                            <span
+                                                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                                                    row.confidence >= 0.8
+                                                                        ? 'bg-emerald-100 text-emerald-800'
+                                                                        : row.confidence >= 0.65
+                                                                            ? 'bg-amber-100 text-amber-800'
+                                                                            : 'bg-slate-200 text-slate-700'
+                                                                }`}
+                                                            >
+                                                                {copy.confidence} {formatNumber(row.confidence * 100, 0, locale)}%
+                                                            </span>
+                                                        </div>
+                                                        <div className="mt-1 text-[10px] text-slate-500">
+                                                            {copy.dayHeating} {formatNumber(row.day_heating_min_temp_C ?? row.day_min_temp_C, 1, locale)}°C · {copy.dayCooling} {formatNumber(row.day_cooling_target_C, 1, locale)}°C
+                                                        </div>
+                                                        <div className="mt-1 text-[10px] text-slate-500">
+                                                            {copy.ventBias} {formatNumber(row.vent_bias_C, 2, locale)}°C · {copy.screenBias} {formatNumber(row.screen_bias_pct, 1, locale)}% · {copy.circulationFan} {formatNumber(row.circulation_fan_pct, 0, locale)}%
+                                                        </div>
+                                                        {row.risk_flags.length > 0 ? (
+                                                            <div className="mt-1 flex flex-wrap gap-1">
+                                                                {row.risk_flags.slice(0, 2).map((riskFlag, riskIndex) => {
+                                                                    const code = String(riskFlag.code ?? `row-risk-${riskIndex}`);
+                                                                    return (
+                                                                        <span key={`${row.label}-${code}-${riskIndex}`} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
+                                                                            {getRiskFlagTitle(code, locale)}
+                                                                        </span>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="px-2 py-2">{formatNumber(row.mean_temp_C, 1, locale)}°C</td>
+                                                    <td className="px-2 py-2">{formatNumber(row.node_rate_day, 3, locale)}</td>
+                                                    <td className="px-2 py-2">
+                                                        <div>{formatNumber(row.net_carbon, 3, locale)}</div>
+                                                        <div className="mt-1 text-[10px] text-slate-400">
+                                                            {formatNumber(row.net_assimilation, 3, locale)} μmol/m²/s
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <div>{formatNumber(row.humidity_penalty, 3, locale)}</div>
+                                                        <div className="mt-1 text-[10px] text-slate-400">
+                                                            {copy.diseaseRisk} {formatNumber(row.disease_penalty, 3, locale)}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <div>{formatNumber(row.total_energy_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}</div>
+                                                        <div className="mt-1 text-[10px] text-slate-400">
+                                                            {copy.heatingEnergy} {formatNumber(row.heating_energy_kwh_m2_day, 2, locale)} · {copy.coolingEnergy} {formatNumber(row.cooling_energy_kwh_m2_day, 2, locale)}
+                                                        </div>
+                                                        {row.actual_area_projection ? (
+                                                            <div className="mt-1 text-[10px] text-slate-400">
+                                                                {locale === 'ko'
+                                                                    ? `실면적 ${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/일 · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} 원/일`
+                                                                    : `${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} KRW/day`}
+                                                            </div>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <div>{formatNumber(row.yield_kg_m2_day, 3, locale)} kg/m²/day</div>
+                                                        <div className="mt-1 text-[10px] text-slate-400">
+                                                            Δ {formatNumber(row.harvest_trend_delta_pct, 1, locale)}%
+                                                        </div>
+                                                        {row.actual_area_projection ? (
+                                                            <div className="mt-1 text-[10px] text-slate-400">
+                                                                {locale === 'ko'
+                                                                    ? `실면적 ${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/일 · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/주`
+                                                                    : `${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/day · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/week`}
+                                                            </div>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <div>{formatNumber(row.labor_index, 3, locale)}</div>
+                                                        {row.actual_area_projection ? (
+                                                            <div className="mt-1 text-[10px] text-slate-400">
+                                                                {locale === 'ko'
+                                                                    ? `실면적 ${formatNumber(row.actual_area_projection.labor_cost_krw_day, 0, locale)} 원/일`
+                                                                    : `${formatNumber(row.actual_area_projection.labor_cost_krw_day, 0, locale)} KRW/day`}
+                                                            </div>
+                                                        ) : null}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </Fragment>
                                     ))}
                                 </tbody>
                             </table>

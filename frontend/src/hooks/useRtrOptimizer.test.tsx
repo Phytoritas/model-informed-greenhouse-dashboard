@@ -544,8 +544,8 @@ describe('useRtrOptimizer', () => {
         act(() => {
             result.current.setCustomScenario({
                 label: '사용자 +0.5°C',
-                day_min_temp_C: 20.5,
-                night_min_temp_C: 18.9,
+                day_heating_min_temp_C: 20.5,
+                night_heating_min_temp_C: 18.9,
                 vent_bias_C: 0.2,
                 screen_bias_pct: 4.0,
             });
@@ -571,8 +571,8 @@ describe('useRtrOptimizer', () => {
         expect(sensitivityBody.custom_scenario).toBeUndefined();
         expect(scenarioBody.custom_scenario).toEqual({
             label: '사용자 +0.5°C',
-            day_min_temp_C: 20.5,
-            night_min_temp_C: 18.9,
+            day_heating_min_temp_C: 20.5,
+            night_heating_min_temp_C: 18.9,
             vent_bias_C: 0.2,
             screen_bias_pct: 4.0,
         });

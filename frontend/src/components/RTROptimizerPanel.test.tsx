@@ -59,6 +59,25 @@ const TEMPERATURE_SETTINGS: TemperatureSettings = {
     cooling: 24,
 };
 
+const TEST_WEIGHTS = {
+    temp: 1,
+    node: 150,
+    carbon: 120,
+    sink: 80,
+    resp: 20,
+    risk: 120,
+    energy: 25,
+    labor: 20,
+    assim: 90,
+    yield: 70,
+    heating: 25,
+    cooling: 22,
+    ventilation: 18,
+    humidity: 80,
+    disease: 80,
+    stress: 75,
+};
+
 function buildStateResponse(crop: CropType = 'Cucumber'): RtrStateResponse {
     return {
         status: 'ready',
@@ -504,16 +523,7 @@ function buildProfile(optimizerEnabled = true): RtrProfile {
             max_delta_temp_C: 1.2,
             max_rtr_ratio_delta: 0.03,
             temp_slew_rate_C_per_step: 0.12,
-            weights: {
-                temp: 1,
-                node: 150,
-                carbon: 120,
-                sink: 80,
-                resp: 20,
-                risk: 120,
-                energy: 25,
-                labor: 20,
-            },
+            weights: TEST_WEIGHTS,
         },
     };
 }
@@ -570,6 +580,8 @@ describe('RTROptimizerPanel', () => {
             setCustomScenario: vi.fn(),
             includeEnergyCost: true,
             setIncludeEnergyCost: vi.fn(),
+            includeCoolingCost: true,
+            setIncludeCoolingCost: vi.fn(),
             includeLaborCost: true,
             setIncludeLaborCost: vi.fn(),
             telemetryOptimizationBlocked: false,
@@ -625,6 +637,8 @@ describe('RTROptimizerPanel', () => {
             setCustomScenario: vi.fn(),
             includeEnergyCost: true,
             setIncludeEnergyCost: vi.fn(),
+            includeCoolingCost: true,
+            setIncludeCoolingCost: vi.fn(),
             includeLaborCost: true,
             setIncludeLaborCost: vi.fn(),
             telemetryOptimizationBlocked: false,
@@ -765,6 +779,8 @@ describe('RTROptimizerPanel', () => {
             setCustomScenario: vi.fn(),
             includeEnergyCost: true,
             setIncludeEnergyCost: vi.fn(),
+            includeCoolingCost: true,
+            setIncludeCoolingCost: vi.fn(),
             includeLaborCost: true,
             setIncludeLaborCost: vi.fn(),
             telemetryOptimizationBlocked: true,
@@ -804,6 +820,8 @@ describe('RTROptimizerPanel', () => {
             setCustomScenario: vi.fn(),
             includeEnergyCost: true,
             setIncludeEnergyCost: vi.fn(),
+            includeCoolingCost: true,
+            setIncludeCoolingCost: vi.fn(),
             includeLaborCost: true,
             setIncludeLaborCost: vi.fn(),
             telemetryOptimizationBlocked: false,
@@ -843,6 +861,8 @@ describe('RTROptimizerPanel', () => {
             setCustomScenario: vi.fn(),
             includeEnergyCost: true,
             setIncludeEnergyCost: vi.fn(),
+            includeCoolingCost: true,
+            setIncludeCoolingCost: vi.fn(),
             includeLaborCost: true,
             setIncludeLaborCost: vi.fn(),
             telemetryOptimizationBlocked: true,
@@ -876,6 +896,8 @@ describe('RTROptimizerPanel', () => {
             setCustomScenario,
             includeEnergyCost: true,
             setIncludeEnergyCost: vi.fn(),
+            includeCoolingCost: true,
+            setIncludeCoolingCost: vi.fn(),
             includeLaborCost: true,
             setIncludeLaborCost: vi.fn(),
             telemetryOptimizationBlocked: false,
@@ -890,16 +912,18 @@ describe('RTROptimizerPanel', () => {
         renderPanel();
 
         fireEvent.change(screen.getByLabelText('비교 이름'), { target: { value: '사용자 +0.4°C' } });
-        fireEvent.change(screen.getByLabelText('주간 최소 온도 custom'), { target: { value: '20.4' } });
-        fireEvent.change(screen.getByLabelText('야간 최소 온도 custom'), { target: { value: '18.8' } });
+        fireEvent.change(screen.getByLabelText('주간 난방 기준 custom'), { target: { value: '20.4' } });
+        fireEvent.change(screen.getByLabelText('야간 난방 기준 custom'), { target: { value: '18.8' } });
+        fireEvent.change(screen.getByLabelText('주간 냉방 기준 custom'), { target: { value: '24.1' } });
         fireEvent.change(screen.getByLabelText('환기 편차 custom'), { target: { value: '0.2' } });
         fireEvent.change(screen.getByLabelText('스크린 편차 custom'), { target: { value: '4.5' } });
         fireEvent.click(screen.getByRole('button', { name: '비교에 반영' }));
 
         expect(setCustomScenario).toHaveBeenCalledWith({
             label: '사용자 +0.4°C',
-            day_min_temp_C: 20.4,
-            night_min_temp_C: 18.8,
+            day_heating_min_temp_C: 20.4,
+            night_heating_min_temp_C: 18.8,
+            day_cooling_target_C: 24.1,
             vent_bias_C: 0.2,
             screen_bias_pct: 4.5,
         });

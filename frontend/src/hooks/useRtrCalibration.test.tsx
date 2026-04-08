@@ -25,6 +25,25 @@ const WINDOW_FIXTURE: RtrCalibrationWindow = {
     notes: '시범 저장',
 };
 
+const TEST_WEIGHTS = {
+    temp: 1,
+    node: 150,
+    carbon: 120,
+    sink: 80,
+    resp: 20,
+    risk: 120,
+    energy: 25,
+    labor: 20,
+    assim: 90,
+    yield: 70,
+    heating: 25,
+    cooling: 22,
+    ventilation: 18,
+    humidity: 80,
+    disease: 80,
+    stress: 75,
+};
+
 function buildStateResponse(): RtrCalibrationStateResponse {
     return {
         status: 'ready',
@@ -55,16 +74,7 @@ function buildStateResponse(): RtrCalibrationStateResponse {
                 max_delta_temp_C: 1.2,
                 max_rtr_ratio_delta: 0.03,
                 temp_slew_rate_C_per_step: 0.12,
-                weights: {
-                    temp: 1,
-                    node: 150,
-                    carbon: 120,
-                    sink: 80,
-                    resp: 20,
-                    risk: 120,
-                    energy: 25,
-                    labor: 20,
-                },
+                weights: TEST_WEIGHTS,
             },
         },
         windows: [WINDOW_FIXTURE],
@@ -112,16 +122,7 @@ function buildPreviewResponse(saved = false): RtrCalibrationPreviewResponse {
                 max_delta_temp_C: 1.2,
                 max_rtr_ratio_delta: 0.03,
                 temp_slew_rate_C_per_step: 0.12,
-                weights: {
-                    temp: 1,
-                    node: 150,
-                    carbon: 120,
-                    sink: 80,
-                    resp: 20,
-                    risk: 120,
-                    energy: 25,
-                    labor: 20,
-                },
+                weights: TEST_WEIGHTS,
             },
         },
         environment_summary: {
