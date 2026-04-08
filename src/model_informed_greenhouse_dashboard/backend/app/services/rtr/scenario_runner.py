@@ -5,8 +5,12 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any, Callable, Mapping
 
-from .control_effects import build_default_control_candidate
-from .controller_contract import RTROptimizationInputs, RtrControlCandidate
+from .control_effects import build_baseline_control_candidate
+from .controller_contract import (
+    RTROptimizationInputs,
+    RtrControlCandidate,
+    build_weight_vector,
+)
 from .lagrangian_optimizer import optimize_rtr_targets
 from .objective_terms import evaluate_rtr_candidate
 
@@ -96,28 +100,33 @@ def _serialize_candidate_scenario(
     }
 
 
-def _evaluate_candidate(context, optimization_inputs, candidate: RtrControlCandidate) -> dict[str, Any]:
+def _resolve_active_weights(context, optimization_inputs: RTROptimizationInputs) -> dict[str, float]:
+    optimizer_defaults = (
+        context.canonical_state.get("optimizer")
+        or context.crop_profile.get("optimizer")
+        or {}
+    )
+    return build_weight_vector(
+        optimizer_defaults,
+        optimization_inputs.optimization_mode,
+        include_energy_cost=optimization_inputs.include_energy_cost,
+        include_labor_cost=optimization_inputs.include_labor_cost,
+        include_cooling_cost=optimization_inputs.include_cooling_cost,
+        custom_weights=optimization_inputs.custom_weights,
+    )
+
+
+def _evaluate_candidate(
+    context,
+    optimization_inputs,
+    candidate: RtrControlCandidate,
+    *,
+    weights: Mapping[str, float],
+) -> dict[str, Any]:
     return evaluate_rtr_candidate(
         context=context,
         optimization_inputs=optimization_inputs,
-        weights={
-            "temp": 1.0,
-            "node": 1.0,
-            "carbon": 1.0,
-            "sink": 1.0,
-            "resp": 1.0,
-            "risk": 1.0,
-            "energy": 1.0,
-            "labor": 1.0,
-            "assim": 1.0,
-            "yield": 1.0,
-            "heating": 1.0,
-            "cooling": 1.0,
-            "ventilation": 1.0,
-            "humidity": 1.0,
-            "disease": 1.0,
-            "stress": 1.0,
-        },
+        weights=weights,
         day_min_temp_c=candidate.day_heating_min_temp_C,
         night_min_temp_c=candidate.night_heating_min_temp_C,
         day_cooling_target_c=candidate.day_cooling_target_C,
@@ -136,9 +145,11 @@ def run_rtr_scenarios(
     context,
     optimization_inputs: RTROptimizationInputs,
 ) -> list[dict[str, Any]]:
-    baseline_candidate = build_default_control_candidate(
+    weights = _resolve_active_weights(context, optimization_inputs)
+    baseline_candidate = build_baseline_control_candidate(
         env=context.canonical_state["env"],
         ops_config=context.ops_config,
+        baseline_target_c=float(context.canonical_state["baseline_rtr"]["baseline_target_C"]),
     )
     optimized = optimize_rtr_targets(
         context=context,
@@ -147,7 +158,12 @@ def run_rtr_scenarios(
     optimizer_candidate = _candidate_from_result(optimized)
 
     scenarios: list[dict[str, Any]] = []
-    baseline_eval = _evaluate_candidate(context, optimization_inputs, baseline_candidate)
+    baseline_eval = _evaluate_candidate(
+        context,
+        optimization_inputs,
+        baseline_candidate,
+        weights=weights,
+    )
     scenarios.append(
         _serialize_candidate_scenario(
             label="baseline",
@@ -177,7 +193,12 @@ def run_rtr_scenarios(
             _serialize_candidate_scenario(
                 label=label,
                 mode="offset" if group == "baseline" else "optimizer",
-                candidate=_evaluate_candidate(context, optimization_inputs, candidate),
+                candidate=_evaluate_candidate(
+                    context,
+                    optimization_inputs,
+                    candidate,
+                    weights=weights,
+                ),
                 recommendation_badge="compare",
                 group=group,
             )
@@ -203,6 +224,7 @@ def compute_rtr_temperature_sensitivity(
     step_c: float = 0.3,
 ) -> dict[str, Any]:
     base_candidate = _candidate_from_result(optimized_candidate)
+    weights = _resolve_active_weights(context, optimization_inputs)
 
     def _finite_difference(
         *,
@@ -215,9 +237,24 @@ def compute_rtr_temperature_sensitivity(
         extractor: Callable[[Mapping[str, Any]], float],
         control_name: str,
     ) -> dict[str, Any]:
-        low_eval = _evaluate_candidate(context, low_inputs or optimization_inputs, low_candidate or base_candidate)
-        high_eval = _evaluate_candidate(context, high_inputs or optimization_inputs, high_candidate or base_candidate)
-        base_eval = _evaluate_candidate(context, optimization_inputs, base_candidate)
+        low_eval = _evaluate_candidate(
+            context,
+            low_inputs or optimization_inputs,
+            low_candidate or base_candidate,
+            weights=weights,
+        )
+        high_eval = _evaluate_candidate(
+            context,
+            high_inputs or optimization_inputs,
+            high_candidate or base_candidate,
+            weights=weights,
+        )
+        base_eval = _evaluate_candidate(
+            context,
+            optimization_inputs,
+            base_candidate,
+            weights=weights,
+        )
         low_value = extractor(low_eval)
         high_value = extractor(high_eval)
         base_value = max(abs(extractor(base_eval)), 1e-9)

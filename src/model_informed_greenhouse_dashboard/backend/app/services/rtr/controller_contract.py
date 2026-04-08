@@ -362,6 +362,11 @@ def build_weight_vector(
         )
     }
 
+    if optimization_mode == "custom_weights":
+        for key, value in (custom_weights or {}).items():
+            if key in weights:
+                weights[key] = float(value)
+
     if not include_energy_cost:
         weights["energy"] = 0.0
         weights["heating"] = 0.0
@@ -372,11 +377,6 @@ def build_weight_vector(
 
     if not include_labor_cost:
         weights["labor"] = 0.0
-
-    if optimization_mode == "custom_weights":
-        for key, value in (custom_weights or {}).items():
-            if key in weights:
-                weights[key] = float(value)
 
     return weights
 

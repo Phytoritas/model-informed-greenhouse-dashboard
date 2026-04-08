@@ -75,6 +75,33 @@ def build_default_control_candidate(
     )
 
 
+def build_baseline_control_candidate(
+    *,
+    env: Mapping[str, Any],
+    ops_config: Mapping[str, Any],
+    baseline_target_c: float,
+) -> RtrControlCandidate:
+    baseline_heating = _safe_float(ops_config.get("heating_set_C"), baseline_target_c)
+    baseline_day_heating = max(baseline_heating, baseline_target_c)
+    baseline_night_heating = baseline_heating
+    baseline_cooling = _safe_float(ops_config.get("cooling_set_C"), baseline_day_heating + 7.0)
+    return RtrControlCandidate(
+        day_heating_min_temp_C=baseline_day_heating,
+        night_heating_min_temp_C=baseline_night_heating,
+        day_cooling_target_C=max(baseline_cooling, baseline_day_heating + 1.0),
+        night_cooling_target_C=max(baseline_cooling - 1.0, baseline_night_heating + 1.0),
+        vent_bias_C=0.0,
+        screen_bias_pct=0.0,
+        circulation_fan_pct=35.0,
+        co2_target_ppm=_safe_float(
+            ops_config.get("co2_target_ppm"),
+            _safe_float(env.get("CO2_ppm"), 800.0),
+        ),
+        dehumidification_bias=0.0,
+        fogging_or_evap_cooling_intensity=0.0,
+    )
+
+
 def sanitize_control_candidate(
     *,
     candidate: RtrControlCandidate,

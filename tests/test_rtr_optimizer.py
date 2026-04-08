@@ -116,10 +116,16 @@ def _load_optimizer_rtr_services():
         controller_contract=importlib.import_module(
             "model_informed_greenhouse_dashboard.backend.app.services.rtr.controller_contract"
         ),
+        control_effects=importlib.import_module(
+            "model_informed_greenhouse_dashboard.backend.app.services.rtr.control_effects"
+        ),
         objective_terms=importlib.import_module(
             "model_informed_greenhouse_dashboard.backend.app.services.rtr.objective_terms"
         ),
         lagrangian_optimizer=importlib.import_module(lagrangian_module_name),
+        scenario_runner=importlib.import_module(
+            "model_informed_greenhouse_dashboard.backend.app.services.rtr.scenario_runner"
+        ),
     )
 
 
@@ -414,6 +420,27 @@ def _baseline_candidate(services, context, optimization_inputs):
     )
 
 
+def _full_test_weights(value: float = 1.0) -> dict[str, float]:
+    return {
+        "temp": value,
+        "node": value,
+        "carbon": value,
+        "sink": value,
+        "resp": value,
+        "risk": value,
+        "energy": value,
+        "labor": value,
+        "assim": value,
+        "yield": value,
+        "heating": value,
+        "cooling": value,
+        "ventilation": value,
+        "humidity": value,
+        "disease": value,
+        "stress": value,
+    }
+
+
 def test_unit_projection_keeps_canonical_m2_and_projects_actual_area() -> None:
     services = _load_light_rtr_services()
 
@@ -530,8 +557,12 @@ def test_tomato_fruit_thinning_relaxes_temperature_pressure() -> None:
         < before_context.canonical_state["growth"]["sink_demand"]
     )
     assert (
-        after_result["controls"]["mean_temp_C"]
-        <= before_result["controls"]["mean_temp_C"] + 0.05
+        after_result["objective_breakdown"]["carbon_margin_penalty"]
+        <= before_result["objective_breakdown"]["carbon_margin_penalty"] + 1e-6
+    )
+    assert (
+        after_result["objective_breakdown"]["sink_overload_penalty"]
+        <= before_result["objective_breakdown"]["sink_overload_penalty"] + 1e-6
     )
 
 
@@ -642,6 +673,187 @@ def test_rtr_optimizer_modes_apply_energy_and_labor_penalties() -> None:
         labor_result["objective_breakdown"]["labor_index"]
         <= growth_result["objective_breakdown"]["labor_index"] + 1e-6
     )
+
+
+def test_ventilation_energy_decomposition_does_not_double_count_total_energy() -> None:
+    services = _load_optimizer_rtr_services()
+    context = _fake_context(
+        crop="cucumber",
+        par_umol_m2_s=840.0,
+        co2_ppm=760.0,
+        t_air_c=21.2,
+        outside_t_c=4.0,
+        source_capacity=0.96,
+        sink_demand=0.84,
+        fruit_load=12.0,
+        source_sink_balance=0.08,
+    )
+    optimization_inputs = _optimization_inputs(services, "cucumber")
+
+    result = services.objective_terms.evaluate_rtr_candidate(
+        context=context,
+        optimization_inputs=optimization_inputs,
+        weights=_full_test_weights(),
+        day_min_temp_c=20.8,
+        night_min_temp_c=19.0,
+        day_cooling_target_c=28.0,
+        night_cooling_target_c=24.0,
+        vent_bias_c=0.8,
+        screen_bias_pct=0.0,
+        circulation_fan_pct=35.0,
+        co2_target_ppm=760.0,
+    )
+
+    energy_summary = result["energy_summary"]
+    thermal_plus_vent = (
+        float(energy_summary["heating_energy_kWh_m2_day"])
+        + float(energy_summary["cooling_energy_kWh_m2_day"])
+        + float(energy_summary["ventilation_energy_kWh_m2_day"])
+    )
+    assert abs(thermal_plus_vent - float(energy_summary["total_energy_kWh_m2_day"])) < 1e-6
+
+
+def test_scenario_runner_uses_same_baseline_reference_as_optimize_baseline() -> None:
+    services = _load_optimizer_rtr_services()
+    backend_main = _backend_main()
+    context = _fake_context(
+        crop="tomato",
+        par_umol_m2_s=960.0,
+        co2_ppm=780.0,
+        t_air_c=19.3,
+        outside_t_c=6.0,
+        source_capacity=0.95,
+        sink_demand=0.87,
+        fruit_load=11.0,
+        source_sink_balance=0.06,
+    )
+    optimization_inputs = _optimization_inputs(services, "tomato")
+
+    baseline_eval = backend_main._build_rtr_baseline_candidate(context, optimization_inputs)
+    scenarios = services.scenario_runner.run_rtr_scenarios(
+        context=context,
+        optimization_inputs=optimization_inputs,
+    )
+    baseline_row = next(row for row in scenarios if row["label"] == "baseline")
+
+    assert baseline_row["day_heating_min_temp_C"] == baseline_eval["controls"]["day_heating_min_temp_C"]
+    assert baseline_row["night_heating_min_temp_C"] == baseline_eval["controls"]["night_heating_min_temp_C"]
+    assert baseline_row["day_cooling_target_C"] == baseline_eval["controls"]["day_cooling_target_C"]
+    assert baseline_row["night_cooling_target_C"] == baseline_eval["controls"]["night_cooling_target_C"]
+
+
+def test_sensitivity_objective_derivative_respects_energy_option(monkeypatch) -> None:
+    services = _load_optimizer_rtr_services()
+    context = _fake_context(
+        crop="tomato",
+        par_umol_m2_s=820.0,
+        co2_ppm=720.0,
+        t_air_c=19.1,
+        outside_t_c=2.5,
+        source_capacity=0.93,
+        sink_demand=0.88,
+        fruit_load=10.5,
+        source_sink_balance=0.04,
+    )
+    with_energy = _optimization_inputs(
+        services,
+        "tomato",
+        optimization_mode="custom_weights",
+        include_energy_cost=True,
+        custom_weights={
+            "temp": 0.0,
+            "node": 0.0,
+            "carbon": 0.0,
+            "sink": 0.0,
+            "resp": 0.0,
+            "risk": 0.0,
+            "energy": 0.0,
+            "labor": 0.0,
+            "assim": 0.0,
+            "yield": 0.0,
+            "heating": 10.0,
+            "cooling": 0.0,
+            "ventilation": 0.0,
+            "humidity": 0.0,
+            "disease": 0.0,
+            "stress": 0.0,
+        },
+    )
+    without_energy = _optimization_inputs(
+        services,
+        "tomato",
+        optimization_mode="custom_weights",
+        include_energy_cost=False,
+        custom_weights={
+            "temp": 0.0,
+            "node": 0.0,
+            "carbon": 0.0,
+            "sink": 0.0,
+            "resp": 0.0,
+            "risk": 0.0,
+            "energy": 0.0,
+            "labor": 0.0,
+            "assim": 0.0,
+            "yield": 0.0,
+            "heating": 10.0,
+            "cooling": 0.0,
+            "ventilation": 0.0,
+            "humidity": 0.0,
+            "disease": 0.0,
+            "stress": 0.0,
+        },
+    )
+    optimized_candidate = {
+        "controls": {
+            "day_heating_min_temp_C": 19.6,
+            "night_heating_min_temp_C": 18.8,
+            "day_cooling_target_C": 26.0,
+            "night_cooling_target_C": 24.8,
+            "vent_bias_C": 0.0,
+            "screen_bias_pct": 0.0,
+            "circulation_fan_pct": 35.0,
+            "co2_target_ppm": 720.0,
+            "dehumidification_bias": 0.0,
+            "fogging_or_evap_cooling_intensity": 0.0,
+        }
+    }
+    captured_weights: list[dict[str, float]] = []
+
+    def _fake_eval(**kwargs):
+        captured_weights.append(dict(kwargs["weights"]))
+        heating_weight = float(kwargs["weights"].get("heating", 0.0))
+        return {
+            "objective_value": heating_weight,
+            "flux_projection": {"carbon_margin": 1.0},
+            "objective_breakdown": {
+                "humidity_risk_penalty": 0.0,
+                "disease_penalty": 0.0,
+                "heating_energy_cost": 0.0,
+                "cooling_energy_cost": 0.0,
+                "labor_cost": 0.0,
+            },
+        }
+
+    monkeypatch.setattr(services.scenario_runner, "evaluate_rtr_candidate", _fake_eval)
+
+    services.scenario_runner.compute_rtr_temperature_sensitivity(
+        context=context,
+        optimization_inputs=with_energy,
+        optimized_candidate=optimized_candidate,
+    )
+    with_energy_weights = list(captured_weights)
+    captured_weights.clear()
+
+    services.scenario_runner.compute_rtr_temperature_sensitivity(
+        context=context,
+        optimization_inputs=without_energy,
+        optimized_candidate=optimized_candidate,
+    )
+    without_energy_weights = list(captured_weights)
+
+    assert any(weight_row["heating"] > 0.0 for weight_row in with_energy_weights)
+    assert all(weight_row["heating"] == 0.0 for weight_row in without_energy_weights)
+    assert all(weight_row["ventilation"] == 0.0 for weight_row in without_energy_weights)
 
 
 def test_rtr_deriver_bounds_ratio_delta() -> None:
@@ -1223,6 +1435,147 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
         row["control"] == "screen_bias" and row["target"] == "humidity_risk_penalty"
         for row in sensitivity_payload["sensitivities"]
     )
+
+
+def test_rtr_scenario_route_preserves_explicit_zero_circulation_fan_override(
+    monkeypatch,
+) -> None:
+    services = _load_light_rtr_services()
+    backend_main = _backend_main()
+    context = _fake_context(
+        crop="tomato",
+        par_umol_m2_s=960.0,
+        co2_ppm=760.0,
+        t_air_c=19.3,
+        outside_t_c=7.0,
+        source_capacity=0.94,
+        sink_demand=0.9,
+        fruit_load=11.0,
+        source_sink_balance=0.02,
+    )
+    optimization_inputs = _optimization_inputs(
+        services,
+        "tomato",
+        include_energy_cost=True,
+        include_labor_cost=True,
+        user_actual_area_m2=1200,
+    )
+    fake_store = FakeStore()
+    fake_bundle = (
+        "tomato",
+        fake_store,
+        "house-a",
+        {"snapshot_id": "snap-rtr", "crop": "tomato"},
+        {"version": 2},
+        {
+            "greenhouse_area_m2": 3305.8,
+            "actual_area_m2": 1200.0,
+            "actual_area_pyeong": 362.998651,
+        },
+        optimization_inputs,
+        context,
+    )
+    captured: dict[str, float] = {}
+
+    fake_scenario_module = types.ModuleType(
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.scenario_runner"
+    )
+    fake_scenario_module.run_rtr_scenarios = lambda **kwargs: []
+
+    fake_objective_terms = types.ModuleType(
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.objective_terms"
+    )
+
+    def _capture_candidate(**kwargs):
+        captured["circulation_fan_pct"] = kwargs["circulation_fan_pct"]
+        return {
+            "controls": {
+                "day_min_temp_C": kwargs["day_min_temp_c"],
+                "night_min_temp_C": kwargs["night_min_temp_c"],
+                "mean_temp_C": 19.2,
+                "day_heating_min_temp_C": kwargs["day_min_temp_c"],
+                "night_heating_min_temp_C": kwargs["night_min_temp_c"],
+                "day_cooling_target_C": kwargs["day_cooling_target_c"],
+                "night_cooling_target_C": kwargs["night_cooling_target_c"],
+                "vent_bias_C": kwargs["vent_bias_c"],
+                "screen_bias_pct": kwargs["screen_bias_pct"],
+                "circulation_fan_pct": kwargs["circulation_fan_pct"],
+                "co2_target_ppm": kwargs["co2_target_ppm"],
+            },
+            "node_summary": {
+                "predicted_rate_day": 0.66,
+                "target_hit": True,
+            },
+            "flux_projection": {
+                "carbon_margin": 0.12,
+                "respiration_umol_m2_s": 3.9,
+                "net_assim_umol_m2_s": 8.2,
+            },
+            "objective_breakdown": {
+                "energy_cost": 0.19,
+                "energy_cost_krw": 25.7,
+                "labor_index": 0.07,
+            },
+            "constraint_checks": {
+                "confidence_penalty": 0.1,
+            },
+            "feasibility": {
+                "carbon_margin_positive": True,
+                "risk_flags": [],
+            },
+            "energy_summary": {
+                "total_energy_cost_krw_m2_day": 25.7,
+            },
+            "yield_projection": {
+                "predicted_yield_kg_m2_day": 0.04,
+                "predicted_yield_kg_m2_week": 0.28,
+                "harvest_trend_delta_pct": 3.0,
+            },
+            "control_effect_trace": {},
+        }
+
+    fake_objective_terms.evaluate_rtr_candidate = _capture_candidate
+
+    monkeypatch.setattr(
+        backend_main,
+        "_build_rtr_request_bundle",
+        lambda req_payload: fake_bundle,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.scenario_runner",
+        fake_scenario_module,
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.objective_terms",
+        fake_objective_terms,
+    )
+
+    client = TestClient(get_app())
+    response = client.post(
+        "/api/rtr/scenario",
+        json={
+            "crop": "tomato",
+            "target_node_development_per_day": 0.64,
+            "optimization_mode": "balanced",
+            "include_energy_cost": True,
+            "include_labor_cost": True,
+            "user_actual_area_m2": 1200,
+            "custom_scenario": {
+                "label": "fan-off",
+                "day_heating_min_temp_C": 20.1,
+                "night_heating_min_temp_C": 18.7,
+                "circulation_fan_pct": 0,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert captured["circulation_fan_pct"] == 0.0
+    assert payload["scenarios"][-1]["label"] == "fan-off"
+    assert payload["scenarios"][-1]["circulation_fan_pct"] == 0.0
 
 
 def test_rtr_calibration_state_and_preview_routes_return_house_scoped_windows(
