@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue3-rtr-grower-window-intake-prep-running",
+  "current_stage": "issue3-rtr-grower-window-followup-blocked-on-main",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
   "active_issue": 3,
-  "active_branch": "data/3-rtr-grower-window-intake-prep",
+  "active_branch": null,
   "implementation_blocked": true,
-  "next_action": "Use the new intake prep note to collect grower-approved tomato/cucumber RTR windows, update `configs/rtr_good_windows.yaml`, then rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json` before reopening the validation ladder.",
+  "next_action": "Issue #3 remains open but blocked on grower-approved tomato/cucumber good-production periods; once approved windows are supplied, create a fresh issue-based branch from `main`, update `configs/rtr_good_windows.yaml`, rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`, and reopen the RTR validation ladder.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "Issue #3 grower-approved RTR window replacement follow-up"
 }
