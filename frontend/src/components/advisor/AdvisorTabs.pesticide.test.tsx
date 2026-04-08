@@ -116,7 +116,10 @@ function buildPesticidePayload(): PesticideRecommendationPayload {
             policy_code: 'registered-first-unique-moa',
             policy_label: '백엔드 한글 정책',
         },
-        limitations: ['최종 사용 전 라벨을 다시 확인하세요.'],
+        limitations: [
+            'Narrative or placeholder rotation rows were withheld from the returned program instead of being surfaced as executable recommendations.',
+            'The candidate pool still contains unknown or label-check-required rows; those stay marked for manual label review before operational rollout.',
+        ],
     };
 }
 
@@ -224,6 +227,7 @@ describe('AdvisorTabs pesticide surface', () => {
         expect(screen.getAllByText(/초발생 전 예방 살포/).length).toBeGreaterThan(0);
         expect(screen.getByText('예비 교호 대안')).toBeTruthy();
         expect(screen.getByText(/등록 또는 라벨 확인이 더 필요해 예비안으로만 남겼습니다./)).toBeTruthy();
+        expect(screen.getByText(/설명용이거나 정보가 불완전한 교호 행은 실행안에서 제외했습니다./)).toBeTruthy();
     });
 
     it('keeps rendering legacy payloads without additive rotation fields', () => {
@@ -290,6 +294,7 @@ describe('AdvisorTabs pesticide surface', () => {
                 )
             )).length,
         ).toBeGreaterThan(0);
+        expect(screen.getByText(/Narrative or incomplete rotation rows were kept out of the executable rotation./)).toBeTruthy();
         expect(screen.queryByText('백엔드 한글 요약')).toBeNull();
         expect(screen.queryByText('백엔드 한글 대안 사유')).toBeNull();
     });

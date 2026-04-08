@@ -1,8 +1,8 @@
 # Current Loop
 
 ## Active State
-- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy`, and PR `#24` now carries the contextual grower-facing knowledge-search slice on validated head `f50834e`.
-- Local validation ladder and refreshed GitHub Actions are green: `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, plus remote Backend/Frontend Validation on PR `#24`.
+- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy`, and PR `#24` now carries a follow-up pesticide-advisor detail hardening slice on the latest branch head.
+- The full local validation ladder is green for that slice: `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`. Refresh Backend/Frontend Validation on PR `#24` after the next push and keep it green before merge.
 
 ## Latest Delivered Baseline
 - Issue `#21` remains the most recent merged baseline on `main`.
@@ -23,8 +23,9 @@
   - a KPI strip layout hardening pass that moves warning-state chips and timestamps into a wrapped metadata row so `실시간/경고/최근 수집` text no longer collides inside narrow cards or the strip header
   - a SmartGrow quick-action pass that replaces the old non-interactive surface catalog with actionable `도구 열기` cards wired into the actual advisor tabs, including direct opening of the nutrient correction tool and Korean nutrient boundary wording in both frontend and backend summaries
   - a contextual knowledge-search pass that seeds the drawer from current dashboard/advisor/assistant context, auto-runs crop-matched preset queries, summarizes routed scope in grower-friendly Korean, hides internal API recovery wording, and locks the drawer behavior with a dedicated Vitest surface test
+  - a pesticide-advisor grower-detail pass that prefers Hangul product aliases in Korean mode, adds clearer `제품명/권장 주기/추천 교호안/예비 교호 대안` surfaces, derives grower-facing rotation reasons on the frontend from locale-safe backend codes, localizes backend limitation text on the frontend, and preserves backward compatibility when older payloads omit `rotation_guidance` or `rotation_alternatives`
 
 ## Exact Restart Step
-1. Keep PR `#24` on validated head `f50834e` unless a new issue `#23` regression or UX gap is explicitly selected.
-2. If follow-up changes are requested, keep them bounded to a new documented slice and rerun the same local ladder before pushing.
-3. Otherwise proceed to review/merge PR `#24`, then sync post-merge harness truth on `main`.
+1. Push the latest issue `#23` pesticide-advisor detail commit to PR `#24`.
+2. Confirm refreshed Backend/Frontend Validation stays green on that head.
+3. Merge PR `#24` when no further grower-facing dashboard follow-up is required, then sync post-merge harness truth on `main`.

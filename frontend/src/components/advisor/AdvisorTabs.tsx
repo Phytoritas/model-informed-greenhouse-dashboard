@@ -280,6 +280,31 @@ function buildRotationGuidance(
     };
 }
 
+function localizePesticideLimitation(
+    limitation: string,
+    locale: 'ko' | 'en',
+): string {
+    const normalized = normalizeAdvisorToken(limitation);
+    if (normalized.includes('placeholder-rotation-rows-were-withheld')) {
+        return locale === 'ko'
+            ? '설명용이거나 정보가 불완전한 교호 행은 실행안에서 제외했습니다.'
+            : 'Narrative or incomplete rotation rows were kept out of the executable rotation.';
+    }
+    if (normalized.includes('label-check-required-rows')) {
+        return locale === 'ko'
+            ? '후보군에는 라벨 또는 등록 확인이 더 필요한 약제가 포함되어 있어, 해당 약제는 수동 검토 대상으로 남겨 두었습니다.'
+            : 'Some candidates still need label or registration review, so they remain manual-review items.';
+    }
+    return limitation;
+}
+
+function buildPesticideLimitations(
+    limitations: string[],
+    locale: 'ko' | 'en',
+): string[] {
+    return uniqueStrings(limitations.map((limitation) => localizePesticideLimitation(limitation, locale)));
+}
+
 function getPreferredProductNames(
     row: Pick<PesticideProductRow | PesticideRotationRow, 'product_name' | 'product_names' | 'product_aliases'>,
     locale: 'ko' | 'en',
@@ -684,6 +709,7 @@ const AdvisorTabs = ({
         const rotationProgram = result.rotation_program ?? [];
         const rotationAlternatives = result.rotation_alternatives ?? [];
         const guidance = buildRotationGuidance(result, locale);
+        const localizedLimitations = buildPesticideLimitations(result.limitations, locale);
         return (
             <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
@@ -830,7 +856,7 @@ const AdvisorTabs = ({
                     </AdvisorActionCard>
                 ) : null}
                 <p className="text-sm leading-relaxed text-slate-500">
-                    {result.limitations.join(' ')}
+                    {localizedLimitations.join(' ')}
                 </p>
             </div>
         );
