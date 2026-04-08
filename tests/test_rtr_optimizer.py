@@ -5,6 +5,7 @@ import sys
 import types
 from types import SimpleNamespace
 
+import pandas as pd
 from fastapi.testclient import TestClient
 
 from model_informed_greenhouse_dashboard import get_app
@@ -343,6 +344,44 @@ def _fake_context(
         cost_per_kwh=135.0,
         energy_estimator=FakeEnergyEstimator(),
     )
+
+
+def _build_calibration_env_df() -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    base_date = pd.Timestamp("2026-04-01 00:00:00")
+    temperatures = [19.5, 20.1, 20.7, 21.3, 21.9, 22.5]
+    radiations = [8.0, 10.0, 12.0, 14.0, 16.0, 18.0]
+    midday_par = [(value * 1_000_000.0) / (12 * 3600) for value in radiations]
+
+    for day_index, (average_temp, midday_light) in enumerate(zip(temperatures, midday_par)):
+        day_start = base_date + pd.Timedelta(days=day_index)
+        rows.append(
+            {
+                "datetime": day_start,
+                "T_air_C": average_temp - 1.0,
+                "PAR_umol": 0.0,
+                "RH_percent": 70.0,
+            }
+        )
+        rows.append(
+            {
+                "datetime": day_start + pd.Timedelta(hours=12),
+                "T_air_C": average_temp + 1.0,
+                "PAR_umol": midday_light,
+                "RH_percent": 70.0,
+            }
+        )
+
+    rows.append(
+        {
+            "datetime": base_date + pd.Timedelta(days=len(temperatures)),
+            "T_air_C": temperatures[-1] - 1.0,
+            "PAR_umol": 0.0,
+            "RH_percent": 70.0,
+        }
+    )
+
+    return pd.DataFrame(rows)
 
 
 def _optimization_inputs(services, crop: str, **overrides):
@@ -1102,3 +1141,115 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
     assert sensitivity_payload["mode"] == "optimizer"
     assert len(sensitivity_payload["sensitivities"]) == 3
     assert sensitivity_payload["sensitivities"][0]["method"] == "finite_difference"
+
+
+def test_rtr_calibration_state_and_preview_routes_return_house_scoped_windows(
+    monkeypatch,
+) -> None:
+    backend_main = _backend_main()
+    original_df_env = backend_main.app_state["tomato"].get("df_env")
+    backend_main.app_state["tomato"]["df_env"] = _build_calibration_env_df()
+    try:
+        client = TestClient(get_app())
+        state_response = client.get(
+            "/api/rtr/calibration-state",
+            params={"crop": "tomato", "greenhouse_id": "house-a"},
+        )
+        preview_response = client.post(
+            "/api/rtr/calibration-preview",
+            json={
+                "crop": "tomato",
+                "greenhouse_id": "house-a",
+                "selection_mode": "windows-only",
+                "windows": [
+                    {
+                        "label": "house-a-april-window",
+                        "startDate": "2026-04-01",
+                        "endDate": "2026-04-06",
+                        "enabled": True,
+                        "approvalStatus": "grower-approved",
+                        "approvalSource": "lead-grower",
+                        "approvalReason": "stable harvest and internode rhythm",
+                        "evidenceNotes": "quality and vigor were both acceptable",
+                    }
+                ],
+            },
+        )
+
+        assert state_response.status_code == 200
+        state_payload = state_response.json()
+        assert state_payload["status"] == "success"
+        assert state_payload["crop"] == "Tomato"
+        assert state_payload["environment_summary"]["has_environment_history"] is True
+        assert state_payload["environment_summary"]["total_days"] == 7
+
+        assert preview_response.status_code == 200
+        preview_payload = preview_response.json()
+        assert preview_payload["status"] == "success"
+        assert preview_payload["preview_profile"]["calibration"]["mode"] == "fitted"
+        assert preview_payload["selection_summary"]["selection_source"] == "curated-windows"
+        assert preview_payload["selection_summary"]["window_count"] == 1
+        assert preview_payload["windows"][0]["houseId"] == "house-a"
+    finally:
+        backend_main.app_state["tomato"]["df_env"] = original_df_env
+
+
+def test_rtr_calibration_save_route_persists_windows_and_refreshes_profile(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services import rtr_profiles
+
+    backend_main = _backend_main()
+    original_df_env = backend_main.app_state["cucumber"].get("df_env")
+    backend_main.app_state["cucumber"]["df_env"] = _build_calibration_env_df()
+    windows_path = tmp_path / "rtr_good_windows.yaml"
+    profiles_path = tmp_path / "rtr_profiles.json"
+    monkeypatch.setattr(rtr_profiles, "rtr_good_windows_path", lambda config_path=None: windows_path)
+    monkeypatch.setattr(rtr_profiles, "rtr_profiles_path", lambda config_path=None: profiles_path)
+    try:
+        client = TestClient(get_app())
+        save_response = client.post(
+            "/api/rtr/calibration-save",
+            json={
+                "crop": "cucumber",
+                "greenhouse_id": "house-a",
+                "selection_mode": "windows-only",
+                "windows": [
+                    {
+                        "label": "house-a-spring-window",
+                        "startDate": "2026-04-01",
+                        "endDate": "2026-04-06",
+                        "enabled": True,
+                        "approvalStatus": "grower-approved",
+                        "approvalSource": "grower-team",
+                        "approvalReason": "balanced source sink with stable harvest",
+                        "evidenceNotes": "leaf area and harvest both stayed in range",
+                    }
+                ],
+            },
+        )
+        profiles_response = client.get("/api/rtr/profiles")
+
+        assert save_response.status_code == 200
+        save_payload = save_response.json()
+        assert save_payload["saved"] is True
+        assert save_payload["current_profile"]["calibration"]["mode"] == "fitted"
+        assert save_payload["windows"][0]["houseId"] == "house-a"
+        assert windows_path.exists()
+        assert profiles_path.exists()
+
+        persisted_windows = rtr_profiles.load_rtr_good_windows(windows_path)
+        house_windows = rtr_profiles.filter_rtr_good_windows_for_house(
+            persisted_windows,
+            "cucumber",
+            "house-a",
+        )
+        persisted_profiles = rtr_profiles.load_rtr_profiles(profiles_path)
+
+        assert [window["label"] for window in house_windows] == ["house-a-spring-window"]
+        assert persisted_profiles["profiles"]["Cucumber"]["calibration"]["mode"] == "fitted"
+        assert profiles_response.status_code == 200
+        assert profiles_response.json()["profiles"]["Cucumber"]["calibration"]["mode"] == "fitted"
+    finally:
+        backend_main.app_state["cucumber"]["df_env"] = original_df_env

@@ -4,8 +4,12 @@ import pytest
 from model_informed_greenhouse_dashboard.backend.app.services.rtr_profiles import (
     aggregate_daily_rtr_metrics,
     filter_daily_points_by_windows,
+    filter_rtr_good_windows_for_house,
     fit_rtr_profile,
     load_rtr_good_windows,
+    normalize_rtr_good_windows,
+    save_rtr_good_windows,
+    upsert_rtr_good_windows,
 )
 
 
@@ -275,3 +279,99 @@ def test_fit_rtr_profile_windows_only_requires_enabled_windows() -> None:
     assert profile["calibration"]["windowCount"] == 0
     assert profile["baseTempC"] == 18.3
     assert profile["slopeCPerMjM2"] == 0.15
+
+
+def test_normalize_rtr_good_windows_applies_greenhouse_id_and_sorts() -> None:
+    windows = normalize_rtr_good_windows(
+        [
+            {
+                "label": "late-window",
+                "startDate": "2026-04-10",
+                "endDate": "2026-04-14",
+                "approvalStatus": "grower-approved",
+                "approvalSource": "lead-grower",
+                "approvalReason": "stable growth",
+                "evidenceNotes": "daily harvest recovered",
+            },
+            {
+                "label": "early-window",
+                "startDate": "2026-04-01",
+                "endDate": "2026-04-05",
+                "approvalStatus": "grower-approved",
+                "approvalSource": "lead-grower",
+                "approvalReason": "stable growth",
+                "evidenceNotes": "leaf removal settled",
+            },
+        ],
+        greenhouse_id="house-a",
+    )
+
+    assert [window["label"] for window in windows] == ["early-window", "late-window"]
+    assert all(window["houseId"] == "house-a" for window in windows)
+
+
+def test_upsert_and_save_rtr_good_windows_replaces_house_scope(tmp_path) -> None:
+    payload = {
+        "version": 1,
+        "timezone": "Asia/Seoul",
+        "updatedAt": "2026-04-08T00:00:00Z",
+        "crops": {
+            "Tomato": [
+                {
+                    "label": "house-a-old",
+                    "startDate": "2026-03-01",
+                    "endDate": "2026-03-05",
+                    "enabled": True,
+                    "houseId": "house-a",
+                    "approvalStatus": "grower-approved",
+                    "approvalSource": "grower-a",
+                    "approvalReason": "stable harvest",
+                    "evidenceNotes": "good fruit size",
+                    "notes": None,
+                },
+                {
+                    "label": "house-b-keep",
+                    "startDate": "2026-03-10",
+                    "endDate": "2026-03-16",
+                    "enabled": True,
+                    "houseId": "house-b",
+                    "approvalStatus": "grower-approved",
+                    "approvalSource": "grower-b",
+                    "approvalReason": "stable harvest",
+                    "evidenceNotes": "good fruit size",
+                    "notes": None,
+                },
+            ],
+            "Cucumber": [],
+        },
+    }
+
+    updated = upsert_rtr_good_windows(
+        payload,
+        crop="tomato",
+        greenhouse_id="house-a",
+        windows=[
+            {
+                "label": "house-a-new",
+                "startDate": "2026-04-01",
+                "endDate": "2026-04-07",
+                "enabled": True,
+                "approvalStatus": "grower-approved",
+                "approvalSource": "grower-a",
+                "approvalReason": "node progression on target",
+                "evidenceNotes": "harvest and vigor both acceptable",
+            }
+        ],
+    )
+
+    tomato_windows = updated["crops"]["Tomato"]
+    assert [window["label"] for window in tomato_windows] == ["house-b-keep", "house-a-new"]
+
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    save_rtr_good_windows(updated, config_path)
+    roundtrip = load_rtr_good_windows(config_path)
+    house_a_windows = filter_rtr_good_windows_for_house(roundtrip, "tomato", "house-a")
+    house_b_windows = filter_rtr_good_windows_for_house(roundtrip, "tomato", "house-b")
+
+    assert [window["label"] for window in house_a_windows] == ["house-a-new"]
+    assert [window["label"] for window in house_b_windows] == ["house-b-keep"]

@@ -319,6 +319,7 @@ function App() {
     profiles: rtrProfilesPayload,
     loading: isRtrProfileLoading,
     error: rtrProfileError,
+    refresh: refreshRtrProfiles,
   } = useRtrProfiles();
   const {
     summary: smartGrowSummary,
@@ -790,6 +791,7 @@ function App() {
                 profileError={rtrProfileError}
                 optimizerEnabled={rtrProfilesPayload?.profiles[selectedCrop]?.optimizer?.enabled ?? rtrProfilesPayload?.optimizerEnabled}
                 defaultMode={rtrProfilesPayload?.profiles[selectedCrop]?.optimizer?.default_mode}
+                onRefreshProfiles={refreshRtrProfiles}
                 compact
               />
             </Suspense>

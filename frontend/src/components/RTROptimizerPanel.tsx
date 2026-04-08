@@ -25,6 +25,7 @@ import { getCropLabel } from '../utils/displayCopy';
 import { useAreaUnit } from '../context/AreaUnitContext';
 import { useRtrOptimizer } from '../hooks/useRtrOptimizer';
 import AreaUnitPanel from './AreaUnitPanel';
+import RTRCalibrationWorkspace from './RTRCalibrationWorkspace';
 import RTROutlookPanel from './RTROutlookPanel';
 
 interface RTROptimizerPanelProps {
@@ -41,6 +42,7 @@ interface RTROptimizerPanelProps {
     profileError: string | null;
     optimizerEnabled?: boolean;
     defaultMode?: RtrOptimizationMode;
+    onRefreshProfiles?: () => void | Promise<void>;
     compact?: boolean;
 }
 
@@ -375,6 +377,7 @@ const RTROptimizerPanel = ({
     profileError,
     optimizerEnabled: optimizerEnabledProp,
     defaultMode: defaultModeProp,
+    onRefreshProfiles,
     compact = false,
 }: RTROptimizerPanelProps) => {
     const { locale } = useLocale();
@@ -410,6 +413,7 @@ const RTROptimizerPanel = ({
         loadingState,
         loadingOptimize,
         error: optimizerError,
+        refreshState,
         refreshOptimization,
     } = useRtrOptimizer({
         crop,
@@ -422,6 +426,11 @@ const RTROptimizerPanel = ({
     });
     const isProfilePending = profileLoading && profile === null;
     const isProfileUnavailable = !profileLoading && profile === null;
+    const refreshCalibrationConsumers = async () => {
+        await Promise.resolve(onRefreshProfiles?.());
+        await refreshState();
+        await refreshOptimization();
+    };
 
     const copy = locale === 'ko'
         ? {
@@ -1258,6 +1267,8 @@ const RTROptimizerPanel = ({
                         </div>
                     )}
                 </section>
+
+                <RTRCalibrationWorkspace key={crop} crop={crop} onSaved={refreshCalibrationConsumers} />
 
                 <details className="rounded-xl border border-slate-200 p-3">
                     <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900">
