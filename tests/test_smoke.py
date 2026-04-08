@@ -654,14 +654,25 @@ def test_rtr_profiles_endpoint_returns_payload_shape(
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "success"
-    assert payload["version"] == 1
-    assert payload["profiles"]["Tomato"]["baseTempC"] == 18.3
+    assert payload["mode"] == "baseline"
+    assert payload["optimizerEnabled"] is True
+    assert payload["version"] == 2
+    assert payload["availableModes"] == ["baseline", "optimizer"]
+    assert (
+        payload["profiles"]["Tomato"]["baseTempC"]
+        == payload["profiles"]["Tomato"]["baseline"]["baseTempC"]
+    )
+    assert (
+        payload["profiles"]["Cucumber"]["slopeCPerMjM2"]
+        == payload["profiles"]["Cucumber"]["baseline"]["slopeCPerMjM2"]
+    )
     assert payload["profiles"]["Cucumber"]["calibration"]["mode"] == "baseline"
     assert (
         payload["profiles"]["Tomato"]["calibration"]["selectionSource"]
         == "heuristic-fallback"
     )
     assert payload["profiles"]["Cucumber"]["calibration"]["windowCount"] == 0
+    assert payload["profiles"]["Tomato"]["optimizer"]["enabled"] is True
 
 
 def test_advisor_tab_endpoint_forwards_greenhouse_id(

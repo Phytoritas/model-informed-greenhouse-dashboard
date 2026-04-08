@@ -215,6 +215,60 @@ class ModelSensitivityRequest(BaseModel):
     controls: Optional[list[str]] = None
     step_overrides: Optional[Dict[str, float]] = None
 
+
+class RTRGuardrailRequest(BaseModel):
+    max_temp_delta_per_step: Optional[float] = None
+    max_rtr_ratio_delta: Optional[float] = None
+    humidity_risk_tolerance: Optional[float] = None
+    disease_risk_tolerance: Optional[float] = None
+
+
+class RTROptimizeRequest(BaseModel):
+    crop: str
+    greenhouse_id: Optional[str] = None
+    snapshot_id: Optional[str] = None
+    target_node_development_per_day: float
+    optimization_mode: Literal[
+        "growth_priority",
+        "balanced",
+        "energy_saving",
+        "labor_saving",
+        "custom_weights",
+    ] = "balanced"
+    include_energy_cost: bool = True
+    include_labor_cost: bool = False
+    user_actual_area_pyeong: Optional[float] = None
+    user_actual_area_m2: Optional[float] = None
+    target_horizon: Literal["today", "next_24h", "day+night split"] = "today"
+    custom_weights: Optional[Dict[str, float]] = None
+    guardrails: Optional[RTRGuardrailRequest] = None
+    user_labor_cost_coefficient: Optional[float] = None
+
+
+class RTRCustomScenarioRequest(BaseModel):
+    label: Optional[str] = "custom"
+    day_min_temp_C: Optional[float] = None
+    night_min_temp_C: Optional[float] = None
+    vent_bias_C: Optional[float] = 0.0
+    screen_bias_pct: Optional[float] = 0.0
+    co2_target_ppm: Optional[float] = None
+    rh_target_pct: Optional[float] = None
+
+
+class RTRScenarioRequest(RTROptimizeRequest):
+    custom_scenario: Optional[RTRCustomScenarioRequest] = None
+
+
+class RTRSensitivityRequest(RTROptimizeRequest):
+    step_c: float = 0.3
+
+
+class RTRAreaSettingsRequest(BaseModel):
+    crop: str
+    greenhouse_id: Optional[str] = None
+    user_actual_area_pyeong: Optional[float] = None
+    user_actual_area_m2: Optional[float] = None
+
 # Setup logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
@@ -241,6 +295,7 @@ app_state = {
         "ops_config": None,
         "crop_config": None,
         "pending_prune_reset": False,
+        "rtr_area_settings": {},
     },
     "cucumber": {
         "simulator": None,
@@ -259,6 +314,7 @@ app_state = {
         "ops_config": None,
         "crop_config": None,
         "pending_prune_reset": False,
+        "rtr_area_settings": {},
     },
 }
 
@@ -531,6 +587,265 @@ def _serialize_crop_config(crop: str) -> Dict[str, Any]:
         crop_config["current_leaf_count"] = getattr(adapter.model, "remaining_leaves", crop_config["current_leaf_count"])
 
     return {"crop": crop, **crop_config}
+
+
+def _get_rtr_area_settings_store(crop: str) -> Dict[str, Dict[str, float]]:
+    crop_state = app_state[crop]
+    settings_store = crop_state.get("rtr_area_settings")
+    if not isinstance(settings_store, dict):
+        settings_store = {}
+        crop_state["rtr_area_settings"] = settings_store
+    return settings_store
+
+
+def _resolve_rtr_area_meta(
+    crop: str,
+    greenhouse_id: str,
+    *,
+    user_actual_area_m2: Optional[float] = None,
+    user_actual_area_pyeong: Optional[float] = None,
+) -> Dict[str, float | None]:
+    from .services.rtr.unit_projection import canonicalize_area
+
+    stored_settings = _get_rtr_area_settings_store(crop).get(greenhouse_id) or {}
+    resolved_area_m2 = (
+        user_actual_area_m2 if user_actual_area_m2 is not None else stored_settings.get("actual_area_m2")
+    )
+    resolved_area_pyeong = (
+        user_actual_area_pyeong
+        if user_actual_area_pyeong is not None
+        else stored_settings.get("actual_area_pyeong")
+    )
+    return canonicalize_area(
+        greenhouse_area_m2=float(greenhouse_config["greenhouse"]["area_m2"]),
+        user_actual_area_m2=None if resolved_area_m2 is None else float(resolved_area_m2),
+        user_actual_area_pyeong=None if resolved_area_pyeong is None else float(resolved_area_pyeong),
+    )
+
+
+def _get_crop_cost_per_kwh(crop: str) -> float:
+    decision_service = app_state[crop].get("decision")
+    settings_payload = getattr(decision_service, "settings", None) if decision_service else None
+    if isinstance(settings_payload, dict):
+        try:
+            return float(settings_payload.get("cost_per_kwh", 120.0))
+        except (TypeError, ValueError):
+            return 120.0
+    return 120.0
+
+
+def _build_rtr_request_bundle(req_payload: Dict[str, Any]):
+    from .services.model_runtime.model_state_store import ModelStateStore
+    from .services.rtr.controller_contract import build_service_inputs
+    from .services.rtr.internal_model_bridge import build_internal_model_context
+
+    crop = _validate_crop(req_payload["crop"])
+    store = ModelStateStore()
+    greenhouse_id, snapshot_record = _resolve_runtime_snapshot_record(
+        store=store,
+        crop=crop,
+        greenhouse_id=req_payload.get("greenhouse_id"),
+        snapshot_id=req_payload.get("snapshot_id"),
+        source="rtr_optimizer_baseline",
+    )
+    area_meta = _resolve_rtr_area_meta(
+        crop,
+        greenhouse_id,
+        user_actual_area_m2=req_payload.get("user_actual_area_m2"),
+        user_actual_area_pyeong=req_payload.get("user_actual_area_pyeong"),
+    )
+    optimization_inputs = build_service_inputs(req_payload, greenhouse_id=greenhouse_id)
+    profiles_payload = load_rtr_profiles()
+    recent_events = store.list_work_events(greenhouse_id, crop, limit=12)
+    context = build_internal_model_context(
+        snapshot_record=snapshot_record,
+        crop_state=app_state[crop],
+        greenhouse_id=greenhouse_id,
+        profiles_payload=profiles_payload,
+        recent_events=recent_events,
+        actual_area_m2=float(area_meta["actual_area_m2"] or greenhouse_config["greenhouse"]["area_m2"]),
+        cost_per_kwh=_get_crop_cost_per_kwh(crop),
+    )
+    return crop, store, greenhouse_id, snapshot_record, profiles_payload, area_meta, optimization_inputs, context
+
+
+def _build_rtr_baseline_candidate(context, optimization_inputs):
+    from .services.rtr.objective_terms import evaluate_rtr_candidate
+
+    baseline_target_c = float(context.canonical_state["baseline_rtr"]["baseline_target_C"])
+    baseline_day_c = max(float(context.ops_config.get("heating_set_C", baseline_target_c)), baseline_target_c)
+    baseline_night_c = float(context.ops_config.get("heating_set_C", baseline_target_c))
+    return evaluate_rtr_candidate(
+        context=context,
+        optimization_inputs=optimization_inputs,
+        weights={
+            "temp": 1.0,
+            "node": 0.0,
+            "carbon": 0.0,
+            "sink": 0.0,
+            "resp": 0.0,
+            "risk": 0.0,
+            "energy": 0.0,
+            "labor": 0.0,
+        },
+        day_min_temp_c=baseline_day_c,
+        night_min_temp_c=baseline_night_c,
+        co2_target_ppm=float(context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
+        rh_target_pct=float(context.canonical_state["env"]["RH_pct"]),
+    )
+
+
+def _estimate_rtr_yield_proxy_kg_m2_day(context) -> float:
+    last_state = copy.deepcopy(getattr(context.adapter, "_last_state", None) or {})
+    kpi_payload = context.adapter.kpis(last_state)
+    if context.canonical_state["crop"] == "tomato":
+        return float(kpi_payload.get("daily_harvest_kg", 0.0)) / max(context.greenhouse_area_m2, 1.0)
+    return float(kpi_payload.get("daily_fruit_growth_g_m2", 0.0)) / 1000.0
+
+
+def _build_rtr_crop_specific_insight(context) -> Dict[str, Any]:
+    crop = context.canonical_state["crop"]
+    crop_specific = context.canonical_state["crop_specific"]
+    if crop == "cucumber":
+        cucumber = crop_specific["cucumber"]
+        layer_activity = {
+            "upper": float(cucumber.get("upper_leaf_activity", 0.0)),
+            "middle": float(cucumber.get("middle_leaf_activity", 0.0)),
+            "bottom": float(cucumber.get("bottom_leaf_activity", 0.0)),
+        }
+        bottleneck_layer = min(layer_activity, key=layer_activity.get)
+        return {
+            "crop": "cucumber",
+            "remaining_leaves": int(cucumber.get("remaining_leaves", 0)),
+            "leaf_area_by_rank": cucumber.get("leaf_area_by_rank") or [],
+            "layer_activity": layer_activity,
+            "bottleneck_layer": bottleneck_layer,
+            "recent_leaf_removal_count": len(context.canonical_state["events"]["recent_leaf_removal"]),
+        }
+
+    tomato = crop_specific["tomato"]
+    truss_cohorts = tomato.get("truss_cohorts") or []
+    dominant_cohort_id = None
+    dominant_sink = 0.0
+    for index, cohort in enumerate(truss_cohorts):
+        sink_strength = float(cohort.get("n_fruits", 0.0)) * float(cohort.get("w_fr_cohort", 0.0))
+        if sink_strength > dominant_sink:
+            dominant_sink = sink_strength
+            dominant_cohort_id = index
+    return {
+        "crop": "tomato",
+        "active_trusses": int(tomato.get("active_trusses", 0)),
+        "fruit_partition_ratio": float(tomato.get("fruit_partition_ratio", 0.0)),
+        "layer_activity": {
+            "upper": float(tomato.get("upper_leaf_activity", 0.0)),
+            "middle": float(tomato.get("middle_leaf_activity", 0.0)),
+            "bottom": float(tomato.get("bottom_leaf_activity", 0.0)),
+        },
+        "dominant_cohort_id": dominant_cohort_id,
+        "dominant_cohort_sink": round(dominant_sink, 6),
+        "recent_fruit_thinning_count": len(context.canonical_state["events"]["recent_fruit_thinning"]),
+    }
+
+
+def _build_rtr_explanation_payload(
+    *,
+    context,
+    optimization_inputs,
+    baseline_candidate: Dict[str, Any],
+    optimized_candidate: Dict[str, Any],
+    rtr_equivalent: Dict[str, float],
+    crop_specific_insight: Dict[str, Any],
+) -> Dict[str, Any]:
+    delta_temp = float(rtr_equivalent["delta_temp_C"])
+    reason_tags: list[str] = []
+    if delta_temp > 0.05:
+        reason_tags.append("temperature-up")
+    elif delta_temp < -0.05:
+        reason_tags.append("temperature-down")
+    if not optimized_candidate["node_summary"]["target_hit"]:
+        reason_tags.append("node-target-guarded")
+    if (
+        float(optimized_candidate["objective_breakdown"]["respiration_cost"])
+        > float(baseline_candidate["objective_breakdown"]["respiration_cost"])
+    ):
+        reason_tags.append("respiration-tradeoff")
+    if (
+        float(optimized_candidate["objective_breakdown"]["energy_cost"])
+        > float(baseline_candidate["objective_breakdown"]["energy_cost"])
+    ):
+        reason_tags.append("energy-tradeoff")
+    if (
+        float(optimized_candidate["objective_breakdown"]["labor_index"])
+        > float(baseline_candidate["objective_breakdown"]["labor_index"])
+    ):
+        reason_tags.append("labor-tradeoff")
+
+    if context.canonical_state["crop"] == "cucumber":
+        crop_summary = (
+            f"오이는 {crop_specific_insight['bottleneck_layer']} 엽층 기여가 가장 약하고 "
+            f"남은 엽수 {crop_specific_insight['remaining_leaves']}매가 현재 source 여력을 좌우합니다."
+        )
+    else:
+        crop_summary = (
+            f"토마토는 active truss {crop_specific_insight['active_trusses']}개와 "
+            f"dominant cohort {crop_specific_insight['dominant_cohort_id']}의 sink 부담이 핵심입니다."
+        )
+
+    summary = (
+        "목표 마디 전개를 맞추기 위한 최소 충분 온도를 내부 광합성·호흡·에너지 seam으로 다시 계산했습니다."
+        if delta_temp >= 0
+        else "현재 source-sink와 비용 조건을 반영하면 baseline보다 더 낮은 충분 온도도 가능합니다."
+    )
+    return {
+        "summary": summary,
+        "target_node_development_per_day": float(optimization_inputs.target_node_development_per_day),
+        "baseline_mean_temp_C": float(baseline_candidate["controls"]["mean_temp_C"]),
+        "optimized_mean_temp_C": float(optimized_candidate["controls"]["mean_temp_C"]),
+        "reason_tags": reason_tags,
+        "crop_summary": crop_summary,
+        "missing_work_event_warning": (
+            "작업 이벤트가 적게 기록되어 있어 적엽/적과 영향 해석 신뢰도가 제한됩니다."
+            if (
+                context.canonical_state["crop"] == "cucumber"
+                and not context.canonical_state["events"]["recent_leaf_removal"]
+            )
+            or (
+                context.canonical_state["crop"] == "tomato"
+                and not context.canonical_state["events"]["recent_fruit_thinning"]
+            )
+            else None
+        ),
+    }
+
+
+def _build_rtr_warning_badges(context, optimized_candidate: Dict[str, Any], rtr_equivalent: Dict[str, float]) -> list[str]:
+    warnings: list[str] = []
+    if context.canonical_state["crop"] == "cucumber" and not context.canonical_state["events"]["recent_leaf_removal"]:
+        warnings.append("recent_leaf_removal_missing")
+    if context.canonical_state["crop"] == "tomato" and not context.canonical_state["events"]["recent_fruit_thinning"]:
+        warnings.append("recent_fruit_thinning_missing")
+    if optimized_candidate["feasibility"]["risk_flags"]:
+        warnings.append("risk_bound_active")
+    max_ratio_delta = float(context.canonical_state.get("optimizer", {}).get("max_rtr_ratio_delta", 0.03))
+    if abs(float(rtr_equivalent["delta_ratio"])) >= max_ratio_delta * 0.8:
+        warnings.append("large_rtr_deviation_reason_required")
+    return warnings
+
+
+def _serialize_rtr_solver(solver_payload: Dict[str, Any]) -> Dict[str, Any]:
+    stage1_success = bool(solver_payload.get("stage1_success", False))
+    stage2_success = bool(solver_payload.get("stage2_success", False))
+    stage1_message = str(solver_payload.get("stage1_message", ""))
+    stage2_message = str(solver_payload.get("stage2_message", ""))
+    return {
+        "success": stage1_success and stage2_success,
+        "message": stage2_message or stage1_message or "RTR optimizer completed.",
+        "method": "two-stage-l-bfgs-b",
+        "stage1_success": stage1_success,
+        "stage2_success": stage2_success,
+        "stage1_message": stage1_message,
+        "stage2_message": stage2_message,
+    }
 
 
 @asynccontextmanager
@@ -1821,13 +2136,301 @@ async def get_featured_produce_market_prices():
 async def get_rtr_profiles():
     """Return the active RTR profile payload."""
     try:
-        return {"status": "success", **load_rtr_profiles()}
+        payload = load_rtr_profiles()
+        optimizer_enabled = any(
+            bool((profile or {}).get("optimizer", {}).get("enabled", False))
+            for profile in (payload.get("profiles") or {}).values()
+        )
+        return {
+            "status": "success",
+            "mode": "baseline",
+            "optimizerEnabled": optimizer_enabled,
+            **payload,
+        }
     except Exception as exc:
         logger.error("Failed to load RTR profiles: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Failed to load RTR profiles.",
         ) from exc
+
+
+@app.get("/api/rtr/state")
+async def get_rtr_state(crop: str, greenhouse_id: Optional[str] = None, snapshot_id: Optional[str] = None):
+    """Return the canonical internal RTR state plus baseline and area metadata."""
+    from .services.model_runtime.model_state_store import ModelStateStore
+    from .services.rtr.internal_model_bridge import build_internal_model_context
+
+    normalized_crop = _validate_crop(crop)
+    store = ModelStateStore()
+    resolved_greenhouse_id, snapshot_record = _resolve_runtime_snapshot_record(
+        store=store,
+        crop=normalized_crop,
+        greenhouse_id=greenhouse_id,
+        snapshot_id=snapshot_id,
+        source="rtr_state_baseline",
+    )
+    area_meta = _resolve_rtr_area_meta(normalized_crop, resolved_greenhouse_id)
+    context = build_internal_model_context(
+        snapshot_record=snapshot_record,
+        crop_state=app_state[normalized_crop],
+        greenhouse_id=resolved_greenhouse_id,
+        profiles_payload=load_rtr_profiles(),
+        recent_events=store.list_work_events(resolved_greenhouse_id, normalized_crop, limit=12),
+        actual_area_m2=float(area_meta["actual_area_m2"] or greenhouse_config["greenhouse"]["area_m2"]),
+        cost_per_kwh=_get_crop_cost_per_kwh(normalized_crop),
+    )
+    return {
+        "status": "success",
+        "crop": normalized_crop,
+        "greenhouse_id": resolved_greenhouse_id,
+        "snapshot_id": snapshot_record["snapshot_id"],
+        "canonical_state": context.canonical_state,
+        "baseline_rtr": context.canonical_state["baseline_rtr"],
+        "optimizer_enabled": bool(context.canonical_state.get("optimizer", {}).get("enabled", False)),
+        "area_unit_meta": area_meta,
+    }
+
+
+@app.post("/api/rtr/optimize")
+async def optimize_rtr(req: RTROptimizeRequest):
+    """Optimize minimum-feasible RTR temperatures from the internal crop-energy model only."""
+    from .services.rtr.lagrangian_optimizer import optimize_rtr_targets
+    from .services.rtr.rtr_deriver import derive_rtr_equivalent
+    from .services.rtr.unit_projection import build_actual_area_projection
+
+    (
+        crop,
+        _store,
+        resolved_greenhouse_id,
+        snapshot_record,
+        _profiles_payload,
+        area_meta,
+        optimization_inputs,
+        context,
+    ) = _build_rtr_request_bundle(req.model_dump(exclude_none=True))
+    baseline_candidate = _build_rtr_baseline_candidate(context, optimization_inputs)
+    optimized_candidate = optimize_rtr_targets(
+        context=context,
+        optimization_inputs=optimization_inputs,
+    )
+    max_ratio_delta = float(context.canonical_state.get("optimizer", {}).get("max_rtr_ratio_delta", 0.03))
+    rtr_equivalent = derive_rtr_equivalent(
+        baseline_targets=optimized_candidate["baseline_targets"],
+        optimized_targets=optimized_candidate["controls"],
+        max_ratio_delta=max_ratio_delta,
+    )
+    crop_specific_insight = _build_rtr_crop_specific_insight(context)
+    explanation_payload = _build_rtr_explanation_payload(
+        context=context,
+        optimization_inputs=optimization_inputs,
+        baseline_candidate=baseline_candidate,
+        optimized_candidate=optimized_candidate,
+        rtr_equivalent=rtr_equivalent,
+        crop_specific_insight=crop_specific_insight,
+    )
+    warning_badges = _build_rtr_warning_badges(context, optimized_candidate, rtr_equivalent)
+    confidence = max(
+        0.2,
+        min(
+            0.98,
+            1.0
+            - float(optimized_candidate["constraint_checks"]["confidence_penalty"])
+            - (0.05 * len(warning_badges)),
+        ),
+    )
+    yield_proxy_kg_m2_day = _estimate_rtr_yield_proxy_kg_m2_day(context)
+    units_m2 = {
+        "greenhouse_area_m2": round(float(area_meta["greenhouse_area_m2"] or 0.0), 6),
+        "actual_area_m2": round(float(area_meta["actual_area_m2"] or 0.0), 6),
+        "actual_area_pyeong": round(float(area_meta["actual_area_pyeong"] or 0.0), 6),
+        "yield_proxy_kg_m2_day": round(yield_proxy_kg_m2_day, 6),
+        "yield_proxy_kg_m2_week": round(yield_proxy_kg_m2_day * 7.0, 6),
+        "energy_kwh_m2_day": round(float(optimized_candidate["objective_breakdown"]["energy_cost"]), 6),
+        "energy_krw_m2_day": round(float(optimized_candidate["objective_breakdown"]["energy_cost_krw"]), 6),
+        "labor_index_m2_day": round(float(optimized_candidate["objective_breakdown"]["labor_index"]), 6),
+        "node_development_day": round(float(optimized_candidate["node_summary"]["predicted_rate_day"]), 6),
+    }
+    actual_area_projection = build_actual_area_projection(
+        area_meta=area_meta,
+        yield_kg_m2_day=yield_proxy_kg_m2_day,
+        yield_kg_m2_week=yield_proxy_kg_m2_day * 7.0,
+        energy_kwh_m2_day=float(optimized_candidate["objective_breakdown"]["energy_cost"]),
+        energy_krw_m2_day=float(optimized_candidate["objective_breakdown"]["energy_cost_krw"]),
+        labor_index_m2_day=float(optimized_candidate["objective_breakdown"]["labor_index"]),
+    )
+    return {
+        "status": "success",
+        "mode": "optimizer",
+        "crop": crop,
+        "greenhouse_id": resolved_greenhouse_id,
+        "snapshot_id": snapshot_record["snapshot_id"],
+        "baseline": {
+            "mode": "baseline",
+            "targets": baseline_candidate["controls"],
+            "objective_breakdown": baseline_candidate["objective_breakdown"],
+            "feasibility": baseline_candidate["feasibility"],
+        },
+        "optimal_targets": optimized_candidate["controls"],
+        "rtr_equivalent": rtr_equivalent,
+        "objective_breakdown": optimized_candidate["objective_breakdown"],
+        "feasibility": {
+            **optimized_candidate["feasibility"],
+            "confidence": round(confidence, 6),
+        },
+        "crop_specific_insight": crop_specific_insight,
+        "warning_badges": warning_badges,
+        "units_m2": units_m2,
+        "actual_area_projection": actual_area_projection,
+        "explanation_payload": explanation_payload,
+        "solver": _serialize_rtr_solver(optimized_candidate["solver"]),
+    }
+
+
+@app.post("/api/rtr/scenario")
+async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
+    """Compare baseline and optimizer RTR scenarios over the internal model stack."""
+    from .services.rtr.objective_terms import evaluate_rtr_candidate
+    from .services.rtr.scenario_runner import run_rtr_scenarios
+
+    (
+        crop,
+        _store,
+        resolved_greenhouse_id,
+        snapshot_record,
+        _profiles_payload,
+        area_meta,
+        optimization_inputs,
+        context,
+    ) = _build_rtr_request_bundle(req.model_dump(exclude_none=True))
+    scenarios = run_rtr_scenarios(
+        context=context,
+        optimization_inputs=optimization_inputs,
+    )
+    if req.custom_scenario is not None:
+        custom = req.custom_scenario
+        custom_eval = evaluate_rtr_candidate(
+            context=context,
+            optimization_inputs=optimization_inputs,
+            weights={
+                "temp": 1.0,
+                "node": 1.0,
+                "carbon": 1.0,
+                "sink": 1.0,
+                "resp": 1.0,
+                "risk": 1.0,
+                "energy": 1.0,
+                "labor": 1.0,
+            },
+            day_min_temp_c=float(custom.day_min_temp_C or context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])),
+            night_min_temp_c=float(custom.night_min_temp_C or context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])),
+            vent_bias_c=float(custom.vent_bias_C or 0.0),
+            screen_bias_pct=float(custom.screen_bias_pct or 0.0),
+            co2_target_ppm=float(custom.co2_target_ppm or context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
+            rh_target_pct=float(custom.rh_target_pct or context.canonical_state["env"]["RH_pct"]),
+        )
+        scenarios.append(
+            {
+                "label": str(custom.label or "custom"),
+                "mode": "custom",
+                "mean_temp_C": custom_eval["controls"]["mean_temp_C"],
+                "day_min_temp_C": custom_eval["controls"]["day_min_temp_C"],
+                "night_min_temp_C": custom_eval["controls"]["night_min_temp_C"],
+                "node_rate_day": custom_eval["node_summary"]["predicted_rate_day"],
+                "net_carbon": custom_eval["flux_projection"]["carbon_margin"],
+                "respiration": custom_eval["flux_projection"]["respiration_umol_m2_s"],
+                "energy_kwh_m2_day": custom_eval["objective_breakdown"]["energy_cost"],
+                "labor_index": custom_eval["objective_breakdown"]["labor_index"],
+                "yield_trend": "up" if custom_eval["feasibility"]["carbon_margin_positive"] else "guarded",
+                "recommendation_badge": "custom",
+                "objective_breakdown": custom_eval["objective_breakdown"],
+            }
+        )
+    for row in scenarios:
+        actual_area_m2 = float(area_meta["actual_area_m2"] or 0.0)
+        row["actual_area_projection"] = {
+            "energy_kwh_day": round(float(row["energy_kwh_m2_day"]) * actual_area_m2, 6),
+            "labor_index_day": round(float(row["labor_index"]) * actual_area_m2, 6),
+        }
+    return {
+        "status": "success",
+        "crop": crop,
+        "greenhouse_id": resolved_greenhouse_id,
+        "snapshot_id": snapshot_record["snapshot_id"],
+        "target_node_development_per_day": optimization_inputs.target_node_development_per_day,
+        "scenarios": scenarios,
+        "area_unit_meta": area_meta,
+    }
+
+
+@app.post("/api/rtr/sensitivity")
+async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
+    """Compute local temperature sensitivities around the optimized RTR solution."""
+    from .services.rtr.lagrangian_optimizer import optimize_rtr_targets
+    from .services.rtr.scenario_runner import compute_rtr_temperature_sensitivity
+
+    (
+        crop,
+        store,
+        resolved_greenhouse_id,
+        snapshot_record,
+        _profiles_payload,
+        area_meta,
+        optimization_inputs,
+        context,
+    ) = _build_rtr_request_bundle(req.model_dump(exclude_none=True))
+    optimized_candidate = optimize_rtr_targets(
+        context=context,
+        optimization_inputs=optimization_inputs,
+    )
+    sensitivity_payload = compute_rtr_temperature_sensitivity(
+        context=context,
+        optimization_inputs=optimization_inputs,
+        optimized_candidate=optimized_candidate,
+        step_c=float(req.step_c),
+    )
+    stored_rows = store.persist_sensitivity_outputs(
+        snapshot_id=snapshot_record["snapshot_id"],
+        greenhouse_id=resolved_greenhouse_id,
+        crop=crop,
+        horizon_hours=24,
+        sensitivities=sensitivity_payload["sensitivities"],
+    )
+    return {
+        "status": "success",
+        "mode": "optimizer",
+        "crop": crop,
+        "greenhouse_id": resolved_greenhouse_id,
+        "snapshot_id": snapshot_record["snapshot_id"],
+        "target_horizon": optimization_inputs.target_horizon,
+        "step_c": req.step_c,
+        "sensitivities": stored_rows,
+        "optimized_targets": optimized_candidate["controls"],
+        "area_unit_meta": area_meta,
+    }
+
+
+@app.post("/api/rtr/area-settings")
+async def save_rtr_area_settings(req: RTRAreaSettingsRequest):
+    """Persist actual-area overrides for RTR projections per crop/greenhouse."""
+    crop = _validate_crop(req.crop)
+    greenhouse_id = _resolve_greenhouse_id(crop, req.greenhouse_id)
+    area_meta = _resolve_rtr_area_meta(
+        crop,
+        greenhouse_id,
+        user_actual_area_m2=req.user_actual_area_m2,
+        user_actual_area_pyeong=req.user_actual_area_pyeong,
+    )
+    _get_rtr_area_settings_store(crop)[greenhouse_id] = {
+        "actual_area_m2": float(area_meta["actual_area_m2"] or 0.0),
+        "actual_area_pyeong": float(area_meta["actual_area_pyeong"] or 0.0),
+    }
+    return {
+        "status": "success",
+        "crop": crop,
+        "greenhouse_id": greenhouse_id,
+        "area_unit_meta": area_meta,
+    }
 
 
 

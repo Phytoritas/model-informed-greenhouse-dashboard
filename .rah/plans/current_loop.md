@@ -1,12 +1,12 @@
 # Current Loop
 
 ## Active State
-- Issue `#25` is merged via PR `#26`, and local `main` is fast-forwarded to merge commit `b90e959`.
-- There is no active implementation loop right now; the issue `#25` grower-facing warning cleanup is the current merged baseline.
+- Issue `#27` is active on branch `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections`.
+- The internal-model-only RTR backend plus frontend optimizer slice is landed and locally revalidated with the full ladder.
 
 ## Latest Delivered Baseline
-- Issue `#25` is now the most recent merged baseline on `main`.
-- That baseline adds:
+- Issue `#25` remains the most recent merged baseline on `main`.
+- That merged baseline adds:
   - `sensorStatus.ts` utility with `deriveSensorStatus` and `buildStatusSummary`
   - `KpiStrip.tsx` component replacing 6 SensorCards with compact 4-tile + collapsible 2-tile strip
   - `NUMERIC_IDEAL_RANGES` per crop in `displayCopy.ts`
@@ -26,7 +26,32 @@
   - a pesticide-advisor grower-detail pass that prefers Hangul product aliases in Korean mode, adds clearer `제품명/권장 주기/추천 교호안/예비 교호 대안` surfaces, derives grower-facing rotation reasons on the frontend from locale-safe backend codes, localizes backend limitation text on the frontend, and preserves backward compatibility when older payloads omit `rotation_guidance` or `rotation_alternatives`
   - a grower-facing warning cleanup pass that removes the last visible English/internal caveats from dashboard/advisor/chat surfaces, keeps only actionable pesticide label/registration guidance on screen, hides non-actionable implementation warnings from nutrient/correction/weather/meta UI, localizes degraded AI fallback copy, and records unresolved implementation scope only in `gap_register.md` plus `.rah`
 
+## Current Issue #27 Delta
+- Backend landed:
+  - `services/rtr/internal_model_bridge.py`
+  - `services/rtr/node_target_engine.py`
+  - `services/rtr/objective_terms.py`
+  - `services/rtr/lagrangian_optimizer.py`
+  - `services/rtr/scenario_runner.py`
+  - `services/rtr/rtr_deriver.py`
+  - `services/rtr/unit_projection.py`
+  - additive `/api/rtr/state|optimize|scenario|sensitivity|area-settings`
+  - compatible `/api/rtr/profiles` v2 payload with baseline + optimizer metadata
+- Frontend landed:
+  - `frontend/src/context/AreaUnitContext.tsx` now owns canonical m² plus actual-area overrides per crop
+  - `frontend/src/components/AreaUnitPanel.tsx` renders actual-area inputs plus house-level yield and energy projections
+  - `frontend/src/hooks/useRtrOptimizer.ts` consumes `/api/rtr/state|optimize|scenario|sensitivity|area-settings` with optimizer-enable, default-mode, and area-source guards
+  - `frontend/src/components/RTROptimizerPanel.tsx` now renders optimizer summary, gain/loss trade-off, crop-specific insight, setpoints, sensitivity, scenarios, and baseline fallback
+  - `frontend/src/hooks/useGreenhouse.ts` no longer drives RTR-facing projections through the hardcoded `AREA_M2 = 3305.8` path
+- Local validation now passes:
+  - `npm --prefix frontend run test`
+  - `npm --prefix frontend run lint`
+  - `npm --prefix frontend run build`
+  - `poetry run ruff check .`
+  - `poetry run pytest`
+
 ## Exact Restart Step
-1. Open a new issue for the next non-trivial change.
-2. Branch from `main`.
-3. Reuse the issue `#25` merged baseline unless a new bounded loop explicitly supersedes it.
+1. Commit the landed issue `#27` RTR optimizer + area-aware projection slice.
+2. Push `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections` and open the issue `#27` PR for remote validation.
+3. Watch GitHub Actions Backend/Frontend validation and only then move the project item to `Validating`.
+4. Use the next loop for post-PR calibration follow-up: optimizer weight tuning, grower-approved RTR good-production windows, and richer house-specific constraint tuning.
