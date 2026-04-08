@@ -5,18 +5,18 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `#27`
-- Active branch: `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections`
-- Preserved merged baselines: issues `#19`, `#23`, `#25`
+- Active issue: `none`
+- Active branch: `main`
+- Preserved merged baselines: issues `#19`, `#23`, `#25`, `#27`
 
 ## Identity
 This repository now carries four simultaneous truths:
 - the validated dashboard runtime, WebSocket telemetry flow, weather/RTR/market panels, crop switching, and current AI consult/chat experience
 - the merged model-first SmartGrow runtime from issue `#19`, including crop models, model-runtime persistence, scenarios, sensitivities, and model-aware advisor shells
 - the merged frontend stabilization and grower-facing copy baseline from issues `#23` and `#25`
-- the new issue `#27` RTR directive that demotes the old radiation-line RTR into a baseline prior and replaces the main RTR recommendation path with an internal-model-only optimizer
+- the merged issue `#27` RTR baseline that demotes the old radiation-line RTR into a baseline prior and replaces the main RTR recommendation path with an internal-model-only optimizer
 
-The active mainline for this loop is:
+The latest merged control baseline is:
 - internal-model-only RTR optimization
 - minimum sufficient temperature first
 - RTR ratio as a derived summary, not a primary control target
@@ -126,7 +126,6 @@ Issue `#27` must overhaul RTR so that:
 - `poetry run pytest`
 
 ## Immediate Next Action
-- Commit the landed issue `#27` backend/frontend optimizer slice
-- Push the issue branch and open the PR
-- Watch remote Backend/Frontend validation
-- Use the next loop for calibration follow-up: grower-approved RTR windows, optimizer weight tuning, and deeper house-specific constraint alignment
+- Open a fresh issue and issue-based branch if RTR post-merge work should continue
+- The most natural next bounded loop is calibration follow-up: grower-approved RTR windows, optimizer weight tuning, and deeper house-specific constraint alignment
+- If the next work is outside RTR, treat `main` plus merged issue `#27` as the new clean architecture baseline

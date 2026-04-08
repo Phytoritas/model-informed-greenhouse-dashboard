@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #27 and branch `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections` now own the current bounded RTR optimizer overhaul."
+    "note": "Issue #27 ran through its required issue-based branch `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections`, and the merged baseline is now back on `main`."
   },
   "harness_setup": {
     "status": "pass",
@@ -114,6 +114,10 @@
   "rtr_issue27_local_validation": {
     "status": "pass",
     "note": "The full local ladder is green for issue #27: `npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, and full `pytest` now pass after the frontend optimizer + area-projection slice landed."
+  },
+  "issue27_pr_validation": {
+    "status": "pass",
+    "note": "PR #28 merged issue #27 into `main` after local RTR validation stayed green, GitHub Actions Backend/Frontend validation both passed, and the project item auto-closed to `Done`."
   },
   "issue19_pr_validation": {
     "status": "pass",
