@@ -53,6 +53,6 @@
 - PR `#42` remote Backend/Frontend validation is the current open check surface.
 
 ## Exact Next Step
-1. Watch PR `#42` GitHub Actions on head `75d95c2`.
+1. Watch PR `#42` GitHub Actions on the latest pushed issue `#41` branch head.
 2. If any remote check fails, fix only that failing surface on the same issue `#41` branch and rerun the local ladder before pushing again.
 3. If PR `#42` goes green, merge it, fast-forward `main`, and reset `.rah` back to a no-active-loop merged baseline while leaving issue `#3` blocked as the optional real-window calibration follow-up.

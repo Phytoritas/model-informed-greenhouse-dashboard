@@ -209,6 +209,6 @@
   },
   "issue41_pr_validation": {
     "status": "validating",
-    "note": "PR #42 is open on head `75d95c2` after the follow-up fixes for the reviewer-blocking findings. GitHub Actions Backend/Frontend validation must be re-checked on that latest head before merge."
+    "note": "PR #42 is open on the latest pushed issue #41 branch head after the follow-up fixes for the reviewer-blocking findings and the validating-state harness sync. GitHub Actions Backend/Frontend validation must be re-checked on that latest head before merge."
   }
 }
