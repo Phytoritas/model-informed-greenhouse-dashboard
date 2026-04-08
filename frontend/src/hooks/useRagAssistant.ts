@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { API_URL } from '../config';
 import type { CropType } from '../types';
 
@@ -28,6 +28,13 @@ export interface RagAssistantResult {
     document: RagAssistantResultDocument;
 }
 
+export interface RagAssistantRoutingPayload {
+    intent?: string | null;
+    sub_intent?: string | null;
+    rerank_profile?: string | null;
+    expanded_terms?: string[];
+}
+
 interface RagAssistantResponse {
     detail?: string;
     message?: string;
@@ -36,6 +43,10 @@ interface RagAssistantResponse {
     limit?: number;
     returned_count?: number;
     results?: RagAssistantResult[];
+    crop_scope?: string;
+    resolved_scope?: string;
+    applied_filters?: RagAssistantFilters;
+    routing?: RagAssistantRoutingPayload;
     database?: {
         status?: string;
     };
@@ -64,13 +75,16 @@ export function useRagAssistant() {
     const [databaseStatus, setDatabaseStatus] = useState<string | null>(null);
     const [returnedCount, setReturnedCount] = useState(0);
     const [resolvedLimit, setResolvedLimit] = useState<number | null>(null);
+    const [resolvedScope, setResolvedScope] = useState<string | null>(null);
+    const [appliedFilters, setAppliedFilters] = useState<RagAssistantFilters>({});
+    const [routing, setRouting] = useState<RagAssistantRoutingPayload | null>(null);
 
-    async function runSearch({
+    const runSearch = useCallback(async ({
         crop,
         query,
         limit = 6,
         filters,
-    }: RagAssistantSearchArgs): Promise<void> {
+    }: RagAssistantSearchArgs): Promise<void> => {
         const normalizedQuery = query.trim();
         if (!normalizedQuery) {
             setError('query must not be empty');
@@ -121,6 +135,9 @@ export function useRagAssistant() {
             );
             setReturnedCount(payload.returned_count ?? (payload.results?.length ?? 0));
             setResolvedLimit(payload.limit ?? limit);
+            setResolvedScope(payload.resolved_scope ?? payload.crop_scope ?? cropToApiKey(crop));
+            setAppliedFilters(payload.applied_filters ?? {});
+            setRouting(payload.routing ?? null);
         } catch (err) {
             if (controller.signal.aborted || requestVersion !== requestVersionRef.current) {
                 return;
@@ -132,15 +149,18 @@ export function useRagAssistant() {
             setDatabaseStatus(null);
             setReturnedCount(0);
             setResolvedLimit(limit);
+            setResolvedScope(null);
+            setAppliedFilters({});
+            setRouting(null);
             setError(err instanceof Error ? err.message : 'unknown_error');
         } finally {
             if (requestVersion === requestVersionRef.current) {
                 setLoading(false);
             }
         }
-    }
+    }, []);
 
-    function clear() {
+    const clear = useCallback(() => {
         controllerRef.current?.abort();
         controllerRef.current = null;
         requestVersionRef.current += 1;
@@ -153,7 +173,10 @@ export function useRagAssistant() {
         setDatabaseStatus(null);
         setReturnedCount(0);
         setResolvedLimit(null);
-    }
+        setResolvedScope(null);
+        setAppliedFilters({});
+        setRouting(null);
+    }, []);
 
     return {
         results,
@@ -165,6 +188,9 @@ export function useRagAssistant() {
         databaseStatus,
         returnedCount,
         resolvedLimit,
+        resolvedScope,
+        appliedFilters,
+        routing,
         runSearch,
         clear,
     };

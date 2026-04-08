@@ -1,15 +1,24 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import type { ReactNode } from "react";
-import { useLocale } from "../i18n/LocaleProvider";
-import { formatLocaleDateTime, formatLocaleTime } from "../i18n/locale";
+import { memo, useCallback } from 'react';
+import {
+    CartesianGrid,
+    Legend,
+    Line,
+    LineChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts';
+import type { ReactNode } from 'react';
+import { useLocale } from '../i18n/LocaleProvider';
+import { formatLocaleDateTime, formatLocaleTime } from '../i18n/locale';
+import { useStableChartData } from '../hooks/useStableChartData';
 
 interface DataKey {
     key: string;
     name: string;
     color: string;
 }
-
-type ChartPrimitive = number | string | null | undefined;
 
 interface TimeSeriesChartProps<T extends { timestamp?: number }> {
     title: string;
@@ -19,28 +28,40 @@ interface TimeSeriesChartProps<T extends { timestamp?: number }> {
     height?: number;
 }
 
-const TimeSeriesChart = <T extends { timestamp?: number }>({
+const TOOLTIP_STYLE = {
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    border: '1px solid #e2e8f0',
+    borderRadius: '12px',
+    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.10)',
+} as const;
+
+const LEGEND_STYLE = { fontSize: '12px', paddingTop: '10px' } as const;
+
+function TimeSeriesChartInner<T extends { timestamp?: number }>({
     title,
     data,
     dataKeys,
     icon,
     height = 240,
-}: TimeSeriesChartProps<T>) => {
+}: TimeSeriesChartProps<T>) {
     const { locale } = useLocale();
-    // Helper to get nested value like "env.temperature"
-    const getNestedValue = (obj: Record<string, unknown>, path: string): unknown => {
-        return path.split('.').reduce<unknown>((acc, part) => {
-            if (acc && typeof acc === 'object' && part in acc) {
-                return (acc as Record<string, unknown>)[part];
-            }
-            return undefined;
-        }, obj);
-    };
+    const chartData = useStableChartData(data, dataKeys);
+
+    const tickFormatter = useCallback(
+        (timestamp: number | string | null | undefined) =>
+            timestamp ? formatLocaleTime(locale, Number(timestamp), { hour: '2-digit', minute: '2-digit' }) : '',
+        [locale],
+    );
+    const labelFormatter = useCallback(
+        (timestamp: number | string | null | undefined) =>
+            timestamp ? formatLocaleDateTime(locale, Number(timestamp)) : '',
+        [locale],
+    );
 
     if (!data || data.length === 0) {
         return (
-            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm h-full flex flex-col items-center justify-center text-slate-400">
-                <div className="flex items-center gap-2 mb-2 opacity-50">
+            <div className="flex h-full flex-col items-center justify-center rounded-xl border border-slate-100 bg-white p-6 text-slate-400 shadow-sm">
+                <div className="mb-2 flex items-center gap-2 opacity-50">
                     {icon}
                     <span className="font-medium">{title}</span>
                 </div>
@@ -49,59 +70,26 @@ const TimeSeriesChart = <T extends { timestamp?: number }>({
         );
     }
 
-    // Transform data for chart
-    const chartData = data.map((item, idx) => {
-        const point: Record<string, ChartPrimitive> = { idx, timestamp: item.timestamp };
-        const itemRecord = item as Record<string, unknown>;
-        dataKeys.forEach(({ key }) => {
-            // Handle flat or nested keys
-            // If key is like "temperature" (flat) or "env.temperature" (nested)
-            // The currentData in App.tsx is flat (SensorData), but history might be different?
-            // Let's check useGreenhouse hook.
-            // Actually, in App.tsx, history is passed to Charts.
-            // Let's assume the data structure matches what we need.
-            // If the data is flat (SensorData), we just access it.
-            // If it's the nested structure from legacy, we use getNestedValue.
-            // Let's support both by checking if getNestedValue returns undefined, try direct access.
-
-            let val = getNestedValue(itemRecord, key);
-            if (val === undefined && itemRecord[key] !== undefined) {
-                val = itemRecord[key];
-            }
-            point[key] = typeof val === 'number' || typeof val === 'string' || val == null
-                ? val
-                : undefined;
-        });
-        return point;
-    });
-
     return (
-        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-            <div className="flex items-center gap-2 mb-4 text-slate-700">
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center gap-2 text-slate-700">
                 {icon}
                 <h3 className="font-semibold">{title}</h3>
             </div>
-            <div style={{ height: height }}>
+            <div style={{ height }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={height}>
                     <LineChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis
                             dataKey="timestamp"
-                            tickFormatter={(t) => t ? formatLocaleTime(locale, t, { hour: '2-digit', minute: '2-digit' }) : ''}
+                            tickFormatter={tickFormatter}
                             stroke="#94a3b8"
                             tick={{ fontSize: 11 }}
+                            minTickGap={24}
                         />
                         <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                            labelFormatter={(t) => t ? formatLocaleDateTime(locale, t) : ''}
-                        />
-                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                        <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={labelFormatter} />
+                        <Legend wrapperStyle={LEGEND_STYLE} />
                         {dataKeys.map(({ key, name, color }) => (
                             <Line
                                 key={key}
@@ -112,6 +100,8 @@ const TimeSeriesChart = <T extends { timestamp?: number }>({
                                 strokeWidth={2}
                                 dot={false}
                                 activeDot={{ r: 4 }}
+                                isAnimationActive={false}
+                                connectNulls
                             />
                         ))}
                     </LineChart>
@@ -119,6 +109,8 @@ const TimeSeriesChart = <T extends { timestamp?: number }>({
             </div>
         </div>
     );
-};
+}
+
+const TimeSeriesChart = memo(TimeSeriesChartInner) as typeof TimeSeriesChartInner;
 
 export default TimeSeriesChart;

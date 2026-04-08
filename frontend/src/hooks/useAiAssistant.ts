@@ -11,13 +11,17 @@ import type {
 import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
 import { buildAiDashboardContext } from '../utils/aiDashboardContext';
-import type { ModelRuntimePayload } from './useSmartGrowAdvisor';
+import type {
+    AdvisorDisplayPayload,
+    ModelRuntimePayload,
+} from './useSmartGrowAdvisor';
 
 type ConsultResponse = {
     detail?: string;
     message?: string;
     text?: string;
     machine_payload?: {
+        display?: AdvisorDisplayPayload | null;
         actions?: Array<{
             title?: string;
             message?: string;
@@ -27,6 +31,16 @@ type ConsultResponse = {
 };
 
 function extractRecommendationCandidates(response: ConsultResponse | null): string[] {
+    const display = response?.machine_payload?.display;
+    const structuredDisplayActions = [
+        ...(display?.actions_now ?? []),
+        ...(display?.actions_today ?? []),
+        ...(display?.actions_week ?? []),
+    ].map((action) => action.trim()).filter(Boolean);
+    if (structuredDisplayActions.length > 0) {
+        return structuredDisplayActions.slice(0, 5);
+    }
+
     const actions = response?.machine_payload?.actions ?? [];
     const structuredActions = actions
         .map((action) => (action.title || action.message || '').trim())
@@ -41,7 +55,7 @@ function extractRecommendationCandidates(response: ConsultResponse | null): stri
     }
 
     const recommendationMatch = text.match(
-        /^##\s+Recommendations(?:\s*\(.*?\))?\s*\n([\s\S]*?)(?:\n##\s+|\s*$)/im,
+        /^##\s+(?:Recommendations(?:\s*\(.*?\))?|권장 조치|지금 할 일|오늘 할 일)\s*\n([\s\S]*?)(?:\n##\s+|\s*$)/im,
     );
     const recommendationBlock = recommendationMatch?.[1] ?? text;
 
@@ -57,6 +71,7 @@ function extractRecommendationCandidates(response: ConsultResponse | null): stri
 export const useAiAssistant = () => {
     const { locale } = useLocale();
     const [aiAnalysis, setAiAnalysis] = useState<string>("");
+    const [aiDisplay, setAiDisplay] = useState<AdvisorDisplayPayload | null>(null);
     const [aiModelRuntime, setAiModelRuntime] = useState<ModelRuntimePayload | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const requestIdRef = useRef(0);
@@ -75,6 +90,7 @@ export const useAiAssistant = () => {
         requestIdRef.current += 1;
         const requestId = requestIdRef.current;
         setIsAnalyzing(true);
+        setAiDisplay(null);
         setAiModelRuntime(null);
         try {
             const cropKey = crop.toLowerCase();
@@ -110,6 +126,7 @@ export const useAiAssistant = () => {
                 return;
             }
             setAiAnalysis(json?.text || "");
+            setAiDisplay(json?.machine_payload?.display ?? null);
             setAiModelRuntime(json?.machine_payload?.model_runtime ?? null);
             if (callback) {
                 callback(extractRecommendationCandidates(json));
@@ -120,10 +137,11 @@ export const useAiAssistant = () => {
             }
             const message =
                 e instanceof Error ? e.message : locale === 'ko' ? '알 수 없는 오류가 발생했습니다.' : 'An unknown error occurred.';
+            setAiDisplay(null);
             setAiModelRuntime(null);
             setAiAnalysis(
                 locale === 'ko'
-                    ? `AI 컨설팅을 사용할 수 없습니다: ${message}`
+                    ? `모델 상담을 사용할 수 없습니다: ${message}`
                     : `AI consulting is unavailable: ${message}`,
             );
         } finally {
@@ -135,6 +153,7 @@ export const useAiAssistant = () => {
 
     return {
         aiAnalysis,
+        aiDisplay,
         aiModelRuntime,
         isAnalyzing,
         analyzeData

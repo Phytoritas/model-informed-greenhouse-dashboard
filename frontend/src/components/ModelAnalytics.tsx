@@ -3,7 +3,7 @@ import type { AdvancedModelMetrics, CropType, ForecastData, MetricHistoryPoint }
 import { TrendingUp, Zap, Scale, Leaf } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useLocale } from '../i18n/LocaleProvider';
-import { formatLocaleDate, formatLocaleTime } from '../i18n/locale';
+import { formatLocaleDate, formatLocaleTime, getIntlLocale } from '../i18n/locale';
 import { UNIT_LABELS, getCropModelLabel, getDevelopmentStageLabel } from '../utils/displayCopy';
 
 interface ModelAnalyticsProps {
@@ -17,14 +17,14 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            growthModel: '생육 모델',
+            growthModel: '생육 분석',
             yieldForecast: '수확 예측',
-            aiInference: 'AI 추론',
+            aiInference: '예측 모델 분석',
             energyModel: '에너지 모델',
             efficiencyCost: '효율 및 비용',
-            biomassLine: '바이오매스 (g m⁻²)',
+            biomassLine: '건물 생산량 (g m⁻²)',
             stage: '단계',
-            rate: '증가율',
+            rate: '일일 생장량',
             harvestForecast: '수확 예측 (kg)',
             confidence: '신뢰도',
             harvestReady: '수확 가능 과실',
@@ -32,6 +32,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
             thermalLoad: '열부하 (kW)',
             load: '부하',
             estimatedCost: '예상 비용',
+            currentPoint: '현재',
+            costPerHour: '시간당',
             optimizationInsight: '최적화 인사이트',
             highEfficiency: '효율이 높게 유지되고 있습니다. 현재 HVAC 반응은 예상 제어 범위 안에 있습니다.',
             efficiencyDrop: '효율 저하가 감지됩니다. 환기 손실과 냉난방 단계 제어를 점검하세요.',
@@ -52,6 +54,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
             thermalLoad: 'Thermal load (kW)',
             load: 'Load',
             estimatedCost: 'Est. Cost',
+            currentPoint: 'Now',
+            costPerHour: 'per hour',
             optimizationInsight: 'Optimization Insight',
             highEfficiency: 'High efficiency maintained. Current HVAC response is within the expected control envelope.',
             efficiencyDrop: 'Efficiency drop detected. Check ventilation losses and cooling or heating staging.',
@@ -66,9 +70,13 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
     const energyEfficiency = metrics.energy.efficiency;
     const thermalLoadKw = metrics.energy.loadKw ?? metrics.energy.consumption;
     const costPerHour = metrics.energy.costPrediction;
-    const costLabel = costPerHour > 50
-        ? `₩${Math.round(costPerHour).toLocaleString()}/h`
-        : `$${costPerHour.toFixed(2)}/h`;
+    const costLabel = locale === 'ko'
+        ? `${new Intl.NumberFormat(getIntlLocale(locale), {
+            style: 'currency',
+            currency: 'KRW',
+            maximumFractionDigits: 0,
+        }).format(Math.max(0, costPerHour))}/${copy.costPerHour}`
+        : `$${costPerHour.toFixed(2)}/${copy.costPerHour}`;
     const growthData = metricHistory.length > 0
         ? metricHistory.slice(-18).map((point) => ({
             label: formatTimeLabel(point.timestamp),
@@ -76,7 +84,7 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
             lai: point.lai,
             growthRate: point.growthRate,
         }))
-        : [{ label: 'Now', biomass, lai, growthRate: metrics.growth.growthRate }];
+        : [{ label: copy.currentPoint, biomass, lai, growthRate: metrics.growth.growthRate }];
     const yieldData = forecast?.daily?.length
         ? forecast.daily.map((day) => ({
             label: formatDayLabel(day.date),
@@ -84,7 +92,7 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
             transpirationMm: day.ETc_mm,
         }))
         : [{
-            label: 'Now',
+            label: copy.currentPoint,
             harvestKg: predictedWeekly,
             transpirationMm: 0,
         }];
@@ -95,7 +103,7 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
             loadKw: point.energyLoadKw,
         }))
         : [{
-            label: 'Now',
+            label: copy.currentPoint,
             powerKw: metrics.energy.consumption,
             loadKw: thermalLoadKw,
         }];

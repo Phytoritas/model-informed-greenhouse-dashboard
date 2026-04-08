@@ -19,8 +19,8 @@ const ConsultingReport = ({ analysis, metrics, crop }: ConsultingReportProps) =>
         ? {
             title: '컨설팅 리포트',
             executiveSummary: '핵심 요약',
-            aiNotes: 'AI 컨설팅 메모',
-            waiting: 'AI 컨설팅 결과를 기다리는 중...',
+            aiNotes: '모델 해석 메모',
+            waiting: '모델 해석 결과를 기다리는 중...',
             favorable: '양호한 편',
             stable: '안정적',
             yieldOutlook: '수확 전망',
@@ -49,7 +49,7 @@ const ConsultingReport = ({ analysis, metrics, crop }: ConsultingReportProps) =>
                     <h4 className="text-sm font-medium text-slate-700 mb-2">{copy.executiveSummary}</h4>
                     <p className="text-sm text-slate-600 leading-relaxed">
                         {locale === 'ko'
-                            ? `현재 ${cropLabel} 상태는 ${metrics.growth.growthRate > 0 ? copy.favorable : copy.stable}입니다. 바이오매스 누적량은 ${metrics.growth.biomass.toFixed(1)} g/m²이고, 에너지 효율은 COP ${metrics.energy.efficiency.toFixed(1)} 수준입니다.`
+                            ? `현재 ${cropLabel} 상태는 ${metrics.growth.growthRate > 0 ? copy.favorable : copy.stable}입니다. 누적 건물 생산량은 ${metrics.growth.biomass.toFixed(1)} g/m²이고, 에너지 효율은 COP ${metrics.energy.efficiency.toFixed(1)} 수준입니다.`
                             : `Current conditions for ${cropLabel} are ${metrics.growth.growthRate > 0 ? copy.favorable : copy.stable}. Biomass accumulation is ${metrics.growth.biomass.toFixed(1)} g/m². Energy efficiency is operating at a COP of ${metrics.energy.efficiency.toFixed(1)}.`}
                     </p>
                 </div>

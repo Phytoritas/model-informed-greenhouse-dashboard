@@ -1,5 +1,6 @@
 import type { ModelRuntimePayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
 
 interface AdvisorModelRuntimePanelProps {
@@ -10,7 +11,7 @@ const CONTROL_LABELS = {
     co2_setpoint_day: { ko: '주간 CO2', en: 'Day CO2' },
     temperature_day: { ko: '주간 온도', en: 'Day temperature' },
     temperature_night: { ko: '야간 온도', en: 'Night temperature' },
-    rh_target: { ko: 'RH target', en: 'RH target' },
+    rh_target: { ko: '상대습도 목표', en: 'RH target' },
     screen_close: { ko: '스크린 폐쇄', en: 'Screen close' },
 } as const;
 
@@ -18,6 +19,12 @@ const TIME_WINDOW_LABELS = {
     now: { ko: '지금', en: 'Now' },
     today: { ko: '오늘', en: 'Today' },
     this_week: { ko: '이번주', en: 'This week' },
+} as const;
+
+const LEAF_LAYER_LABELS = {
+    upper: { ko: '상엽', en: 'Upper' },
+    middle: { ko: '중엽', en: 'Middle' },
+    bottom: { ko: '하엽', en: 'Bottom' },
 } as const;
 
 function formatNumber(
@@ -41,36 +48,36 @@ const AdvisorModelRuntimePanel = ({
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            title: 'Model Runtime',
-            subtitleReady: 'bounded scenario + local sensitivity',
-            subtitleFallback: 'monitoring-first runtime surface',
-            noRuntime: '이번 응답에는 model runtime block이 아직 없습니다.',
-            statusReady: 'scenario linked',
-            statusFallback: 'monitoring-first',
+            title: '예측 모델 분석',
+            subtitleReady: '시나리오 예측 + 주요 환경 요인',
+            subtitleFallback: '상태 해석 중심 분석',
+            noRuntime: '이번 응답에는 예측 모델 분석이 아직 붙지 않았습니다.',
+            statusReady: '예측 반영',
+            statusFallback: '상태 해석 우선',
             stateTitle: '현재 모델 상태',
-            sensitivityTitle: '민감도 TOP3 레버',
-            compareTitle: 'counterfactual compare',
-            constraintsTitle: '제약 상태',
-            observed: '관측 신호',
+            sensitivityTitle: '주요 환경 요인',
+            compareTitle: '조건별 비교',
+            constraintsTitle: '제약 확인',
+            observed: '실측 반영',
             lai: 'LAI',
-            balance: 'source/sink',
-            canopyA: 'canopy A',
-            limiting: '병목',
-            leafLayers: '상·중·하엽 activity',
+            balance: '공급/수요 균형',
+            canopyA: '캐노피 동화량',
+            limiting: '제한 요인',
+            leafLayers: '상·중·하엽 활력',
             inferred: '보정 필드',
             missing: '누락 필드',
             recommended: '추천',
-            compareEmpty: '아직 강한 bounded option이 정렬되지 않았습니다.',
+            compareEmpty: '아직 강한 비교 옵션이 정렬되지 않았습니다.',
             yield7d: '7일 수확',
             yield14d: '14일 수확',
             energy: '에너지',
             balanceDelta: '균형 회복',
-            elasticity: 'elasticity',
-            trust: 'trust region',
-            alignment: 'scenario align',
+            elasticity: '영향력',
+            trust: '안전 범위',
+            alignment: '예측 일치',
             violations: '위반',
             noViolations: '위반 없음',
-            fallbackHint: '현재는 모델 입력이 부분적이라 방향성과 상태만 노출합니다.',
+            fallbackHint: '현재는 모델 입력이 부분적이라 상태와 방향성만 먼저 보여드립니다.',
         }
         : {
             title: 'Model runtime',
@@ -205,7 +212,7 @@ const AdvisorModelRuntimePanel = ({
                                     {copy.limiting}
                                 </div>
                                 <div className="mt-2 text-sm font-semibold uppercase tracking-[0.12em] text-emerald-100">
-                                    {state.limiting_factor ?? '-'}
+                                    {getLocalizedTokenLabel(state.limiting_factor ?? '-', locale)}
                                 </div>
                             </div>
                         </div>
@@ -217,7 +224,9 @@ const AdvisorModelRuntimePanel = ({
                                 {layerActivity.map((item) => (
                                     <div key={item.key}>
                                         <div className="mb-1 flex items-center justify-between text-xs text-slate-200">
-                                            <span className="uppercase tracking-[0.14em]">{item.key}</span>
+                                            <span className="uppercase tracking-[0.14em]">
+                                                {LEAF_LAYER_LABELS[item.key][locale]}
+                                            </span>
                                             <span>{formatNumber(item.value * 100, 0, '%')}</span>
                                         </div>
                                         <div className="h-2 rounded-full bg-white/10">
@@ -242,7 +251,7 @@ const AdvisorModelRuntimePanel = ({
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             {state.dashboard_missing_fields.map((item) => (
-                                                <AdvisorConfidenceBadge key={item} label={item} tone="warning" />
+                                                <AdvisorConfidenceBadge key={item} label={getLocalizedTokenLabel(item, locale)} tone="warning" />
                                             ))}
                                         </div>
                                     </div>
@@ -254,7 +263,7 @@ const AdvisorModelRuntimePanel = ({
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             {state.inferred_fields.map((item) => (
-                                                <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                                                <AdvisorConfidenceBadge key={item} label={getLocalizedTokenLabel(item, locale)} tone="neutral" />
                                             ))}
                                         </div>
                                     </div>
@@ -297,7 +306,7 @@ const AdvisorModelRuntimePanel = ({
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     <AdvisorConfidenceBadge
-                                                        label={String(lever.direction ?? '-')}
+                                                        label={getLocalizedTokenLabel(String(lever.direction ?? '-'), locale)}
                                                         tone={lever.scenario_alignment ? 'success' : 'warning'}
                                                     />
                                                 </div>
@@ -312,12 +321,12 @@ const AdvisorModelRuntimePanel = ({
                                                 <span>{formatNumber(lever.elasticity, 2)}</span>
                                                 <span>
                                                     {copy.trust}:{' '}
-                                                    {formatNumber(lever.trust_region?.low, 0)} to{' '}
+                                                    {formatNumber(lever.trust_region?.low, 0)} ~{' '}
                                                     {formatNumber(lever.trust_region?.high, 0)}
                                                 </span>
                                                 <span>
                                                     {copy.alignment}:{' '}
-                                                    {lever.scenario_alignment ? 'yes' : 'no'}
+                                                    {getLocalizedTokenLabel(lever.scenario_alignment ? 'yes' : 'no', locale)}
                                                 </span>
                                             </div>
                                         </div>
@@ -367,7 +376,7 @@ const AdvisorModelRuntimePanel = ({
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     <AdvisorConfidenceBadge
-                                                        label={`score ${formatNumber(option.score, 2)}`}
+                                                        label={`${getLocalizedTokenLabel('score', locale)} ${formatNumber(option.score, 2)}`}
                                                         tone={isRecommended ? 'success' : 'info'}
                                                     />
                                                 </div>
@@ -385,7 +394,7 @@ const AdvisorModelRuntimePanel = ({
                                                 ).map((violation, index) => (
                                                     <AdvisorConfidenceBadge
                                                         key={`${option.action}-${violation.code}-${index}`}
-                                                        label={violation.code}
+                                                        label={getLocalizedTokenLabel(violation.code, locale)}
                                                         tone={
                                                             violation.severity === 'high'
                                                                 ? 'danger'
@@ -412,7 +421,7 @@ const AdvisorModelRuntimePanel = ({
                                 {violations.map((violation, index) => (
                                     <AdvisorConfidenceBadge
                                         key={`${violation.code}-${index}`}
-                                        label={`${violation.code}${violation.control ? `:${violation.control}` : ''}`}
+                                        label={`${getLocalizedTokenLabel(violation.code, locale)}${violation.control ? `:${getLocalizedTokenLabel(violation.control, locale)}` : ''}`}
                                         tone={violation.severity === 'high' ? 'danger' : 'warning'}
                                     />
                                 ))}

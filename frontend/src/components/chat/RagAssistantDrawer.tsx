@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, X, BookOpenText } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import type { CropType } from '../../types';
-import { getCropLabel } from '../../utils/displayCopy';
+import { getCropLabel, getLocalizedTokenLabel } from '../../utils/displayCopy';
 import {
     useRagAssistant,
     type RagAssistantFilters,
@@ -13,17 +13,26 @@ interface RagAssistantDrawerProps {
     onClose: () => void;
     crop: CropType;
     stacked?: boolean;
+    request?: RagAssistantOpenRequest | null;
 }
 
-type PresetKey =
+export type RagAssistantPresetKey =
     | 'general'
     | 'environment'
     | 'physiology'
     | 'pesticide'
     | 'nutrient';
 
+export interface RagAssistantOpenRequest {
+    nonce: number;
+    preset?: RagAssistantPresetKey;
+    query?: string;
+    autoRun?: boolean;
+    source?: 'advisor' | 'assistant' | 'dashboard';
+}
+
 interface PresetDefinition {
-    key: PresetKey;
+    key: RagAssistantPresetKey;
     label: string;
     description: string;
     placeholder: string;
@@ -48,6 +57,9 @@ function prettifyKnowledgeLabel(value: string, locale: 'ko' | 'en'): string {
         fertilizer: '비료',
         source_water: '원수',
         drain_water: '배액',
+        environment_control: '환경 제어',
+        cultivation_work: '재배 작업',
+        symptom_to_action: '증상 진단',
     };
 
     const enLabels: Record<string, string> = {
@@ -65,6 +77,9 @@ function prettifyKnowledgeLabel(value: string, locale: 'ko' | 'en'): string {
         fertilizer: 'Fertilizer',
         source_water: 'Source water',
         drain_water: 'Drain water',
+        environment_control: 'Environment control',
+        cultivation_work: 'Cultivation work',
+        symptom_to_action: 'Symptom diagnosis',
     };
 
     const labels = locale === 'ko' ? koLabels : enLabels;
@@ -75,24 +90,40 @@ function prettifyKnowledgeLabel(value: string, locale: 'ko' | 'en'): string {
     return value.replace(/_/g, ' ');
 }
 
+function prettifyKnowledgeScope(
+    value: string,
+    locale: 'ko' | 'en',
+): string {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'tomato') {
+        return locale === 'ko' ? '토마토' : 'Tomato';
+    }
+    if (normalized === 'cucumber') {
+        return locale === 'ko' ? '오이' : 'Cucumber';
+    }
+    if (normalized === 'all') {
+        return locale === 'ko' ? '전체 작물' : 'All crops';
+    }
+    return prettifyKnowledgeLabel(value, locale);
+}
+
 const RagAssistantDrawer = ({
     isOpen,
     onClose,
     crop,
     stacked = false,
+    request = null,
 }: RagAssistantDrawerProps) => {
     const { locale } = useLocale();
     const cropLabel = getCropLabel(crop, locale);
     const copy = locale === 'ko'
         ? {
-            title: 'RAG 지식 검색',
+            title: '지식 검색',
             subtitle:
-                '문서와 워크북에서 관련 지식만 조회합니다. 아직 AI 최종 응답에 자동 주입되지는 않습니다.',
+                '현재 작물과 선택한 범위에 맞춰 문서와 워크북 근거를 바로 찾습니다.',
             placeholder: `${cropLabel} 재배 지식을 검색하세요`,
             search: '검색',
             close: '닫기',
-            route: 'knowledge route',
-            queryMode: 'retrieval mode',
             noResults: '일치하는 지식 조각을 찾지 못했습니다. 검색어를 더 구체적으로 바꿔보세요.',
             loading: '지식 조각을 검색하는 중...',
             resultCount: '검색 결과',
@@ -101,21 +132,29 @@ const RagAssistantDrawer = ({
             sourceLabel: '출처 유형',
             scopeLabel: '검색 범위',
             reset: '초기화',
-            idle: '검색을 실행하면 지식 DB 상태를 확인합니다.',
+            idle: '추천 검색어나 직접 입력으로 바로 근거를 찾을 수 있습니다.',
             ready: '지식 DB 검색 가능',
             unavailable: '지식 DB가 아직 준비되지 않았습니다.',
             databaseMissing:
-                '지식 DB가 아직 준비되지 않았습니다. `/api/knowledge/reindex` 이후 다시 시도하세요.',
+                '지식 자료를 정리 중입니다. 잠시 후 다시 시도해 주세요.',
+            searchModeLabel: '검색 방식',
+            routedIntentLabel: '자동 분류',
+            appliedScopeLabel: '적용 범위',
+            sourceLocatorLabel: '문서 위치',
+            sourceOpenLabel: '열기 위치',
+            requestSourceAdvisor: '권장 도우미',
+            requestSourceAssistant: '상담 도우미',
+            requestSourceDashboard: '대시보드',
+            recommendedQueryLabel: '바로 찾기',
+            recommendedScopeHint: '추천 범위를 눌러 즉시 근거를 찾을 수 있습니다.',
         }
         : {
             title: 'RAG Knowledge Search',
             subtitle:
-                'This searches documents and workbooks directly. Results are not auto-injected into the AI finalizer yet.',
+                'Search documents and workbooks directly with crop-aware routing.',
             placeholder: `Search ${cropLabel} knowledge`,
             search: 'Search',
             close: 'Close',
-            route: 'knowledge route',
-            queryMode: 'retrieval mode',
             noResults: 'No matching knowledge chunks were found. Try a more specific query.',
             loading: 'Searching persisted knowledge chunks...',
             resultCount: 'Results',
@@ -124,14 +163,24 @@ const RagAssistantDrawer = ({
             sourceLabel: 'Source type',
             scopeLabel: 'Scope',
             reset: 'Reset',
-            idle: 'Run a query to inspect the current knowledge DB status.',
+            idle: 'Use a suggested query or type your own question to find supporting knowledge.',
             ready: 'Knowledge DB is query-ready',
             unavailable: 'Knowledge DB is not ready yet.',
             databaseMissing:
-                'The knowledge DB is not ready yet. Rebuild it through `/api/knowledge/reindex` and try again.',
+                'Knowledge assets are still being prepared. Try again shortly.',
+            searchModeLabel: 'Search mode',
+            routedIntentLabel: 'Auto-routed to',
+            appliedScopeLabel: 'Applied scope',
+            sourceLocatorLabel: 'Source location',
+            sourceOpenLabel: 'Opened from',
+            requestSourceAdvisor: 'Advisor',
+            requestSourceAssistant: 'Assistant',
+            requestSourceDashboard: 'Dashboard',
+            recommendedQueryLabel: 'Suggested query',
+            recommendedScopeHint: 'Tap a suggested scope to run a focused search immediately.',
         };
 
-    const presets: PresetDefinition[] = [
+    const presets = useMemo<PresetDefinition[]>(() => [
         {
             key: 'general',
             label: locale === 'ko' ? '일반' : 'General',
@@ -176,18 +225,30 @@ const RagAssistantDrawer = ({
             key: 'nutrient',
             label: locale === 'ko' ? '양액' : 'Nutrient',
             description: locale === 'ko' ? '레시피, 원수, 배액, 비료 관련 워크북을 우선 조회합니다.' : 'Prioritize nutrient workbook rows for recipes, water, and fertilizer guidance.',
-            placeholder: locale === 'ko' ? `${cropLabel} 양액 guardrail 기준` : `${cropLabel} nutrient guardrail guidance`,
-            suggestion: locale === 'ko' ? `${cropLabel} 양액 guardrail 기준` : `${cropLabel} nutrient guardrail guidance`,
+            placeholder: locale === 'ko' ? `${cropLabel} 양액 경계 조건 기준` : `${cropLabel} nutrient guardrail guidance`,
+            suggestion: locale === 'ko' ? `${cropLabel} 양액 경계 조건 기준` : `${cropLabel} nutrient guardrail guidance`,
             filters: {
                 source_types: ['xlsx'],
                 asset_families: ['nutrient_workbook'],
             },
         },
-    ];
+    ], [copy.placeholder, cropLabel, locale]);
 
-    const [activePresetKey, setActivePresetKey] = useState<PresetKey>('general');
-    const [input, setInput] = useState('');
-    const [limit, setLimit] = useState(6);
+    const presetMap = useMemo(
+        () =>
+            new Map<RagAssistantPresetKey, PresetDefinition>(
+                presets.map((preset) => [preset.key, preset]),
+            ),
+        [presets],
+    );
+    const initialPresetKey =
+        (request?.preset && presetMap.has(request.preset) ? request.preset : undefined) ?? 'general';
+    const initialPreset = presetMap.get(initialPresetKey) ?? presets[0];
+    const initialQuery = request?.query?.trim() || initialPreset.suggestion;
+    const initialLimit = 6;
+    const [activePresetKey, setActivePresetKey] = useState<RagAssistantPresetKey>(initialPresetKey);
+    const [input, setInput] = useState(initialQuery);
+    const [limit, setLimit] = useState(initialLimit);
     const {
         results,
         loading,
@@ -197,12 +258,27 @@ const RagAssistantDrawer = ({
         queryStatus,
         databaseStatus,
         returnedCount,
+        resolvedScope,
+        appliedFilters,
+        routing,
         runSearch,
         clear,
     } = useRagAssistant();
 
-    const activePreset =
-        presets.find((preset) => preset.key === activePresetKey) ?? presets[0];
+    const activePreset = presetMap.get(activePresetKey) ?? initialPreset;
+
+    useEffect(() => {
+        if (!isOpen || !request || request.autoRun === false) {
+            return;
+        }
+
+        void runSearch({
+            crop,
+            query: initialQuery,
+            limit: initialLimit,
+            filters: initialPreset.filters,
+        });
+    }, [crop, initialLimit, initialPreset.filters, initialQuery, isOpen, request, runSearch]);
 
     async function handleSearch() {
         if (!input.trim()) {
@@ -217,19 +293,20 @@ const RagAssistantDrawer = ({
         });
     }
 
-    function handlePresetChange(nextPresetKey: PresetKey) {
-        const nextPreset =
-            presets.find((preset) => preset.key === nextPresetKey) ?? presets[0];
+    function handlePresetChange(nextPresetKey: RagAssistantPresetKey) {
+        const nextPreset = presetMap.get(nextPresetKey) ?? presets[0];
+        const shouldReplaceQuery =
+            !input.trim() || input.trim() === activePreset.suggestion.trim();
         setActivePresetKey(nextPresetKey);
-        if (!input.trim()) {
+        if (shouldReplaceQuery) {
             setInput(nextPreset.suggestion);
         }
     }
 
     function handleReset() {
         setActivePresetKey('general');
-        setInput('');
-        setLimit(6);
+        setInput((presetMap.get('general') ?? presets[0]).suggestion);
+        setLimit(initialLimit);
         clear();
     }
 
@@ -238,6 +315,29 @@ const RagAssistantDrawer = ({
     }
 
     const sidePositionClass = stacked ? 'md:right-[26rem]' : 'md:right-6';
+    const requestSourceLabel = request?.source
+        ? {
+            advisor: copy.requestSourceAdvisor,
+            assistant: copy.requestSourceAssistant,
+            dashboard: copy.requestSourceDashboard,
+        }[request.source]
+        : null;
+    const routedIntentLabel = routing?.intent
+        ? prettifyKnowledgeLabel(routing.intent, locale)
+        : null;
+    const routedSubIntentLabel = routing?.sub_intent
+        ? prettifyKnowledgeLabel(routing.sub_intent, locale)
+        : null;
+    const appliedScopeLabels = [
+        ...(appliedFilters.asset_families ?? []).map((value) =>
+            prettifyKnowledgeLabel(value, locale),
+        ),
+        ...(appliedFilters.source_types ?? []).map((value) =>
+            prettifyKnowledgeLabel(value, locale),
+        ),
+        ...(appliedFilters.topic_major ? [prettifyKnowledgeLabel(appliedFilters.topic_major, locale)] : []),
+        ...(appliedFilters.topic_minor ? [prettifyKnowledgeLabel(appliedFilters.topic_minor, locale)] : []),
+    ];
 
     return (
         <div
@@ -267,9 +367,30 @@ const RagAssistantDrawer = ({
                           ? copy.unavailable
                           : copy.idle}
                 </p>
+                {requestSourceLabel ? (
+                    <p className="mt-1 text-[11px] text-emerald-800">
+                        {copy.sourceOpenLabel}: {requestSourceLabel}
+                    </p>
+                ) : null}
             </div>
 
             <div className="border-b border-slate-100 bg-white px-4 py-3">
+                <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        {copy.recommendedQueryLabel}
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                        {copy.recommendedScopeHint}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setInput(activePreset.suggestion)}
+                        disabled={loading}
+                        className="mt-3 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {activePreset.suggestion}
+                    </button>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                     {presets.map((preset) => (
                         <button
@@ -290,14 +411,6 @@ const RagAssistantDrawer = ({
                         </button>
                     ))}
                 </div>
-                <button
-                    type="button"
-                    onClick={() => setInput(activePreset.suggestion)}
-                    disabled={loading}
-                    className="mt-3 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[11px] font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                    {activePreset.suggestion}
-                </button>
             </div>
 
             <div className="border-b border-slate-100 bg-white px-4 py-3">
@@ -373,14 +486,25 @@ const RagAssistantDrawer = ({
                             <span>{copy.resultCount}: {returnedCount}</span>
                             {lastQueryMode ? (
                                 <span className="rounded-full bg-slate-100 px-2 py-1 normal-case tracking-normal text-slate-700">
-                                    {copy.queryMode}: {lastQueryMode}
+                                    {copy.searchModeLabel}: {getLocalizedTokenLabel(lastQueryMode, locale)}
                                 </span>
                             ) : null}
-                            <span className="rounded-full bg-slate-100 px-2 py-1 normal-case tracking-normal text-slate-700">
-                                {copy.route}: /api/knowledge/query
-                            </span>
+                            {routedIntentLabel ? (
+                                <span className="rounded-full bg-slate-100 px-2 py-1 normal-case tracking-normal text-slate-700">
+                                    {copy.routedIntentLabel}: {routedIntentLabel}
+                                    {routedSubIntentLabel ? ` / ${routedSubIntentLabel}` : ''}
+                                </span>
+                            ) : null}
                         </div>
                         <p className="mt-2 text-sm font-semibold text-slate-900">{lastQuery}</p>
+                        {appliedScopeLabels.length > 0 || resolvedScope ? (
+                            <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                                {copy.appliedScopeLabel}:{' '}
+                                {[...appliedScopeLabels, resolvedScope ? prettifyKnowledgeScope(resolvedScope, locale) : null]
+                                    .filter((value): value is string => Boolean(value))
+                                    .join(' · ')}
+                            </p>
+                        ) : null}
                     </div>
                 ) : null}
 
@@ -415,6 +539,11 @@ const RagAssistantDrawer = ({
                         <p className="mt-2 text-sm leading-relaxed text-slate-700">
                             {result.text}
                         </p>
+                        {result.source_locator ? (
+                            <p className="mt-3 text-xs text-slate-500">
+                                {copy.sourceLocatorLabel}: {result.source_locator}
+                            </p>
+                        ) : null}
                     </article>
                 ))}
             </div>

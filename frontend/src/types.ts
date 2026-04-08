@@ -1,5 +1,18 @@
 export type CropType = 'Tomato' | 'Cucumber';
 
+export type TelemetryStatus = 'loading' | 'live' | 'delayed' | 'stale' | 'offline';
+export type SensorFieldState = 'live' | 'delayed' | 'stale' | 'offline' | 'missing';
+export type SensorFieldKey =
+    | 'temperature'
+    | 'humidity'
+    | 'co2'
+    | 'light'
+    | 'vpd'
+    | 'stomatalConductance';
+
+export type SensorFieldAvailability = Record<SensorFieldKey, boolean>;
+export type SensorFieldTimestamps = Record<SensorFieldKey, number | null>;
+
 export interface SensorData {
     timestamp: number;
     temperature: number;
@@ -15,6 +28,8 @@ export interface SensorData {
     hFlux: number;
     leFlux: number;
     energyUsage: number;
+    fieldAvailability?: SensorFieldAvailability;
+    fieldTimestamps?: SensorFieldTimestamps;
 }
 
 export interface TemperatureSettings {

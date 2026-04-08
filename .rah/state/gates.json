@@ -79,6 +79,14 @@
     "status": "pass",
     "note": "Sensor-card / AI-advisor height coupling decoupled via `items-start`, `auto-rows-fr` removal, `max-h` cap on advisor wrapper, and internal scroll boundaries in AiAdvisor. Validated with lint, build, and before/after screenshots at 1920x1080."
   },
+  "issue23_frontend_stabilization": {
+    "status": "pass",
+    "note": "Issue #23 local stabilization now adds `AppShell` plus shared loading/drawer fallbacks, Korean-first structured advisory display payloads across summary/chat, availability-aware chart nulling through `fieldAvailability`, per-field telemetry timestamps for KPI age labels, offline-over-missing summary precedence, mobile locale controls, localized cleanup across analytics/advisor surfaces, an additional hardening pass that localizes visible SmartGrow/advisor copy plus stage/medium/common token labels, a farmer-facing terminology cleanup that hides raw evidence/provenance surfaces, a KPI-strip layout fix that prevents warning-state card text from colliding in narrow widths, a SmartGrow surface redesign that turns the old static catalog into actionable quick-entry cards, a contextual knowledge-search upgrade that seeds the drawer from advisor/chat/dashboard intent, shows grower-friendly routed scope summaries, and hides internal API recovery wording, plus a pesticide-advisor grower-detail slice that prefers Hangul product aliases in Korean mode, expands cycle/rotation/backup-option detail, localizes backend limitation text on the frontend, and preserves compatibility when older payloads omit additive rotation fields."
+  },
+  "issue23_pr_validation": {
+    "status": "pass",
+    "note": "PR #24 now carries the pesticide-advisor grower-detail slice on top of the earlier contextual knowledge-search, SmartGrow quick-action redesign, Korean nutrient-boundary wording, farmer-facing terminology cleanup, hidden evidence/provenance surfaces, and KPI warning-card overlap fix. The latest local ladder is green for the added frontend-localized limitation handling plus legacy-payload regression harness, and refreshed GitHub Actions Backend/Frontend Validation are green on the latest PR #24 head. Screenshots remain under `screenshots/` as local comparison artifacts."
+  },
   "issue19_pr_validation": {
     "status": "pass",
     "note": "Issue #19 is closed and PR #20 is merged after the final local validation ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) plus green GitHub Actions push/pull_request runs."
