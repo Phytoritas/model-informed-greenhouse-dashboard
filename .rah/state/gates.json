@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #27 ran through its required issue-based branch `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections`, and the merged baseline is now back on `main`."
+    "note": "Issue #3 is now resumed on the fresh issue-based branch `data/3-rtr-grower-window-intake-prep`, while issue #27 remains the latest merged RTR baseline on `main`."
   },
   "harness_setup": {
     "status": "pass",
@@ -119,6 +119,10 @@
     "status": "pass",
     "note": "PR #28 merged issue #27 into `main` after local RTR validation stayed green, GitHub Actions Backend/Frontend validation both passed, and the project item auto-closed to `Done`."
   },
+  "issue3_intake_prep": {
+    "status": "pass",
+    "note": "Issue #3 is now active again on `data/3-rtr-grower-window-intake-prep`, and the next bounded slice is documentation/runtime prep for grower-approved RTR window intake instead of inventing unsupported calibration data."
+  },
   "issue19_pr_validation": {
     "status": "pass",
     "note": "Issue #19 is closed and PR #20 is merged after the final local validation ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) plus green GitHub Actions push/pull_request runs."
@@ -141,6 +145,10 @@
   },
   "rtr_good_production_windows_followup": {
     "status": "blocked",
-    "note": "Issue #3 remains blocked on grower-approved periods and is tracked separately from issue #19."
+    "note": "Issue #3 is active again, but the actual RTR window replacement remains blocked until grower-approved tomato/cucumber good-production periods are supplied; current work is limited to intake prep and restart-surface alignment."
+  },
+  "rtr_grower_window_input_contract": {
+    "status": "pass",
+    "note": "The repository now carries an explicit grower-window intake note that defines the required per-window fields, evidence expectations, YAML update path, recalibration command, and validation ladder needed before replacing the current heuristic/demo windows."
   }
 }
