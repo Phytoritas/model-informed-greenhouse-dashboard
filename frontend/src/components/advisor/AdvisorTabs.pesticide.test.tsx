@@ -117,8 +117,8 @@ function buildPesticidePayload(): PesticideRecommendationPayload {
             policy_label: '백엔드 한글 정책',
         },
         limitations: [
-            'Narrative or placeholder rotation rows were withheld from the returned program instead of being surfaced as executable recommendations.',
-            'The candidate pool still contains unknown or label-check-required rows; those stay marked for manual label review before operational rollout.',
+            'Deterministic lookup is available, but final product-label verification is still mandatory before operational use.',
+            'placeholder-rotation-rows-were-withheld',
         ],
     };
 }
@@ -228,7 +228,12 @@ describe('AdvisorTabs pesticide surface', () => {
         expect(screen.getAllByText(/초발생 전 예방 살포/).length).toBeGreaterThan(0);
         expect(screen.getByText('예비 교호 대안')).toBeTruthy();
         expect(screen.getByText(/등록 또는 라벨 확인이 더 필요해 예비안으로만 남겼습니다./)).toBeTruthy();
-        expect(screen.getByText(/설명용이거나 정보가 불완전한 교호 행은 실행안에서 제외했습니다./)).toBeTruthy();
+        expect(document.body.textContent).toContain(
+            '추천 결과는 바로 확인할 수 있지만, 실제 살포 전에는 제품 라벨과 등록 여부를 최종 확인하세요.',
+        );
+        expect(document.body.textContent).not.toContain(
+            '설명용이거나 정보가 불완전한 교호 행은 실행안에서 제외했습니다.',
+        );
     });
 
     it('keeps rendering legacy payloads without additive rotation fields', () => {
@@ -297,7 +302,12 @@ describe('AdvisorTabs pesticide surface', () => {
                 )
             )).length,
         ).toBeGreaterThan(0);
-        expect(screen.getByText(/Narrative or incomplete rotation rows were kept out of the executable rotation./)).toBeTruthy();
+        expect(document.body.textContent).toContain(
+            'Review the recommendation here, then confirm the final label and registration before spraying.',
+        );
+        expect(document.body.textContent).not.toContain(
+            'Narrative or incomplete rotation rows were kept out of the executable rotation.',
+        );
         expect(screen.queryByText('백엔드 한글 요약')).toBeNull();
         expect(screen.queryByText('백엔드 한글 정책')).toBeNull();
         expect(screen.queryByText('백엔드 한글 reason')).toBeNull();

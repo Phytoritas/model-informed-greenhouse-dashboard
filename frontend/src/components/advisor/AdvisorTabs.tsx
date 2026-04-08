@@ -283,17 +283,27 @@ function buildRotationGuidance(
 function localizePesticideLimitation(
     limitation: string,
     locale: 'ko' | 'en',
-): string {
+): string | null {
     const normalized = normalizeAdvisorToken(limitation);
-    if (normalized.includes('placeholder-rotation-rows-were-withheld')) {
+    const collapsed = normalized.replace(/[^a-z0-9]+/g, '');
+    if (
+        collapsed.includes('deterministiclookupisavailable')
+        || collapsed.includes('verifythefinalproductlabelbeforefielduse')
+        || collapsed.includes('finalproductlabelverification')
+        || normalized.includes('제품 라벨과 등록 여부를 최종 확인')
+    ) {
         return locale === 'ko'
-            ? '설명용이거나 정보가 불완전한 교호 행은 실행안에서 제외했습니다.'
-            : 'Narrative or incomplete rotation rows were kept out of the executable rotation.';
+            ? '추천 결과는 바로 확인할 수 있지만, 실제 살포 전에는 제품 라벨과 등록 여부를 최종 확인하세요.'
+            : 'Review the recommendation here, then confirm the final label and registration before spraying.';
+    }
+    if (normalized.includes('registeredrowsarereturnedfirst')) {
+        return null;
+    }
+    if (normalized.includes('placeholder-rotation-rows-were-withheld')) {
+        return null;
     }
     if (normalized.includes('label-check-required-rows')) {
-        return locale === 'ko'
-            ? '후보군에는 라벨 또는 등록 확인이 더 필요한 약제가 포함되어 있어, 해당 약제는 수동 검토 대상으로 남겨 두었습니다.'
-            : 'Some candidates still need label or registration review, so they remain manual-review items.';
+        return null;
     }
     return limitation;
 }
@@ -302,7 +312,44 @@ function buildPesticideLimitations(
     limitations: string[],
     locale: 'ko' | 'en',
 ): string[] {
-    return uniqueStrings(limitations.map((limitation) => localizePesticideLimitation(limitation, locale)));
+    return uniqueStrings(
+        limitations
+            .map((limitation) => localizePesticideLimitation(limitation, locale))
+            .filter((value): value is string => Boolean(value)),
+    );
+}
+
+function buildResidualAlternativeSummary(
+    status: string | null | undefined,
+    hasRecommendedBundle: boolean,
+    locale: 'ko' | 'en',
+): string {
+    if (hasRecommendedBundle) {
+        return locale === 'ko'
+            ? '선택안보다 잔여 과다를 줄일 수 있는 대안을 함께 비교합니다.'
+            : 'Comparing an alternative that reduces residual overshoot.';
+    }
+    const normalized = normalizeAdvisorToken(status);
+    if (normalized.includes('blocked') || normalized.includes('unavailable')) {
+        return locale === 'ko'
+            ? '현재 조건에서는 비교 가능한 대체 번들을 더 좁히지 못했습니다.'
+            : 'No comparable alternative bundle could be isolated under the current constraints.';
+    }
+    return locale === 'ko'
+        ? '현재 조건에서 확인할 수 있는 범위의 대안을 정리했습니다.'
+        : 'Showing the alternative bundle range available under the current constraints.';
+}
+
+function buildUnsupportedAnalyteReason(
+    reason: string | null | undefined,
+    locale: 'ko' | 'en',
+): string {
+    if (reason && HANGUL_PATTERN.test(reason)) {
+        return reason;
+    }
+    return locale === 'ko'
+        ? '현재 자동 보정 계산 범위 밖이라 별도 검토가 필요합니다.'
+        : 'This item is outside the current automatic correction scope and needs separate review.';
 }
 
 function getPreferredProductNames(
@@ -855,9 +902,11 @@ const AdvisorTabs = ({
                         </div>
                     </AdvisorActionCard>
                 ) : null}
-                <p className="text-sm leading-relaxed text-slate-500">
-                    {localizedLimitations.join(' ')}
-                </p>
+                {localizedLimitations.length > 0 ? (
+                    <p className="text-sm leading-relaxed text-slate-500">
+                        {localizedLimitations.join(' ')}
+                    </p>
+                ) : null}
             </div>
         );
     }
@@ -924,9 +973,6 @@ const AdvisorTabs = ({
                         </div>
                     </div>
                 </AdvisorActionCard>
-                <p className="text-sm leading-relaxed text-slate-500">
-                    {result.limitations.join(' ')}
-                </p>
             </div>
         );
     }
@@ -953,6 +999,11 @@ const AdvisorTabs = ({
         const bundleExecution = result.correction_outputs.stock_tank_prep.macro_bundle_execution;
         const drainClGuardrail = result.correction_context.drain_feedback_defaults
             .cl_guardrail_mmol_l;
+        const residualAlternativeSummary = buildResidualAlternativeSummary(
+            residualAlternative.status,
+            Boolean(residualAlternative.recommended_bundle),
+            locale,
+        );
 
         return (
             <div className="space-y-4">
@@ -1068,7 +1119,6 @@ const AdvisorTabs = ({
                                         {row.step_cap_mmol_l !== null ? ` / ${copy.stepCap} ${formatNumber(row.step_cap_mmol_l, 4)}` : ''}
                                         {row.clamped ? ` | ${copy.clamped}` : ''}
                                     </div>
-                                    <div className="mt-1">{row.rationale}</div>
                                 </div>
                             ))}
                         </div>
@@ -1101,7 +1151,6 @@ const AdvisorTabs = ({
                 {bundle ? (
                     <AdvisorActionCard
                         title={copy.macroBundle}
-                        subtitle={bundle.disclaimer}
                         badges={[`${copy.rankLabel} ${bundle.rank}`, getLocalizedTokenLabel(bundle.mode, locale), getLocalizedTokenLabel(bundle.status, locale)]}
                     >
                         <div className="space-y-2 text-sm text-slate-600">
@@ -1110,17 +1159,11 @@ const AdvisorTabs = ({
                                     {row.lane_analyte}: {row.fertilizer_name} ({formatNumber(row.estimated_batch_mass.fertilizer_grams, 4)} g)
                                 </div>
                             ))}
-                            {bundle.provisional_reasons.length > 0 ? (
-                                <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 text-amber-800">
-                                    {bundle.provisional_reasons.join(' ')}
-                                </div>
-                            ) : null}
                         </div>
                     </AdvisorActionCard>
                 ) : null}
                 <AdvisorActionCard
                     title={copy.bundleExecution}
-                    subtitle={bundleExecution.disclaimer}
                     badges={[
                         getLocalizedTokenLabel(bundleExecution.status, locale),
                         `${copy.rankLabel} ${bundleExecution.selected_bundle_rank ?? copy.operationalStatusUnknown}`,
@@ -1151,16 +1194,11 @@ const AdvisorTabs = ({
                                 </div>
                             </div>
                         ))}
-                        {bundleExecution.readiness_reasons.length > 0 ? (
-                            <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 text-amber-800">
-                                {bundleExecution.readiness_reasons.join(' ')}
-                            </div>
-                        ) : null}
                     </div>
                 </AdvisorActionCard>
                 <AdvisorActionCard
                     title={copy.residualSafeAlternative}
-                    subtitle={residualAlternative.guidance}
+                    subtitle={residualAlternativeSummary}
                     badges={[
                         residualAlternative.policy,
                         getLocalizedTokenLabel(residualAlternative.status, locale),
@@ -1201,14 +1239,9 @@ const AdvisorTabs = ({
                                         </div>
                                     ))}
                                 </div>
-                                {residualAlternative.recommended_bundle.provisional_reasons.length > 0 ? (
-                                    <div className="mt-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 text-amber-800">
-                                        {residualAlternative.recommended_bundle.provisional_reasons.join(' ')}
-                                    </div>
-                                ) : null}
                             </div>
                         ) : (
-                            <div>{residualAlternative.guidance}</div>
+                            <div>{residualAlternativeSummary}</div>
                         )}
                     </div>
                 </AdvisorActionCard>
@@ -1219,14 +1252,11 @@ const AdvisorTabs = ({
                     >
                         <div className="space-y-2 text-sm text-slate-600">
                             {result.correction_outputs.stock_tank_prep.unsupported_analytes.map((row) => (
-                                <div key={row.nutrient}>{row.reason}</div>
+                                <div key={row.nutrient}>{buildUnsupportedAnalyteReason(row.reason, locale)}</div>
                             ))}
                         </div>
                     </AdvisorActionCard>
                 ) : null}
-                <p className="text-sm leading-relaxed text-slate-500">
-                    {result.limitations.join(' ')}
-                </p>
             </div>
         );
     }

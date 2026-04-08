@@ -131,18 +131,16 @@ export const useAiAssistant = () => {
             if (callback) {
                 callback(extractRecommendationCandidates(json));
             }
-        } catch (e) {
+        } catch {
             if (requestId !== requestIdRef.current) {
                 return;
             }
-            const message =
-                e instanceof Error ? e.message : locale === 'ko' ? '알 수 없는 오류가 발생했습니다.' : 'An unknown error occurred.';
             setAiDisplay(null);
             setAiModelRuntime(null);
             setAiAnalysis(
                 locale === 'ko'
-                    ? `모델 상담을 사용할 수 없습니다: ${message}`
-                    : `AI consulting is unavailable: ${message}`,
+                    ? '모델 상담을 잠시 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+                    : 'AI consulting is temporarily unavailable. Please try again shortly.',
             );
         } finally {
             if (requestId === requestIdRef.current) {

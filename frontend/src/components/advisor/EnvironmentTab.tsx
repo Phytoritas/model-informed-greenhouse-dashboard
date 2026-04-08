@@ -41,6 +41,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             operatingMode: '운영 모드',
             recoveryObjective: '회복 목표',
             targetBand: '목표 범위',
+            targetBandUnavailable: 'RTR 목표 범위를 아직 계산하지 못했습니다.',
             deviation: '편차',
             hypotheses: '원인 가설',
             focusAreas: '조치 초점',
@@ -87,6 +88,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             operatingMode: 'Operating mode',
             recoveryObjective: 'Recovery objective',
             targetBand: 'Target band',
+            targetBandUnavailable: 'RTR target band is unavailable.',
             deviation: 'Deviation',
             hypotheses: 'Cause hypotheses',
             focusAreas: 'Control focus',
@@ -123,6 +125,10 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
         }
         return `${value.toFixed(digits)}${unit}`;
     }
+
+    const targetBand = analysis?.current_state.target_band === 'RTR target band unavailable'
+        ? copy.targetBandUnavailable
+        : analysis?.current_state.target_band;
 
     if (props.status !== 'error' && analysis) {
         return (
@@ -181,7 +187,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                             </div>
                             <div>
                                 <span className="font-semibold text-slate-900">{copy.targetBand}: </span>
-                                {analysis.current_state.target_band}
+                                {targetBand}
                             </div>
                             <div>
                                 <span className="font-semibold text-slate-900">{copy.deviation}: </span>
