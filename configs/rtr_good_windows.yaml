@@ -8,10 +8,12 @@ crops:
       startDate: "2024-08-06"
       endDate: "2024-08-26"
       enabled: true
+      approvalStatus: heuristic-demo
       notes: 21-day fully covered summer segment with the strongest rolling RTR fit in the sample tomato history (R²≈0.98, MAE≈0.10°C).
   Cucumber:
     - label: cucumber-2021-spring-high-fit-window
       startDate: "2021-04-15"
       endDate: "2021-05-12"
       enabled: true
+      approvalStatus: heuristic-demo
       notes: 28-day spring segment with the strongest rolling RTR fit in the sample cucumber history after quality filtering (R²≈0.90, MAE≈0.25°C).

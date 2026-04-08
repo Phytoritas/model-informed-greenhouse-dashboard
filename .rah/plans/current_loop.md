@@ -18,6 +18,7 @@
 - Already in place:
   - grower-window intake note in `docs/architecture/implementation/rtr_grower_window_intake.md`
   - curated-window YAML schema in `configs/rtr_good_windows.yaml`
+  - machine-checked approval metadata validation in the RTR window loader and calibration CLI
   - calibration runner in `scripts/calibrate_rtr.py`
   - RTR profile merge/selection tests in `tests/test_rtr_profiles.py`
   - calibration-window rationale note in `docs/architecture/implementation/rtr_calibration_window_selection.md`
@@ -28,7 +29,7 @@
 ## Exact Restart Step
 1. Use `docs/architecture/implementation/rtr_grower_window_intake.md` to gather grower-approved windows with dates, crop, reason, and evidence.
 2. Start a fresh issue-based branch from `main` for the actual replacement slice after those inputs arrive.
-3. Update `configs/rtr_good_windows.yaml` with approved windows only.
+3. Update `configs/rtr_good_windows.yaml` with approved windows only, including approval metadata required by the loader.
 4. Run `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
 5. Re-run targeted validation:
    - `poetry run pytest tests/test_rtr_profiles.py`
