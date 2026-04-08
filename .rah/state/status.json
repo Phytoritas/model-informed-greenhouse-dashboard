@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue27-rtr-optimizer-merged-on-main",
+  "current_stage": "issue3-rtr-grower-window-intake-prep-running",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
-  "active_issue": null,
-  "active_branch": "main",
-  "implementation_blocked": false,
-  "next_action": "Issue #27 is merged on `main`; open a new bounded issue/branch for post-merge RTR calibration follow-up such as grower-approved windows, optimizer weight tuning, or house-specific area-default persistence.",
+  "active_issue": 3,
+  "active_branch": "data/3-rtr-grower-window-intake-prep",
+  "implementation_blocked": true,
+  "next_action": "Use the new intake prep note to collect grower-approved tomato/cucumber RTR windows, update `configs/rtr_good_windows.yaml`, then rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json` before reopening the validation ladder.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "Merged issue #27 internal-model-only RTR optimizer overhaul"
+  "directive_file": "Issue #3 grower-approved RTR window replacement follow-up"
 }

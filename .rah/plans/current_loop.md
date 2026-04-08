@@ -1,40 +1,34 @@
 # Current Loop
 
 ## Active State
-- There is no active non-trivial implementation loop right now.
-- `main` now includes the merged issue `#27` RTR optimizer baseline.
-- The next substantial change should start from a fresh issue and issue-based branch.
+- Issue `#3` is active again on branch `data/3-rtr-grower-window-intake-prep`.
+- The merged issue `#27` RTR optimizer remains the latest baseline on `main`.
+- The actual replacement of heuristic/demo RTR windows is still blocked on grower-approved periods, so this loop is an intake-prep slice rather than a profile-regeneration slice.
 
 ## Latest Delivered Baseline
-- Issue `#27` is now the most recent merged baseline on `main`.
-- That merged baseline adds:
+- `main` already includes the merged issue `#27` RTR optimizer lane:
   - internal-model-only RTR backend services under `backend/app/services/rtr/`
-  - additive `GET /api/rtr/profiles|state` and `POST /api/rtr/optimize|scenario|sensitivity|area-settings`
-  - compatible `configs/rtr_profiles.json` v2 baseline + optimizer metadata
-  - `AreaUnitContext` plus `AreaUnitPanel` for canonical m² + actual-area projection
-  - `useRtrOptimizer` and `RTROptimizerPanel` as the primary RTR decision surface
-  - `RTROutlookPanel` preserved as a baseline/fallback comparison card
-  - backend/frontend tests for optimizer contracts, scenario/sensitivity payloads, area projection, and UI rendering
-  - updated blueprint, README, implementation checklist, architecture note, gap register, and `.rah` restart surfaces for the merged RTR baseline
+  - additive `/api/rtr/state|optimize|scenario|sensitivity|area-settings`
+  - baseline-compatible `/api/rtr/profiles`
+  - canonical m² plus actual-area projection through `AreaUnitContext`, `AreaUnitPanel`, and `RTROptimizerPanel`
+- `configs/rtr_good_windows.yaml` still contains heuristic/demo windows
+- `scripts/calibrate_rtr.py` already supports rerunning the baseline-prior fit from curated windows
 
-## Latest Validation Evidence
-- Local ladder before merge:
-  - `npm --prefix frontend run test`
-  - `npm --prefix frontend run lint`
-  - `npm --prefix frontend run build`
-  - `poetry run ruff check .`
-  - `poetry run pytest`
-- Local result:
-  - `134 passed, 28 warnings`
-- Remote validation before merge:
-  - PR `#28`
-  - GitHub Actions `Backend Validation`: pass
-  - GitHub Actions `Frontend Validation`: pass
+## Current Issue #3 Delta
+- Already in place:
+  - curated-window YAML schema in `configs/rtr_good_windows.yaml`
+  - calibration runner in `scripts/calibrate_rtr.py`
+  - RTR profile merge/selection tests in `tests/test_rtr_profiles.py`
+  - calibration-window rationale note in `docs/architecture/implementation/rtr_calibration_window_selection.md`
+- Missing input:
+  - grower-approved tomato and cucumber good-production periods
+  - supporting rationale or operator sign-off for each replacement window
 
 ## Exact Restart Step
-1. Open a fresh issue if post-merge RTR work should continue.
-2. The most natural next bounded loop is calibration, not architecture foundation:
-   - grower-approved RTR good-production windows
-   - optimizer weight and risk-bound tuning
-   - greenhouse/user area-default persistence promotion
-3. If the next loop is not RTR-related, use `main` as the new clean baseline and keep issue `#27` only as the landed architecture reference.
+1. Use `docs/architecture/implementation/rtr_grower_window_intake.md` to gather grower-approved windows with dates, crop, reason, and evidence.
+2. Update `configs/rtr_good_windows.yaml` with those approved windows only.
+3. Run `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
+4. Re-run targeted validation:
+   - `poetry run pytest tests/test_rtr_profiles.py`
+   - `poetry run pytest tests/test_smoke.py -k rtr`
+5. Only after the profile payload changes should the broader validation ladder and RTR smoke/PR workflow resume.
