@@ -37,7 +37,18 @@ from .services.knowledge_catalog import (
 )
 from .services.knowledge_database import query_knowledge_database
 from .services.produce_prices import fetch_featured_produce_prices
-from .services.rtr_profiles import load_rtr_profiles
+from .services.rtr_profiles import (
+    aggregate_daily_rtr_metrics,
+    filter_rtr_good_windows_for_house,
+    fit_rtr_profile,
+    load_rtr_good_windows,
+    load_rtr_profiles,
+    normalize_rtr_good_windows,
+    save_rtr_good_windows,
+    save_rtr_profiles,
+    select_rtr_calibration_days,
+    upsert_rtr_good_windows,
+)
 from .services.weather import fetch_daegu_weather_outlook
 from .schemas import OpsConfig, CropConfig
 
@@ -268,6 +279,37 @@ class RTRAreaSettingsRequest(BaseModel):
     greenhouse_id: Optional[str] = None
     user_actual_area_pyeong: Optional[float] = None
     user_actual_area_m2: Optional[float] = None
+
+
+class RTRCalibrationWindowRequest(BaseModel):
+    label: Optional[str] = None
+    startDate: str
+    endDate: str
+    enabled: bool = True
+    notes: Optional[str] = None
+    houseId: Optional[str] = None
+    approvalStatus: Literal[
+        "heuristic-demo",
+        "concept-demo",
+        "grower-approved",
+        "manager-approved",
+        "consultant-approved",
+        "internal-review",
+    ] = "grower-approved"
+    approvalSource: Optional[str] = None
+    approvalReason: Optional[str] = None
+    evidenceNotes: Optional[str] = None
+
+
+class RTRCalibrationPreviewRequest(BaseModel):
+    crop: str
+    greenhouse_id: Optional[str] = None
+    selection_mode: Literal["auto", "windows-only", "heuristic-only"] = "windows-only"
+    windows: list[RTRCalibrationWindowRequest] = Field(default_factory=list)
+
+
+class RTRCalibrationSaveRequest(RTRCalibrationPreviewRequest):
+    pass
 
 # Setup logging
 logging.basicConfig(
@@ -667,6 +709,109 @@ def _build_rtr_request_bundle(req_payload: Dict[str, Any]):
         cost_per_kwh=_get_crop_cost_per_kwh(crop),
     )
     return crop, store, greenhouse_id, snapshot_record, profiles_payload, area_meta, optimization_inputs, context
+
+
+def _get_rtr_profile_crop_key(crop: str) -> str:
+    return "Tomato" if crop == "tomato" else "Cucumber"
+
+
+def _build_rtr_calibration_environment_summary(crop: str, profiles_payload: Dict[str, Any]) -> tuple[Any, Dict[str, Any]]:
+    env_df = app_state[crop].get("df_env")
+    if env_df is None or len(env_df) == 0:
+        return None, {
+            "has_environment_history": False,
+            "start_date": None,
+            "end_date": None,
+            "total_rows": 0,
+            "total_days": 0,
+        }
+
+    crop_key = _get_rtr_profile_crop_key(crop)
+    light_to_radiant_divisor = float(
+        profiles_payload.get("profiles", {}).get(crop_key, {}).get("lightToRadiantDivisor", 4.57)
+    )
+    daily_df = aggregate_daily_rtr_metrics(
+        env_df,
+        light_to_radiant_divisor=light_to_radiant_divisor,
+    )
+    if daily_df.empty:
+        return daily_df, {
+            "has_environment_history": True,
+            "start_date": None,
+            "end_date": None,
+            "total_rows": int(len(env_df)),
+            "total_days": 0,
+        }
+
+    return daily_df, {
+        "has_environment_history": True,
+        "start_date": str(daily_df["date"].min()),
+        "end_date": str(daily_df["date"].max()),
+        "total_rows": int(len(env_df)),
+        "total_days": int(len(daily_df)),
+    }
+
+
+def _serialize_rtr_calibration_windows(
+    crop: str,
+    greenhouse_id: str,
+    raw_windows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    normalized_windows = normalize_rtr_good_windows(raw_windows, greenhouse_id=greenhouse_id)
+    return filter_rtr_good_windows_for_house(
+        {
+            "crops": {
+                _get_rtr_profile_crop_key(crop): normalized_windows,
+            }
+        },
+        crop,
+        greenhouse_id,
+    )
+
+
+def _build_rtr_calibration_preview_payload(
+    *,
+    crop: str,
+    greenhouse_id: str,
+    selection_mode: str,
+    windows: list[dict[str, Any]],
+    profiles_payload: Dict[str, Any],
+) -> Dict[str, Any]:
+    daily_df, environment_summary = _build_rtr_calibration_environment_summary(crop, profiles_payload)
+    if daily_df is None:
+        raise HTTPException(
+            status_code=400,
+            detail="RTR calibration preview requires loaded environment history. Start the crop simulator first.",
+        )
+
+    crop_key = _get_rtr_profile_crop_key(crop)
+    preview_profile = fit_rtr_profile(
+        crop_key,
+        daily_df,
+        calibration_windows=windows,
+        selection_mode=selection_mode,
+    )
+    filtered_df, selection_metadata = select_rtr_calibration_days(
+        crop_key,
+        daily_df,
+        calibration_windows=windows,
+        selection_mode=selection_mode,
+    )
+    return {
+        "status": "success",
+        "crop": crop_key,
+        "greenhouse_id": greenhouse_id,
+        "selection_mode": selection_mode,
+        "windows": windows,
+        "preview_profile": preview_profile,
+        "environment_summary": environment_summary,
+        "selection_summary": {
+            "filtered_days": int(len(filtered_df)),
+            "pre_filter_days": int(selection_metadata.get("preFilterDays", 0)),
+            "selection_source": selection_metadata.get("selectionSource", "heuristic-fallback"),
+            "window_count": int(selection_metadata.get("windowCount", 0)),
+        },
+    }
 
 
 def _build_rtr_baseline_candidate(context, optimization_inputs):
@@ -2499,6 +2644,95 @@ async def save_rtr_area_settings(req: RTRAreaSettingsRequest):
         "crop": crop,
         "greenhouse_id": greenhouse_id,
         "area_unit_meta": area_meta,
+    }
+
+
+@app.get("/api/rtr/calibration-state")
+async def get_rtr_calibration_state(crop: str, greenhouse_id: Optional[str] = None):
+    """Return the current RTR calibration windows and profile for a crop/house."""
+    normalized_crop = _validate_crop(crop.lower() if crop not in CROPS else crop)
+    resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, greenhouse_id)
+    profiles_payload = load_rtr_profiles()
+    windows_payload = load_rtr_good_windows()
+    current_windows = filter_rtr_good_windows_for_house(
+        windows_payload,
+        normalized_crop,
+        resolved_greenhouse_id,
+    )
+    _, environment_summary = _build_rtr_calibration_environment_summary(normalized_crop, profiles_payload)
+    crop_key = _get_rtr_profile_crop_key(normalized_crop)
+    return {
+        "status": "success",
+        "crop": crop_key,
+        "greenhouse_id": resolved_greenhouse_id,
+        "current_profile": copy.deepcopy(profiles_payload.get("profiles", {}).get(crop_key, {})),
+        "windows": current_windows,
+        "environment_summary": environment_summary,
+        "available_selection_modes": ["windows-only", "auto", "heuristic-only"],
+        "selection_mode": "windows-only",
+    }
+
+
+@app.post("/api/rtr/calibration-preview")
+async def preview_rtr_calibration(req: RTRCalibrationPreviewRequest):
+    """Preview an RTR calibration fit using user-entered good-production windows."""
+    normalized_crop = _validate_crop(req.crop.lower() if req.crop not in CROPS else req.crop)
+    resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, req.greenhouse_id)
+    profiles_payload = load_rtr_profiles()
+    scoped_windows = _serialize_rtr_calibration_windows(
+        normalized_crop,
+        resolved_greenhouse_id,
+        [window.model_dump(exclude_none=True) for window in req.windows],
+    )
+    return _build_rtr_calibration_preview_payload(
+        crop=normalized_crop,
+        greenhouse_id=resolved_greenhouse_id,
+        selection_mode=req.selection_mode,
+        windows=scoped_windows,
+        profiles_payload=profiles_payload,
+    )
+
+
+@app.post("/api/rtr/calibration-save")
+async def save_rtr_calibration(req: RTRCalibrationSaveRequest):
+    """Persist RTR calibration windows and refresh the crop RTR profile."""
+    normalized_crop = _validate_crop(req.crop.lower() if req.crop not in CROPS else req.crop)
+    resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, req.greenhouse_id)
+    crop_key = _get_rtr_profile_crop_key(normalized_crop)
+    incoming_windows = [window.model_dump(exclude_none=True) for window in req.windows]
+    existing_windows_payload = load_rtr_good_windows()
+    updated_windows_payload = upsert_rtr_good_windows(
+        existing_windows_payload,
+        crop=normalized_crop,
+        greenhouse_id=resolved_greenhouse_id,
+        windows=incoming_windows,
+    )
+    scoped_windows = filter_rtr_good_windows_for_house(
+        updated_windows_payload,
+        normalized_crop,
+        resolved_greenhouse_id,
+    )
+    profiles_payload = load_rtr_profiles()
+    preview_payload = _build_rtr_calibration_preview_payload(
+        crop=normalized_crop,
+        greenhouse_id=resolved_greenhouse_id,
+        selection_mode=req.selection_mode,
+        windows=scoped_windows,
+        profiles_payload=profiles_payload,
+    )
+    updated_profiles_payload = copy.deepcopy(profiles_payload)
+    updated_profiles_payload.setdefault("profiles", {})[crop_key] = preview_payload["preview_profile"]
+    updated_profiles_payload["updatedAt"] = datetime.now(UTC).isoformat()
+    windows_path = save_rtr_good_windows(updated_windows_payload)
+    profiles_path = save_rtr_profiles(updated_profiles_payload)
+    return {
+        **preview_payload,
+        "saved": True,
+        "current_profile": preview_payload["preview_profile"],
+        "config_paths": {
+            "windows": str(windows_path),
+            "profiles": str(profiles_path),
+        },
     }
 
 
