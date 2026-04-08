@@ -787,7 +787,7 @@ function App() {
                 profile={rtrProfilesPayload?.profiles[selectedCrop] ?? null}
                 profileLoading={isRtrProfileLoading}
                 profileError={rtrProfileError}
-                optimizerEnabled={rtrProfilesPayload?.profiles[selectedCrop]?.optimizer?.enabled ?? rtrProfilesPayload?.optimizerEnabled ?? true}
+                optimizerEnabled={rtrProfilesPayload?.profiles[selectedCrop]?.optimizer?.enabled ?? rtrProfilesPayload?.optimizerEnabled}
                 defaultMode={rtrProfilesPayload?.profiles[selectedCrop]?.optimizer?.default_mode}
                 compact
               />

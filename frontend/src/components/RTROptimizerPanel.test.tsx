@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
     CropType,
     RtrOptimizeResponse,
+    RtrProfile,
     RtrScenarioResponse,
     RtrSensitivityResponse,
     RtrStateResponse,
@@ -383,10 +384,55 @@ function buildSensitivityResponse(): RtrSensitivityResponse {
     };
 }
 
-function renderPanel(options?: { locale?: 'ko' | 'en'; optimizerEnabled?: boolean }) {
+function buildProfile(optimizerEnabled = true): RtrProfile {
+    return {
+        crop: 'Cucumber',
+        strategyLabel: 'Cucumber RTR',
+        sourceNote: 'test profile',
+        lightToRadiantDivisor: 218,
+        baseTempC: 18.132,
+        slopeCPerMjM2: 0.3099,
+        toleranceC: 1,
+        calibration: {
+            mode: 'baseline',
+            sampleDays: 14,
+            fitStartDate: null,
+            fitEndDate: null,
+            minCoverageHours: 12,
+            rSquared: null,
+            meanAbsoluteErrorC: null,
+            selectionSource: 'heuristic-fallback',
+        },
+        optimizer: {
+            enabled: optimizerEnabled,
+            default_mode: 'balanced',
+            max_delta_temp_C: 1.2,
+            max_rtr_ratio_delta: 0.03,
+            temp_slew_rate_C_per_step: 0.12,
+            weights: {
+                temp: 1,
+                node: 150,
+                carbon: 120,
+                sink: 80,
+                resp: 20,
+                risk: 120,
+                energy: 25,
+                labor: 20,
+            },
+        },
+    };
+}
+
+function renderPanel(options?: {
+    locale?: 'ko' | 'en';
+    optimizerEnabled?: boolean;
+    profile?: RtrProfile | null;
+    profileLoading?: boolean;
+}) {
     if (options?.locale) {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, options.locale);
     }
+    const optimizerEnabled = options?.optimizerEnabled ?? true;
     return render(
         <LocaleProvider>
             <AreaUnitProvider>
@@ -398,10 +444,10 @@ function renderPanel(options?: { locale?: 'ko' | 'en'; optimizerEnabled?: boolea
                     weather={null}
                     loading={false}
                     error={null}
-                    profile={null}
-                    profileLoading={false}
+                    profile={options?.profile ?? buildProfile(optimizerEnabled)}
+                    profileLoading={options?.profileLoading ?? false}
                     profileError={null}
-                    optimizerEnabled={options?.optimizerEnabled}
+                    optimizerEnabled={optimizerEnabled}
                 />
             </AreaUnitProvider>
         </LocaleProvider>,
@@ -503,5 +549,74 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getByText('This profile keeps the optimizer disabled, so only the baseline RTR monitor is shown.')).toBeTruthy();
         expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
         expect(screen.queryByText('RTR optimizer')).toBeNull();
+    });
+
+    it('holds a loading shell until the RTR profile contract is ready', async () => {
+        render(
+            <LocaleProvider>
+                <AreaUnitProvider>
+                    <RTROptimizerPanel
+                        crop="Cucumber"
+                        currentData={SENSOR_FIXTURE}
+                        history={[SENSOR_FIXTURE]}
+                        temperatureSettings={TEMPERATURE_SETTINGS}
+                        weather={null}
+                        loading={false}
+                        error={null}
+                        profile={null}
+                        profileLoading
+                        profileError={null}
+                    />
+                </AreaUnitProvider>
+            </LocaleProvider>,
+        );
+
+        expect(await screen.findByText('RTR 프로파일 준비 중')).toBeTruthy();
+        expect(screen.getByText('프로파일 설정을 확인한 뒤 RTR 최적화 컨트롤을 열어 드립니다.')).toBeTruthy();
+        expect(screen.queryByText('목표 마디 전개')).toBeNull();
+    });
+
+    it('keeps unknown scenario labels verbatim instead of remapping them to built-in modes', async () => {
+        const scenarioResponse = buildScenarioResponse();
+        scenarioResponse.scenarios.push({
+            label: 'Custom +0.6°C',
+            mode: 'custom',
+            mean_temp_C: 19.7,
+            day_min_temp_C: 20.2,
+            night_min_temp_C: 18.6,
+            node_rate_day: 0.69,
+            net_carbon: 0.24,
+            respiration: 0.12,
+            energy_kwh_m2_day: 3.1,
+            labor_index: 0.61,
+            yield_trend: 'up',
+            recommendation_badge: '비교',
+            objective_breakdown: buildOptimizeResponse().objective_breakdown,
+        });
+
+        useRtrOptimizerMock.mockReturnValue({
+            stateResponse: buildStateResponse(),
+            optimizeResponse: buildOptimizeResponse(),
+            scenarioResponse,
+            sensitivityResponse: buildSensitivityResponse(),
+            targetNodeDevelopmentPerDay: 0.68,
+            setTargetNodeDevelopmentPerDay: vi.fn(),
+            optimizationMode: 'balanced',
+            setOptimizationMode: vi.fn(),
+            includeEnergyCost: true,
+            setIncludeEnergyCost: vi.fn(),
+            includeLaborCost: true,
+            setIncludeLaborCost: vi.fn(),
+            loading: false,
+            loadingState: false,
+            loadingOptimize: false,
+            error: null,
+            refreshState: vi.fn(),
+            refreshOptimization: vi.fn(),
+        });
+
+        renderPanel();
+
+        expect(await screen.findByText('Custom +0.6°C')).toBeTruthy();
     });
 });

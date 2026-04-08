@@ -253,7 +253,7 @@ const RTROptimizerPanel = ({
     const { locale } = useLocale();
     const { areaByCrop, setActualAreaM2, setActualAreaPyeong, syncAreaMeta } = useAreaUnit();
     const areaState = areaByCrop[crop];
-    const optimizerEnabled = optimizerEnabledProp ?? profile?.optimizer?.enabled ?? true;
+    const optimizerEnabled = profileLoading ? false : (profile?.optimizer?.enabled ?? optimizerEnabledProp ?? false);
     const defaultMode = defaultModeProp ?? profile?.optimizer?.default_mode ?? DEFAULT_OPTIMIZATION_MODE;
     const {
         stateResponse,
@@ -269,6 +269,8 @@ const RTROptimizerPanel = ({
         includeLaborCost,
         setIncludeLaborCost,
         loading: optimizerLoading,
+        loadingState,
+        loadingOptimize,
         error: optimizerError,
         refreshOptimization,
     } = useRtrOptimizer({
@@ -279,6 +281,8 @@ const RTROptimizerPanel = ({
         optimizerEnabled,
         defaultMode,
     });
+    const isProfilePending = profileLoading && profile === null;
+    const isProfileUnavailable = !profileLoading && profile === null;
 
     const copy = locale === 'ko'
         ? {
@@ -322,7 +326,11 @@ const RTROptimizerPanel = ({
             laborHeader: '작업',
             disabledTitle: 'RTR 기준선 모니터',
             disabledBody: '이 프로파일은 아직 optimizer를 켜지 않아 기준선 모니터만 제공합니다.',
+            profileLoadingTitle: 'RTR 프로파일 준비 중',
+            profileLoadingBody: '프로파일 설정을 확인한 뒤 RTR 최적화 컨트롤을 열어 드립니다.',
+            profileFallbackBody: 'RTR 프로파일을 아직 불러오지 못해 기준선 비교 카드만 먼저 제공합니다.',
             energyUnit: 'kWh/m²/일',
+            waitingTarget: '현재 RTR 상태에서 예측 마디 전개를 아직 계산하지 못했습니다. 목표 마디 전개를 직접 입력하면 다시 계산합니다.',
         }
         : {
             title: 'RTR optimizer',
@@ -365,7 +373,11 @@ const RTROptimizerPanel = ({
             laborHeader: 'Labor',
             disabledTitle: 'Baseline RTR monitor',
             disabledBody: 'This profile keeps the optimizer disabled, so only the baseline RTR monitor is shown.',
+            profileLoadingTitle: 'RTR profile loading',
+            profileLoadingBody: 'RTR optimization controls will open after the profile contract is confirmed.',
+            profileFallbackBody: 'RTR profile data is unavailable, so the panel is staying on the baseline comparison card.',
             energyUnit: 'kWh/m²/day',
+            waitingTarget: 'Predicted node progression is not available yet. Enter the target node rate manually to run the optimizer.',
         };
 
     const explanationCopy = useMemo(() => {
@@ -436,13 +448,30 @@ const RTROptimizerPanel = ({
     const scenarioRows = scenarioResponse?.scenarios ?? [];
     const targetHit = optimizeResponse?.feasibility.target_node_hit ?? false;
     const confidence = optimizeResponse?.feasibility.confidence ?? null;
+    const waitingForTarget = !loadingState && targetNodeDevelopmentPerDay === null;
 
-    if (!optimizerEnabled) {
+    if (isProfilePending) {
         return (
             <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                    <p className="font-semibold text-slate-900">{copy.profileLoadingTitle}</p>
+                    <p className="mt-1">{copy.profileLoadingBody}</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (isProfileUnavailable || !optimizerEnabled) {
+        return (
+            <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
+                {profileError ? (
+                    <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                        {profileError}
+                    </div>
+                ) : null}
                 <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
                     <p className="font-semibold text-slate-900">{copy.disabledTitle}</p>
-                    <p className="mt-1">{copy.disabledBody}</p>
+                    <p className="mt-1">{isProfileUnavailable ? copy.profileFallbackBody : copy.disabledBody}</p>
                 </div>
                 <RTROutlookPanel
                     crop={crop}
@@ -476,6 +505,7 @@ const RTROptimizerPanel = ({
                 <button
                     type="button"
                     onClick={() => void refreshOptimization()}
+                    disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget}
                     className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 >
                     {copy.refresh}
@@ -485,6 +515,11 @@ const RTROptimizerPanel = ({
                 {optimizerError ? (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
                         {optimizerError}
+                    </div>
+                ) : null}
+                {waitingForTarget ? (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">
+                        {copy.waitingTarget}
                     </div>
                 ) : null}
 
