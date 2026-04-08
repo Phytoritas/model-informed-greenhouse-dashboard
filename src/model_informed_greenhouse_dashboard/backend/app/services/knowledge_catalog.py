@@ -638,7 +638,7 @@ def _build_advisory_surface_summary(
                 "guardrail_ranges": nutrient_view.get("guardrail_ranges", {}),
             },
             "limitations": [
-                "Deterministic recipe lookup is available as a stable seam, while the final stock-tank calculation engine remains a later phase.",
+                "현재는 양액 레시피 기준 조회까지만 바로 사용할 수 있으며, 최종 원액 탱크 계산 엔진은 아직 준비 중입니다.",
             ],
         },
         "nutrient_correction": {
@@ -671,10 +671,10 @@ def _build_advisory_surface_summary(
                 "residual_policy": "prefer_no_objective_overshoot",
             },
             "limitations": [
-                "The correction route currently returns a deterministic correction draft plus macro-only single-fertilizer and macro-bundle stock-tank drafts, not the final stock-tank calculation engine.",
-                "Partial source-water coverage now keeps bundle drafts provisional and rechecks blocked analytes plus guardrails after bundle assembly.",
-                "Drain observations now shift next-step nutrient targets only through a bounded clamp policy before macro-bundle planning.",
-                "Residual-safe bundle alternatives are additive guidance only and do not yet replace the selected macro bundle automatically.",
+                "현재는 양액 보정 초안과 매크로 기준 단일 비료/혼합 처방 초안까지만 제공합니다. 최종 원액 탱크 배합비는 아직 수동 검토가 필요합니다.",
+                "원수 입력이 일부만 있으면 보정 초안은 임시안으로 유지되며, 혼합 후에도 막힌 성분과 경계값을 다시 확인합니다.",
+                "배액 값은 다음 목표 농도를 조금씩 조정하는 참고값으로만 반영되며, 자동으로 큰 폭 수정하지 않습니다.",
+                "잔여 안전 대안은 추가 참고안이며, 선택된 번들을 자동으로 바꾸지는 않습니다.",
             ],
         },
         "work": {
