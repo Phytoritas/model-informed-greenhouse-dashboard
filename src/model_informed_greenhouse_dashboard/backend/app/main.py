@@ -1477,11 +1477,21 @@ async def advisor_summary(req: AdvisorSummaryRequest):
         )
     except RuntimeError as exc:
         logger.warning("Advisor summary degraded gracefully: %s", exc)
+        fallback_text = (
+            "모델 상담을 잠시 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
+            if (req.language or "ko") == "ko"
+            else "AI advising is temporarily unavailable. Please try again shortly."
+        )
+        runtime_summary = (
+            "요약 계산이 중단되어 모델 상태를 함께 보여주지 못했습니다."
+            if (req.language or "ko") == "ko"
+            else "Model runtime details are unavailable because summary generation degraded early."
+        )
         return {
             "status": "degraded",
             "family": "advisor_summary",
             "crop": req.crop,
-            "text": f"AI consulting is unavailable: {exc}",
+            "text": fallback_text,
             "machine_payload": {
                 "domains": [],
                 "context_completeness": 0.0,
@@ -1489,7 +1499,7 @@ async def advisor_summary(req: AdvisorSummaryRequest):
                 "actions": [],
                 "model_runtime": {
                     "status": "unavailable",
-                    "summary": "Model runtime block was not assembled because the summary endpoint degraded before orchestration completed.",
+                    "summary": runtime_summary,
                     "state_snapshot": {},
                     "scenario": {"baseline_outputs": [], "options": [], "recommended": None},
                     "sensitivity": {
@@ -1555,18 +1565,28 @@ async def advisor_chat(req: AdvisorChatRequest):
         )
     except RuntimeError as exc:
         logger.warning("Advisor chat degraded gracefully: %s", exc)
+        fallback_text = (
+            "모델 상담을 잠시 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
+            if (req.language or "ko") == "ko"
+            else "AI chat is temporarily unavailable. Please try again shortly."
+        )
+        runtime_summary = (
+            "대화 응답 계산이 중단되어 모델 상태를 함께 보여주지 못했습니다."
+            if (req.language or "ko") == "ko"
+            else "Model runtime details are unavailable because chat generation degraded early."
+        )
         return {
             "status": "degraded",
             "family": "advisor_chat",
             "crop": req.crop,
-            "text": f"AI chat is unavailable: {exc}",
+            "text": fallback_text,
             "machine_payload": {
                 "domains": [],
                 "context_completeness": 0.0,
                 "missing_data": ["openai_unavailable"],
                 "model_runtime": {
                     "status": "unavailable",
-                    "summary": "Model runtime block was not assembled because the chat endpoint degraded before orchestration completed.",
+                    "summary": runtime_summary,
                     "state_snapshot": {},
                     "scenario": {"baseline_outputs": [], "options": [], "recommended": None},
                     "sensitivity": {
@@ -1726,7 +1746,12 @@ async def ai_consult(req: AiConsultRequest):
         return {"status": "success", "text": text}
     except RuntimeError as e:
         logger.warning("AI consult degraded gracefully: %s", e)
-        return {"status": "degraded", "text": f"AI consulting is unavailable: {e}"}
+        text = (
+            "모델 상담을 잠시 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
+            if (req.language or "ko") == "ko"
+            else "AI consulting is temporarily unavailable. Please try again shortly."
+        )
+        return {"status": "degraded", "text": text}
     except Exception as e:
         logger.error(f"AI consult error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"AI consult failed: {str(e)}")
@@ -1747,7 +1772,12 @@ async def ai_chat(req: AiChatRequest):
         return {"status": "success", "text": text}
     except RuntimeError as e:
         logger.warning("AI chat degraded gracefully: %s", e)
-        return {"status": "degraded", "text": f"AI chat is unavailable: {e}"}
+        text = (
+            "모델 상담을 잠시 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
+            if (req.language or "ko") == "ko"
+            else "AI chat is temporarily unavailable. Please try again shortly."
+        )
+        return {"status": "degraded", "text": text}
     except Exception as e:
         logger.error(f"AI chat error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"AI chat failed: {str(e)}")

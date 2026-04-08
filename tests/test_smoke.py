@@ -184,7 +184,7 @@ def test_ai_consult_degrades_gracefully_without_openai_key(
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "degraded"
-    assert "Missing OpenAI API key" in payload["text"]
+    assert payload["text"] == "AI consulting is temporarily unavailable. Please try again shortly."
 
 
 def test_ai_consult_injects_crop_scoped_knowledge_context(
@@ -253,7 +253,7 @@ def test_ai_chat_degrades_gracefully_without_openai_key(
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "degraded"
-    assert "Missing OpenAI API key" in payload["text"]
+    assert payload["text"] == "AI chat is temporarily unavailable. Please try again shortly."
 
 
 def test_knowledge_status_endpoint_returns_crop_scoped_catalog(

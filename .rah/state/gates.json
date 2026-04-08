@@ -87,6 +87,14 @@
     "status": "pass",
     "note": "PR #24 merged issue #23 into `main` after the latest local ladder stayed green for the pesticide-advisor limitation localization plus fallback regression harness, and refreshed GitHub Actions Backend/Frontend Validation passed on the final PR head. Screenshots remain under `screenshots/` as local comparison artifacts."
   },
+  "issue25_warning_copy_cleanup": {
+    "status": "pass",
+    "note": "The remaining grower-visible English/internal caveats are localized or hidden from the dashboard/advisor/chat surfaces, actionable pesticide label-check guidance stays visible, and non-actionable implementation scope is now tracked only in the gap register and harness notes."
+  },
+  "issue25_pr_validation": {
+    "status": "pending",
+    "note": "PR #26 is now open for issue #25 after the local validation ladder stayed green (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`); remote GitHub Actions validation is the remaining gate."
+  },
   "issue19_pr_validation": {
     "status": "pass",
     "note": "Issue #19 is closed and PR #20 is merged after the final local validation ladder (`poetry run ruff check .`, `poetry run pytest`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`) plus green GitHub Actions push/pull_request runs."

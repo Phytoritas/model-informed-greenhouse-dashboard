@@ -132,11 +132,10 @@ const AiAdvisor = ({
             advisoryTitle: '스마트 제어 모드',
             advisoryLoading: '스마트 제어 모드를 불러오는 중...',
             advisoryUnavailable: '스마트 제어 모드를 아직 불러오지 못했습니다.',
+            advisoryHint: '연결된 도구와 세부 탭을 바로 열 수 있습니다.',
             pesticideReady: '농약 후보',
             nutrientReady: '양액 레시피',
             correctionReady: '양액 보정 초안',
-            correctionBoundary:
-                '현재는 임시 양액 보정 처방만 제공되며, 최종 원액 탱크 배합비는 수동 검토가 필요합니다.',
             parserPending: '일부 참고 문서는 아직 정리 중입니다.',
             openDetails: '세부 탭 보기',
             openKnowledgeSearch: '지식 검색',
@@ -171,11 +170,10 @@ const AiAdvisor = ({
             advisoryTitle: 'SmartGrow deterministic status',
             advisoryLoading: 'Loading deterministic status...',
             advisoryUnavailable: 'Deterministic status is unavailable.',
+            advisoryHint: 'Open the connected tools or the detailed tabs from here.',
             pesticideReady: 'Pesticide lookup',
             nutrientReady: 'Nutrient recipe',
             correctionReady: 'Correction draft',
-            correctionBoundary:
-                'Nutrient correction currently exposes macro-only single-fertilizer drafts, and final stock-tank calculation still needs manual review.',
             parserPending: 'PDF parsing is still pending.',
             openDetails: 'Open detail tabs',
             openKnowledgeSearch: 'Open knowledge search',
@@ -249,8 +247,6 @@ const AiAdvisor = ({
             },
         });
     }
-    const correctionBoundary =
-        smartGrowSummary?.nutrientCorrectionLimitation ?? copy.correctionBoundary;
     const runtimeState = modelRuntime?.state_snapshot ?? {};
     const runtimeTopLevers = modelRuntime?.sensitivity?.top_levers?.slice(0, 2) ?? [];
     const runtimeRecommended =
@@ -325,7 +321,7 @@ const AiAdvisor = ({
                                 ))}
                             </div>
                         ) : null}
-                        <p className="mt-3 text-xs leading-relaxed text-indigo-50">{correctionBoundary}</p>
+                        <p className="mt-3 text-xs leading-relaxed text-indigo-50">{copy.advisoryHint}</p>
                         {smartGrowSummary.pendingParsers.includes('pdf') ? (
                             <p className="mt-2 text-[11px] text-indigo-200">{copy.parserPending}</p>
                         ) : null}

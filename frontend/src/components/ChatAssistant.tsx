@@ -203,8 +203,7 @@ const ChatAssistant = ({
             smartGrowTitle: '스마트 제어 모드',
             smartGrowLoading: '스마트 제어 모드를 불러오는 중...',
             smartGrowUnavailable: '스마트 제어 모드를 아직 불러오지 못했습니다.',
-            smartGrowBoundary:
-                '현재는 병해충 후보, 양액 레시피, 임시 양액 보정 처방안을 함께 볼 수 있습니다.',
+            smartGrowHint: '연결된 도구를 바로 열거나 추천 질문으로 이어서 확인할 수 있습니다.',
             knowledgeSearch: '지식 검색',
             runtimeTitle: '예측 모델 분석',
             runtimeReady: '예측 반영',
@@ -239,8 +238,7 @@ const ChatAssistant = ({
             smartGrowTitle: 'SmartGrow deterministic status',
             smartGrowLoading: 'Loading deterministic status...',
             smartGrowUnavailable: 'Deterministic status is unavailable.',
-            smartGrowBoundary:
-                'You can reference pesticide lookup, nutrient recipes, and the macro-only nutrient correction draft from here.',
+            smartGrowHint: 'Open the connected tools or continue with the suggested follow-up prompts.',
             knowledgeSearch: 'Knowledge search',
             runtimeTitle: 'Model runtime',
             runtimeReady: 'Scenario linked',
@@ -272,8 +270,6 @@ const ChatAssistant = ({
     const [input, setInput] = useState('');
     const [isSending, setIsSending] = useState(false);
 
-    const smartGrowBoundary =
-        smartGrowSummary?.nutrientCorrectionLimitation ?? copy.smartGrowBoundary;
     const smartGrowPrompts = !smartGrowLoading && !smartGrowError && smartGrowSummary
         ? [
             smartGrowSummary.pesticideReady ? copy.promptPesticide : null,
@@ -465,8 +461,8 @@ const ChatAssistant = ({
                 },
             ]);
         } catch (error) {
-            const message = error instanceof Error ? error.message : copy.unknownError;
-            setMessages((prev) => [...prev, { role: 'ai', text: `${copy.aiUnavailable}: ${message}` }]);
+            void error;
+            setMessages((prev) => [...prev, { role: 'ai', text: copy.aiUnavailable }]);
         } finally {
             setIsSending(false);
         }
@@ -502,7 +498,7 @@ const ChatAssistant = ({
                         ? copy.smartGrowLoading
                         : smartGrowError
                             ? copy.smartGrowUnavailable
-                            : smartGrowBoundary}
+                            : copy.smartGrowHint}
                 </p>
                 {smartGrowPrompts.length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-2">
