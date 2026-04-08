@@ -1,8 +1,8 @@
 # Current Loop
 
 ## Active State
-- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy`, and the newest local slice upgrades the knowledge-search drawer into a contextual grower-facing search surface seeded from the dashboard, advisor, or assistant entry point.
-- Local validation ladder is green again: `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`.
+- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy`, and PR `#24` now carries the contextual grower-facing knowledge-search slice on validated head `f50834e`.
+- Local validation ladder and refreshed GitHub Actions are green: `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, plus remote Backend/Frontend Validation on PR `#24`.
 
 ## Latest Delivered Baseline
 - Issue `#21` remains the most recent merged baseline on `main`.
@@ -25,7 +25,6 @@
   - a contextual knowledge-search pass that seeds the drawer from current dashboard/advisor/assistant context, auto-runs crop-matched preset queries, summarizes routed scope in grower-friendly Korean, hides internal API recovery wording, and locks the drawer behavior with a dedicated Vitest surface test
 
 ## Exact Restart Step
-1. Commit and push the latest issue `#23` contextual knowledge-search slice so PR `#24` reflects the newest validated head.
-2. Watch refreshed PR `#24` GitHub Actions until backend/frontend validation settles.
-3. If remote checks fail, fix only the reported regression and rerun the local ladder for the touched surface.
-4. Once PR validation is green, sync harness truth again and proceed to review/merge.
+1. Keep PR `#24` on validated head `f50834e` unless a new issue `#23` regression or UX gap is explicitly selected.
+2. If follow-up changes are requested, keep them bounded to a new documented slice and rerun the same local ladder before pushing.
+3. Otherwise proceed to review/merge PR `#24`, then sync post-merge harness truth on `main`.

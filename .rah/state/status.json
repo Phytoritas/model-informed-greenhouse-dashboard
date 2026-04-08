@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue23-contextual-knowledge-search-locally-validated",
+  "current_stage": "issue23-contextual-knowledge-search-remotely-validated",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
   "active_issue": 23,
   "active_branch": "feat/23-dashboard-layout-kpi-first-hierarchy",
   "implementation_blocked": false,
-  "next_action": "Commit and push the issue #23 contextual knowledge-search slice to PR #24, then watch refreshed GitHub Actions and fix only any reported regressions before review or merge.",
+  "next_action": "Keep PR #24 on the validated `f50834e` head, review the contextual knowledge-search slice, and merge once no further issue #23 UI/UX follow-up is required.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "GitHub issue #23 dashboard layout KPI-first hierarchy restructure"
 }
