@@ -8,6 +8,7 @@ import LoadingSkeleton from './features/common/LoadingSkeleton';
 import OverviewStrip from './features/overview/OverviewStrip';
 import OverlayDrawerFallback from './features/chat/OverlayDrawerFallback';
 import type { PromptAdvisorTabKey } from './components/advisor/advisorTabRegistry';
+import type { RagAssistantOpenRequest } from './components/chat/RagAssistantDrawer';
 import { useGreenhouse } from './hooks/useGreenhouse';
 import { useAiAssistant } from './hooks/useAiAssistant';
 import { useProducePrices } from './hooks/useProducePrices';
@@ -162,6 +163,7 @@ type AdvisorOpenRequest = {
   showCorrectionTool?: boolean;
   nonce: number;
 };
+type RagAssistantLaunchRequest = Omit<RagAssistantOpenRequest, 'nonce'>;
 
 type SensorTrendSummary = {
   trend: 'up' | 'down' | 'stable';
@@ -328,6 +330,7 @@ function App() {
   const [shouldRenderChat, setShouldRenderChat] = useState(false);
   const [isRagAssistantOpen, setIsRagAssistantOpen] = useState(false);
   const [shouldRenderRagAssistant, setShouldRenderRagAssistant] = useState(false);
+  const [ragAssistantRequest, setRagAssistantRequest] = useState<RagAssistantOpenRequest | null>(null);
   const [isAdvisorTabsOpen, setIsAdvisorTabsOpen] = useState(true);
   const [telemetryClock, setTelemetryClock] = useState(() => Date.now());
   const [advisorOpenRequest, setAdvisorOpenRequest] = useState<AdvisorOpenRequest | null>(null);
@@ -527,12 +530,52 @@ function App() {
     setIsChatOpen((prev) => !prev);
   };
 
-  const handleOpenRagAssistant = () => {
+  function handleOpenRagAssistant(request?: RagAssistantLaunchRequest) {
     if (!shouldRenderRagAssistant) {
       setShouldRenderRagAssistant(true);
     }
+    const defaultRequest: RagAssistantLaunchRequest = smartGrowSummary?.nutrientCorrectionReady
+      ? {
+          preset: 'nutrient',
+          query: locale === 'ko'
+            ? `${getCropLabel(selectedCrop, locale)} 양액 보정 경계 조건과 수동 검토 항목`
+            : `${getCropLabel(selectedCrop, locale)} nutrient correction guardrails and manual review items`,
+          autoRun: true,
+          source: 'dashboard',
+        }
+      : smartGrowSummary?.nutrientReady
+        ? {
+            preset: 'nutrient',
+            query: locale === 'ko'
+              ? `${getCropLabel(selectedCrop, locale)} 현재 단계 양액 레시피와 경계 조건`
+              : `${getCropLabel(selectedCrop, locale)} nutrient recipe and guardrails for the current stage`,
+            autoRun: true,
+            source: 'dashboard',
+          }
+        : smartGrowSummary?.pesticideReady
+          ? {
+              preset: 'pesticide',
+              query: locale === 'ko'
+                ? `${getCropLabel(selectedCrop, locale)} 주요 병해충 후보와 교호 전략`
+                : `${getCropLabel(selectedCrop, locale)} disease and pesticide rotation guidance`,
+              autoRun: true,
+              source: 'dashboard',
+            }
+          : {
+              preset: 'general',
+              query: locale === 'ko'
+                ? `${getCropLabel(selectedCrop, locale)} 생육 관리 핵심`
+                : `Main cultivation guidance for ${getCropLabel(selectedCrop, locale)}`,
+              autoRun: true,
+              source: 'dashboard',
+            };
+    setRagAssistantRequest({
+      ...defaultRequest,
+      ...request,
+      nonce: Date.now(),
+    });
     setIsRagAssistantOpen(true);
-  };
+  }
 
   const handleOpenAdvisorTabs = (
     tab: PromptAdvisorTabKey = 'environment',
@@ -901,14 +944,15 @@ function App() {
           }
         >
           <RagAssistantDrawer
-            key={`${selectedCrop}-rag-assistant`}
+            key={`${selectedCrop}-${ragAssistantRequest?.nonce ?? 0}`}
             isOpen={isRagAssistantOpen}
             onClose={() => setIsRagAssistantOpen(false)}
             crop={selectedCrop}
             stacked={isChatOpen}
+            request={ragAssistantRequest}
           />
-        </Suspense>
-      ) : null}
+          </Suspense>
+        ) : null}
     </AppShell>
   );
 }
