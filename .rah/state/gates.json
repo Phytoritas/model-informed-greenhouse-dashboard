@@ -81,11 +81,11 @@
   },
   "issue23_frontend_stabilization": {
     "status": "pass",
-    "note": "Issue #23 local stabilization now adds `AppShell` plus shared loading/drawer fallbacks, Korean-first structured advisory display payloads across summary/chat, availability-aware chart nulling through `fieldAvailability`, per-field telemetry timestamps for KPI age labels, offline-over-missing summary precedence, mobile locale controls, localized cleanup across analytics/advisor surfaces, an additional hardening pass that localizes visible SmartGrow/advisor copy plus stage/medium/common token labels, and a farmer-facing terminology cleanup that hides raw evidence/provenance surfaces while keeping the full local ladder green."
+    "note": "Issue #23 local stabilization now adds `AppShell` plus shared loading/drawer fallbacks, Korean-first structured advisory display payloads across summary/chat, availability-aware chart nulling through `fieldAvailability`, per-field telemetry timestamps for KPI age labels, offline-over-missing summary precedence, mobile locale controls, localized cleanup across analytics/advisor surfaces, an additional hardening pass that localizes visible SmartGrow/advisor copy plus stage/medium/common token labels, a farmer-facing terminology cleanup that hides raw evidence/provenance surfaces, and a KPI-strip layout fix that prevents warning-state card text from colliding in narrow widths while keeping the local frontend ladder green."
   },
   "issue23_pr_validation": {
     "status": "pending",
-    "note": "PR #24 must now carry the latest farmer-facing terminology cleanup plus hidden evidence/provenance surfaces across advisor tabs, SmartGrow panels, and backend advisory wording. The local ladder is green, screenshots remain under `screenshots/`, and refreshed GitHub Actions on the updated head must settle before merge-time truth sync can close issue #23."
+    "note": "PR #24 must now carry the latest KPI warning-card overlap fix on top of the farmer-facing terminology cleanup and hidden evidence/provenance surfaces. The local frontend ladder is green, screenshots remain under `screenshots/`, and refreshed GitHub Actions on the updated head must settle before merge-time truth sync can close issue #23."
   },
   "issue19_pr_validation": {
     "status": "pass",

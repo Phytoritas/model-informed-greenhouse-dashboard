@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue23-farmer-facing-terminology-and-hidden-evidence-slice-validated",
+  "current_stage": "issue23-live-warning-card-overlap-fix-validated",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
   "active_issue": 23,
   "active_branch": "feat/23-dashboard-layout-kpi-first-hierarchy",
   "implementation_blocked": false,
-  "next_action": "Refresh PR #24 with the latest farmer-facing terminology cleanup and hidden evidence/provenance slice, then watch GitHub Actions on the updated head and fix only reported regressions before review or merge.",
+  "next_action": "Refresh PR #24 with the KPI warning-card overlap fix, then watch GitHub Actions on the updated head and fix only reported regressions before review or merge.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "GitHub issue #23 dashboard layout KPI-first hierarchy restructure"
 }
