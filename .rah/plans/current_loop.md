@@ -31,8 +31,6 @@
   - `poetry run pytest`
 
 ## Exact Next Step
-1. Commit the issue `#32` hardening diff.
-2. Push the branch and open a PR.
-3. Move the project item to `Validating`.
-4. Wait for GitHub Actions Backend/Frontend validation.
-5. After PR `#32` merges, return to issue `#3` only when grower-approved calibration windows are actually available.
+1. Watch PR `#33` GitHub Actions Backend/Frontend validation to completion.
+2. If a remote-only failure appears, fix it on the same branch and rerun the local ladder before pushing again.
+3. After PR `#33` merges, return to issue `#3` only when grower-approved calibration windows are actually available.
