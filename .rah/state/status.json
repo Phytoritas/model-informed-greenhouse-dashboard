@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue39-pr40-validating-rtr-control-surface-followup",
+  "current_stage": "main-baseline-with-issue39-merged-and-issue3-optional-rtr-calibration-followup",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
-  "active_issue": 39,
-  "active_branch": "feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces",
+  "active_issue": null,
+  "active_branch": null,
   "implementation_blocked": false,
-  "next_action": "Watch PR #40 remote Backend/Frontend validation. If checks fail, fix only the failing surface on `feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces`; if they pass, merge and reset the baseline back to `main`.",
+  "next_action": "Keep `main` at the merged issue #39 baseline. When a new bounded issue is opened, resume from a fresh issue-based branch. The older issue #3 remains only as the optional RTR calibration-content follow-up for real approved tomato/cucumber windows.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "Issue #39 follow-up for RTR scenario offset rows and screen-bias sensitivity surfaces on top of the merged issue #37 baseline"
+  "directive_file": "Post-merge baseline after issue #39 fixed offset scenario rows and screen-bias sensitivity surfaces"
 }

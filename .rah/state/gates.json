@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #39 is linked to the active branch `feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces`, while the older issue #3 still remains only as the optional content-calibration follow-up for real approved windows."
+    "note": "Issue #39 is merged on `main` via PR #40, there is no active implementation branch on the baseline, and the older issue #3 still remains only as the optional content-calibration follow-up for real approved windows."
   },
   "harness_setup": {
     "status": "pass",
@@ -182,6 +182,10 @@
   "issue39_local_validation": {
     "status": "pass",
     "note": "Issue #39 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, and `git diff --check` after the control-surface follow-up landed."
+  },
+  "issue39_pr_validation": {
+    "status": "pass",
+    "note": "PR #40 merged issue #39 into `main` after the local validation ladder stayed green and GitHub Actions Backend/Frontend validation both completed successfully on head `312724d`."
   },
   "issue32_pr_validation": {
     "status": "pass",
