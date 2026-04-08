@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #32 now owns the active branch `feat/32-harden-rtr-optimizer-frontend-contract-and-loading-gates`, while the older issue #3 calibration follow-up stays intentionally blocked on missing grower-approved windows."
+    "note": "Issue #34 now owns the active branch `feat/34-complete-rtr-optimizer-decision-surface-warnings-and-scenario-detail`, while issue #32 is already merged and the older issue #3 calibration follow-up stays intentionally blocked on missing grower-approved windows."
   },
   "harness_setup": {
     "status": "pass",
@@ -159,8 +159,16 @@
     "status": "pass",
     "note": "Issue #32 now prevents optimistic optimizer/profile activation before `/api/rtr/profiles` is ready, waits for hydrated or manually entered node-rate targets instead of auto-running against hardcoded crop fallbacks, suppresses first-mount re-persistence of localStorage-restored local area overrides, preserves raw `/api/rtr/profiles` payload fields in the hook, and locks the surface with dedicated Vitest coverage."
   },
+  "rtr_optimizer_decision_surface": {
+    "status": "pass",
+    "note": "Issue #34 keeps stale telemetry in a read-only optimizer mode instead of collapsing the whole surface, labels actual-area provenance in the shared area panel, enriches scenario rows with confidence/risk/yield/actual-area projections, disables unsafe controls while telemetry is blocked, and locks the new warning/scenario detail behavior through targeted backend and frontend regression tests."
+  },
   "issue32_pr_validation": {
+    "status": "pass",
+    "note": "PR #33 merged issue #32 into `main` after the green local ladder (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`) and successful GitHub Actions Backend/Frontend validation."
+  },
+  "issue34_pr_validation": {
     "status": "pending",
-    "note": "PR #33 is now open for issue #32 after the green local ladder (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`); the current gate is remote GitHub Actions Backend/Frontend validation."
+    "note": "PR #35 is now open for issue #34 after the green local ladder (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`); the current gate is remote GitHub Actions Backend/Frontend validation."
   }
 }

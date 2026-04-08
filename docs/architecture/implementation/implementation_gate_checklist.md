@@ -29,6 +29,7 @@ It does not yet authorize:
 ## Current Assessment
 - The backend RTR lane is landed through `services/rtr/`, `/api/rtr/*`, and compatible `rtr_profiles` loading.
 - The frontend RTR lane is landed through `AreaUnitContext`, `AreaUnitPanel`, `useRtrOptimizer`, and `RTROptimizerPanel`, while preserving `RTROutlookPanel` as the baseline/fallback compare card.
+- The issue `#34` follow-up now keeps stale telemetry in a read-only optimizer state, exposes actual-area source provenance, and expands scenario cards with confidence/risk/yield/actual-area projections without changing the additive `/api/rtr/*` contracts.
 - Canonical area math no longer depends on the old hardcoded `AREA_M2 = 3305.8` path for RTR-facing projections.
 - The local validation ladder is now fully green for issue `#27`: `npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, and `poetry run pytest`.
-- The next bounded phase is delivery and calibration, not more foundational implementation: commit/push/PR first, then grower-approved window tuning and house-specific optimizer calibration.
+- PR `#35` is now the delivery gate for issue `#34`; the next bounded phase after merge is calibration, not more foundational implementation: grower-approved window tuning and house-specific optimizer calibration.

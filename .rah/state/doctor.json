@@ -1,6 +1,6 @@
 {
   "status": "pass",
-  "checked_at": "2026-04-07",
+  "checked_at": "2026-04-08",
   "checks": {
     "architecture_spine": "pass",
     "runtime_sidecar": "pass",
@@ -11,7 +11,8 @@
   },
   "warnings": [
     "Issue #18 remains an open preserved baseline but is no longer the active architecture mainline for the new SmartGrow requirement.",
-    "The phase-1 model-runtime seam, reusable gas-exchange service layer, bounded scenario/sensitivity runtime, additive advisor-contract realignment, dashboard summary runtime surface, tab consumers, Assistant runtime strip, and weather fallback resilience are now landed in the current bounded lane.",
-    "There is still no dedicated frontend interaction-test harness for the new summary runtime strip, so current regression coverage relies on backend pytest plus frontend lint/build rather than component-level UI tests."
+    "The phase-1 model-runtime seam, reusable gas-exchange service layer, bounded scenario/sensitivity runtime, additive advisor-contract realignment, dashboard summary runtime surface, tab consumers, Assistant runtime strip, weather fallback resilience, and RTR decision-surface follow-up are now landed in the current bounded lane.",
+    "Issue #3 remains intentionally blocked because grower-approved tomato/cucumber good-production windows have not yet been supplied for RTR recalibration.",
+    "There is still no dedicated frontend interaction-test harness for the summary runtime strip, so current regression coverage relies on backend pytest plus frontend lint/build rather than component-level UI tests."
   ]
 }
