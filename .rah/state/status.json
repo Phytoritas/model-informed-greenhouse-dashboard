@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "main-baseline-with-issue34-merged-and-issue3-blocked-rtr-calibration-followup",
+  "current_stage": "issue37-rtr-calibration-workspace-validating",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
-  "active_issue": null,
-  "active_branch": null,
-  "implementation_blocked": true,
-  "next_action": "Keep issue #3 blocked until grower-approved tomato/cucumber good-production windows are supplied; once they exist, resume a fresh issue-based calibration branch from `main`, update `configs/rtr_good_windows.yaml`, rerun `scripts/calibrate_rtr.py`, and restart RTR validation against the landed optimizer baseline.",
+  "active_issue": 37,
+  "active_branch": "feat/37-add-rtr-calibration-workspace-for-user-entered-grower-windows-and-house-tuning",
+  "implementation_blocked": false,
+  "next_action": "Watch PR #38 GitHub Actions Backend/Frontend validation for the new RTR calibration workspace. After merge, sync `main` back to a no-active-loop baseline while keeping issue #3 as the optional follow-up for supplying real grower-approved windows and recalibrating profiles from that content.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "Post-merge baseline after issue #34 RTR optimizer decision surface warnings and scenario detail follow-up"
+  "directive_file": "Issue #37 RTR calibration workspace for user-entered grower windows and house tuning"
 }
