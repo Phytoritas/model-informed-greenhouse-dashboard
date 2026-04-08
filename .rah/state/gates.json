@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #3 is now resumed on the fresh issue-based branch `data/3-rtr-grower-window-intake-prep`, while issue #27 remains the latest merged RTR baseline on `main`."
+    "note": "Issue #3 remains the tracked follow-up, but after PR #29 merged its intake-prep note into `main` there is no active implementation branch attached to the current baseline; the next bounded slice must start from a fresh issue-based branch once grower-approved windows are available."
   },
   "harness_setup": {
     "status": "pass",
@@ -121,7 +121,7 @@
   },
   "issue3_intake_prep": {
     "status": "pass",
-    "note": "Issue #3 is now active again on `data/3-rtr-grower-window-intake-prep`, and the next bounded slice is documentation/runtime prep for grower-approved RTR window intake instead of inventing unsupported calibration data."
+    "note": "PR #29 merged the issue #3 intake-prep slice into `main`, so the grower-window intake note and restart surfaces now exist in the baseline without claiming that calibration inputs have been supplied."
   },
   "issue19_pr_validation": {
     "status": "pass",
@@ -145,7 +145,7 @@
   },
   "rtr_good_production_windows_followup": {
     "status": "blocked",
-    "note": "Issue #3 is active again, but the actual RTR window replacement remains blocked until grower-approved tomato/cucumber good-production periods are supplied; current work is limited to intake prep and restart-surface alignment."
+    "note": "Issue #3 is open and intentionally blocked until grower-approved tomato/cucumber good-production periods are supplied; the merged baseline only carries the intake contract and restart instructions, not a recalibrated profile update."
   },
   "rtr_grower_window_input_contract": {
     "status": "pass",
