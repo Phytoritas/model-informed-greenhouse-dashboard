@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue25-pr-open-awaiting-remote-validation",
+  "current_stage": "issue25-merged-on-main",
   "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
-  "active_issue": 25,
-  "active_branch": "fix/25-localize-remaining-grower-facing-advisory-warnings-and-hide-non-actionable-caveats",
+  "active_issue": null,
+  "active_branch": "main",
   "implementation_blocked": false,
-  "next_action": "Watch PR #26 remote validation, fix any CI fallout narrowly if needed, then merge issue #25 once the checks are green.",
+  "next_action": "Open the next issue before any further non-trivial work; issue #25 is merged and `main` is the active baseline again.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "GitHub issue #25 localize remaining grower-facing advisory warnings and hide non-actionable caveats"
+  "directive_file": "GitHub issue #25 grower-facing warning localization and caveat hiding"
 }

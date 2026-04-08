@@ -92,8 +92,8 @@
     "note": "The remaining grower-visible English/internal caveats are localized or hidden from the dashboard/advisor/chat surfaces, actionable pesticide label-check guidance stays visible, and non-actionable implementation scope is now tracked only in the gap register and harness notes."
   },
   "issue25_pr_validation": {
-    "status": "pending",
-    "note": "PR #26 is now open for issue #25 after the local validation ladder stayed green (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`); remote GitHub Actions validation is the remaining gate."
+    "status": "pass",
+    "note": "PR #26 merged issue #25 into `main` after the local validation ladder stayed green (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`) and the refreshed GitHub Actions Backend/Frontend Validation both returned success."
   },
   "issue19_pr_validation": {
     "status": "pass",
