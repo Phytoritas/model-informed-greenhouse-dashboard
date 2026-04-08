@@ -7,6 +7,7 @@ import type {
     AdvisorDisplayPayload,
     ModelRuntimePayload,
 } from '../hooks/useSmartGrowAdvisor';
+import type { RagAssistantOpenRequest } from './chat/RagAssistantDrawer';
 import AdvisorConfidenceBadge from './advisor/AdvisorConfidenceBadge';
 
 interface AiAdvisorProps {
@@ -16,7 +17,9 @@ interface AiAdvisorProps {
     isLoading: boolean;
     onRefresh: () => void;
     onOpenDetails?: () => void;
-    onOpenKnowledgeSearch?: () => void;
+    onOpenKnowledgeSearch?: (
+        request?: Omit<RagAssistantOpenRequest, 'nonce'>,
+    ) => void;
     smartGrowSummary?: SmartGrowKnowledgeSummary | null;
     smartGrowLoading?: boolean;
     smartGrowError?: string | null;
@@ -208,6 +211,44 @@ const AiAdvisor = ({
             smartGrowSummary.nutrientCorrectionReady ? copy.correctionReady : null,
         ].filter((value): value is string => Boolean(value))
         : [];
+    const knowledgeSearchActions: Array<{
+        label: string;
+        request: Omit<RagAssistantOpenRequest, 'nonce'>;
+    }> = [];
+    if (onOpenKnowledgeSearch && smartGrowSummary?.pesticideReady) {
+        knowledgeSearchActions.push({
+            label: locale === 'ko' ? '병해충 근거' : 'Pest evidence',
+            request: {
+                preset: 'pesticide',
+                autoRun: true,
+                source: 'advisor',
+            },
+        });
+    }
+    if (onOpenKnowledgeSearch && smartGrowSummary?.nutrientReady) {
+        knowledgeSearchActions.push({
+            label: locale === 'ko' ? '양액 기준' : 'Nutrient guidance',
+            request: {
+                preset: 'nutrient',
+                autoRun: true,
+                source: 'advisor',
+            },
+        });
+    }
+    if (onOpenKnowledgeSearch && smartGrowSummary?.nutrientCorrectionReady) {
+        knowledgeSearchActions.push({
+            label: locale === 'ko' ? '양액 보정 경계' : 'Correction guardrails',
+            request: {
+                preset: 'nutrient',
+                query:
+                    locale === 'ko'
+                        ? '양액 보정 초안의 수동 검토 경계'
+                        : 'manual-review guardrails for the nutrient correction draft',
+                autoRun: true,
+                source: 'advisor',
+            },
+        });
+    }
     const correctionBoundary =
         smartGrowSummary?.nutrientCorrectionLimitation ?? copy.correctionBoundary;
     const runtimeState = modelRuntime?.state_snapshot ?? {};
@@ -299,15 +340,29 @@ const AiAdvisor = ({
                                         {copy.openDetails}
                                     </button>
                                 ) : null}
-                                {onOpenKnowledgeSearch ? (
+                                {onOpenKnowledgeSearch && knowledgeSearchActions.length === 0 ? (
                                     <button
                                         type="button"
-                                        onClick={onOpenKnowledgeSearch}
+                                        onClick={() => onOpenKnowledgeSearch({ source: 'advisor' })}
                                         className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                                     >
                                         {copy.openKnowledgeSearch}
                                     </button>
                                 ) : null}
+                            </div>
+                        ) : null}
+                        {knowledgeSearchActions.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {knowledgeSearchActions.map((action) => (
+                                    <button
+                                        key={action.label}
+                                        type="button"
+                                        onClick={() => onOpenKnowledgeSearch?.(action.request)}
+                                        className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                                    >
+                                        {action.label}
+                                    </button>
+                                ))}
                             </div>
                         ) : null}
                     </>

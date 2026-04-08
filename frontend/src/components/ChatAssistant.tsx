@@ -20,11 +20,14 @@ import type {
     AdvisorDisplayPayload,
     ModelRuntimePayload,
 } from '../hooks/useSmartGrowAdvisor';
+import type { RagAssistantOpenRequest } from './chat/RagAssistantDrawer';
 
 interface ChatAssistantProps {
     isOpen: boolean;
     onClose: () => void;
-    onOpenKnowledgeSearch?: () => void;
+    onOpenKnowledgeSearch?: (
+        request?: Omit<RagAssistantOpenRequest, 'nonce'>,
+    ) => void;
     currentData: SensorData;
     metrics: AdvancedModelMetrics;
     crop: CropType;
@@ -278,6 +281,42 @@ const ChatAssistant = ({
             smartGrowSummary.nutrientCorrectionReady ? copy.promptCorrection : null,
         ].filter((value): value is string => Boolean(value))
         : [];
+    const knowledgeSearchRequest: Omit<RagAssistantOpenRequest, 'nonce'> = input.trim()
+        ? {
+            query: input.trim(),
+            autoRun: true,
+            source: 'assistant',
+        }
+        : smartGrowSummary?.nutrientCorrectionReady
+            ? {
+                preset: 'nutrient',
+                query: copy.promptCorrection,
+                autoRun: true,
+                source: 'assistant',
+            }
+            : smartGrowSummary?.nutrientReady
+                ? {
+                    preset: 'nutrient',
+                    query: copy.promptNutrient,
+                    autoRun: true,
+                    source: 'assistant',
+                }
+                : smartGrowSummary?.pesticideReady
+                    ? {
+                        preset: 'pesticide',
+                        query: copy.promptPesticide,
+                        autoRun: true,
+                        source: 'assistant',
+                    }
+                    : {
+                        preset: 'general',
+                        query:
+                            locale === 'ko'
+                                ? `${cropLabel} 재배 근거를 찾아줘`
+                                : `Find supporting cultivation knowledge for ${cropLabel}`,
+                        autoRun: true,
+                        source: 'assistant',
+                    };
 
     const renderRuntimeStrip = (runtime: ModelRuntimePayload) => {
         const state = runtime.state_snapshot ?? {};
@@ -482,7 +521,7 @@ const ChatAssistant = ({
                 {onOpenKnowledgeSearch ? (
                     <button
                         type="button"
-                        onClick={onOpenKnowledgeSearch}
+                        onClick={() => onOpenKnowledgeSearch(knowledgeSearchRequest)}
                         className="mt-3 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-emerald-800 transition-colors hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                     >
                         {copy.knowledgeSearch}

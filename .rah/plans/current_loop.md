@@ -1,7 +1,7 @@
 # Current Loop
 
 ## Active State
-- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy`, and the newest local slice turns the old static SmartGrow surface card into actionable quick-entry cards while removing the remaining nutrient-boundary English copy.
+- Issue `#23` remains on branch `feat/23-dashboard-layout-kpi-first-hierarchy`, and the newest local slice upgrades the knowledge-search drawer into a contextual grower-facing search surface seeded from the dashboard, advisor, or assistant entry point.
 - Local validation ladder is green again: `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`.
 
 ## Latest Delivered Baseline
@@ -22,9 +22,10 @@
   - a farmer-facing terminology pass that renames academic/system-heavy wording into grower-friendly Korean labels, hides raw evidence/provenance cards from user-facing advisor tabs, localizes runtime/advisor summaries further, and refreshes backend advisory wording to avoid developer-facing terminology in the UI
   - a KPI strip layout hardening pass that moves warning-state chips and timestamps into a wrapped metadata row so `실시간/경고/최근 수집` text no longer collides inside narrow cards or the strip header
   - a SmartGrow quick-action pass that replaces the old non-interactive surface catalog with actionable `도구 열기` cards wired into the actual advisor tabs, including direct opening of the nutrient correction tool and Korean nutrient boundary wording in both frontend and backend summaries
+  - a contextual knowledge-search pass that seeds the drawer from current dashboard/advisor/assistant context, auto-runs crop-matched preset queries, summarizes routed scope in grower-friendly Korean, hides internal API recovery wording, and locks the drawer behavior with a dedicated Vitest surface test
 
 ## Exact Restart Step
-1. Commit and push the latest issue `#23` SmartGrow quick-action and Korean boundary slice so PR `#24` reflects the newest validated head.
+1. Commit and push the latest issue `#23` contextual knowledge-search slice so PR `#24` reflects the newest validated head.
 2. Watch refreshed PR `#24` GitHub Actions until backend/frontend validation settles.
 3. If remote checks fail, fix only the reported regression and rerun the local ladder for the touched surface.
 4. Once PR validation is green, sync harness truth again and proceed to review/merge.
