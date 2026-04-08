@@ -93,7 +93,7 @@
   },
   "issue25_pr_validation": {
     "status": "pending",
-    "note": "Local validation is green for issue #25 (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`); the next step is commit/push/PR and remote GitHub Actions validation."
+    "note": "PR #26 is now open for issue #25 after the local validation ladder stayed green (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`); remote GitHub Actions validation is the remaining gate."
   },
   "issue19_pr_validation": {
     "status": "pass",
