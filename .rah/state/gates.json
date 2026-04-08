@@ -161,6 +161,6 @@
   },
   "issue32_pr_validation": {
     "status": "pending",
-    "note": "Local ladder is green for issue #32 (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`); the next step is commit/push/PR and remote GitHub Actions validation."
+    "note": "PR #33 is now open for issue #32 after the green local ladder (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`); the current gate is remote GitHub Actions Backend/Frontend validation."
   }
 }

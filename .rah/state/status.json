@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue32-rtr-optimizer-frontend-hardening-local-green",
+  "current_stage": "issue32-rtr-optimizer-frontend-hardening-pr-validating",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
   "active_issue": 32,
   "active_branch": "feat/32-harden-rtr-optimizer-frontend-contract-and-loading-gates",
   "implementation_blocked": false,
-  "next_action": "Issue #32 has landed the local RTR optimizer frontend hardening slice on its issue-based branch; the next step is to commit the validated changes, push the branch, open a PR, and move the project item from Running to Validating while keeping issue #3 blocked on the separate grower-approved window calibration path.",
+  "next_action": "PR #33 is open for issue #32 and the project item is now in Validating; the next step is to watch GitHub Actions Backend/Frontend validation on `feat/32-harden-rtr-optimizer-frontend-contract-and-loading-gates`, fix anything remote-only if it appears, and keep issue #3 blocked on the separate grower-approved window calibration path.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "Issue #32 RTR optimizer frontend contract and loading hardening follow-up"
 }
