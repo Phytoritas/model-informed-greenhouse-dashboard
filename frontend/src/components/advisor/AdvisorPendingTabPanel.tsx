@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
 
@@ -25,17 +26,18 @@ const AdvisorPendingTabPanel = ({
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            plannedDomain: '예정된 도메인',
-            promptLevelTab: 'prompt-level tab',
-            enginePending: 'engine pending',
-            checking: '현재 경계 확인 중...',
-            run: '현재 경계 확인',
+            plannedDomain: '준비 중인 기능',
+            promptLevelTab: '준비 단계',
+            enginePending: '계산 준비 중',
+            checking: '현재 사용 가능 범위를 확인 중...',
+            run: '사용 가능 범위 확인',
             failed: '실행 실패',
-            idleDescription: '이 prompt-level 탭은 먼저 surface만 올라와 있으며, deterministic engine은 아직 landed되지 않았습니다. 현재 backend contract와 누락 surface는 boundary check로 확인할 수 있습니다.',
-            currentBoundary: '현재 contract 경계',
-            tabKey: '탭 키',
-            catalogVersion: '카탈로그 버전',
-            existingTabs: '현재 advisor 탭',
+            idleDescription: '이 기능은 화면 준비가 먼저 끝났고, 실제 계산 엔진은 아직 연결 중입니다. 사용 가능 범위를 확인하면 현재 준비된 기능을 볼 수 있습니다.',
+            currentBoundary: '현재 사용 가능 범위',
+            tabKey: '탭',
+            catalogVersion: '기준 버전',
+            existingTabs: '현재 사용 가능 탭',
+            available: '사용 가능',
         }
         : {
             plannedDomain: 'Planned Domain',
@@ -49,6 +51,7 @@ const AdvisorPendingTabPanel = ({
             tabKey: 'Tab key',
             catalogVersion: 'Catalog version',
             existingTabs: 'Existing advisor tabs',
+            available: 'Available',
         };
 
     return (
@@ -98,25 +101,28 @@ const AdvisorPendingTabPanel = ({
                 {status !== 'error' && result ? (
                     <div className="space-y-4">
                         <div className="flex flex-wrap gap-2">
-                            <AdvisorConfidenceBadge label={result.status} tone="warning" />
+                            <AdvisorConfidenceBadge label={getLocalizedTokenLabel(result.status, locale)} tone="warning" />
                             {result.available_tabs.map((tab) => (
-                                <AdvisorConfidenceBadge key={tab} label={`available:${tab}`} tone="success" />
+                                <AdvisorConfidenceBadge
+                                    key={tab}
+                                    label={`${copy.available}: ${getLocalizedTokenLabel(tab, locale)}`}
+                                    tone="success"
+                                />
                             ))}
                             {result.machine_payload.missing_data.map((item) => (
-                                <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                                <AdvisorConfidenceBadge
+                                    key={item}
+                                    label={getLocalizedTokenLabel(item, locale)}
+                                    tone="neutral"
+                                />
                             ))}
                         </div>
                         <AdvisorActionCard
                             title={copy.currentBoundary}
                             subtitle={result.message}
-                            badges={result.machine_payload.internal_provenance?.pending_parsers ?? []}
                         >
                             <div className="space-y-2 text-sm text-slate-600">
                                 <div>{copy.tabKey}: {result.tab_name}</div>
-                                <div>
-                                    {copy.catalogVersion}:{' '}
-                                    {result.machine_payload.internal_provenance?.catalog_version ?? '-'}
-                                </div>
                                 <div>
                                     {copy.existingTabs}: {result.available_tabs.join(', ') || '-'}
                                 </div>

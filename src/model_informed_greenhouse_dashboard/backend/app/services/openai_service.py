@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any, Dict, List, Optional
 
 try:
@@ -14,6 +15,49 @@ except ImportError:  # pragma: no cover - exercised only when optional dependenc
 
 
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
+
+_SECTION_ALIASES: dict[str, tuple[str, ...]] = {
+    "summary": ("핵심 요약", "요약", "Executive Summary", "Summary"),
+    "risks": ("경보 및 위험", "위험", "위험 신호", "Alerts & Risks", "Risks"),
+    "actions": (
+        "권장 조치",
+        "실행 조치",
+        "지금 할 일",
+        "오늘 할 일",
+        "Recommendations",
+        "Recommendations (Priority)",
+        "Actions Now",
+        "Actions Today",
+    ),
+    "monitor": (
+        "모니터링 체크리스트",
+        "모니터링",
+        "이번 주 모니터링",
+        "Monitoring Checklist",
+        "Monitoring",
+        "Monitor",
+    ),
+}
+
+_ACTION_SUBSECTION_ALIASES: dict[str, tuple[str, ...]] = {
+    "actions_now": ("지금", "즉시", "지금 할 일", "Now", "Immediate", "Actions Now"),
+    "actions_today": ("오늘", "이번 교대", "오늘 할 일", "Today", "This shift", "Actions Today"),
+}
+
+_SECTION_TITLES = {
+    "ko": {
+        "summary": "핵심 요약",
+        "risks": "위험 신호",
+        "actions": "권장 조치",
+        "monitor": "모니터링",
+    },
+    "en": {
+        "summary": "Summary",
+        "risks": "Risks",
+        "actions": "Actions",
+        "monitor": "Monitor",
+    },
+}
 
 
 def _get_api_key() -> Optional[str]:
@@ -123,8 +167,8 @@ def _consult_markdown_template(crop: str, language: str = "ko") -> str:
     elif crop_norm == "cucumber":
         crop_block_en = "- Node count: ...\n" "- Pruning / target leaf count: ...\n"
         crop_block_ko = (
-            "- Node count(마디수): ...\n"
-            "- Pruning / target leaf count(전정/목표 엽수): ...\n"
+            "- 마디수: ...\n"
+            "- 전정 / 목표 엽수: ...\n"
         )
     else:
         crop_block_en = "- Crop-specific: ...\n"
@@ -155,43 +199,172 @@ def _consult_markdown_template(crop: str, language: str = "ko") -> str:
             "- **Medium**: ...\n"
             "- **Low**: ...\n\n"
             "## Recommendations (Priority)\n"
-            "- **High**: ...\n"
-            "- **Medium**: ...\n"
-            "- **Low**: ...\n\n"
+            "### Now\n"
+            "- ...\n\n"
+            "### Today\n"
+            "- ...\n\n"
             "## Monitoring Checklist (Next 24h)\n"
             "- ...\n"
         )
 
     return (
-        "## Executive Summary\n"
+        "## 핵심 요약\n"
         "- ...\n\n"
-        "## Situation (최근 60포인트 요약)\n"
-        "### Environment\n"
-        "- Temperature (°C): ...\n"
-        "- RH (%): ...\n"
+        "## 현재 상태 (최근 60포인트 요약)\n"
+        "### 환경\n"
+        "- 기온 (°C): ...\n"
+        "- 상대습도 (%): ...\n"
         "- CO2 (ppm): ...\n"
-        "- PAR (µmol m⁻² s⁻¹): ...\n"
+        "- 광량 (µmol m⁻² s⁻¹): ...\n"
         "- VPD (kPa): ...\n\n"
-        "### Plant Physiology\n"
-        "- Photosynthesis (µmol m⁻² s⁻¹): ...\n"
-        "- Stomatal conductance (mol m⁻² s⁻¹): ...\n"
-        "- Transpiration (mm/h): ...\n"
-        "- Energy balance (H/LE, W/m²): ...\n\n"
-        "### Growth / Yield\n"
+        "### 작물 생리\n"
+        "- 광합성 (µmol m⁻² s⁻¹): ...\n"
+        "- 기공전도도 (mol m⁻² s⁻¹): ...\n"
+        "- 증산 (mm/h): ...\n"
+        "- 에너지 균형 (H/LE, W/m²): ...\n\n"
+        "### 생육 / 수확\n"
         "- LAI: ...\n"
-        "- Biomass (g/m²): ...\n"
+        "- 바이오매스 (g/m²): ...\n"
         f"{crop_block_ko}\n"
-        "## Alerts & Risks\n"
-        "- **High**: ...\n"
-        "- **Medium**: ...\n"
-        "- **Low**: ...\n\n"
-        "## Recommendations (Priority)\n"
-        "- **High**: ...\n"
-        "- **Medium**: ...\n"
-        "- **Low**: ...\n\n"
-        "## Monitoring Checklist (Next 24h)\n"
+        "## 경보 및 위험\n"
+        "- ...\n\n"
+        "## 권장 조치\n"
+        "### 지금\n"
+        "- ...\n\n"
+        "### 오늘\n"
+        "- ...\n\n"
+        "## 모니터링 체크리스트 (24시간)\n"
         "- ...\n"
     )
+
+
+def _normalize_heading(value: str) -> str:
+    return re.sub(r"\s+", " ", value.strip()).casefold()
+
+
+def _matches_heading(value: str, aliases: tuple[str, ...]) -> bool:
+    normalized = _normalize_heading(value)
+    return any(
+        normalized == _normalize_heading(alias)
+        or normalized.startswith(f"{_normalize_heading(alias)} ")
+        or normalized.startswith(f"{_normalize_heading(alias)}(")
+        for alias in aliases
+    )
+
+
+def _extract_markdown_sections(markdown: str) -> dict[str, str]:
+    normalized = (markdown or "").replace("\r\n", "\n").strip()
+    if not normalized:
+        return {}
+
+    heading_matches = list(re.finditer(r"^##\s+(.+)$", normalized, re.MULTILINE))
+    if not heading_matches:
+        return {}
+
+    sections: dict[str, str] = {}
+    for index, match in enumerate(heading_matches):
+        heading = (match.group(1) or "").strip()
+        start = match.end()
+        end = heading_matches[index + 1].start() if index + 1 < len(heading_matches) else len(normalized)
+        body = normalized[start:end].strip()
+        if not body:
+            continue
+        for key, aliases in _SECTION_ALIASES.items():
+            if _matches_heading(heading, aliases):
+                sections[key] = body
+                break
+
+    return sections
+
+
+def _extract_markdown_bullets(body: str) -> list[str]:
+    items: list[str] = []
+    for raw_line in (body or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if re.match(r"^([-*]|\d+\.)\s+", line):
+            items.append(re.sub(r"^([-*]|\d+\.)\s+", "", line).strip())
+    return items
+
+
+def _extract_action_groups(body: str) -> tuple[list[str], list[str]]:
+    normalized = (body or "").replace("\r\n", "\n").strip()
+    if not normalized:
+        return [], []
+
+    subheading_matches = list(re.finditer(r"^###\s+(.+)$", normalized, re.MULTILINE))
+    if not subheading_matches:
+        bullets = _extract_markdown_bullets(normalized)
+        return bullets[:2], bullets[2:]
+
+    action_groups: dict[str, list[str]] = {"actions_now": [], "actions_today": []}
+    for index, match in enumerate(subheading_matches):
+        heading = (match.group(1) or "").strip()
+        start = match.end()
+        end = subheading_matches[index + 1].start() if index + 1 < len(subheading_matches) else len(normalized)
+        block = normalized[start:end].strip()
+        bullets = _extract_markdown_bullets(block)
+        if not bullets:
+            continue
+        for key, aliases in _ACTION_SUBSECTION_ALIASES.items():
+            if _matches_heading(heading, aliases):
+                action_groups[key].extend(bullets)
+                break
+
+    if action_groups["actions_now"] or action_groups["actions_today"]:
+        return action_groups["actions_now"], action_groups["actions_today"]
+
+    bullets = _extract_markdown_bullets(normalized)
+    return bullets[:2], bullets[2:]
+
+
+def _extract_summary_text(body: str) -> str:
+    bullets = _extract_markdown_bullets(body)
+    if bullets:
+        return bullets[0]
+
+    for line in body.splitlines():
+        normalized = line.strip()
+        if normalized:
+            return normalized
+
+    return ""
+
+
+def build_advisory_display_payload(
+    markdown: str,
+    *,
+    language: str = "ko",
+    confidence: float | None = None,
+) -> dict[str, Any]:
+    locale = "ko" if not language.lower().startswith("en") else "en"
+    sections = _extract_markdown_sections(markdown)
+    fallback_text = (markdown or "").replace("\r\n", "\n").strip()
+    summary_body = sections.get("summary", fallback_text)
+    actions_body = sections.get("actions", "")
+    actions_now, actions_today = _extract_action_groups(actions_body)
+
+    payload = {
+        "language": locale,
+        "summary": _extract_summary_text(summary_body),
+        "risks": _extract_markdown_bullets(sections.get("risks", "")),
+        "actions_now": actions_now,
+        "actions_today": actions_today,
+        "actions_week": [],
+        "monitor": _extract_markdown_bullets(sections.get("monitor", "")),
+        "confidence": confidence,
+        "sections": [
+            {
+                "key": key,
+                "title": _SECTION_TITLES[locale].get(key, key),
+                "body": body,
+            }
+            for key, body in sections.items()
+        ],
+    }
+
+    return payload
 
 
 def generate_consulting(
@@ -203,6 +376,11 @@ def generate_consulting(
 ) -> str:
     """Generate consulting text based on the current dashboard snapshot."""
     knowledge_block = _knowledge_context_block(dashboard)
+    priority_heading_rule = (
+        "- If weather or rtr fields are present, explicitly mention them in Executive Summary and Recommendations.\n"
+        if language.lower().startswith("en")
+        else "- weather 또는 rtr 필드가 있으면 핵심 요약과 권장 조치에 반드시 반영하세요.\n"
+    )
     prompt = (
         f"Crop: {crop}\n"
         "Units & key mapping (dashboard JSON):\n"
@@ -228,7 +406,7 @@ def generate_consulting(
         "- knowledge.* for crop-scoped local corpus availability and workbook/manual scope\n\n"
         f"{knowledge_block}"
         "Priority rules:\n"
-        "- If weather or rtr fields are present, explicitly mention them in Executive Summary and Recommendations.\n"
+        f"{priority_heading_rule}"
         "- Use weather and rtr as the primary live steering context when present.\n"
         "- If knowledge is present, use it as crop-specific agronomy background without pretending that unimplemented deterministic engines already produced outputs.\n"
         "- Use recentSummary as supporting evidence, not as the primary signal, when weather/rtr are available.\n\n"
@@ -311,7 +489,10 @@ def generate_chat_reply(
         instructions=(
             f"{_system_prompt(crop, language)}\n\n"
             "Reply as the assistant. Be specific and actionable. "
-            "Prefer Markdown bullets when listing actions. Do NOT fabricate missing measurements."
+            "Prefer Markdown bullets when listing actions. "
+            "Keep all visible section headings in the requested language. "
+            "For Korean responses, do not use English headings like Executive Summary or Recommendations. "
+            "Do NOT fabricate missing measurements."
         ),
         input_data=input_messages,
         model=model,

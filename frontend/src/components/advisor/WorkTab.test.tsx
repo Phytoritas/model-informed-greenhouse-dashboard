@@ -116,13 +116,11 @@ describe('WorkTab', () => {
         renderWorkTab(buildWorkPayload());
 
         screen.getByText('Work-event compare');
-        screen.getByText('Leaf guard: 15');
-        screen.getByText('Sink overload: 0.62');
-        screen.getByText('14d fruit DM: +0.90');
-        screen.getByText('14d LAI: -0.03');
-        screen.getByText('Agronomy');
-        screen.getByText('sink_overload');
-        screen.getByText('fruit_pressure');
+        screen.getByText('Compared persisted work-event scenarios.');
+        screen.getByText('Recommended action:Thin 1 fruit');
+        screen.getByText(/Confidence:79%/i);
+        screen.getByText('Sink overload');
+        screen.getByText('Fruit pressure');
         screen.getByText('Thin 1 fruit');
     });
 
@@ -138,7 +136,7 @@ describe('WorkTab', () => {
         renderWorkTab(result);
 
         expect(screen.getAllByText('No persisted model snapshot is available.')).toHaveLength(2);
-        expect(screen.queryByText('Agronomy')).toBeNull();
-        expect(screen.queryByText('Leaf guard: 15')).toBeNull();
+        expect(screen.queryByText('Knowledge evidence')).toBeNull();
+        expect(screen.queryByText('Thin 1 fruit')).toBeNull();
     });
 });

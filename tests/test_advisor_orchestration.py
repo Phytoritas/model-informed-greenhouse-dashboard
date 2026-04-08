@@ -1041,7 +1041,7 @@ def test_build_advisor_tab_response_lands_harvest_market_with_dashboard_context(
     assert analysis["market_watchlist"][0]["seasonal_bias"] == "above-seasonal-normal"
     assert analysis["priority_actions"]
     assert analysis["context_snapshot"]["retail_price_krw"] == pytest.approx(4280.0)
-    assert analysis["summary"].startswith("Harvest/market advisor combined")
+    assert analysis["summary"].startswith("수확/가격 어드바이저가 수확 전망")
     assert (
         payload["machine_payload"]["internal_provenance"]["knowledge_query_turn"]["chunk_ids"]
         == [41]
@@ -1081,8 +1081,8 @@ def test_build_advisor_tab_response_harvest_market_stays_monitoring_first_withou
     ]
     analysis = payload["machine_payload"]["harvest_market_analysis"]
     assert analysis["urgency"] == "low"
-    assert analysis["summary"].startswith("Harvest/market advisor is in monitoring-first mode")
-    assert "시장 가격 snapshot이 부족" in analysis["current_state"]["market_outlook"]
+    assert analysis["summary"].startswith("수확 전망과 가격 정보가 모두 부족해")
+    assert "시장 가격 정보가 부족" in analysis["current_state"]["market_outlook"]
     assert analysis["priority_actions"][0]["title"] == "시장 데이터 복구"
     assert analysis["context_snapshot"]["retail_price_krw"] is None
 
@@ -1283,10 +1283,10 @@ def test_build_advisor_tab_response_environment_stays_monitoring_first_without_i
     analysis = payload["machine_payload"]["environment_analysis"]
     assert analysis["mode"] == "monitoring-first"
     assert analysis["urgency"] == "low"
-    assert "실내 환경 telemetry 부족" in analysis["current_state"]["diagnosis"]
+    assert "실내 환경 데이터 부족" in analysis["current_state"]["diagnosis"]
     assert analysis["current_state"]["operating_mode"] == "monitoring-first"
     assert "inside-climate-missing" in analysis["current_state"]["risk_flags"]
-    assert analysis["summary"].startswith("Environment advisor is in monitoring-first mode")
+    assert analysis["summary"].startswith("실내 기후 데이터가 부족해 환경 어드바이저를")
     assert analysis["context_snapshot"]["inside_vpd_kpa"] is None
 
 
@@ -1471,7 +1471,7 @@ def test_build_advisor_tab_response_lands_physiology_with_dashboard_context(
     analysis = payload["machine_payload"]["physiology_analysis"]
     assert analysis["urgency"] == "high"
     assert analysis["current_state"]["balance_state"] == "stress-watch"
-    assert "active trusses 9" in analysis["current_state"]["crop_specific_context"]
+    assert "활성 화방 9개" in analysis["current_state"]["crop_specific_context"]
     assert analysis["supporting_signals"]
     assert analysis["follow_up_actions"]
     assert analysis["context_snapshot"]["canopy_air_delta_c"] == pytest.approx(1.4)
@@ -1517,8 +1517,8 @@ def test_build_advisor_tab_response_physiology_stays_monitoring_first_without_co
     analysis = payload["machine_payload"]["physiology_analysis"]
     assert analysis["urgency"] == "low"
     assert analysis["current_state"]["balance_state"] == "monitoring-first"
-    assert "생리 telemetry 부족" in analysis["current_state"]["diagnosis"]
-    assert analysis["follow_up_actions"][0]["title"] == "핵심 생리 telemetry 복구"
+    assert "생리 데이터 부족" in analysis["current_state"]["diagnosis"]
+    assert analysis["follow_up_actions"][0]["title"] == "핵심 생리 데이터 복구"
     assert analysis["context_snapshot"]["canopy_temp_c"] is None
 
 
@@ -2091,7 +2091,7 @@ def test_build_advisor_tab_response_work_degrades_compare_when_store_is_unavaila
     assert payload["status"] == "success"
     assert compare["status"] == "history-unavailable"
     assert compare["options"] == []
-    assert "잠시 비활성화" in compare["summary"]
+    assert "잠시 중단" in compare["summary"]
     assert payload["machine_payload"]["internal_provenance"]["work_event_compare"][
         "status"
     ] == "store-unavailable"
@@ -2401,6 +2401,19 @@ def test_build_model_runtime_payload_returns_ranked_runtime_options_for_rich_das
 def test_build_advisor_summary_response_exposes_additive_model_runtime_block(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    structured_reply = (
+        "## 핵심 요약\n"
+        "- 지금은 광량보다 CO2 제한이 더 큽니다.\n\n"
+        "## 경보 및 위험\n"
+        "- 오후 고습이 이어지면 병해 압력이 올라갈 수 있습니다.\n\n"
+        "## 권장 조치\n"
+        "### 지금\n"
+        "- CO2 설정을 80 ppm 높여 30분 반응을 확인합니다.\n\n"
+        "### 오늘\n"
+        "- 환기 편차를 줄여 VPD를 0.1 kPa 회복합니다.\n\n"
+        "## 모니터링 체크리스트 (24시간)\n"
+        "- 15시 이후 RH 추세와 동화량 반응을 함께 확인합니다.\n"
+    )
     monkeypatch.setattr(
         advisor_orchestration,
         "build_knowledge_catalog",
@@ -2409,7 +2422,7 @@ def test_build_advisor_summary_response_exposes_additive_model_runtime_block(
     monkeypatch.setattr(
         advisor_orchestration,
         "generate_consulting",
-        lambda **_: "## Executive Summary\n- bounded summary",
+        lambda **_: structured_reply,
     )
     monkeypatch.setattr(
         advisor_orchestration,
@@ -2440,14 +2453,74 @@ def test_build_advisor_summary_response_exposes_additive_model_runtime_block(
     )
 
     assert payload["family"] == "advisor_summary"
-    assert payload["machine_payload"]["actions"] == []
+    assert payload["text"] == structured_reply
+    assert payload["machine_payload"]["actions"] == [
+        {
+            "title": "CO2 설정을 80 ppm 높여 30분 반응을 확인합니다.",
+            "message": "CO2 설정을 80 ppm 높여 30분 반응을 확인합니다.",
+        },
+        {
+            "title": "환기 편차를 줄여 VPD를 0.1 kPa 회복합니다.",
+            "message": "환기 편차를 줄여 VPD를 0.1 kPa 회복합니다.",
+        },
+    ]
     assert payload["machine_payload"]["model_runtime"]["status"] == "ready"
     assert payload["machine_payload"]["model_runtime"]["recommendations"]
+    assert payload["machine_payload"]["display"] == {
+        "language": "ko",
+        "summary": "지금은 광량보다 CO2 제한이 더 큽니다.",
+        "risks": ["오후 고습이 이어지면 병해 압력이 올라갈 수 있습니다."],
+        "actions_now": ["CO2 설정을 80 ppm 높여 30분 반응을 확인합니다."],
+        "actions_today": ["환기 편차를 줄여 VPD를 0.1 kPa 회복합니다."],
+        "actions_week": [],
+        "monitor": ["15시 이후 RH 추세와 동화량 반응을 함께 확인합니다."],
+        "confidence": payload["machine_payload"]["context_completeness"],
+        "sections": [
+            {
+                "key": "summary",
+                "title": "핵심 요약",
+                "body": "- 지금은 광량보다 CO2 제한이 더 큽니다.",
+            },
+            {
+                "key": "risks",
+                "title": "위험 신호",
+                "body": "- 오후 고습이 이어지면 병해 압력이 올라갈 수 있습니다.",
+            },
+            {
+                "key": "actions",
+                "title": "권장 조치",
+                "body": (
+                    "### 지금\n"
+                    "- CO2 설정을 80 ppm 높여 30분 반응을 확인합니다.\n\n"
+                    "### 오늘\n"
+                    "- 환기 편차를 줄여 VPD를 0.1 kPa 회복합니다."
+                ),
+            },
+            {
+                "key": "monitor",
+                "title": "모니터링",
+                "body": "- 15시 이후 RH 추세와 동화량 반응을 함께 확인합니다.",
+            },
+        ],
+    }
 
 
 def test_build_advisor_chat_response_keeps_legacy_text_and_adds_runtime_focus(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    structured_reply = (
+        "## 핵심 요약\n"
+        "- 지금 CO2를 100 ppm 올리면 2주 수량이 소폭 개선될 가능성이 큽니다.\n\n"
+        "## 경보 및 위험\n"
+        "- 오후 고습이 지속되면 증산 대비 이득이 줄 수 있습니다.\n\n"
+        "## 권장 조치\n"
+        "### 지금\n"
+        "- CO2를 100 ppm 상향하고 20분 뒤 엽온과 동화량을 다시 봅니다.\n\n"
+        "### 오늘\n"
+        "- 야간 RH가 높아지면 환기 개도를 5% 더 확보합니다.\n\n"
+        "## 모니터링 체크리스트 (24시간)\n"
+        "- CO2 상승 뒤 상엽 동화량과 VPD 추세를 함께 기록합니다.\n"
+    )
     monkeypatch.setattr(
         advisor_orchestration,
         "build_knowledge_catalog",
@@ -2456,7 +2529,7 @@ def test_build_advisor_chat_response_keeps_legacy_text_and_adds_runtime_focus(
     monkeypatch.setattr(
         advisor_orchestration,
         "generate_chat_reply",
-        lambda **_: "CO2 response",
+        lambda **_: structured_reply,
     )
     monkeypatch.setattr(
         advisor_orchestration,
@@ -2487,12 +2560,49 @@ def test_build_advisor_chat_response_keeps_legacy_text_and_adds_runtime_focus(
         language="ko",
     )
 
-    assert payload["text"] == "CO2 response"
+    assert payload["text"] == structured_reply
     assert payload["machine_payload"]["model_runtime"]["status"] == "ready"
     assert (
         payload["machine_payload"]["model_runtime"]["provenance"]["selected_controls"][0]
         == "co2_setpoint_day"
     )
+    assert payload["machine_payload"]["display"] == {
+        "language": "ko",
+        "summary": "지금 CO2를 100 ppm 올리면 2주 수량이 소폭 개선될 가능성이 큽니다.",
+        "risks": ["오후 고습이 지속되면 증산 대비 이득이 줄 수 있습니다."],
+        "actions_now": ["CO2를 100 ppm 상향하고 20분 뒤 엽온과 동화량을 다시 봅니다."],
+        "actions_today": ["야간 RH가 높아지면 환기 개도를 5% 더 확보합니다."],
+        "actions_week": [],
+        "monitor": ["CO2 상승 뒤 상엽 동화량과 VPD 추세를 함께 기록합니다."],
+        "confidence": payload["machine_payload"]["context_completeness"],
+        "sections": [
+            {
+                "key": "summary",
+                "title": "핵심 요약",
+                "body": "- 지금 CO2를 100 ppm 올리면 2주 수량이 소폭 개선될 가능성이 큽니다.",
+            },
+            {
+                "key": "risks",
+                "title": "위험 신호",
+                "body": "- 오후 고습이 지속되면 증산 대비 이득이 줄 수 있습니다.",
+            },
+            {
+                "key": "actions",
+                "title": "권장 조치",
+                "body": (
+                    "### 지금\n"
+                    "- CO2를 100 ppm 상향하고 20분 뒤 엽온과 동화량을 다시 봅니다.\n\n"
+                    "### 오늘\n"
+                    "- 야간 RH가 높아지면 환기 개도를 5% 더 확보합니다."
+                ),
+            },
+            {
+                "key": "monitor",
+                "title": "모니터링",
+                "body": "- CO2 상승 뒤 상엽 동화량과 VPD 추세를 함께 기록합니다.",
+            },
+        ],
+    }
 
 
 def test_build_environment_recommendation_response_keeps_legacy_keys_and_carries_model_runtime(

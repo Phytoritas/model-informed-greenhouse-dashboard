@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorActionTimeline from './AdvisorActionTimeline';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
@@ -17,8 +18,6 @@ const WorkTab = (props: WorkTabProps) => {
     const { locale } = useLocale();
     const analysis = props.result?.machine_payload.work_analysis;
     const advisorActions = props.result?.machine_payload.advisor_actions;
-    const retrievalContext = props.result?.machine_payload.retrieval_context;
-    const knowledgeEvidence = props.result?.machine_payload.knowledge_evidence;
     const modelRuntime = props.result?.machine_payload.model_runtime;
     const workEventCompare = props.result?.machine_payload.work_event_compare;
     const copy = locale === 'ko'
@@ -29,14 +28,19 @@ const WorkTab = (props: WorkTabProps) => {
             compareHistory: '최근 작업 이력',
             compareCurrentState: '비교 기준 상태',
             compareRecommended: '권장 조치',
-            compareUnavailable: '저장된 model snapshot이 아직 없어 작업 이벤트 replay compare를 만들 수 없습니다.',
+            compareUnavailable: '저장된 모델 스냅샷이 아직 없어 작업 이벤트 재생 비교를 만들 수 없습니다.',
             compareYield7d: '7일 수량',
             compareYield14d: '14일 수량',
-            compareCanopyA: '72h canopy A',
+            compareCanopyA: '72시간 캐노피 동화량',
             compareBalance: '균형 점수',
             compareRisk: '리스크',
             compareOperatorNote: '해석',
             compareImmediateDelta: '즉시 상태 변화',
+            compareLeafGuard: '엽수 안전선',
+            compareSinkOverload: '싱크 과부하',
+            compareFruitDm14d: '14일 과실 건물중',
+            compareLai14d: '14일 LAI',
+            compareAgronomy: '재배 근거',
             compareNoHistory: '아직 저장된 작업 이력이 없습니다.',
             actionTimeline: '행동 계획',
             actionNow: '지금 조치',
@@ -57,14 +61,9 @@ const WorkTab = (props: WorkTabProps) => {
             expectedEffects: '예상 효과',
             checklist: '확인 체크리스트',
             context: '현재 문맥',
-            knowledgeEvidence: '근거 지식',
             urgency: '긴급도',
             confidence: '신뢰도',
             emptyActions: '현재 문맥에서 강한 작업 트리거가 아직 잡히지 않았습니다.',
-            evidenceUnavailable: '이번 실행에서는 work-domain 지식 검색을 사용할 수 없습니다.',
-            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 work 근거를 붙이지 못했습니다.',
-            evidenceNoMatches: '현재 작업 문맥과 직접 매칭되는 추가 work 근거는 찾지 못했습니다.',
-            evidenceSkipped: '이번 실행에서는 별도 work-domain retrieval이 요청되지 않았습니다.',
             nextDayHarvest: '다음 수확량',
             nextDayEtc: '다음 ETc',
             dailyEnergy: '일일 에너지',
@@ -75,7 +74,7 @@ const WorkTab = (props: WorkTabProps) => {
             vpd: 'VPD',
             rtrDelta: 'RTR 편차',
             forecastHighTemp: '예상 최고기온',
-            availableButNotRun: 'deterministic work advisor는 이미 landed 상태이며, 실행하면 현재 작업 우선순위를 확인할 수 있습니다.',
+            availableButNotRun: '작업 어드바이저는 이미 적용되어 있으며, 실행하면 현재 작업 우선순위를 확인할 수 있습니다.',
         }
         : {
             title: 'Work',
@@ -112,14 +111,9 @@ const WorkTab = (props: WorkTabProps) => {
             expectedEffects: 'Expected effects',
             checklist: 'Monitoring checklist',
             context: 'Context snapshot',
-            knowledgeEvidence: 'Knowledge evidence',
             urgency: 'Urgency',
             confidence: 'Confidence',
             emptyActions: 'No strong cultivation-work trigger was detected from the current context.',
-            evidenceUnavailable: 'The work-domain knowledge retrieval is currently unavailable for this run.',
-            evidenceDatabaseMissing: 'The knowledge database is not ready, so no work-domain evidence could be attached.',
-            evidenceNoMatches: 'No additional work-domain evidence matched the current cultivation context.',
-            evidenceSkipped: 'No separate work-domain retrieval was requested for this run.',
             nextDayHarvest: 'Next-day harvest',
             nextDayEtc: 'Next-day ETc',
             dailyEnergy: 'Daily energy',
@@ -130,21 +124,8 @@ const WorkTab = (props: WorkTabProps) => {
             vpd: 'VPD',
             rtrDelta: 'RTR delta',
             forecastHighTemp: 'Forecast high temp',
-            availableButNotRun: 'The deterministic work advisor is already landed. Run it to inspect the current cultivation priorities.',
+            availableButNotRun: 'The work advisor is already landed. Run it to inspect the current cultivation priorities.',
         };
-
-    function getRetrievalStatusMessage(status: string | undefined) {
-        switch (status) {
-            case 'retrieval_unavailable':
-                return copy.evidenceUnavailable;
-            case 'database_missing':
-                return copy.evidenceDatabaseMissing;
-            case 'no_matches':
-                return copy.evidenceNoMatches;
-            default:
-                return copy.evidenceSkipped;
-        }
-    }
 
     function formatValue(
         value: number | null | undefined,
@@ -178,11 +159,11 @@ const WorkTab = (props: WorkTabProps) => {
             case 'fruit_load_delta':
                 return locale === 'ko' ? '착과 부하' : 'Fruit load';
             case 'sink_demand_delta':
-                return locale === 'ko' ? 'sink demand' : 'Sink demand';
+                return locale === 'ko' ? '싱크 요구량' : 'Sink demand';
             case 'source_capacity_delta':
-                return locale === 'ko' ? 'source capacity' : 'Source capacity';
+                return locale === 'ko' ? '소스 용량' : 'Source capacity';
             case 'fruit_partition_ratio_delta':
-                return locale === 'ko' ? 'fruit partition' : 'Fruit partition';
+                return locale === 'ko' ? '과실 분배율' : 'Fruit partition';
             default:
                 return key;
         }
@@ -200,20 +181,28 @@ const WorkTab = (props: WorkTabProps) => {
                         <p className="mt-2 text-sm leading-relaxed text-slate-600">{analysis.summary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <AdvisorConfidenceBadge label={`${copy.urgency}:${analysis.urgency}`} tone="warning" />
+                        <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
                         <AdvisorConfidenceBadge
                             label={`${copy.confidence}:${Math.round(analysis.confidence * 100)}%`}
                             tone="info"
                         />
                         <AdvisorConfidenceBadge
-                            label={`${copy.operatingMode}:${analysis.current_state.operating_mode}`}
+                            label={`${copy.operatingMode}:${getLocalizedTokenLabel(analysis.current_state.operating_mode, locale)}`}
                             tone="success"
                         />
                         {analysis.focus_areas.map((item) => (
-                            <AdvisorConfidenceBadge key={item} label={item} tone="success" />
+                            <AdvisorConfidenceBadge
+                                key={item}
+                                label={getLocalizedTokenLabel(item, locale)}
+                                tone="success"
+                            />
                         ))}
                         {props.result?.machine_payload.missing_data.map((item) => (
-                            <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                            <AdvisorConfidenceBadge
+                                key={item}
+                                label={getLocalizedTokenLabel(item, locale)}
+                                tone="neutral"
+                            />
                         ))}
                     </div>
                     <AdvisorActionCard
@@ -234,46 +223,6 @@ const WorkTab = (props: WorkTabProps) => {
                             <div>{copy.forecastHighTemp}: {formatValue(analysis.context_snapshot.forecast_high_temp_c, 1, ' °C')}</div>
                         </div>
                     </AdvisorActionCard>
-                    {retrievalContext ? (
-                        <AdvisorActionCard
-                            title={copy.knowledgeEvidence}
-                            subtitle={copy.title}
-                            badges={[
-                                retrievalContext.status,
-                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []),
-                            ]}
-                        >
-                            {knowledgeEvidence?.evidence_cards?.length ? (
-                                <div className="space-y-3">
-                                    {knowledgeEvidence.evidence_cards.map((card, index) => (
-                                        <div
-                                            key={`${card.domain ?? card.topic_minor ?? 'evidence'}-${index}`}
-                                            className="rounded-2xl border border-slate-200 bg-white p-4"
-                                        >
-                                            <div className="flex flex-wrap gap-2">
-                                                {card.domain ? (
-                                                    <AdvisorConfidenceBadge label={card.domain} tone="info" />
-                                                ) : null}
-                                                {card.topic_major ? (
-                                                    <AdvisorConfidenceBadge label={card.topic_major} tone="success" />
-                                                ) : null}
-                                                {card.topic_minor ? (
-                                                    <AdvisorConfidenceBadge label={card.topic_minor} tone="neutral" />
-                                                ) : null}
-                                            </div>
-                                            <div className="mt-2 text-sm leading-relaxed text-slate-600">
-                                                {card.evidence_excerpt}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-sm leading-relaxed text-slate-500">
-                                    {getRetrievalStatusMessage(retrievalContext.status)}
-                                </div>
-                            )}
-                        </AdvisorActionCard>
-                    ) : null}
                 </div>
 
                 <div className="space-y-4">
@@ -285,7 +234,7 @@ const WorkTab = (props: WorkTabProps) => {
                             title={copy.workEventCompare}
                             subtitle={workEventCompare.summary}
                             badges={[
-                                workEventCompare.status,
+                                getLocalizedTokenLabel(workEventCompare.status, locale),
                                 `${copy.confidence}:${Math.round((workEventCompare.confidence ?? 0) * 100)}%`,
                                 ...(workEventCompare.recommended_action
                                     ? [`${copy.compareRecommended}:${workEventCompare.recommended_action}`]
@@ -304,8 +253,8 @@ const WorkTab = (props: WorkTabProps) => {
                                         <div>{copy.harvestableFruits}: {formatValue(workEventCompare.current_state.fruit_load, 0)}</div>
                                         <div>{copy.activeTrusses}: {formatValue(workEventCompare.current_state.active_trusses, 0)}</div>
                                         <div>{copy.compareBalance}: {formatSignedValue(workEventCompare.current_state.source_sink_balance, 2)}</div>
-                                        <div>Leaf guard: {formatValue(workEventCompare.current_state.minimum_leaf_guard, 0)}</div>
-                                        <div>Sink overload: {formatValue(workEventCompare.current_state.sink_overload_score, 2)}</div>
+                                        <div>{copy.compareLeafGuard}: {formatValue(workEventCompare.current_state.minimum_leaf_guard, 0)}</div>
+                                        <div>{copy.compareSinkOverload}: {formatValue(workEventCompare.current_state.sink_overload_score, 2)}</div>
                                     </div>
 
                                     <div className="space-y-2">
@@ -317,7 +266,7 @@ const WorkTab = (props: WorkTabProps) => {
                                                 {workEventCompare.history.map((item) => (
                                                     <AdvisorConfidenceBadge
                                                         key={`${item.event_time ?? item.action}-${item.action}`}
-                                                        label={item.action}
+                                                        label={getLocalizedTokenLabel(item.action, locale)}
                                                         tone="neutral"
                                                     />
                                                 ))}
@@ -336,7 +285,7 @@ const WorkTab = (props: WorkTabProps) => {
                                                 <div className="flex flex-wrap gap-2">
                                                     <AdvisorConfidenceBadge label={option.action} tone="success" />
                                                     <AdvisorConfidenceBadge
-                                                        label={`${copy.compareRisk}:${option.risk}`}
+                                                        label={`${copy.compareRisk}:${getLocalizedTokenLabel(option.risk, locale)}`}
                                                         tone={option.risk === 'high' ? 'warning' : option.risk === 'medium' ? 'info' : 'neutral'}
                                                     />
                                                 </div>
@@ -347,18 +296,18 @@ const WorkTab = (props: WorkTabProps) => {
                                                     </div>
                                                     <div>{copy.compareYield7d}: {formatSignedValue(option.expected_yield_delta_7d, 2, ' kg')}</div>
                                                     <div>{copy.compareYield14d}: {formatSignedValue(option.expected_yield_delta_14d, 2, ' kg')}</div>
-                                                    <div>14d fruit DM: {formatSignedValue(option.expected_fruit_dm_delta_14d, 2)}</div>
-                                                    <div>14d LAI: {formatSignedValue(option.expected_lai_delta_14d, 2)}</div>
+                                                    <div>{copy.compareFruitDm14d}: {formatSignedValue(option.expected_fruit_dm_delta_14d, 2)}</div>
+                                                    <div>{copy.compareLai14d}: {formatSignedValue(option.expected_lai_delta_14d, 2)}</div>
                                                     <div>{copy.compareCanopyA}: {formatSignedValue(option.expected_canopy_a_delta_72h, 2)}</div>
                                                     <div>{copy.compareBalance}: {formatSignedValue(option.expected_source_sink_balance_delta, 3)}</div>
                                                     {(option.agronomy_flags?.length ?? 0) > 0 ? (
                                                         <div className="space-y-2">
-                                                            <div className="font-semibold text-slate-900">Agronomy</div>
+                                                            <div className="font-semibold text-slate-900">{copy.compareAgronomy}</div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {(option.agronomy_flags ?? []).map((flag: string) => (
                                                                     <AdvisorConfidenceBadge
                                                                         key={flag}
-                                                                        label={flag}
+                                                                        label={getLocalizedTokenLabel(flag, locale)}
                                                                         tone="neutral"
                                                                     />
                                                                 ))}
@@ -403,7 +352,11 @@ const WorkTab = (props: WorkTabProps) => {
                         <AdvisorActionCard
                             title={copy.currentState}
                             subtitle={copy.title}
-                            badges={analysis.focus_areas.length ? analysis.focus_areas : [analysis.current_state.workload_balance]}
+                            badges={
+                                analysis.focus_areas.length
+                                    ? analysis.focus_areas.map((item) => getLocalizedTokenLabel(item, locale))
+                                    : [getLocalizedTokenLabel(analysis.current_state.workload_balance, locale)]
+                            }
                         >
                             <div className="space-y-3 text-sm text-slate-600">
                                 <div>
@@ -412,29 +365,33 @@ const WorkTab = (props: WorkTabProps) => {
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.operatingMode}: </span>
-                                    {analysis.current_state.operating_mode}
+                                    {getLocalizedTokenLabel(analysis.current_state.operating_mode, locale)}
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.primaryConstraint}: </span>
-                                    {analysis.current_state.primary_constraint}
+                                    {getLocalizedTokenLabel(analysis.current_state.primary_constraint, locale)}
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.laborStrategy}: </span>
-                                    {analysis.current_state.labor_strategy}
+                                    {getLocalizedTokenLabel(analysis.current_state.labor_strategy, locale)}
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.workloadBalance}: </span>
-                                    {analysis.current_state.workload_balance}
+                                    {getLocalizedTokenLabel(analysis.current_state.workload_balance, locale)}
                                 </div>
                                 <div>
                                     <span className="font-semibold text-slate-900">{copy.deviation}: </span>
-                                    {analysis.current_state.deviation}
+                                    {getLocalizedTokenLabel(analysis.current_state.deviation, locale)}
                                 </div>
                                 <div className="space-y-2">
                                     <div className="font-semibold text-slate-900">{copy.riskFlags}</div>
                                     <div className="flex flex-wrap gap-2">
                                         {analysis.current_state.risk_flags.map((item) => (
-                                            <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                                            <AdvisorConfidenceBadge
+                                                key={item}
+                                                label={getLocalizedTokenLabel(item, locale)}
+                                                tone="neutral"
+                                            />
                                         ))}
                                     </div>
                                 </div>
@@ -491,12 +448,12 @@ const WorkTab = (props: WorkTabProps) => {
             title={copy.title}
             subtitle={
                 locale === 'ko'
-                    ? '이 탭은 현재 crop state에서 적엽, 유인, 수확, 관수 등 작업 우선순위를 정리하는 재배작업 advisor 영역입니다.'
+                    ? '이 탭은 현재 작물 상태에서 적엽, 유인, 수확, 관수 등 작업 우선순위를 정리하는 재배작업 어드바이저 영역입니다.'
                     : 'This tab prioritizes pruning, training, harvest, and cultivation work from the current crop state.'
             }
             notes={locale === 'ko'
                 ? [
-                    '예상 출력: 우선순위 작업 액션과 작업 누락/과부하 리스크.',
+                    '예상 출력: 우선순위 작업 액션과 작업 누락·과부하 리스크.',
                     copy.availableButNotRun,
                 ]
                 : [

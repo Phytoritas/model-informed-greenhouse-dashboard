@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
 import AdvisorLandedTabStatePanel from './AdvisorLandedTabStatePanel';
@@ -15,8 +16,6 @@ interface HarvestMarketTabProps {
 const HarvestMarketTab = (props: HarvestMarketTabProps) => {
     const { locale } = useLocale();
     const analysis = props.result?.machine_payload.harvest_market_analysis;
-    const retrievalContext = props.result?.machine_payload.retrieval_context;
-    const knowledgeEvidence = props.result?.machine_payload.knowledge_evidence;
     const modelRuntime = props.result?.machine_payload.model_runtime;
     const copy = locale === 'ko'
         ? {
@@ -24,17 +23,12 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
             summary: '수확/가격 요약',
             currentState: '현재 상태',
             context: '현재 문맥',
-            knowledgeEvidence: '근거 지식',
             actionPriority: '우선 조치',
             marketWatchlist: '시장 감시',
             timeWindows: '작업 창',
             checklist: '확인 체크리스트',
             urgency: '긴급도',
             confidence: '신뢰도',
-            evidenceUnavailable: '이번 실행에서는 harvest/market-domain 지식 검색을 사용할 수 없습니다.',
-            evidenceDatabaseMissing: '지식 데이터베이스가 아직 준비되지 않아 harvest/market 근거를 붙이지 못했습니다.',
-            evidenceNoMatches: '현재 수확/가격 문맥과 직접 매칭되는 추가 harvest/market 근거는 찾지 못했습니다.',
-            evidenceSkipped: '이번 실행에서는 별도 harvest/market-domain retrieval이 요청되지 않았습니다.',
             harvestOutlook: '수확 전망',
             marketOutlook: '시장 전망',
             tradeoffFocus: '운영 초점',
@@ -49,7 +43,7 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
             humidity: '습도',
             vpd: 'VPD',
             rtrDelta: 'RTR 편차',
-            rtrBalance: 'RTR balance',
+            rtrBalance: 'RTR 균형',
             forecastHighTemp: '예상 최고기온',
             forecastPrecip: '예상 강수확률',
             nextDayWeather: '다음 날씨',
@@ -58,25 +52,20 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
             marketRefDay: '시장 기준일',
             seasonalBias: '계절선 위치',
             noActions: '현재 문맥에서는 급한 출하/수확 재배치 트리거가 제한적입니다.',
-            noWatchlist: '현재 crop과 직접 매칭되는 가격 스냅샷이 아직 없습니다.',
-            availableButNotRun: 'deterministic harvest/market advisor는 이미 landed 상태이며, 실행하면 수확 전망과 가격 컨텍스트를 함께 확인할 수 있습니다.',
+            noWatchlist: '현재 작물과 직접 매칭되는 가격 스냅샷이 아직 없습니다.',
+            availableButNotRun: '수확/가격 어드바이저는 이미 적용되어 있으며, 실행하면 수확 전망과 가격 문맥을 함께 확인할 수 있습니다.',
         }
         : {
             title: 'Harvest & Market',
             summary: 'Harvest and market summary',
             currentState: 'Current state',
             context: 'Context snapshot',
-            knowledgeEvidence: 'Knowledge evidence',
             actionPriority: 'Priority actions',
             marketWatchlist: 'Market watchlist',
             timeWindows: 'Timing windows',
             checklist: 'Monitoring checklist',
             urgency: 'Urgency',
             confidence: 'Confidence',
-            evidenceUnavailable: 'The harvest/market-domain knowledge retrieval is currently unavailable for this run.',
-            evidenceDatabaseMissing: 'The knowledge database is not ready, so no harvest/market-domain evidence could be attached.',
-            evidenceNoMatches: 'No additional harvest/market-domain evidence matched the current shipment and price context.',
-            evidenceSkipped: 'No separate harvest/market-domain retrieval was requested for this run.',
             harvestOutlook: 'Harvest outlook',
             marketOutlook: 'Market outlook',
             tradeoffFocus: 'Tradeoff focus',
@@ -101,21 +90,8 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
             seasonalBias: 'Seasonal bias',
             noActions: 'No strong harvest or shipment trigger was detected from the current context.',
             noWatchlist: 'No crop-matched market snapshot is available yet.',
-            availableButNotRun: 'The deterministic harvest/market advisor is already landed. Run it to inspect harvest outlook and price-aware steering together.',
+            availableButNotRun: 'The harvest/market advisor is already landed. Run it to inspect harvest outlook and price-aware steering together.',
         };
-
-    function getRetrievalStatusMessage(status: string | undefined) {
-        switch (status) {
-            case 'retrieval_unavailable':
-                return copy.evidenceUnavailable;
-            case 'database_missing':
-                return copy.evidenceDatabaseMissing;
-            case 'no_matches':
-                return copy.evidenceNoMatches;
-            default:
-                return copy.evidenceSkipped;
-        }
-    }
 
     function formatValue(
         value: number | null | undefined,
@@ -163,13 +139,17 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                         <p className="mt-2 text-sm leading-relaxed text-slate-600">{analysis.summary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <AdvisorConfidenceBadge label={`${copy.urgency}:${analysis.urgency}`} tone="warning" />
+                        <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
                         <AdvisorConfidenceBadge
                             label={`${copy.confidence}:${Math.round(analysis.confidence * 100)}%`}
                             tone="info"
                         />
                         {props.result?.machine_payload.missing_data.map((item) => (
-                            <AdvisorConfidenceBadge key={item} label={item} tone="neutral" />
+                            <AdvisorConfidenceBadge
+                                key={item}
+                                label={getLocalizedTokenLabel(item, locale)}
+                                tone="neutral"
+                            />
                         ))}
                     </div>
 
@@ -206,56 +186,16 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                             <div>{copy.humidity}: {formatValue(analysis.context_snapshot.humidity_pct, 0, '%')}</div>
                             <div>{copy.vpd}: {formatValue(analysis.context_snapshot.vpd_kpa, 2, ' kPa')}</div>
                             <div>{copy.rtrDelta}: {formatValue(analysis.context_snapshot.rtr_delta_temp_c, 1, ' °C')}</div>
-                            <div>{copy.rtrBalance}: {analysis.context_snapshot.rtr_balance_state ?? '-'}</div>
+                            <div>{copy.rtrBalance}: {getLocalizedTokenLabel(analysis.context_snapshot.rtr_balance_state ?? '-', locale)}</div>
                             <div>{copy.forecastHighTemp}: {formatValue(analysis.context_snapshot.forecast_high_temp_c, 1, ' °C')}</div>
                             <div>{copy.forecastPrecip}: {formatValue(analysis.context_snapshot.forecast_precip_probability_pct, 0, '%')}</div>
-                            <div>{copy.nextDayWeather}: {analysis.context_snapshot.next_day_weather_label ?? '-'}</div>
+                            <div>{copy.nextDayWeather}: {getLocalizedTokenLabel(analysis.context_snapshot.next_day_weather_label ?? '-', locale)}</div>
                             <div>{copy.retailPrice}: {formatPrice(analysis.context_snapshot.retail_price_krw)}</div>
                             <div>{copy.wholesalePrice}: {formatPrice(analysis.context_snapshot.wholesale_price_krw)}</div>
                             <div>{copy.marketRefDay}: {analysis.context_snapshot.market_reference_day ?? '-'}</div>
-                            <div>{copy.seasonalBias}: {analysis.context_snapshot.seasonal_bias ?? '-'}</div>
+                            <div>{copy.seasonalBias}: {getLocalizedTokenLabel(analysis.context_snapshot.seasonal_bias ?? '-', locale)}</div>
                         </div>
                     </AdvisorActionCard>
-                    {retrievalContext ? (
-                        <AdvisorActionCard
-                            title={copy.knowledgeEvidence}
-                            subtitle={copy.title}
-                            badges={[
-                                retrievalContext.status,
-                                ...(knowledgeEvidence?.focus_domains ?? retrievalContext.focus_domains ?? []),
-                            ]}
-                        >
-                            {knowledgeEvidence?.evidence_cards?.length ? (
-                                <div className="space-y-3">
-                                    {knowledgeEvidence.evidence_cards.map((card, index) => (
-                                        <div
-                                            key={`${card.domain ?? card.topic_minor ?? 'evidence'}-${index}`}
-                                            className="rounded-2xl border border-slate-200 bg-white p-4"
-                                        >
-                                            <div className="flex flex-wrap gap-2">
-                                                {card.domain ? (
-                                                    <AdvisorConfidenceBadge label={card.domain} tone="info" />
-                                                ) : null}
-                                                {card.topic_major ? (
-                                                    <AdvisorConfidenceBadge label={card.topic_major} tone="success" />
-                                                ) : null}
-                                                {card.topic_minor ? (
-                                                    <AdvisorConfidenceBadge label={card.topic_minor} tone="neutral" />
-                                                ) : null}
-                                            </div>
-                                            <div className="mt-2 text-sm leading-relaxed text-slate-600">
-                                                {card.evidence_excerpt}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-sm leading-relaxed text-slate-500">
-                                    {getRetrievalStatusMessage(retrievalContext.status)}
-                                </div>
-                            )}
-                        </AdvisorActionCard>
-                    ) : null}
                 </div>
 
                 <div className="space-y-4">
@@ -273,8 +213,8 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                                         className="rounded-2xl border border-slate-200 bg-white p-4"
                                     >
                                         <div className="flex flex-wrap gap-2">
-                                            <AdvisorConfidenceBadge label={action.priority} tone="warning" />
-                                            <AdvisorConfidenceBadge label={action.time_window} tone="info" />
+                                            <AdvisorConfidenceBadge label={getLocalizedTokenLabel(action.priority, locale)} tone="warning" />
+                                            <AdvisorConfidenceBadge label={getLocalizedTokenLabel(action.time_window, locale)} tone="info" />
                                         </div>
                                         <div className="mt-3 text-sm font-semibold text-slate-900">
                                             {action.title}
@@ -300,12 +240,12 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                                     >
                                         <div className="flex flex-wrap gap-2">
                                             <AdvisorConfidenceBadge
-                                                label={item.market_label}
+                                                label={getLocalizedTokenLabel(item.market_label, locale)}
                                                 tone={watchTone(item.seasonal_bias, item.direction)}
                                             />
-                                            <AdvisorConfidenceBadge label={item.direction ?? 'flat'} tone="neutral" />
+                                            <AdvisorConfidenceBadge label={getLocalizedTokenLabel(item.direction ?? 'flat', locale)} tone="neutral" />
                                             {item.seasonal_bias ? (
-                                                <AdvisorConfidenceBadge label={item.seasonal_bias} tone="info" />
+                                                <AdvisorConfidenceBadge label={getLocalizedTokenLabel(item.seasonal_bias, locale)} tone="info" />
                                             ) : null}
                                         </div>
                                         <div className="mt-3 text-sm font-semibold text-slate-900">
@@ -372,12 +312,12 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
             title={copy.title}
             subtitle={
                 locale === 'ko'
-                    ? '이 탭은 현재 crop state의 수확 전망과 시장 가격 스냅샷을 함께 해석하는 수확/가격 advisor 영역입니다.'
+                    ? '이 탭은 현재 작물 상태의 수확 전망과 시장 가격 스냅샷을 함께 해석하는 수확·가격 어드바이저 영역입니다.'
                     : 'This tab interprets near-term harvest outlook together with the current produce-price snapshot.'
             }
             notes={locale === 'ko'
                 ? [
-                    '예상 출력: 수확 창, 가격 watchlist, 출하/품질 tradeoff 힌트.',
+                    '예상 출력: 수확 창, 가격 감시 목록, 출하·품질 절충 힌트.',
                     copy.availableButNotRun,
                 ]
                 : [
