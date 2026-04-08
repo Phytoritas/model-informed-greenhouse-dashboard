@@ -186,6 +186,7 @@ function renderAdvisorTabs() {
 
 describe('AdvisorTabs pesticide surface', () => {
     beforeEach(() => {
+        mockUseSmartGrowAdvisor.mockReset();
         window.localStorage.setItem(LOCALE_STORAGE_KEY, 'ko');
     });
 
@@ -255,6 +256,8 @@ describe('AdvisorTabs pesticide surface', () => {
 
         expect(screen.getAllByText((_, element) => Boolean(element?.textContent?.includes('LegacyGuard'))).length).toBeGreaterThan(0);
         expect(screen.getByText(/추천 교호안/)).toBeTruthy();
+        expect(screen.getAllByText(/1단계 교호안을 정리했습니다\./).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/등록 우선 · 계통 중복 최소화/).length).toBeGreaterThan(0);
         expect(screen.queryByText('예비 교호 대안')).toBeNull();
         expect(screen.getAllByText(/발생 초기에 바로 살포/).length).toBeGreaterThan(0);
     });
@@ -296,6 +299,40 @@ describe('AdvisorTabs pesticide surface', () => {
         ).toBeGreaterThan(0);
         expect(screen.getByText(/Narrative or incomplete rotation rows were kept out of the executable rotation./)).toBeTruthy();
         expect(screen.queryByText('백엔드 한글 요약')).toBeNull();
+        expect(screen.queryByText('백엔드 한글 정책')).toBeNull();
+        expect(screen.queryByText('백엔드 한글 reason')).toBeNull();
         expect(screen.queryByText('백엔드 한글 대안 사유')).toBeNull();
+    });
+
+    it('derives English rotation guidance even when legacy payload omits additive fields', () => {
+        window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en');
+        mockUseSmartGrowAdvisor.mockReturnValue({
+            executionState: {
+                environment: { status: 'idle', error: null },
+                physiology: { status: 'idle', error: null },
+                work: { status: 'idle', error: null },
+                pesticide: { status: 'success', error: null },
+                nutrient: { status: 'idle', error: null },
+                correction: { status: 'idle', error: null },
+                harvest_market: { status: 'idle', error: null },
+            },
+            pesticideResult: buildLegacyPesticidePayload(),
+            nutrientResult: null,
+            correctionResult: null,
+            plannedTabResults: {},
+            runPesticide: vi.fn(),
+            runNutrient: vi.fn(),
+            runCorrection: vi.fn(),
+            runPlannedTab: vi.fn(),
+        });
+
+        renderAdvisorTabs();
+
+        expect(screen.getByText('Recommended rotation')).toBeTruthy();
+        expect(screen.getAllByText(/Built a 1-step rotation\./).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Registered first · minimize MOA duplication/).length).toBeGreaterThan(0);
+        expect(screen.queryByText('Backup options')).toBeNull();
+        expect(screen.queryByText('백엔드 한글 요약')).toBeNull();
+        expect(screen.queryByText('백엔드 한글 정책')).toBeNull();
     });
 });
