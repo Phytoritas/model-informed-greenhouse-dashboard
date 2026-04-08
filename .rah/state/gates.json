@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #37 is linked to branch `feat/37-add-rtr-calibration-workspace-for-user-entered-grower-windows-and-house-tuning` and PR #38, while the older issue #3 now remains only as the content-calibration follow-up for real approved windows."
+    "note": "Issue #37 is merged on `main` via PR #38, there is no active implementation branch on the baseline, and the older issue #3 now remains only as the optional content-calibration follow-up for real approved windows."
   },
   "harness_setup": {
     "status": "pass",
@@ -172,8 +172,8 @@
     "note": "Issue #37 stayed green locally with `npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, and full `poetry run pytest` after the calibration workspace and backend routes landed."
   },
   "issue37_pr_validation": {
-    "status": "pending",
-    "note": "PR #38 is open for issue #37 and GitHub Actions Backend/Frontend validation are the remaining remote gate before merge."
+    "status": "pass",
+    "note": "PR #38 merged issue #37 into `main` after the local validation ladder stayed green and GitHub Actions Backend/Frontend validation both completed successfully."
   },
   "issue32_pr_validation": {
     "status": "pass",
