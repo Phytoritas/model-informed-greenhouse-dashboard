@@ -1,9 +1,9 @@
 # Current Loop
 
 ## Active State
-- Active issue: `none`
-- Active branch: `main`
-- Issue `#39` is merged and there is no active implementation branch on the baseline.
+- Active issue: `#41`
+- Active branch: `feat/41-introduce-actuator-first-post-control-rtr-seam`
+- PR `#42` is the active validating lane for the actuator-first RTR follow-up.
 - The older issue `#3` remains intentionally `Blocked`, but only as the optional follow-up for real operator-approved windows and profile recalibration content, not as an implementation blocker.
 
 ## Latest Delivered Baseline
@@ -29,17 +29,30 @@
 - `configs/rtr_good_windows.yaml` still contains heuristic/demo windows until real approved windows are entered through the new workspace or config path
 - `scripts/calibrate_rtr.py` already supports rerunning the baseline-prior fit from curated windows and remains the batch recalibration seam behind the new UI
 
+## Active Delivery Slice
+- Issue `#41` extends the live RTR surface from temperature-first guidance into an actuator-first control seam:
+  - first-class heating, cooling, ventilation, thermal-screen, circulation-fan, and CO2 candidates
+  - `actuator_bridge -> post_control_state -> crop_bridge -> objective_terms` control evaluation
+  - grouped HVAC versus vent/screen scenario rows plus expanded finite-difference sensitivities
+  - actual-area projections preserved as display-only totals over canonical m² metrics
+- The latest blocker fix-up on PR `#42` also lands:
+  - coherent energy decomposition so ventilation-induced cost is not charged twice
+  - a shared baseline control candidate used by optimize and scenario surfaces
+  - active-objective sensitivity weighting that respects `include_energy_cost` / `include_labor_cost`
+  - explicit `circulation_fan_pct=0` preservation in custom scenarios
+
 ## Latest Validation
-- The merged issue `#39` lane was validated locally with:
+- The active issue `#41` lane is locally green with:
   - `npm --prefix frontend run test`
   - `npm --prefix frontend run lint`
   - `npm --prefix frontend run build`
   - `poetry run ruff check .`
   - `poetry run pytest`
   - `git diff --check`
-- PR `#40` GitHub Actions Backend/Frontend validation both completed successfully before merge.
+- Latest local pytest result: `144 passed, 31 warnings`
+- PR `#42` remote Backend/Frontend validation is the current open check surface.
 
 ## Exact Next Step
-1. Keep `main` at the merged issue `#39` baseline until a new bounded issue is opened.
-2. When real approved tomato/cucumber windows are available, resume a fresh issue-based branch for the optional calibration-content follow-up and use the landed workspace or config path to enter them.
-3. Rerun RTR validation only after those real windows are supplied and the profiles are recalibrated from that content.
+1. Watch PR `#42` GitHub Actions on head `75d95c2`.
+2. If any remote check fails, fix only that failing surface on the same issue `#41` branch and rerun the local ladder before pushing again.
+3. If PR `#42` goes green, merge it, fast-forward `main`, and reset `.rah` back to a no-active-loop merged baseline while leaving issue `#3` blocked as the optional real-window calibration follow-up.
