@@ -37,8 +37,9 @@
   - `poetry run ruff check .`
   - `poetry run pytest`
   - `git diff --check`
+- PR `#40` is now open and GitHub Actions Backend/Frontend validation are running against head `4a2d8a8`.
 
 ## Exact Next Step
-1. Commit the issue `#39` control-surface follow-up on the active branch.
-2. Push the branch and open the PR for remote Backend/Frontend validation.
-3. After merge, reset the baseline to `main`; when real approved tomato/cucumber windows are available later, resume the optional issue `#3` calibration-content follow-up.
+1. Watch PR `#40` remote Backend/Frontend validation and fix only the failing surface if a check turns red.
+2. If both checks pass, merge the PR and reset the baseline to `main`.
+3. After that merge, keep issue `#3` as the optional calibration-content follow-up until real approved tomato/cucumber windows are supplied.

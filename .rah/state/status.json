@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue39-rtr-scenario-screen-sensitivity-local-validation-green",
+  "current_stage": "issue39-pr40-validating-rtr-control-surface-followup",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
   "active_issue": 39,
   "active_branch": "feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces",
   "implementation_blocked": false,
-  "next_action": "Commit the issue #39 control-surface follow-up, push `feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces`, open the PR, and wait for remote Backend/Frontend validation before merging back to `main`.",
+  "next_action": "Watch PR #40 remote Backend/Frontend validation. If checks fail, fix only the failing surface on `feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces`; if they pass, merge and reset the baseline back to `main`.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "Issue #39 follow-up for RTR scenario offset rows and screen-bias sensitivity surfaces on top of the merged issue #37 baseline"
 }
