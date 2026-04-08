@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { RtrProfilesPayload } from '../types';
 import { API_URL } from '../config';
 
@@ -15,34 +15,24 @@ export const useRtrProfiles = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        let cancelled = false;
-
-        const fetchProfiles = async () => {
-            try {
-                const data = await fetch(`${API_URL}/rtr/profiles`).then((response) => readJson<RtrProfilesPayload>(response));
-
-                if (!cancelled) {
-                    setProfiles(data);
-                    setError(null);
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    setError(err instanceof Error ? err.message : 'Failed to load RTR profiles.');
-                }
-            } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        void fetchProfiles();
-
-        return () => {
-            cancelled = true;
-        };
+    const refresh = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await fetch(`${API_URL}/rtr/profiles`).then((response) => readJson<RtrProfilesPayload>(response));
+            setProfiles(data);
+            setError(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load RTR profiles.');
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    return { profiles, loading, error };
+    useEffect(() => {
+        void refresh().catch(() => {
+            // Errors are surfaced through hook state.
+        });
+    }, [refresh]);
+
+    return { profiles, loading, error, refresh };
 };

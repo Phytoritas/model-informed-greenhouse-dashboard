@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRtrProfiles } from './useRtrProfiles';
 
@@ -117,5 +117,113 @@ describe('useRtrProfiles', () => {
 
         expect((result.current.profiles as { experimentalMeta?: { contract?: string } }).experimentalMeta?.contract).toBe('keep-me');
         expect(result.current.profiles?.profiles.Cucumber.optimizer?.default_mode).toBe('balanced');
+    });
+
+    it('exposes refresh so downstream panels can reload profiles after calibration save', async () => {
+        fetchMock
+            .mockResolvedValueOnce(
+                jsonResponse({
+                    version: 2,
+                    updatedAt: '2026-04-08T00:00:00Z',
+                    profiles: {
+                        Tomato: {
+                            crop: 'Tomato',
+                            strategyLabel: 'tomato',
+                            sourceNote: 'first',
+                            lightToRadiantDivisor: 218,
+                            baseTempC: 18.553,
+                            slopeCPerMjM2: 0.7913,
+                            toleranceC: 1,
+                            calibration: {
+                                mode: 'baseline',
+                                sampleDays: 12,
+                                fitStartDate: null,
+                                fitEndDate: null,
+                                minCoverageHours: 12,
+                                rSquared: null,
+                                meanAbsoluteErrorC: null,
+                            },
+                        },
+                        Cucumber: {
+                            crop: 'Cucumber',
+                            strategyLabel: 'cucumber',
+                            sourceNote: 'first',
+                            lightToRadiantDivisor: 218,
+                            baseTempC: 18.132,
+                            slopeCPerMjM2: 0.3099,
+                            toleranceC: 1,
+                            calibration: {
+                                mode: 'baseline',
+                                sampleDays: 12,
+                                fitStartDate: null,
+                                fitEndDate: null,
+                                minCoverageHours: 12,
+                                rSquared: null,
+                                meanAbsoluteErrorC: null,
+                            },
+                        },
+                    },
+                }),
+            )
+            .mockResolvedValueOnce(
+                jsonResponse({
+                    version: 2,
+                    updatedAt: '2026-04-09T00:00:00Z',
+                    profiles: {
+                        Tomato: {
+                            crop: 'Tomato',
+                            strategyLabel: 'tomato',
+                            sourceNote: 'updated',
+                            lightToRadiantDivisor: 218,
+                            baseTempC: 18.553,
+                            slopeCPerMjM2: 0.7913,
+                            toleranceC: 1,
+                            calibration: {
+                                mode: 'fitted',
+                                sampleDays: 5,
+                                fitStartDate: '2026-04-01',
+                                fitEndDate: '2026-04-05',
+                                minCoverageHours: 12,
+                                rSquared: 0.8,
+                                meanAbsoluteErrorC: 0.4,
+                            },
+                        },
+                        Cucumber: {
+                            crop: 'Cucumber',
+                            strategyLabel: 'cucumber',
+                            sourceNote: 'updated',
+                            lightToRadiantDivisor: 218,
+                            baseTempC: 18.45,
+                            slopeCPerMjM2: 0.2842,
+                            toleranceC: 1,
+                            calibration: {
+                                mode: 'fitted',
+                                sampleDays: 5,
+                                fitStartDate: '2026-04-01',
+                                fitEndDate: '2026-04-05',
+                                minCoverageHours: 12,
+                                rSquared: 0.8,
+                                meanAbsoluteErrorC: 0.4,
+                            },
+                        },
+                    },
+                }),
+            );
+
+        const { result } = renderHook(() => useRtrProfiles());
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+            expect(result.current.profiles?.profiles.Cucumber.sourceNote).toBe('first');
+        });
+
+        await act(async () => {
+            await result.current.refresh();
+        });
+
+        await waitFor(() => {
+            expect(result.current.profiles?.profiles.Cucumber.sourceNote).toBe('updated');
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 });
