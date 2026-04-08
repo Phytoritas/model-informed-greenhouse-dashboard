@@ -60,8 +60,9 @@ bash scripts/start_all.sh check
 - The production bundle has been split into smaller lazy/vendor chunks, the previous `>500 kB` Vite warning is gone, and a built-preview browser smoke passed with zero runtime console errors.
 - The backend AI helper now uses the OpenAI Responses API, and live AI responses require `OPENAI_API_KEY` in the repo-root `.env` or backend process environment.
 - `/api/status` now reports replay completion explicitly, and the frontend automatically restarts a crop simulation when the prior replay has already reached the end of its dataset.
-- RTR baseline profiles remain available through `/api/rtr/profiles`, but the active RTR recommendation path now uses the internal-model-only optimizer exposed by `/api/rtr/state|optimize|scenario|sensitivity|area-settings`.
-- The RTR dashboard surface now shows optimizer-derived minimum sufficient temperatures, baseline-vs-optimized RTR equivalent, crop-specific source/sink insight, scenario comparison, and actual-area projections while keeping the legacy `RTROutlookPanel` only as a baseline/fallback comparison card.
+- RTR baseline profiles remain available through `/api/rtr/profiles`, but the active RTR recommendation path now uses the actuator-first internal crop-energy optimizer exposed by `/api/rtr/state|optimize|scenario|sensitivity|area-settings`.
+- The active RTR control path now treats heating, cooling, ventilation, screen, circulation fan, and CO2 target as first-class candidates, pushes them through a post-control microclimate seam, and then re-evaluates crop, energy, labor, and yield terms before choosing a recommendation.
+- The RTR dashboard surface now shows optimizer-derived minimum sufficient HVAC targets, baseline-vs-optimized RTR equivalent, crop-specific source/sink insight, control-effect traces, grouped HVAC versus vent/screen scenarios, and actual-area projections while keeping the legacy `RTROutlookPanel` only as a baseline/fallback comparison card.
 - Canonical RTR, yield, and energy calculations now stay in m² units, while the dashboard can project the same outputs onto grower-entered actual area through the shared area-unit context and `AreaUnitPanel`.
 - Curated good-production windows still have a dedicated input contract at `configs/rtr_good_windows.yaml`, while `configs/rtr_profiles.json` remains the runtime/output artifact for baseline priors plus optimizer metadata.
 - Live OpenAI validation passed for the current prompt contract, but RTR explanation is now expected to describe structured optimizer payloads rather than inventing setpoints from free-text heuristics.
@@ -76,5 +77,7 @@ bash scripts/start_all.sh check
 
 ## Next validation
 - Replace the current demo RTR windows in `configs/rtr_good_windows.yaml` with grower-approved good-production periods, then recalibrate the baseline prior and optimizer bounds against those windows before tightening default temperature deltas.
-- Tune crop-specific optimizer weights, risk bounds, and labor/energy coefficients against house data now that the internal-model-only RTR optimizer surface is live.
+- Tune crop-specific optimizer weights, risk bounds, and labor/energy coefficients against house data now that the actuator-first RTR optimizer surface is live.
+- Validate house-specific actuator availability and cooling capability metadata so the optimizer can tighten per-house search bounds without falling back to generic availability defaults.
 - Promote greenhouse/user area defaults from the current additive `area-settings` seam into the long-term house configuration path once grower-approved area metadata is available.
+- Consider a later MPC-style horizon controller only after the actuator-first daily optimizer has been calibrated against grower-approved windows and per-house equipment metadata.

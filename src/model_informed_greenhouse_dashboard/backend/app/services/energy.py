@@ -151,7 +151,9 @@ class EnergyEstimator:
                              state: Dict[str, Any],
                              target_air_c: float,
                              outside_air_c: float,
-                             dt_hours: float = 1.0) -> Dict[str, Any]:
+                             dt_hours: float = 1.0,
+                             u_value_override: float | None = None,
+                             ach_override: float | None = None) -> Dict[str, Any]:
         """Estimate the HVAC load required to hold a target internal temperature.
 
         This keeps the physical contract inside the existing energy service so
@@ -159,9 +161,11 @@ class EnergyEstimator:
         elsewhere.
         """
         delta_t = float(target_air_c) - float(outside_air_c)
-        q_trans_kw = self.u_value * self.area_m2 * abs(delta_t) / 1000.0
+        u_value = float(self.u_value if u_value_override is None else u_value_override)
+        ach = float(self.ach if ach_override is None else ach_override)
+        q_trans_kw = u_value * self.area_m2 * abs(delta_t) / 1000.0
         q_vent_kw = (
-            self.rho_a * self.c_p * self.ach * self.volume_m3 * abs(delta_t) / 3600.0
+            self.rho_a * self.c_p * ach * self.volume_m3 * abs(delta_t) / 3600.0
         ) / 1000.0
         h_crop_kw = float(state.get('H_W_m2', 0.0)) * self.area_m2 / 1000.0
 

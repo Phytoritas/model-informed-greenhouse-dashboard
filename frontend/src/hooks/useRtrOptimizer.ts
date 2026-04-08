@@ -23,10 +23,14 @@ interface UseRtrOptimizerOptions {
 
 interface RtrCustomScenarioDraft {
     label: string;
-    day_min_temp_C?: number;
-    night_min_temp_C?: number;
+    day_heating_min_temp_C?: number;
+    night_heating_min_temp_C?: number;
+    day_cooling_target_C?: number;
+    night_cooling_target_C?: number;
     vent_bias_C?: number;
     screen_bias_pct?: number;
+    circulation_fan_pct?: number;
+    co2_target_ppm?: number;
 }
 
 const DEFAULT_MODE: RtrOptimizationMode = 'balanced';
@@ -57,6 +61,7 @@ export const useRtrOptimizer = ({
     const [optimizationModeState, setOptimizationModeState] = useState<RtrOptimizationMode>(defaultMode);
     const [customScenario, setCustomScenario] = useState<RtrCustomScenarioDraft | null>(null);
     const [includeEnergyCost, setIncludeEnergyCost] = useState(true);
+    const [includeCoolingCost, setIncludeCoolingCost] = useState(true);
     const [includeLaborCost, setIncludeLaborCost] = useState(true);
     const [loadingState, setLoadingState] = useState(true);
     const [loadingOptimize, setLoadingOptimize] = useState(false);
@@ -89,6 +94,7 @@ export const useRtrOptimizer = ({
         setOptimizationModeState(defaultModeRef.current);
         setCustomScenario(null);
         setIncludeEnergyCost(true);
+        setIncludeCoolingCost(true);
         setIncludeLaborCost(true);
         setLoadingState(true);
         setError(null);
@@ -166,6 +172,7 @@ export const useRtrOptimizer = ({
             target_node_development_per_day: targetNodeDevelopmentPerDay,
             optimization_mode: optimizationModeState,
             include_energy_cost: includeEnergyCost,
+            include_cooling_cost: includeCoolingCost,
             include_labor_cost: includeLaborCost,
             user_actual_area_m2: actualAreaM2 ?? undefined,
             user_actual_area_pyeong: actualAreaPyeong ?? undefined,
@@ -177,6 +184,7 @@ export const useRtrOptimizer = ({
         crop,
         greenhouseId,
         includeEnergyCost,
+        includeCoolingCost,
         includeLaborCost,
         optimizationModeState,
         optimizerEnabled,
@@ -319,6 +327,8 @@ export const useRtrOptimizer = ({
         setCustomScenario,
         includeEnergyCost,
         setIncludeEnergyCost,
+        includeCoolingCost,
+        setIncludeCoolingCost,
         includeLaborCost,
         setIncludeLaborCost,
         telemetryOptimizationBlocked,
