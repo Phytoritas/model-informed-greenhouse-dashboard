@@ -65,6 +65,9 @@ def test_recommend_pesticides_returns_crop_scoped_candidates(
         for row in payload["product_recommendations"] + payload["rotation_program"]
         if row["registration_status"]
     )
+    assert payload["limitations"] == [
+        "워크북 조회 결과를 참고하되, 실제 포장 사용 전에는 제품 라벨과 등록 여부를 최종 확인하세요."
+    ]
 
 
 def test_recommend_pesticides_rejects_cross_crop_target_queries() -> None:
@@ -725,6 +728,9 @@ def test_knowledge_catalog_exposes_advisory_surfaces(synthetic_knowledge_assets)
         payload["advisory_surfaces"]["pesticide"]["coverage"]["rotation_hardening_policy"]
         == "registered_first_unique_moa"
     )
+    assert payload["advisory_surfaces"]["pesticide"]["limitations"] == [
+        "워크북 기준 농약 후보는 바로 조회할 수 있지만, 실제 사용 전에는 제품 라벨과 등록 여부를 최종 확인하세요."
+    ]
     assert payload["advisory_surfaces"]["nutrient"]["route"] == "/api/nutrients/recommend"
     assert payload["advisory_surfaces"]["nutrient"]["coverage"]["stages"]
     assert (

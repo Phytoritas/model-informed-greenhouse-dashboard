@@ -33,7 +33,6 @@ const AdvisorLandedTabStatePanel = ({
             executionState: '실행 상태',
             refreshing: '새로 계산 중',
             ready: '준비됨',
-            landedContract: '이 탭은 임시 화면이 아니라 실제 계산 결과를 사용합니다.',
             rerunHint: '대시보드 문맥이 바뀌면 어드바이저를 다시 실행하세요.',
         }
         : {
@@ -48,7 +47,6 @@ const AdvisorLandedTabStatePanel = ({
             executionState: 'Execution state',
             refreshing: 'Refreshing',
             ready: 'Ready',
-            landedContract: 'The tab is using the landed deterministic contract, not a pending placeholder.',
             rerunHint: 'Run the advisor again whenever the dashboard context changes.',
         };
     const stateDescription = status === 'loading'
@@ -100,7 +98,6 @@ const AdvisorLandedTabStatePanel = ({
                         badges={status === 'loading' ? [copy.refreshing] : [copy.ready]}
                     >
                         <div className="space-y-2 text-sm text-slate-600">
-                            <div>{copy.landedContract}</div>
                             <div>{copy.rerunHint}</div>
                         </div>
                     </AdvisorActionCard>

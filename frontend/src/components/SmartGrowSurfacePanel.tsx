@@ -80,7 +80,6 @@ const SmartGrowSurfacePanel = ({
             pesticideDescription: '병해충 후보와 교호 대안을 바로 확인합니다.',
             nutrientDescription: '작기와 배지 기준으로 양액 레시피를 확인합니다.',
             nutrientCorrectionDescription: '원수·배액을 입력해 양액 보정 초안을 계산합니다.',
-            nutrientBoundary: '최종 원액 탱크 배합비는 아직 수동 검토가 필요합니다.',
         }
         : {
             title: 'SmartGrow Quick Actions',
@@ -101,7 +100,6 @@ const SmartGrowSurfacePanel = ({
             pesticideDescription: 'Open crop-safe pesticide candidates and rotation options.',
             nutrientDescription: 'Open the nutrient recipe reference for stage and medium.',
             nutrientCorrectionDescription: 'Open the bounded nutrient correction draft workflow.',
-            nutrientBoundary: 'Final stock-tank balancing still needs manual review.',
         };
 
     const surfaces = summary?.surfaces ?? [];
@@ -189,12 +187,6 @@ const SmartGrowSurfacePanel = ({
                                         {copy.supportRange} {coverageCount}개
                                     </span>
                                 </div>
-
-                                {surface.key === 'nutrient_correction' ? (
-                                    <p className="mt-4 text-sm leading-relaxed text-slate-600">
-                                        {copy.nutrientBoundary}
-                                    </p>
-                                ) : null}
 
                                 <button
                                     type="button"

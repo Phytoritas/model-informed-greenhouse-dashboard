@@ -2076,20 +2076,8 @@ def recommend_pesticides(
         if row["registration_status"] in _PESTICIDE_MANUAL_REVIEW_STATUSES
     )
     limitations = [
-        "Follow the workbook output as deterministic lookup guidance, but verify the final product label before field use.",
-        "Registered rows are returned first and manual-review rows only backfill gaps when registered rotation coverage is insufficient.",
+        "워크북 조회 결과를 참고하되, 실제 포장 사용 전에는 제품 라벨과 등록 여부를 최종 확인하세요."
     ]
-    if malformed_rotation_rows:
-        limitations.append(
-            "Narrative or placeholder rotation rows were withheld from the returned program instead of being surfaced as executable recommendations."
-        )
-    if candidate_status_counts.get("unknown", 0) or candidate_status_counts.get(
-        "label-check-required",
-        0,
-    ):
-        limitations.append(
-            "The candidate pool still contains unknown or label-check-required rows; those stay marked for manual label review before operational rollout."
-        )
 
     return {
         "family": "pesticide",

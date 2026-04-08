@@ -22,6 +22,9 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             feelsLike: '체감',
             cachedSummary: '실시간 외부 날씨 연결이 일시적으로 불안정해 최근 대구 캐시 날씨를 표시 중입니다.',
             fallbackSummary: '실시간 외부 날씨 연결이 일시적으로 불안정해 대체 대구 전망을 표시 중입니다.',
+            providerLive: '실시간',
+            providerCached: '최근 캐시',
+            providerFallback: '대체 전망',
             humidityClouds: '습도 / 운량',
             windRain: '바람 / 강수',
             humidityShort: '습도',
@@ -39,6 +42,9 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             feelsLike: 'feels like',
             cachedSummary: 'Live outside weather is temporarily unstable, so the latest cached Daegu weather snapshot is being shown.',
             fallbackSummary: 'Live outside weather is temporarily unavailable, so a fallback Daegu outlook is being shown.',
+            providerLive: 'Live',
+            providerCached: 'Cached',
+            providerFallback: 'Fallback',
             humidityClouds: 'Humidity / Clouds',
             windRain: 'Wind / Rain',
             humidityShort: 'RH',
@@ -55,6 +61,11 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
     const providerKey = providerLabel.toLowerCase();
     const isCachedFallback = providerKey.includes('cached');
     const isSyntheticFallback = providerKey.includes('fallback');
+    const providerDisplayLabel = isCachedFallback
+        ? copy.providerCached
+        : isSyntheticFallback
+            ? copy.providerFallback
+            : copy.providerLive;
     const currentWeatherLabel = weather
         ? isSyntheticFallback
             ? weather.current.weather_label
@@ -81,7 +92,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                 {!compact && <p className="mt-1 text-xs text-slate-400">{copy.subtitle}</p>}
             </div>
             <div className="rounded-full bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
-                {providerLabel}
+                {providerDisplayLabel}
             </div>
         </div>
 
@@ -89,7 +100,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">{copy.loading}</div>
         ) : error ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                {copy.unavailable}: {error}
+                {copy.unavailable}
             </div>
         ) : weather ? (
             <div className="flex h-full flex-col space-y-4">
