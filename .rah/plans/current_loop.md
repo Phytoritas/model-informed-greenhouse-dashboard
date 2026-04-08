@@ -1,9 +1,9 @@
 # Current Loop
 
 ## Active State
-- Active issue: `#39`
-- Active branch: `feat/39-complete-rtr-scenario-and-sensitivity-control-surfaces`
-- This loop is a bounded follow-up on top of the merged issue `#37` baseline, focused on RTR scenario compare and sensitivity control-surface gaps that remained after the earlier optimizer rollout.
+- Active issue: `none`
+- Active branch: `main`
+- Issue `#39` is merged and there is no active implementation branch on the baseline.
 - The older issue `#3` remains intentionally `Blocked`, but only as the optional follow-up for real operator-approved windows and profile recalibration content, not as an implementation blocker.
 
 ## Latest Delivered Baseline
@@ -21,7 +21,7 @@
   - house-scoped grower-window normalization and persistence helpers in `rtr_profiles.py`
   - a new `RTRCalibrationWorkspace` inside `RTROptimizerPanel` so users can enter, preview, and save approved windows without editing YAML manually
   - profile refresh wiring so saving calibration windows immediately rehydrates `/api/rtr/profiles` plus the live optimizer surface
-- The active issue `#39` branch adds on top of that baseline:
+- `main` now also includes the merged issue `#39` control-surface follow-up:
   - fixed offset scenario compare rows for `baseline -0.3C`, `baseline +0.3C`, and `baseline +0.6C`
   - screen-bias finite-difference sensitivity rows for humidity-risk and disease-risk penalties
   - frontend RTR label/type updates so those new scenario/sensitivity surfaces render clearly in Korean and English
@@ -30,16 +30,16 @@
 - `scripts/calibrate_rtr.py` already supports rerunning the baseline-prior fit from curated windows and remains the batch recalibration seam behind the new UI
 
 ## Latest Validation
-- The active issue `#39` branch is locally green with:
+- The merged issue `#39` lane was validated locally with:
   - `npm --prefix frontend run test`
   - `npm --prefix frontend run lint`
   - `npm --prefix frontend run build`
   - `poetry run ruff check .`
   - `poetry run pytest`
   - `git diff --check`
-- PR `#40` is now open and GitHub Actions Backend/Frontend validation are running against head `4a2d8a8`.
+- PR `#40` GitHub Actions Backend/Frontend validation both completed successfully before merge.
 
 ## Exact Next Step
-1. Watch PR `#40` remote Backend/Frontend validation and fix only the failing surface if a check turns red.
-2. If both checks pass, merge the PR and reset the baseline to `main`.
-3. After that merge, keep issue `#3` as the optional calibration-content follow-up until real approved tomato/cucumber windows are supplied.
+1. Keep `main` at the merged issue `#39` baseline until a new bounded issue is opened.
+2. When real approved tomato/cucumber windows are available, resume a fresh issue-based branch for the optional calibration-content follow-up and use the landed workspace or config path to enter them.
+3. Rerun RTR validation only after those real windows are supplied and the profiles are recalibrated from that content.
