@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react';
 import type { RtrProfilesPayload } from '../types';
 import { API_URL } from '../config';
 
+async function readJson<T>(response: Response): Promise<T> {
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error((data as { detail?: string })?.detail ?? `HTTP ${response.status}`);
+    }
+    return data as T;
+}
+
 export const useRtrProfiles = () => {
     const [profiles, setProfiles] = useState<RtrProfilesPayload | null>(null);
     const [loading, setLoading] = useState(true);
@@ -12,22 +20,10 @@ export const useRtrProfiles = () => {
 
         const fetchProfiles = async () => {
             try {
-                const res = await fetch(`${API_URL}/rtr/profiles`);
-                const data = await res.json();
-                if (!res.ok) {
-                    throw new Error(data?.detail ?? `HTTP ${res.status}`);
-                }
+                const data = await fetch(`${API_URL}/rtr/profiles`).then((response) => readJson<RtrProfilesPayload>(response));
 
                 if (!cancelled) {
-                    setProfiles({
-                        status: data.status,
-                        version: data.version,
-                        updatedAt: data.updatedAt,
-                        mode: data.mode,
-                        optimizerEnabled: data.optimizerEnabled,
-                        availableModes: data.availableModes,
-                        profiles: data.profiles,
-                    });
+                    setProfiles(data);
                     setError(null);
                 }
             } catch (err) {

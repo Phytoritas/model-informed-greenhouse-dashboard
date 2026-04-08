@@ -20,10 +20,6 @@ interface UseRtrOptimizerOptions {
 }
 
 const DEFAULT_MODE: RtrOptimizationMode = 'balanced';
-const DEFAULT_TARGET_NODE_RATE: Record<CropType, number> = {
-    Tomato: 0.45,
-    Cucumber: 0.55,
-};
 
 async function readJson<T>(response: Response): Promise<T> {
     const data = await response.json();
@@ -55,8 +51,20 @@ export const useRtrOptimizer = ({
     const [error, setError] = useState<string | null>(null);
     const stateRequestIdRef = useRef(0);
     const optimizeRequestIdRef = useRef(0);
+    const defaultModeRef = useRef(defaultMode);
     const hasManualTargetRef = useRef(false);
     const hasManualModeRef = useRef(false);
+    const hasSeenAreaPersistenceRef = useRef(false);
+    const lastAreaPersistenceSignatureRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        defaultModeRef.current = defaultMode;
+    }, [defaultMode]);
+
+    useEffect(() => {
+        hasSeenAreaPersistenceRef.current = false;
+        lastAreaPersistenceSignatureRef.current = null;
+    }, [crop, greenhouseId]);
 
     useEffect(() => {
         setStateResponse(null);
@@ -66,7 +74,7 @@ export const useRtrOptimizer = ({
         setTargetNodeDevelopmentPerDay(null);
         hasManualTargetRef.current = false;
         hasManualModeRef.current = false;
-        setOptimizationModeState(DEFAULT_MODE);
+        setOptimizationModeState(defaultModeRef.current);
         setIncludeEnergyCost(true);
         setIncludeLaborCost(true);
         setLoadingState(true);
@@ -117,19 +125,20 @@ export const useRtrOptimizer = ({
     }, [refreshState]);
 
     useEffect(() => {
-        if (targetNodeDevelopmentPerDay !== null && hasManualTargetRef.current) {
+        if (hasManualTargetRef.current) {
             return;
         }
         const predictedRate = stateResponse?.canonical_state?.growth?.predicted_node_rate_day;
         if (typeof predictedRate === 'number' && Number.isFinite(predictedRate) && predictedRate > 0) {
-            setTargetNodeDevelopmentPerDay(Number(predictedRate.toFixed(3)));
+            const roundedPredictedRate = Number(predictedRate.toFixed(3));
+            setTargetNodeDevelopmentPerDay((current) => (current === roundedPredictedRate ? current : roundedPredictedRate));
             return;
         }
         if (loadingState) {
             return;
         }
-        setTargetNodeDevelopmentPerDay(DEFAULT_TARGET_NODE_RATE[crop]);
-    }, [crop, loadingState, stateResponse, targetNodeDevelopmentPerDay]);
+        setTargetNodeDevelopmentPerDay((current) => (current === null ? current : null));
+    }, [loadingState, stateResponse]);
 
     const requestPayload = useMemo(() => {
         if (!optimizerEnabled || targetNodeDevelopmentPerDay === null) {
@@ -217,6 +226,22 @@ export const useRtrOptimizer = ({
     }, [optimizerEnabled, requestPayload, runOptimizer]);
 
     useEffect(() => {
+        const areaPersistenceSignature = JSON.stringify({
+            crop,
+            greenhouseId: greenhouseId ?? null,
+            actualAreaM2,
+            actualAreaPyeong,
+            actualAreaSource,
+        });
+        if (!hasSeenAreaPersistenceRef.current) {
+            hasSeenAreaPersistenceRef.current = true;
+            lastAreaPersistenceSignatureRef.current = areaPersistenceSignature;
+            return;
+        }
+        if (lastAreaPersistenceSignatureRef.current === areaPersistenceSignature) {
+            return;
+        }
+        lastAreaPersistenceSignatureRef.current = areaPersistenceSignature;
         if (
             actualAreaSource !== 'local'
             || (actualAreaM2 === null && actualAreaPyeong === null)
@@ -243,7 +268,7 @@ export const useRtrOptimizer = ({
     }, [actualAreaM2, actualAreaPyeong, actualAreaSource, crop, greenhouseId, loadingState, stateResponse]);
 
     const setTargetNodeRate = useCallback((value: number | null) => {
-        hasManualTargetRef.current = true;
+        hasManualTargetRef.current = value !== null;
         setTargetNodeDevelopmentPerDay(value);
     }, []);
 

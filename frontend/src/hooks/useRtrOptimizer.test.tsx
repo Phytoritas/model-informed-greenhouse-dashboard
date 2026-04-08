@@ -381,4 +381,93 @@ describe('useRtrOptimizer', () => {
             expect(body.user_actual_area_m2).toBe(2975.21);
         });
     });
+
+    it('waits for a hydrated or manually entered target node rate before requesting optimizer surfaces', async () => {
+        fetchMock.mockImplementation((input: string | URL) => {
+            const url = String(input);
+            if (url.includes('/rtr/state')) {
+                const payload = buildStateResponse();
+                (payload.canonical_state.growth as { predicted_node_rate_day?: number | null }).predicted_node_rate_day = null;
+                return Promise.resolve(jsonResponse(payload));
+            }
+            if (url.includes('/rtr/optimize')) return Promise.resolve(jsonResponse(buildOptimizeResponse()));
+            if (url.includes('/rtr/scenario')) return Promise.resolve(jsonResponse(buildScenarioResponse()));
+            if (url.includes('/rtr/sensitivity')) return Promise.resolve(jsonResponse(buildSensitivityResponse()));
+            if (url.includes('/rtr/area-settings')) return Promise.resolve(jsonResponse({ status: 'ok' }));
+            return Promise.reject(new Error(`Unexpected URL: ${url}`));
+        });
+
+        const { result } = renderHook(() =>
+            useRtrOptimizer({
+                crop: 'Cucumber',
+                actualAreaM2: 2809.92,
+                actualAreaPyeong: 850,
+                actualAreaSource: 'server',
+                optimizerEnabled: true,
+            }),
+        );
+
+        await waitFor(() => {
+            expect(result.current.stateResponse).not.toBeNull();
+            expect(result.current.loadingState).toBe(false);
+        });
+
+        expect(result.current.targetNodeDevelopmentPerDay).toBeNull();
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/optimize'))).toBe(false);
+
+        result.current.setTargetNodeDevelopmentPerDay(0.68);
+
+        await waitFor(() => {
+            expect(result.current.optimizeResponse).not.toBeNull();
+        });
+
+        const optimizeCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/optimize'));
+        const optimizeBody = JSON.parse(String((optimizeCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+        expect(optimizeBody.target_node_development_per_day).toBe(0.68);
+    });
+
+    it('does not immediately re-persist a local override restored from localStorage', async () => {
+        const { result, rerender } = renderHook(
+            (props: {
+                actualAreaM2: number | null;
+                actualAreaPyeong: number | null;
+                actualAreaSource: 'default' | 'server' | 'local';
+            }) =>
+                useRtrOptimizer({
+                    crop: 'Cucumber',
+                    actualAreaM2: props.actualAreaM2,
+                    actualAreaPyeong: props.actualAreaPyeong,
+                    actualAreaSource: props.actualAreaSource,
+                    optimizerEnabled: true,
+                }),
+            {
+                initialProps: {
+                    actualAreaM2: 2975.21,
+                    actualAreaPyeong: 900,
+                    actualAreaSource: 'local' as const,
+                },
+            },
+        );
+
+        await waitFor(() => {
+            expect(result.current.stateResponse).not.toBeNull();
+            expect(result.current.loadingState).toBe(false);
+        });
+
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/area-settings'))).toBe(false);
+
+        rerender({
+            actualAreaM2: 3018.52,
+            actualAreaPyeong: 913.1,
+            actualAreaSource: 'local' as const,
+        });
+
+        await waitFor(() => {
+            const areaSettingsCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/area-settings'));
+            expect(areaSettingsCall).toBeTruthy();
+            const body = JSON.parse(String((areaSettingsCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+            expect(body.user_actual_area_pyeong).toBe(913.1);
+            expect(body.user_actual_area_m2).toBe(3018.52);
+        });
+    });
 });

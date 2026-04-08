@@ -1,9 +1,9 @@
 # Current Loop
 
 ## Active State
-- There is no active non-trivial implementation loop on `main`.
-- Issue `#3` remains open, but it is intentionally `Blocked` until grower-approved RTR good-production windows are supplied.
-- PR `#29` merged the intake-prep slice, so the baseline now carries the intake contract without pretending that recalibration input already exists.
+- Active issue: `#32`
+- Active branch: `feat/32-harden-rtr-optimizer-frontend-contract-and-loading-gates`
+- The separate calibration follow-up in issue `#3` is still intentionally `Blocked` on grower-approved tomato/cucumber windows; this branch is a frontend hardening follow-up over the already-landed issue `#27` RTR optimizer surface.
 
 ## Latest Delivered Baseline
 - `main` already includes the merged issue `#27` RTR optimizer lane:
@@ -14,24 +14,25 @@
 - `configs/rtr_good_windows.yaml` still contains heuristic/demo windows
 - `scripts/calibrate_rtr.py` already supports rerunning the baseline-prior fit from curated windows
 
-## Current Issue #3 Delta
-- Already in place:
-  - grower-window intake note in `docs/architecture/implementation/rtr_grower_window_intake.md`
-  - curated-window YAML schema in `configs/rtr_good_windows.yaml`
-  - machine-checked approval metadata validation in the RTR window loader and calibration CLI
-  - calibration runner in `scripts/calibrate_rtr.py`
-  - RTR profile merge/selection tests in `tests/test_rtr_profiles.py`
-  - calibration-window rationale note in `docs/architecture/implementation/rtr_calibration_window_selection.md`
-- Missing input:
-  - grower-approved tomato and cucumber good-production periods
-  - supporting rationale or operator sign-off for each replacement window
+## Current Issue #32 Delta
+- Landed on this branch:
+  - profile-loading gate so the RTR optimizer surface no longer opens with optimistic `enabled=true` assumptions before `/api/rtr/profiles` resolves
+  - node-target hydration gate so `/api/rtr/state` must supply `predicted_node_rate_day` or the user must enter a target manually before optimizer/scenario/sensitivity requests fire
+  - local-area persistence gate so localStorage-restored `source="local"` values are not immediately POSTed back to `/api/rtr/area-settings` on first mount
+  - raw `/api/rtr/profiles` payload preservation in `useRtrProfiles`
+  - Vitest coverage for the above hook/panel/profile behaviors
+- Local validation is already green:
+  - `npm --prefix frontend run test`
+  - `npm --prefix frontend run lint`
+  - `npm --prefix frontend run build`
+  - `poetry run ruff check .`
+  - `poetry run pytest tests/test_rtr_optimizer.py`
+  - `poetry run pytest tests/test_smoke.py -k rtr`
+  - `poetry run pytest`
 
-## Exact Restart Step
-1. Use `docs/architecture/implementation/rtr_grower_window_intake.md` to gather grower-approved windows with dates, crop, reason, and evidence.
-2. Start a fresh issue-based branch from `main` for the actual replacement slice after those inputs arrive.
-3. Update `configs/rtr_good_windows.yaml` with approved windows only, including approval metadata required by the loader.
-4. Run `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`.
-5. Re-run targeted validation:
-   - `poetry run pytest tests/test_rtr_profiles.py`
-   - `poetry run pytest tests/test_smoke.py -k rtr`
-6. Only after the profile payload changes should the broader validation ladder and RTR smoke/PR workflow resume.
+## Exact Next Step
+1. Commit the issue `#32` hardening diff.
+2. Push the branch and open a PR.
+3. Move the project item to `Validating`.
+4. Wait for GitHub Actions Backend/Frontend validation.
+5. After PR `#32` merges, return to issue `#3` only when grower-approved calibration windows are actually available.
