@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from model_informed_greenhouse_dashboard.backend.app.services.rtr_profiles import (
     aggregate_daily_rtr_metrics,
@@ -127,6 +128,66 @@ def test_load_rtr_good_windows_normalizes_lowercase_crop_keys(tmp_path) -> None:
     assert payload["crops"]["Tomato"][0]["startDate"] == "2026-04-01"
     assert payload["crops"]["Tomato"][0]["endDate"] == "2026-04-06"
     assert payload["crops"]["Cucumber"][0]["label"] == "cucumber-q1"
+    assert payload["crops"]["Tomato"][0]["approvalStatus"] == "heuristic-demo"
+
+
+def test_load_rtr_good_windows_preserves_approved_window_metadata(tmp_path) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "version: 1",
+                "timezone: Asia/Seoul",
+                "updatedAt: 2026-04-03T00:00:00Z",
+                "crops:",
+                "  Tomato:",
+                "    - label: tomato-grower-window-a",
+                "      startDate: 2026-04-01",
+                "      endDate: 2026-04-06",
+                "      enabled: true",
+                "      approvalStatus: grower-approved",
+                "      approvalSource: greenhouse-manager",
+                "      approvalReason: stable harvest and acceptable quality",
+                "      evidenceNotes: no major stress events during the period",
+                "      houseId: house-a",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    payload = load_rtr_good_windows(config_path)
+
+    window = payload["crops"]["Tomato"][0]
+    assert window["approvalStatus"] == "grower-approved"
+    assert window["approvalSource"] == "greenhouse-manager"
+    assert window["approvalReason"] == "stable harvest and acceptable quality"
+    assert window["evidenceNotes"] == "no major stress events during the period"
+    assert window["houseId"] == "house-a"
+
+
+def test_load_rtr_good_windows_rejects_approved_window_missing_metadata(tmp_path) -> None:
+    config_path = tmp_path / "rtr_good_windows.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "version: 1",
+                "timezone: Asia/Seoul",
+                "updatedAt: 2026-04-03T00:00:00Z",
+                "crops:",
+                "  Tomato:",
+                "    - label: tomato-grower-window-a",
+                "      startDate: 2026-04-01",
+                "      endDate: 2026-04-06",
+                "      enabled: true",
+                "      approvalStatus: grower-approved",
+                "      approvalSource: greenhouse-manager",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="missing required metadata"):
+        load_rtr_good_windows(config_path)
 
 
 def test_fit_rtr_profile_prefers_curated_windows_when_present() -> None:
