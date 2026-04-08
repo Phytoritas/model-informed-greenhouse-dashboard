@@ -146,6 +146,14 @@ CALIBRATION_FILTERS: Dict[str, Dict[str, float]] = {
     },
 }
 
+DEMO_WINDOW_STATUSES = {"heuristic-demo", "concept-demo"}
+APPROVED_WINDOW_STATUSES = {
+    "grower-approved",
+    "manager-approved",
+    "consultant-approved",
+    "internal-review",
+}
+
 
 def rtr_profiles_path(config_path: str | Path | None = None) -> Path:
     """Return the canonical RTR profile config path."""
@@ -197,6 +205,14 @@ def _normalize_iso_date(value: Any) -> str | None:
     return None
 
 
+def _normalize_optional_text(value: Any) -> str | None:
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+
+    return None
+
+
 def _normalize_good_window(raw_window: Any) -> Dict[str, Any] | None:
     if not isinstance(raw_window, dict):
         return None
@@ -208,16 +224,53 @@ def _normalize_good_window(raw_window: Any) -> Dict[str, Any] | None:
     if end_date < start_date:
         return None
 
-    label = raw_window.get("label")
-    notes = raw_window.get("notes")
+    label = _normalize_optional_text(raw_window.get("label"))
+    notes = _normalize_optional_text(raw_window.get("notes"))
+    house_id = _normalize_optional_text(raw_window.get("houseId"))
+    approval_source = _normalize_optional_text(raw_window.get("approvalSource"))
+    approval_reason = _normalize_optional_text(raw_window.get("approvalReason"))
+    evidence_notes = _normalize_optional_text(raw_window.get("evidenceNotes"))
+    approval_status = _normalize_optional_text(raw_window.get("approvalStatus"))
+    normalized_status = (approval_status or "heuristic-demo").lower()
+    if normalized_status in DEMO_WINDOW_STATUSES:
+        normalized_status = "heuristic-demo"
+    elif normalized_status not in APPROVED_WINDOW_STATUSES:
+        normalized_status = "heuristic-demo"
 
-    return {
-        "label": label.strip() if isinstance(label, str) and label.strip() else None,
+    normalized_window = {
+        "label": label,
         "startDate": start_date,
         "endDate": end_date,
         "enabled": bool(raw_window.get("enabled", True)),
-        "notes": notes.strip() if isinstance(notes, str) and notes.strip() else None,
+        "notes": notes,
+        "houseId": house_id,
+        "approvalStatus": normalized_status,
+        "approvalSource": approval_source,
+        "approvalReason": approval_reason,
+        "evidenceNotes": evidence_notes,
     }
+    _validate_normalized_good_window(normalized_window)
+    return normalized_window
+
+
+def _validate_normalized_good_window(window: Dict[str, Any]) -> None:
+    if window.get("approvalStatus") not in APPROVED_WINDOW_STATUSES:
+        return
+
+    missing_fields = [
+        field_name
+        for field_name in ("label", "approvalSource", "approvalReason", "evidenceNotes")
+        if not window.get(field_name)
+    ]
+    if not missing_fields:
+        return
+
+    window_label = window.get("label") or f"{window['startDate']}..{window['endDate']}"
+    missing_text = ", ".join(missing_fields)
+    raise ValueError(
+        "Approved RTR good-production window "
+        f"'{window_label}' is missing required metadata: {missing_text}"
+    )
 
 
 def _augment_profile_schema(canonical_crop: str, profile: Dict[str, Any]) -> Dict[str, Any]:
