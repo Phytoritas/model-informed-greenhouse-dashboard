@@ -27,5 +27,5 @@
 
 ## Exact Restart Step
 1. Finish the issue `#25` copy-cleanup slice by updating regression tests, gap tracking, and remaining grower-facing caveat filters.
-2. Commit the validated issue `#25` slice.
-3. Push the branch and open the issue `#25` PR for remote validation.
+2. Watch PR `#26` remote validation for the issue `#25` branch.
+3. Merge once the remote checks are green, or fix only the failing surface if CI finds drift.
