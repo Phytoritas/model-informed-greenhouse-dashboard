@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #34 now owns the active branch `feat/34-complete-rtr-optimizer-decision-surface-warnings-and-scenario-detail`, while issue #32 is already merged and the older issue #3 calibration follow-up stays intentionally blocked on missing grower-approved windows."
+    "note": "Issue #34 is merged on `main`, there is no longer an active implementation branch on the baseline, and the older issue #3 calibration follow-up stays intentionally blocked on missing grower-approved windows."
   },
   "harness_setup": {
     "status": "pass",
@@ -168,7 +168,7 @@
     "note": "PR #33 merged issue #32 into `main` after the green local ladder (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`) and successful GitHub Actions Backend/Frontend validation."
   },
   "issue34_pr_validation": {
-    "status": "pending",
-    "note": "PR #35 is now open for issue #34 after the green local ladder (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`); the current gate is remote GitHub Actions Backend/Frontend validation."
+    "status": "pass",
+    "note": "PR #35 merged issue #34 into `main` after the green local ladder (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`) and successful GitHub Actions Backend/Frontend validation."
   }
 }

@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue34-rtr-optimizer-decision-surface-pr-validating",
+  "current_stage": "main-baseline-with-issue34-merged-and-issue3-blocked-rtr-calibration-followup",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
-  "active_issue": 34,
-  "active_branch": "feat/34-complete-rtr-optimizer-decision-surface-warnings-and-scenario-detail",
-  "implementation_blocked": false,
-  "next_action": "PR #35 is open for issue #34 and the project item is now in Validating; the next step is to watch GitHub Actions Backend/Frontend validation on `feat/34-complete-rtr-optimizer-decision-surface-warnings-and-scenario-detail`, fix anything remote-only if it appears, and keep issue #3 blocked on the separate grower-approved window calibration path.",
+  "active_issue": null,
+  "active_branch": null,
+  "implementation_blocked": true,
+  "next_action": "Keep issue #3 blocked until grower-approved tomato/cucumber good-production windows are supplied; once they exist, resume a fresh issue-based calibration branch from `main`, update `configs/rtr_good_windows.yaml`, rerun `scripts/calibrate_rtr.py`, and restart RTR validation against the landed optimizer baseline.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "Issue #34 RTR optimizer decision surface warnings and scenario detail follow-up"
+  "directive_file": "Post-merge baseline after issue #34 RTR optimizer decision surface warnings and scenario detail follow-up"
 }
