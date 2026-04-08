@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
     RtrOptimizeResponse,
@@ -167,6 +167,15 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
             risk_flags: [],
             confidence: 0.86,
         },
+        flux_projection: {
+            gross_assim_umol_m2_s: 22.4,
+            net_assim_umol_m2_s: 18.7,
+            respiration_umol_m2_s: 3.7,
+            carbon_margin: 0.21,
+            day_Q_load_kW: 9.2,
+            night_Q_load_kW: 6.4,
+            stomatal_conductance_m_s: 0.34,
+        },
         crop_specific_insight: {
             crop: 'cucumber',
             remaining_leaves: 16,
@@ -209,6 +218,14 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
             crop_summary: 'crop summary',
             missing_work_event_warning: null,
         },
+        control_guidance: {
+            target_horizon: 'today',
+            day_hold_hours: 14,
+            night_hold_hours: 10,
+            change_limit_C_per_step: 0.12,
+            max_delta_temp_C: 1.2,
+            max_rtr_ratio_delta: 0.03,
+        },
         solver: {
             success: true,
             message: 'ok',
@@ -245,9 +262,22 @@ function buildScenarioResponse(): RtrScenarioResponse {
                 respiration: 0.11,
                 energy_kwh_m2_day: 2.9,
                 labor_index: 0.57,
+                yield_kg_m2_day: 0.043,
+                yield_kg_m2_week: 0.301,
                 yield_trend: 'up',
-                recommendation_badge: '권장',
+                recommendation_badge: 'recommended',
+                confidence: 0.86,
+                risk_flags: [],
                 objective_breakdown: buildOptimizeResponse().objective_breakdown,
+                actual_area_projection: {
+                    actual_area_m2: 2809.92,
+                    actual_area_pyeong: 850,
+                    yield_kg_day: 120.8,
+                    yield_kg_week: 845.6,
+                    energy_kwh_day: 8140.2,
+                    energy_krw_day: 977880,
+                    labor_index_day: 1601.65,
+                },
             },
         ],
     };
@@ -468,6 +498,83 @@ describe('useRtrOptimizer', () => {
             const body = JSON.parse(String((areaSettingsCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
             expect(body.user_actual_area_pyeong).toBe(913.1);
             expect(body.user_actual_area_m2).toBe(3018.52);
+        });
+    });
+
+    it('blocks optimizer requests when telemetry is stale', async () => {
+        const { result } = renderHook(() =>
+            useRtrOptimizer({
+                crop: 'Cucumber',
+                actualAreaM2: 2809.92,
+                actualAreaPyeong: 850,
+                actualAreaSource: 'server',
+                optimizerEnabled: true,
+                telemetryStatus: 'stale',
+            }),
+        );
+
+        await waitFor(() => {
+            expect(result.current.stateResponse).not.toBeNull();
+            expect(result.current.loadingState).toBe(false);
+        });
+
+        expect(result.current.telemetryOptimizationBlocked).toBe(true);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/optimize'))).toBe(false);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/scenario'))).toBe(false);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/sensitivity'))).toBe(false);
+    });
+
+    it('sends custom scenario payload only to the scenario endpoint', async () => {
+        const { result } = renderHook(() =>
+            useRtrOptimizer({
+                crop: 'Cucumber',
+                actualAreaM2: 2809.92,
+                actualAreaPyeong: 850,
+                actualAreaSource: 'server',
+                optimizerEnabled: true,
+            }),
+        );
+
+        await waitFor(() => {
+            expect(result.current.optimizeResponse).not.toBeNull();
+        });
+
+        fetchMock.mockClear();
+
+        act(() => {
+            result.current.setCustomScenario({
+                label: '사용자 +0.5°C',
+                day_min_temp_C: 20.5,
+                night_min_temp_C: 18.9,
+                vent_bias_C: 0.2,
+                screen_bias_pct: 4.0,
+            });
+        });
+
+        await waitFor(() => {
+            expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/scenario'))).toBe(true);
+        });
+
+        const optimizeCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/optimize'));
+        const scenarioCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/scenario'));
+        const sensitivityCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/sensitivity'));
+
+        expect(optimizeCall).toBeTruthy();
+        expect(sensitivityCall).toBeTruthy();
+        expect(scenarioCall).toBeTruthy();
+
+        const optimizeBody = JSON.parse(String((optimizeCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+        const scenarioBody = JSON.parse(String((scenarioCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+        const sensitivityBody = JSON.parse(String((sensitivityCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+
+        expect(optimizeBody.custom_scenario).toBeUndefined();
+        expect(sensitivityBody.custom_scenario).toBeUndefined();
+        expect(scenarioBody.custom_scenario).toEqual({
+            label: '사용자 +0.5°C',
+            day_min_temp_C: 20.5,
+            night_min_temp_C: 18.9,
+            vent_bias_C: 0.2,
+            screen_bias_pct: 4.0,
         });
     });
 });

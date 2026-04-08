@@ -780,6 +780,7 @@ function App() {
                 crop={selectedCrop}
                 currentData={currentData}
                 history={deferredHistory}
+                telemetryStatus={telemetry.status}
                 temperatureSettings={controls.settings}
                 weather={weather}
                 loading={isWeatherLoading}

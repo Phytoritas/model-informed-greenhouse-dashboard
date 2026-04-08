@@ -832,6 +832,32 @@ def _build_rtr_warning_badges(context, optimized_candidate: Dict[str, Any], rtr_
     return warnings
 
 
+def _build_rtr_control_guidance(context, optimization_inputs) -> Dict[str, Any]:
+    from .services.rtr.controller_contract import horizon_hours
+
+    optimizer_config = context.canonical_state.get("optimizer", {}) or {}
+    day_hours, night_hours = horizon_hours(optimization_inputs.target_horizon)
+    default_max_delta = 1.2 if optimization_inputs.crop == "cucumber" else 1.5
+    default_ratio_delta = 0.03 if optimization_inputs.crop == "cucumber" else 0.04
+    return {
+        "target_horizon": optimization_inputs.target_horizon,
+        "day_hold_hours": round(float(day_hours), 3),
+        "night_hold_hours": round(float(night_hours), 3),
+        "change_limit_C_per_step": round(
+            float(optimizer_config.get("temp_slew_rate_C_per_step", 0.12)),
+            6,
+        ),
+        "max_delta_temp_C": round(
+            float(optimizer_config.get("max_delta_temp_C", default_max_delta)),
+            6,
+        ),
+        "max_rtr_ratio_delta": round(
+            float(optimizer_config.get("max_rtr_ratio_delta", default_ratio_delta)),
+            6,
+        ),
+    }
+
+
 def _serialize_rtr_solver(solver_payload: Dict[str, Any]) -> Dict[str, Any]:
     stage1_success = bool(solver_payload.get("stage1_success", False))
     stage2_success = bool(solver_payload.get("stage2_success", False))
@@ -2229,6 +2255,10 @@ async def optimize_rtr(req: RTROptimizeRequest):
         rtr_equivalent=rtr_equivalent,
         crop_specific_insight=crop_specific_insight,
     )
+    control_guidance = _build_rtr_control_guidance(
+        context,
+        optimization_inputs,
+    )
     warning_badges = _build_rtr_warning_badges(context, optimized_candidate, rtr_equivalent)
     confidence = max(
         0.2,
@@ -2278,11 +2308,13 @@ async def optimize_rtr(req: RTROptimizeRequest):
             **optimized_candidate["feasibility"],
             "confidence": round(confidence, 6),
         },
+        "flux_projection": optimized_candidate["flux_projection"],
         "crop_specific_insight": crop_specific_insight,
         "warning_badges": warning_badges,
         "units_m2": units_m2,
         "actual_area_projection": actual_area_projection,
         "explanation_payload": explanation_payload,
+        "control_guidance": control_guidance,
         "solver": _serialize_rtr_solver(optimized_candidate["solver"]),
     }
 
@@ -2292,6 +2324,7 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
     """Compare baseline and optimizer RTR scenarios over the internal model stack."""
     from .services.rtr.objective_terms import evaluate_rtr_candidate
     from .services.rtr.scenario_runner import run_rtr_scenarios
+    from .services.rtr.unit_projection import build_actual_area_projection
 
     (
         crop,
@@ -2329,6 +2362,19 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
             co2_target_ppm=float(custom.co2_target_ppm or context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
             rh_target_pct=float(custom.rh_target_pct or context.canonical_state["env"]["RH_pct"]),
         )
+        custom_constraint_checks = custom_eval.get("constraint_checks", {}) or {}
+        custom_feasibility = custom_eval.get("feasibility", {}) or {}
+        custom_flux_projection = custom_eval.get("flux_projection", {}) or {}
+        custom_risk_flags = custom_feasibility.get("risk_flags") or []
+        custom_confidence = max(
+            0.2,
+            min(
+                0.98,
+                1.0
+                - float(custom_constraint_checks.get("confidence_penalty", 0.0))
+                - (0.05 * len(custom_risk_flags)),
+            ),
+        )
         scenarios.append(
             {
                 "label": str(custom.label or "custom"),
@@ -2336,22 +2382,45 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
                 "mean_temp_C": custom_eval["controls"]["mean_temp_C"],
                 "day_min_temp_C": custom_eval["controls"]["day_min_temp_C"],
                 "night_min_temp_C": custom_eval["controls"]["night_min_temp_C"],
-                "node_rate_day": custom_eval["node_summary"]["predicted_rate_day"],
-                "net_carbon": custom_eval["flux_projection"]["carbon_margin"],
-                "respiration": custom_eval["flux_projection"]["respiration_umol_m2_s"],
-                "energy_kwh_m2_day": custom_eval["objective_breakdown"]["energy_cost"],
-                "labor_index": custom_eval["objective_breakdown"]["labor_index"],
-                "yield_trend": "up" if custom_eval["feasibility"]["carbon_margin_positive"] else "guarded",
+                    "node_rate_day": custom_eval["node_summary"]["predicted_rate_day"],
+                    "net_carbon": custom_flux_projection["carbon_margin"],
+                    "respiration": custom_flux_projection["respiration_umol_m2_s"],
+                    "energy_kwh_m2_day": custom_eval["objective_breakdown"]["energy_cost"],
+                    "labor_index": custom_eval["objective_breakdown"]["labor_index"],
+                    "yield_proxy_basis_net_assim": float(
+                        custom_flux_projection.get(
+                            "net_assim_umol_m2_s",
+                            context.canonical_state["flux"]["net_assim_umol_m2_s"],
+                        )
+                    ),
+                "yield_trend": "up" if custom_feasibility.get("carbon_margin_positive") else "guarded",
                 "recommendation_badge": "custom",
+                "confidence": round(custom_confidence, 6),
+                "risk_flags": custom_risk_flags,
                 "objective_breakdown": custom_eval["objective_breakdown"],
             }
         )
+    base_yield_proxy_kg_m2_day = _estimate_rtr_yield_proxy_kg_m2_day(context)
+    base_net_assim = max(float(context.canonical_state["flux"]["net_assim_umol_m2_s"] or 0.0), 1e-6)
     for row in scenarios:
-        actual_area_m2 = float(area_meta["actual_area_m2"] or 0.0)
-        row["actual_area_projection"] = {
-            "energy_kwh_day": round(float(row["energy_kwh_m2_day"]) * actual_area_m2, 6),
-            "labor_index_day": round(float(row["labor_index"]) * actual_area_m2, 6),
-        }
+        objective_breakdown = row.get("objective_breakdown", {}) or {}
+        scenario_net_assim = max(float(row.pop("yield_proxy_basis_net_assim", 0.0)), 0.0)
+        yield_proxy_kg_m2_day = round(
+            max(0.0, base_yield_proxy_kg_m2_day * (scenario_net_assim / base_net_assim)),
+            6,
+        )
+        row["yield_kg_m2_day"] = yield_proxy_kg_m2_day
+        row["yield_kg_m2_week"] = round(yield_proxy_kg_m2_day * 7.0, 6)
+        row["confidence"] = round(float(row.get("confidence", 0.0)), 6)
+        row["risk_flags"] = row.get("risk_flags") or []
+        row["actual_area_projection"] = build_actual_area_projection(
+            area_meta=area_meta,
+            yield_kg_m2_day=yield_proxy_kg_m2_day,
+            yield_kg_m2_week=yield_proxy_kg_m2_day * 7.0,
+            energy_kwh_m2_day=float(row["energy_kwh_m2_day"]),
+            energy_krw_m2_day=float(objective_breakdown.get("energy_cost_krw", 0.0)),
+            labor_index_m2_day=float(row["labor_index"]),
+        )
     return {
         "status": "success",
         "crop": crop,

@@ -805,8 +805,14 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
             "respiration": 3.4,
             "energy_kwh_m2_day": 0.16,
             "labor_index": 0.05,
+            "yield_proxy_basis_net_assim": 7.5,
             "yield_trend": "guarded",
             "recommendation_badge": "baseline",
+            "confidence": 0.72,
+            "risk_flags": [],
+            "objective_breakdown": {
+                "energy_cost_krw": 22.4,
+            },
         },
         {
             "label": "balanced",
@@ -817,8 +823,14 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
             "respiration": 3.8,
             "energy_kwh_m2_day": 0.18,
             "labor_index": 0.06,
+            "yield_proxy_basis_net_assim": 8.4,
             "yield_trend": "up",
             "recommendation_badge": "recommended",
+            "confidence": 0.91,
+            "risk_flags": [],
+            "objective_breakdown": {
+                "energy_cost_krw": 24.3,
+            },
         },
         {
             "label": "growth_priority",
@@ -829,8 +841,14 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
             "respiration": 4.0,
             "energy_kwh_m2_day": 0.21,
             "labor_index": 0.08,
+            "yield_proxy_basis_net_assim": 8.1,
             "yield_trend": "up",
             "recommendation_badge": "compare",
+            "confidence": 0.84,
+            "risk_flags": [{"code": "respiration_watch"}],
+            "objective_breakdown": {
+                "energy_cost_krw": 27.6,
+            },
         },
         {
             "label": "energy_saving",
@@ -841,8 +859,14 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
             "respiration": 3.6,
             "energy_kwh_m2_day": 0.14,
             "labor_index": 0.05,
+            "yield_proxy_basis_net_assim": 7.9,
             "yield_trend": "up",
             "recommendation_badge": "compare",
+            "confidence": 0.88,
+            "risk_flags": [],
+            "objective_breakdown": {
+                "energy_cost_krw": 19.5,
+            },
         },
         {
             "label": "labor_saving",
@@ -853,8 +877,14 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
             "respiration": 3.7,
             "energy_kwh_m2_day": 0.15,
             "labor_index": 0.04,
+            "yield_proxy_basis_net_assim": 8.0,
             "yield_trend": "up",
             "recommendation_badge": "compare",
+            "confidence": 0.87,
+            "risk_flags": [],
+            "objective_breakdown": {
+                "energy_cost_krw": 21.1,
+            },
         },
     ]
     fake_scenario_module.compute_rtr_temperature_sensitivity = lambda **kwargs: {
@@ -913,13 +943,19 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
         "flux_projection": {
             "carbon_margin": 0.12,
             "respiration_umol_m2_s": 3.9,
+            "net_assim_umol_m2_s": 8.2,
         },
         "objective_breakdown": {
             "energy_cost": 0.19,
+            "energy_cost_krw": 25.7,
             "labor_index": 0.07,
+        },
+        "constraint_checks": {
+            "confidence_penalty": 0.1,
         },
         "feasibility": {
             "carbon_margin_positive": True,
+            "risk_flags": [],
         },
     }
 
@@ -1040,13 +1076,23 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
     assert optimize_payload["mode"] == "optimizer"
     assert optimize_payload["baseline"]["mode"] == "baseline"
     assert optimize_payload["actual_area_projection"]["actual_area_m2"] == 1200.0
+    assert optimize_payload["flux_projection"]["carbon_margin"] == 0.14
     assert optimize_payload["warning_badges"] == ["large_rtr_deviation_reason_required"]
+    assert optimize_payload["control_guidance"]["target_horizon"] == "today"
+    assert optimize_payload["control_guidance"]["day_hold_hours"] == 14.0
+    assert optimize_payload["control_guidance"]["night_hold_hours"] == 10.0
+    assert optimize_payload["control_guidance"]["change_limit_C_per_step"] == 0.12
 
     assert scenario_response.status_code == 200
     scenario_payload = scenario_response.json()
     assert scenario_payload["status"] == "success"
     assert len(scenario_payload["scenarios"]) == 6
     assert scenario_payload["scenarios"][0]["label"] == "baseline"
+    assert scenario_payload["scenarios"][0]["confidence"] >= 0.2
+    assert "risk_flags" in scenario_payload["scenarios"][0]
+    assert scenario_payload["scenarios"][0]["yield_kg_m2_day"] >= 0.0
+    assert scenario_payload["scenarios"][0]["actual_area_projection"]["yield_kg_day"] >= 0.0
+    assert scenario_payload["scenarios"][0]["actual_area_projection"]["energy_krw_day"] >= 0.0
     assert scenario_payload["scenarios"][-1]["label"] == "custom"
     assert scenario_payload["scenarios"][0]["actual_area_projection"]["energy_kwh_day"] >= 0
 
