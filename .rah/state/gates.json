@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #34 is merged on `main`, there is no longer an active implementation branch on the baseline, and the older issue #3 calibration follow-up stays intentionally blocked on missing grower-approved windows."
+    "note": "Issue #37 is linked to branch `feat/37-add-rtr-calibration-workspace-for-user-entered-grower-windows-and-house-tuning` and PR #38, while the older issue #3 now remains only as the content-calibration follow-up for real approved windows."
   },
   "harness_setup": {
     "status": "pass",
@@ -145,7 +145,7 @@
   },
   "rtr_good_production_windows_followup": {
     "status": "blocked",
-    "note": "Issue #3 is open and intentionally blocked until grower-approved tomato/cucumber good-production periods are supplied; the merged baseline only carries the intake contract and restart instructions, not a recalibrated profile update."
+    "note": "Issue #3 is still blocked on the operator supplying real grower-approved tomato/cucumber good-production periods, but it is no longer an implementation blocker because issue #37 adds an in-product calibration workspace plus `/api/rtr/calibration-*` routes for capturing and saving those windows."
   },
   "rtr_grower_window_input_contract": {
     "status": "pass",
@@ -162,6 +162,18 @@
   "rtr_optimizer_decision_surface": {
     "status": "pass",
     "note": "Issue #34 keeps stale telemetry in a read-only optimizer mode instead of collapsing the whole surface, labels actual-area provenance in the shared area panel, enriches scenario rows with confidence/risk/yield/actual-area projections, disables unsafe controls while telemetry is blocked, and locks the new warning/scenario detail behavior through targeted backend and frontend regression tests."
+  },
+  "rtr_calibration_workspace": {
+    "status": "pass",
+    "note": "Issue #37 adds additive `/api/rtr/calibration-state|preview|save`, house-scoped grower-window normalization/persistence helpers, and a new `RTRCalibrationWorkspace` UI that lets operators preview/save calibration windows and immediately refresh the live optimizer/profile surfaces without relying on external RAG or manual YAML editing."
+  },
+  "issue37_local_validation": {
+    "status": "pass",
+    "note": "Issue #37 stayed green locally with `npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, and full `poetry run pytest` after the calibration workspace and backend routes landed."
+  },
+  "issue37_pr_validation": {
+    "status": "pending",
+    "note": "PR #38 is open for issue #37 and GitHub Actions Backend/Frontend validation are the remaining remote gate before merge."
   },
   "issue32_pr_validation": {
     "status": "pass",
