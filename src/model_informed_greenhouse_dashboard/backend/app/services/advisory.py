@@ -2062,8 +2062,8 @@ def recommend_nutrient_recipe(
         "calculator_defaults": reference_rows["calculator_defaults"],
         "drain_feedback_defaults": reference_rows["drain_feedback_defaults"],
         "limitations": [
-            "This slice exposes deterministic recipe lookup, not the final stock-tank calculation engine.",
-            "Use the recipe guardrails together with source/drain analyses before operational rollout.",
+            "현재는 양액 레시피 기준 조회까지만 제공합니다. 최종 원액 탱크 계산은 아직 포함되지 않습니다.",
+            "실제 적용 전에는 원수·배액 분석과 레시피 경계값을 함께 확인해 주세요.",
         ],
     }
 
@@ -2195,7 +2195,7 @@ def recommend_nutrient_correction(
             "stock_tank_prep": stock_tank_prep,
         },
         "limitations": [
-            "This slice exposes a deterministic correction draft plus bounded drain-feedback target shifts and single-fertilizer stock-tank drafts, not the final stock-tank calculation engine.",
-            "Use observed source/drain analyses plus the workbook guardrails before applying manual corrections operationally.",
+            "현재는 양액 보정 초안과 제한된 범위의 배액 피드백, 단일 비료 기준 초안까지만 제공합니다. 최종 원액 탱크 계산은 아직 포함되지 않습니다.",
+            "수동 보정을 적용하기 전에는 실제 원수·배액 분석값과 워크북 경계값을 함께 확인해 주세요.",
         ],
     }

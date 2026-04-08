@@ -47,6 +47,8 @@ interface AdvisorTabsProps {
     weather?: WeatherOutlook | null;
     rtrProfile?: RtrProfile | null;
     isOpen: boolean;
+    initialTab?: PromptAdvisorTabKey;
+    initialCorrectionToolOpen?: boolean;
     onClose: () => void;
 }
 
@@ -80,6 +82,8 @@ const AdvisorTabs = ({
     weather = null,
     rtrProfile = null,
     isOpen,
+    initialTab = 'environment',
+    initialCorrectionToolOpen = false,
     onClose,
 }: AdvisorTabsProps) => {
     const { locale } = useLocale();
@@ -259,8 +263,10 @@ const AdvisorTabs = ({
     const sourceAnalytes = correctionSurface?.sourceWaterAnalytes ?? [];
     const drainAnalytes = correctionSurface?.drainWaterAnalytes ?? [];
 
-    const [activeTab, setActiveTab] = useState<PromptAdvisorTabKey>('environment');
-    const [showCorrectionTool, setShowCorrectionTool] = useState(false);
+    const [activeTab, setActiveTab] = useState<PromptAdvisorTabKey>(initialTab);
+    const [showCorrectionTool, setShowCorrectionTool] = useState(
+        initialTab === 'nutrient' ? initialCorrectionToolOpen : false,
+    );
     const [pesticideTarget, setPesticideTarget] = useState('흰가루병');
     const [pesticideLimit, setPesticideLimit] = useState('5');
     const [nutrientStage, setNutrientStage] = useState('');

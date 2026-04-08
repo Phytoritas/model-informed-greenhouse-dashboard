@@ -7,6 +7,7 @@ import AdvisorPanelFallback from './features/advisor/AdvisorPanelFallback';
 import LoadingSkeleton from './features/common/LoadingSkeleton';
 import OverviewStrip from './features/overview/OverviewStrip';
 import OverlayDrawerFallback from './features/chat/OverlayDrawerFallback';
+import type { PromptAdvisorTabKey } from './components/advisor/advisorTabRegistry';
 import { useGreenhouse } from './hooks/useGreenhouse';
 import { useAiAssistant } from './hooks/useAiAssistant';
 import { useProducePrices } from './hooks/useProducePrices';
@@ -90,11 +91,11 @@ const APP_COPY = {
     liveProducePrices: 'Live Produce Prices',
     daeguLiveWeather: 'Daegu Live Weather',
     rtrStrategy: 'RTR Strategy',
-    smartGrowSurfaceTitle: 'SmartGrow Advisory Surface',
+    smartGrowSurfaceTitle: 'SmartGrow Quick Actions',
     advancedModelAnalyticsLoading: 'Advanced Model Analytics module loading...',
     yieldForecastLoading: 'Yield Forecast module loading...',
     consultingReportLoading: 'Consulting Report module loading...',
-    smartGrowSurfaceLoading: 'Loading SmartGrow advisory surface...',
+    smartGrowSurfaceLoading: 'Loading SmartGrow quick actions...',
     realTimeEnvironmentalAnalysisLoading: 'Real-time Environmental Analysis module loading...',
     liveProducePricesLoading: 'Live Produce Prices module loading...',
     daeguLiveWeatherLoading: 'Daegu Live Weather module loading...',
@@ -129,11 +130,11 @@ const APP_COPY = {
     liveProducePrices: '실시간 농산물 가격',
     daeguLiveWeather: '대구 실시간 날씨',
     rtrStrategy: 'RTR 전략',
-    smartGrowSurfaceTitle: '스마트 제어 구성',
+    smartGrowSurfaceTitle: '스마트 제어 바로가기',
     advancedModelAnalyticsLoading: '고급 모델 분석 모듈을 불러오는 중...',
     yieldForecastLoading: '수확 전망 모듈을 불러오는 중...',
     consultingReportLoading: '컨설팅 리포트 모듈을 불러오는 중...',
-    smartGrowSurfaceLoading: '스마트 제어 구성 모듈을 불러오는 중...',
+    smartGrowSurfaceLoading: '스마트 제어 바로가기를 불러오는 중...',
     realTimeEnvironmentalAnalysisLoading: '실시간 환경 분석 모듈을 불러오는 중...',
     liveProducePricesLoading: '실시간 농산물 가격 모듈을 불러오는 중...',
     daeguLiveWeatherLoading: '대구 실시간 날씨 모듈을 불러오는 중...',
@@ -156,6 +157,11 @@ const RAG_ASSISTANT_FALLBACK_COPY = {
 
 const AUTO_ANALYSIS_INTERVAL_MS = 30 * 60 * 1000;
 type SensorMetricKey = 'temperature' | 'humidity' | 'co2' | 'light' | 'vpd' | 'stomatalConductance';
+type AdvisorOpenRequest = {
+  tab: PromptAdvisorTabKey;
+  showCorrectionTool?: boolean;
+  nonce: number;
+};
 
 type SensorTrendSummary = {
   trend: 'up' | 'down' | 'stable';
@@ -324,6 +330,7 @@ function App() {
   const [shouldRenderRagAssistant, setShouldRenderRagAssistant] = useState(false);
   const [isAdvisorTabsOpen, setIsAdvisorTabsOpen] = useState(true);
   const [telemetryClock, setTelemetryClock] = useState(() => Date.now());
+  const [advisorOpenRequest, setAdvisorOpenRequest] = useState<AdvisorOpenRequest | null>(null);
   const advisorTabsAnchorRef = useRef<HTMLDivElement | null>(null);
   const lastAutoAnalysisRef = useRef<Record<CropType, { telemetryTimestamp: number; marketFetchedAt: string | null }>>({
     Tomato: { telemetryTimestamp: 0, marketFetchedAt: null },
@@ -527,7 +534,15 @@ function App() {
     setIsRagAssistantOpen(true);
   };
 
-  const handleOpenAdvisorTabs = () => {
+  const handleOpenAdvisorTabs = (
+    tab: PromptAdvisorTabKey = 'environment',
+    options?: { showCorrectionTool?: boolean },
+  ) => {
+    setAdvisorOpenRequest({
+      tab,
+      showCorrectionTool: options?.showCorrectionTool ?? false,
+      nonce: Date.now(),
+    });
     setIsAdvisorTabsOpen(true);
     requestAnimationFrame(() => {
       advisorTabsAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -699,7 +714,7 @@ function App() {
                   modelRuntime={aiModelRuntime}
                   isLoading={isAnalyzing}
                   onRefresh={handleAnalyze}
-                  onOpenDetails={handleOpenAdvisorTabs}
+                  onOpenDetails={() => handleOpenAdvisorTabs()}
                   onOpenKnowledgeSearch={handleOpenRagAssistant}
                   smartGrowSummary={smartGrowSummary}
                   smartGrowLoading={isSmartGrowLoading}
@@ -743,13 +758,24 @@ function App() {
                   summary={smartGrowSummary}
                   loading={isSmartGrowLoading}
                   error={smartGrowError}
+                  onOpenSurface={(surfaceKey) => {
+                    if (surfaceKey === 'pesticide') {
+                      handleOpenAdvisorTabs('pesticide');
+                      return;
+                    }
+                    if (surfaceKey === 'nutrient_correction') {
+                      handleOpenAdvisorTabs('nutrient', { showCorrectionTool: true });
+                      return;
+                    }
+                    handleOpenAdvisorTabs('nutrient');
+                  }}
                 />
               </Suspense>
             </div>
 
             <div ref={advisorTabsAnchorRef} className="mb-8">
               <AdvisorTabs
-                key={selectedCrop}
+                key={`${selectedCrop}-${advisorOpenRequest?.nonce ?? 0}`}
                 crop={selectedCrop}
                 summary={smartGrowSummary}
                 currentData={currentData}
@@ -760,6 +786,8 @@ function App() {
                 weather={weather}
                 rtrProfile={rtrProfilesPayload?.profiles[selectedCrop] ?? null}
                 isOpen={isAdvisorTabsOpen}
+                initialTab={advisorOpenRequest?.tab ?? 'environment'}
+                initialCorrectionToolOpen={Boolean(advisorOpenRequest?.showCorrectionTool)}
                 onClose={() => setIsAdvisorTabsOpen(false)}
               />
             </div>
