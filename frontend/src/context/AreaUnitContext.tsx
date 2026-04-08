@@ -36,14 +36,14 @@ interface AreaUnitContextValue {
 const DEFAULT_AREA_STATE: AreaStateByCrop = {
     Tomato: {
         canonicalAreaM2: DEFAULT_GREENHOUSE_AREA_M2,
-        actualAreaM2: DEFAULT_GREENHOUSE_AREA_M2,
-        actualAreaPyeong: roundArea(m2ToPyeong(DEFAULT_GREENHOUSE_AREA_M2), 2),
+        actualAreaM2: null,
+        actualAreaPyeong: null,
         source: 'default',
     },
     Cucumber: {
         canonicalAreaM2: DEFAULT_GREENHOUSE_AREA_M2,
-        actualAreaM2: DEFAULT_GREENHOUSE_AREA_M2,
-        actualAreaPyeong: roundArea(m2ToPyeong(DEFAULT_GREENHOUSE_AREA_M2), 2),
+        actualAreaM2: null,
+        actualAreaPyeong: null,
         source: 'default',
     },
 };
