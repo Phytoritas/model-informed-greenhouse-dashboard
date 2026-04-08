@@ -357,6 +357,34 @@ function buildScenarioResponse(): RtrScenarioResponse {
                 },
             },
             {
+                label: 'offset_plus_0_3c',
+                mode: 'offset',
+                mean_temp_C: 19.4,
+                day_min_temp_C: 19.7,
+                night_min_temp_C: 18.5,
+                node_rate_day: 0.65,
+                net_carbon: 0.23,
+                respiration: 0.1,
+                energy_kwh_m2_day: 2.7,
+                labor_index: 0.5,
+                yield_kg_m2_day: 0.04,
+                yield_kg_m2_week: 0.28,
+                yield_trend: 'up',
+                recommendation_badge: 'compare',
+                confidence: 0.8,
+                risk_flags: [],
+                objective_breakdown: balancedBreakdown,
+                actual_area_projection: {
+                    actual_area_m2: 2809.92,
+                    actual_area_pyeong: 850,
+                    yield_kg_day: 112.4,
+                    yield_kg_week: 786.8,
+                    energy_kwh_day: 7586.78,
+                    energy_krw_day: 910414.08,
+                    labor_index_day: 1404.96,
+                },
+            },
+            {
                 label: 'balanced',
                 mode: 'optimizer',
                 mean_temp_C: 19.5,
@@ -432,6 +460,18 @@ function buildSensitivityResponse(): RtrSensitivityResponse {
                 trust_region: { low: -0.3, high: 0.3 },
                 method: 'finite_difference',
                 perturbation_size: 0.3,
+                valid: true,
+                scenario_alignment: true,
+            },
+            {
+                control: 'screen_bias',
+                target: 'humidity_risk_penalty',
+                derivative: -0.05,
+                elasticity: -0.12,
+                direction: 'decrease',
+                trust_region: { low: -3, high: 3 },
+                method: 'finite_difference',
+                perturbation_size: 3,
                 valid: true,
                 scenario_alignment: true,
             },
@@ -558,6 +598,9 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getByText('시나리오 비교')).toBeTruthy();
         expect(screen.getAllByText('균형').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('기준선').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('기준선 +0.3°C')).toBeTruthy();
+        expect(screen.getAllByText('스크린 편차').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getByText('스크린 편차 → 습도 위험 패널티')).toBeTruthy();
         expect(screen.getByText('RTR calibration workspace stub')).toBeTruthy();
         expect(screen.getByText('기준선 비교 카드')).toBeTruthy();
         expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
