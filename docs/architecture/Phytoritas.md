@@ -3,9 +3,9 @@
 Source of truth: [`/Phytoritas.md`](../../Phytoritas.md)
 
 ## Active lane
-- Issue: `#27`
-- Branch: `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections`
-- Mode: `internal-model-only RTR optimizer`
+- Issue: `none`
+- Branch: `main`
+- Mode: `merged issue #27 RTR optimizer baseline`
 
 ## Preserved baseline
 - Keep the merged issue `#19` model-first runtime as the RTR donor computation stack
@@ -14,10 +14,11 @@ Source of truth: [`/Phytoritas.md`](../../Phytoritas.md)
 
 ## Current gate picture
 - Harness setup: passed
-- Issue/branch linkage for issue `#27`: passed
+- Issue/branch linkage for issue `#27`: passed and merged
 - Backend internal-model RTR services: passed
 - Frontend optimizer surface plus area projection: passed
 - Full local validation ladder: passed
+- PR `#28` validation and merge: passed
 
 ## Target packages
 - `backend/app/services/rtr/`
@@ -35,6 +36,6 @@ Source of truth: [`/Phytoritas.md`](../../Phytoritas.md)
 - `POST /api/rtr/area-settings`
 
 ## Next restart point
-- Commit and push the landed issue `#27` slice
-- Open the PR and move into remote Backend/Frontend validation
-- Use the next loop for calibration follow-up: grower-approved windows, optimizer weight tuning, and house-specific bounds
+- Open a fresh issue if post-merge RTR work should continue
+- Prefer a calibration-focused next loop: grower-approved windows, optimizer weight tuning, and house-specific bounds
+- Otherwise treat `main` as the new clean restart baseline

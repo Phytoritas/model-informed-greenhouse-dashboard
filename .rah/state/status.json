@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue27-rtr-optimizer-and-area-projection-local-validation-green",
+  "current_stage": "issue27-rtr-optimizer-merged-on-main",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
-  "active_issue": 27,
-  "active_branch": "feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections",
+  "active_issue": null,
+  "active_branch": "main",
   "implementation_blocked": false,
-  "next_action": "Commit the landed RTR optimizer + area-aware projection slice, push `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections`, open the issue #27 PR, and watch remote Backend/Frontend validation.",
+  "next_action": "Issue #27 is merged on `main`; open a new bounded issue/branch for post-merge RTR calibration follow-up such as grower-approved windows, optimizer weight tuning, or house-specific area-default persistence.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "GitHub issue #27 internal-model-only RTR optimizer overhaul"
+  "directive_file": "Merged issue #27 internal-model-only RTR optimizer overhaul"
 }
