@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue25-merged-on-main",
-  "repository_profile": "python-greenhouse-dashboard-with-preserved-knowledge-rag-baseline-and-new-model-first-smartgrow-runtime-target",
-  "active_issue": null,
-  "active_branch": "main",
+  "current_stage": "issue27-rtr-optimizer-and-area-projection-local-validation-green",
+  "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
+  "active_issue": 27,
+  "active_branch": "feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections",
   "implementation_blocked": false,
-  "next_action": "Open the next issue before any further non-trivial work; issue #25 is merged and `main` is the active baseline again.",
+  "next_action": "Commit the landed RTR optimizer + area-aware projection slice, push `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections`, open the issue #27 PR, and watch remote Backend/Frontend validation.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "GitHub issue #25 grower-facing warning localization and caveat hiding"
+  "directive_file": "GitHub issue #27 internal-model-only RTR optimizer overhaul"
 }

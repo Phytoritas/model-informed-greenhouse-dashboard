@@ -47,7 +47,7 @@ const ConsultingReport = lazy(() => import('./components/ConsultingReport'));
 const SmartGrowSurfacePanel = lazy(() => import('./components/SmartGrowSurfacePanel'));
 const WeatherOutlookPanel = lazy(() => import('./components/WeatherOutlookPanel'));
 const ProducePricesPanel = lazy(() => import('./components/ProducePricesPanel'));
-const RTROutlookPanel = lazy(() => import('./components/RTROutlookPanel'));
+const RTROptimizerPanel = lazy(() => import('./components/RTROptimizerPanel'));
 
 const CHAT_ASSISTANT_FALLBACK_COPY = {
   en: {
@@ -775,8 +775,8 @@ function App() {
               />
             </Suspense>
 
-            <Suspense fallback={<LoadingSkeleton title={copy.rtrStrategy} loadingMessage={copy.rtrStrategyLoading} minHeightClassName="min-h-[200px]" />}>
-              <RTROutlookPanel
+            <Suspense fallback={<LoadingSkeleton title={copy.rtrStrategy} loadingMessage={copy.rtrStrategyLoading} minHeightClassName="min-h-[320px]" />}>
+              <RTROptimizerPanel
                 crop={selectedCrop}
                 currentData={currentData}
                 history={deferredHistory}
@@ -787,6 +787,8 @@ function App() {
                 profile={rtrProfilesPayload?.profiles[selectedCrop] ?? null}
                 profileLoading={isRtrProfileLoading}
                 profileError={rtrProfileError}
+                optimizerEnabled={rtrProfilesPayload?.profiles[selectedCrop]?.optimizer?.enabled ?? rtrProfilesPayload?.optimizerEnabled ?? true}
+                defaultMode={rtrProfilesPayload?.profiles[selectedCrop]?.optimizer?.default_mode}
                 compact
               />
             </Suspense>

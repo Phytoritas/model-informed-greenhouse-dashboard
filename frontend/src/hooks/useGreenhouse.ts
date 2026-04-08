@@ -12,6 +12,7 @@ import type {
     MetricHistoryPoint,
 } from '../types';
 import { API_URL, WS_URL } from '../config';
+import { useAreaUnit } from '../context/AreaUnitContext';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
 
@@ -88,7 +89,6 @@ type TelemetryByCrop = Record<CropType, TelemetryState>;
 type AvailabilityByCrop = Record<CropType, SensorFieldAvailability>;
 type TimestampByCrop = Record<CropType, SensorFieldTimestamps>;
 
-const AREA_M2 = 3305.8;
 const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_HISTORY_POINTS = 288;
 const STREAM_COMMIT_INTERVAL_MS = 250;
@@ -150,6 +150,7 @@ function pickNumericValue(
 
 export const useGreenhouse = () => {
     const { locale } = useLocale();
+    const { areaByCrop } = useAreaUnit();
     const [selectedCrop, setSelectedCrop] = useState<CropType>('Cucumber');
     const settingsByCropRef = useRef<Record<CropType, TemperatureSettings>>({
         Tomato: { ...DEFAULT_TEMP_SETTINGS_BY_CROP.Tomato },
@@ -241,6 +242,11 @@ export const useGreenhouse = () => {
         Tomato: null,
         Cucumber: null,
     });
+    const areaByCropRef = useRef(areaByCrop);
+
+    useEffect(() => {
+        areaByCropRef.current = areaByCrop;
+    }, [areaByCrop]);
     const lastFlushAtRef = useRef<Record<CropType, number>>({
         Tomato: 0,
         Cucumber: 0,
@@ -380,14 +386,15 @@ export const useGreenhouse = () => {
             (state.fruit_dry_weight_g_m2 || 0)
         );
 
+        const canonicalAreaM2 = Math.max(areaByCropRef.current[cropType].canonicalAreaM2, 1.0);
+
         // Calculate Growth Rate (g/m²/d)
         let growthRate = 0;
         if (payload.kpi?.daily_fruit_growth_g_m2) {
             growthRate = payload.kpi.daily_fruit_growth_g_m2;
         } else if (payload.kpi?.daily_harvest_kg) {
-            // Convert Total kg to g/m²: (kg * 1000) / area
-            // Assuming default area 3305.8 m² if not available
-            growthRate = (payload.kpi.daily_harvest_kg * 1000) / AREA_M2;
+            // Convert total kg to g/m² using the canonical greenhouse area from shared area settings.
+            growthRate = (payload.kpi.daily_harvest_kg * 1000) / canonicalAreaM2;
         }
 
         // Map Metrics

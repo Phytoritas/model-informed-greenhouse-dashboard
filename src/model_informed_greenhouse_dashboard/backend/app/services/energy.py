@@ -49,24 +49,12 @@ class EnergyEstimator:
         
         logger.info(f"Initialized EnergyEstimator (area={area_m2}m², volume={self.volume_m3}m³)")
     
-    def estimate_step(self,
-                      state: Dict[str, Any],
-                      env: Dict[str, Any],
-                      setpoints: Dict[str, float],
-                      dt: datetime,
-                      dt_hours: float = 1.0) -> Dict[str, Any]:
-        """Estimate energy for current timestep.
-        
-        Args:
-            state: Simulation state with H (sensible heat flux)
-            env: Environmental data with T_air_C
-            setpoints: {'heating_set_C', 'cooling_set_C', 'T_out_C'}
-            dt: Current datetime
-            dt_hours: Timestep duration in hours
-        
-        Returns:
-            Dict with Q_load_kW, P_elec_kW, COP_current, daily_kWh
-        """
+    def _estimate_step_core(self,
+                            state: Dict[str, Any],
+                            env: Dict[str, Any],
+                            setpoints: Dict[str, float],
+                            dt_hours: float = 1.0) -> Dict[str, Any]:
+        """Pure energy-step calculation without touching the daily accumulator."""
         T_in = env.get('T_air_C', 20)
         T_out = setpoints.get('T_out_C', T_in - 5)  # Assume outdoor is 5°C cooler (placeholder)
         T_heat_set = setpoints.get('heating_set_C', 18)
@@ -99,21 +87,105 @@ class EnergyEstimator:
             COP = 0
             P_elec = 0
         
+        kWh_step = P_elec * dt_hours
+
+        return {
+            'Q_load_kW': round(Q_load, 2),
+            'P_elec_kW': round(P_elec, 2),
+            'COP_current': round(COP, 2),
+            'kWh_step': round(kWh_step, 6),
+            'mode': 'heating' if T_in < T_heat_set else ('cooling' if T_in > T_cool_set else 'off'),
+        }
+
+    def estimate_step(self,
+                      state: Dict[str, Any],
+                      env: Dict[str, Any],
+                      setpoints: Dict[str, float],
+                      dt: datetime,
+                      dt_hours: float = 1.0) -> Dict[str, Any]:
+        """Estimate energy for current timestep."""
+        core = self._estimate_step_core(
+            state=state,
+            env=env,
+            setpoints=setpoints,
+            dt_hours=dt_hours,
+        )
+
         # Accumulate daily kWh
         current_date = dt.date() if isinstance(dt, datetime) else dt
         if self._daily_cache['date'] != current_date:
             self._daily_cache = {'date': current_date, 'kWh_sum': 0.0}
             logger.info(f"EnergyEstimator: New day {current_date}, reset cache")
         
-        kWh_step = P_elec * dt_hours
-        self._daily_cache['kWh_sum'] += kWh_step
+        self._daily_cache['kWh_sum'] += core['kWh_step']
         
         return {
-            'Q_load_kW': round(Q_load, 2),
-            'P_elec_kW': round(P_elec, 2),
-            'COP_current': round(COP, 2),
+            'Q_load_kW': core['Q_load_kW'],
+            'P_elec_kW': core['P_elec_kW'],
+            'COP_current': core['COP_current'],
             'daily_kWh': round(self._daily_cache['kWh_sum'], 2),
-            'mode': 'heating' if T_in < T_heat_set else ('cooling' if T_in > T_cool_set else 'off'),
+            'mode': core['mode'],
+        }
+
+    def estimate_step_stateless(self,
+                                state: Dict[str, Any],
+                                env: Dict[str, Any],
+                                setpoints: Dict[str, float],
+                                dt_hours: float = 1.0) -> Dict[str, Any]:
+        """Estimate a step without mutating the daily cache."""
+        core = self._estimate_step_core(
+            state=state,
+            env=env,
+            setpoints=setpoints,
+            dt_hours=dt_hours,
+        )
+        return {
+            'Q_load_kW': core['Q_load_kW'],
+            'P_elec_kW': core['P_elec_kW'],
+            'COP_current': core['COP_current'],
+            'daily_kWh': round(core['kWh_step'], 6),
+            'mode': core['mode'],
+        }
+
+    def estimate_target_hold(self,
+                             state: Dict[str, Any],
+                             target_air_c: float,
+                             outside_air_c: float,
+                             dt_hours: float = 1.0) -> Dict[str, Any]:
+        """Estimate the HVAC load required to hold a target internal temperature.
+
+        This keeps the physical contract inside the existing energy service so
+        controller logic does not recreate transmission / ventilation / COP math
+        elsewhere.
+        """
+        delta_t = float(target_air_c) - float(outside_air_c)
+        q_trans_kw = self.u_value * self.area_m2 * abs(delta_t) / 1000.0
+        q_vent_kw = (
+            self.rho_a * self.c_p * self.ach * self.volume_m3 * abs(delta_t) / 3600.0
+        ) / 1000.0
+        h_crop_kw = float(state.get('H_W_m2', 0.0)) * self.area_m2 / 1000.0
+
+        if delta_t > 0:
+            q_load_kw = max(0.0, q_trans_kw + q_vent_kw - h_crop_kw)
+            mode = 'heating' if q_load_kw > 0 else 'off'
+            cop = self._get_cop_heating(float(outside_air_c)) if q_load_kw > 0 else 0.0
+        elif delta_t < 0:
+            q_load_kw = max(0.0, q_trans_kw + q_vent_kw + max(h_crop_kw, 0.0))
+            mode = 'cooling' if q_load_kw > 0 else 'off'
+            cop = self.cop_cooling if q_load_kw > 0 else 0.0
+        else:
+            q_load_kw = max(0.0, h_crop_kw)
+            mode = 'cooling' if q_load_kw > 0 else 'off'
+            cop = self.cop_cooling if q_load_kw > 0 else 0.0
+
+        p_elec_kw = q_load_kw / cop if cop > 0 else 0.0
+        kwh_step = p_elec_kw * dt_hours
+        return {
+            'Q_load_kW': round(q_load_kw, 2),
+            'P_elec_kW': round(p_elec_kw, 2),
+            'COP_current': round(cop, 2),
+            'daily_kWh': round(kwh_step, 6),
+            'mode': mode,
         }
     
     def _get_cop_heating(self, T_out: float) -> float:

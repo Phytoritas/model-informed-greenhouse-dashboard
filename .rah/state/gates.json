@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #23 and branch `feat/23-dashboard-layout-kpi-first-hierarchy` owned the latest bounded dashboard/UI follow-up loop; PR #24 is now merged into `main`, issue #23 is closed, and no new active issue has been opened yet."
+    "note": "Issue #27 and branch `feat/27-overhaul-rtr-around-internal-model-optimizer-and-area-aware-projections` now own the current bounded RTR optimizer overhaul."
   },
   "harness_setup": {
     "status": "pass",
@@ -94,6 +94,26 @@
   "issue25_pr_validation": {
     "status": "pass",
     "note": "PR #26 merged issue #25 into `main` after the local validation ladder stayed green (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`) and the refreshed GitHub Actions Backend/Frontend Validation both returned success."
+  },
+  "issue27_prompt_intake": {
+    "status": "pass",
+    "note": "The internal-model-only RTR overhaul directive is now bound to issue #27 and its issue-based branch before non-trivial writes resumed."
+  },
+  "rtr_internal_model_optimizer_backend": {
+    "status": "pass",
+    "note": "The backend now lands `services/rtr/` bridge, objective, optimizer, scenario, derivation, and unit-projection layers, extends `/api/rtr/profiles` compatibly, adds `/api/rtr/state|optimize|scenario|sensitivity|area-settings`, and passes the focused RTR backend test ladder locally."
+  },
+  "rtr_frontend_optimizer_surface": {
+    "status": "pass",
+    "note": "The frontend now renders an optimizer-driven `RTROptimizerPanel` over the new `/api/rtr/*` contracts, demotes the legacy `RTROutlookPanel` to a baseline/fallback comparison card, preserves `/api/rtr/profiles` compatibility, and locks the surface with dedicated component and hook tests."
+  },
+  "rtr_area_unit_projection": {
+    "status": "pass",
+    "note": "Canonical m² results remain the backend/UI source of truth while a shared `AreaUnitContext`, `AreaUnitPanel`, and deterministic `areaUnits` helpers now replace the hardcoded `AREA_M2` path, persist user area overrides, and render actual-area yield/energy projections in parallel."
+  },
+  "rtr_issue27_local_validation": {
+    "status": "pass",
+    "note": "The full local ladder is green for issue #27: `npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, and full `pytest` now pass after the frontend optimizer + area-projection slice landed."
   },
   "issue19_pr_validation": {
     "status": "pass",

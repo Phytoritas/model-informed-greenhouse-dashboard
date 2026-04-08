@@ -38,6 +38,29 @@ DEFAULT_RTR_PROFILES: Dict[str, Dict[str, Any]] = {
             "selectionSource": "heuristic-fallback",
             "windowCount": 0,
         },
+        "baseline": {
+            "baseTempC": 18.3,
+            "slopeCPerMjM2": 0.15,
+            "toleranceC": 1.0,
+            "baseline_target_C": 18.3,
+        },
+        "optimizer": {
+            "enabled": True,
+            "default_mode": "balanced",
+            "max_delta_temp_C": 1.5,
+            "max_rtr_ratio_delta": 0.04,
+            "temp_slew_rate_C_per_step": 0.12,
+            "weights": {
+                "temp": 1.0,
+                "node": 130.0,
+                "carbon": 110.0,
+                "sink": 90.0,
+                "resp": 25.0,
+                "risk": 120.0,
+                "energy": 25.0,
+                "labor": 18.0,
+            },
+        },
     },
     "Cucumber": {
         "crop": "Cucumber",
@@ -61,12 +84,36 @@ DEFAULT_RTR_PROFILES: Dict[str, Dict[str, Any]] = {
             "selectionSource": "heuristic-fallback",
             "windowCount": 0,
         },
+        "baseline": {
+            "baseTempC": 18.3,
+            "slopeCPerMjM2": 0.15,
+            "toleranceC": 1.0,
+            "baseline_target_C": 18.3,
+        },
+        "optimizer": {
+            "enabled": True,
+            "default_mode": "balanced",
+            "max_delta_temp_C": 1.2,
+            "max_rtr_ratio_delta": 0.03,
+            "temp_slew_rate_C_per_step": 0.12,
+            "weights": {
+                "temp": 1.0,
+                "node": 150.0,
+                "carbon": 120.0,
+                "sink": 80.0,
+                "resp": 20.0,
+                "risk": 120.0,
+                "energy": 25.0,
+                "labor": 20.0,
+            },
+        },
     },
 }
 
 DEFAULT_RTR_PROFILE_PAYLOAD: Dict[str, Any] = {
-    "version": 1,
+    "version": 2,
     "updatedAt": "baseline",
+    "availableModes": ["baseline", "optimizer"],
     "profiles": copy.deepcopy(DEFAULT_RTR_PROFILES),
 }
 
@@ -173,6 +220,32 @@ def _normalize_good_window(raw_window: Any) -> Dict[str, Any] | None:
     }
 
 
+def _augment_profile_schema(canonical_crop: str, profile: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = copy.deepcopy(profile)
+    normalized["baseline"] = _deep_merge_dict(
+        DEFAULT_RTR_PROFILES[canonical_crop]["baseline"],
+        normalized.get("baseline") or {},
+    )
+    normalized["baseline"]["baseTempC"] = round(float(normalized.get("baseTempC", normalized["baseline"]["baseTempC"])), 6)
+    normalized["baseline"]["slopeCPerMjM2"] = round(
+        float(normalized.get("slopeCPerMjM2", normalized["baseline"]["slopeCPerMjM2"])),
+        6,
+    )
+    normalized["baseline"]["toleranceC"] = round(
+        float(normalized.get("toleranceC", normalized["baseline"]["toleranceC"])),
+        6,
+    )
+    normalized["baseline"]["baseline_target_C"] = round(
+        float(normalized["baseline"].get("baseline_target_C", normalized["baseline"]["baseTempC"])),
+        6,
+    )
+    normalized["optimizer"] = _deep_merge_dict(
+        DEFAULT_RTR_PROFILES[canonical_crop]["optimizer"],
+        normalized.get("optimizer") or {},
+    )
+    return normalized
+
+
 def load_rtr_profiles(config_path: str | Path | None = None) -> Dict[str, Any]:
     """Load RTR profiles from config, falling back to the baseline payload."""
     path = rtr_profiles_path(config_path)
@@ -188,6 +261,8 @@ def load_rtr_profiles(config_path: str | Path | None = None) -> Dict[str, Any]:
         payload["version"] = raw["version"]
     if isinstance(raw.get("updatedAt"), str):
         payload["updatedAt"] = raw["updatedAt"]
+    if isinstance(raw.get("availableModes"), list):
+        payload["availableModes"] = [str(item) for item in raw["availableModes"]]
 
     raw_profiles = raw.get("profiles", {})
     if not isinstance(raw_profiles, dict):
@@ -203,6 +278,13 @@ def load_rtr_profiles(config_path: str | Path | None = None) -> Dict[str, Any]:
             payload["profiles"][canonical_crop] = _deep_merge_dict(
                 DEFAULT_RTR_PROFILES[canonical_crop], profile
             )
+            payload["profiles"][canonical_crop] = _augment_profile_schema(
+                canonical_crop,
+                payload["profiles"][canonical_crop],
+            )
+
+    for canonical_crop, profile in list(payload["profiles"].items()):
+        payload["profiles"][canonical_crop] = _augment_profile_schema(canonical_crop, profile)
 
     return payload
 
@@ -528,6 +610,7 @@ def fit_rtr_profile(
         "selectionSource": selection_metadata["selectionSource"],
         "windowCount": selection_metadata["windowCount"],
     }
+    fitted_profile = _augment_profile_schema(canonical_crop, fitted_profile)
 
     return fitted_profile
 
