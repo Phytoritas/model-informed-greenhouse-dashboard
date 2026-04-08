@@ -71,6 +71,18 @@ def main() -> int:
 
     existing_payload = load_rtr_profiles(repo_root / args.output)
     calibration_windows_payload = load_rtr_good_windows(repo_root / args.windows)
+    approved_window_count = sum(
+        1
+        for windows in calibration_windows_payload.get("crops", {}).values()
+        for window in windows
+        if window.get("approvalStatus") != "heuristic-demo"
+    )
+    demo_window_count = sum(
+        1
+        for windows in calibration_windows_payload.get("crops", {}).values()
+        for window in windows
+        if window.get("approvalStatus") == "heuristic-demo"
+    )
     calibrated_payload = calibrate_rtr_profiles_from_csvs(
         crop_to_csv_path=crop_to_csv_path,
         existing_payload=existing_payload,
@@ -80,6 +92,9 @@ def main() -> int:
     output_path = save_rtr_profiles(calibrated_payload, repo_root / args.output)
 
     print(f"Saved calibrated RTR profiles to {output_path}")
+    print(
+        f"RTR window intake: approved={approved_window_count}, demo={demo_window_count}"
+    )
     for crop_name, profile in calibrated_payload["profiles"].items():
         calibration = profile["calibration"]
         print(

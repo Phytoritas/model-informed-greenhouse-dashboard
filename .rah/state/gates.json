@@ -150,5 +150,9 @@
   "rtr_grower_window_input_contract": {
     "status": "pass",
     "note": "The repository now carries an explicit grower-window intake note that defines the required per-window fields, evidence expectations, YAML update path, recalibration command, and validation ladder needed before replacing the current heuristic/demo windows."
+  },
+  "rtr_grower_window_machine_contract": {
+    "status": "pass",
+    "note": "The good-window loader and calibration CLI now distinguish `heuristic-demo` windows from approved windows, preserve approval metadata fields, reject approved windows that omit required metadata, and expose the current approved/demo counts during calibration runs."
   }
 }

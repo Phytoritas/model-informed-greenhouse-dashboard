@@ -5,7 +5,7 @@
   "active_issue": 3,
   "active_branch": null,
   "implementation_blocked": true,
-  "next_action": "Issue #3 remains open but blocked on grower-approved tomato/cucumber good-production periods; once approved windows are supplied, create a fresh issue-based branch from `main`, update `configs/rtr_good_windows.yaml`, rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`, and reopen the RTR validation ladder.",
+  "next_action": "Issue #3 remains open but blocked on grower-approved tomato/cucumber good-production periods; the intake contract is now machine-checked, so the next real slice is to supply approved windows with approval metadata, update `configs/rtr_good_windows.yaml`, rerun `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml --output configs/rtr_profiles.json`, and reopen the RTR validation ladder.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "Issue #3 grower-approved RTR window replacement follow-up"
 }
