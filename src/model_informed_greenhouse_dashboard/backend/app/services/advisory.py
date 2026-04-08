@@ -292,6 +292,187 @@ def _select_rotation_rows(
     return selected_rows, dict(excluded_counts)
 
 
+def _parse_rotation_slot_index(value: Any) -> int | None:
+    text = _normalize_text(value)
+    if not text:
+        return None
+    match = re.search(r"(\d+)", text)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def _format_rotation_slot_label(
+    value: Any,
+    *,
+    fallback_index: int | None = None,
+) -> str | None:
+    text = _normalize_text(value)
+    slot_index = _parse_rotation_slot_index(text)
+    if text and slot_index is not None and _normalize_lookup_key(text).startswith("slot"):
+        return f"{slot_index}차"
+    if text:
+        return text
+    if fallback_index is not None:
+        return f"{fallback_index}차"
+    return None
+
+
+def _collect_pesticide_product_reason_codes(row: dict[str, Any]) -> list[str]:
+    codes: list[str] = []
+    if _sample_strings(row.get("target_names", []), limit=3):
+        codes.append("target-match")
+    if _format_rotation_slot_label(row.get("rotation_slot")):
+        codes.append("rotation-slot")
+    if _normalize_text(row.get("cycle_recommendation")):
+        codes.append("cycle-available")
+    registration_status = _normalize_text(row.get("registration_status"))
+    if registration_status in _PESTICIDE_READY_STATUSES:
+        codes.append("registration-ready")
+    elif registration_status in _PESTICIDE_MANUAL_REVIEW_STATUSES:
+        codes.append("manual-review")
+    return codes
+
+
+def _collect_rotation_step_reason_codes(row: dict[str, Any]) -> list[str]:
+    codes: list[str] = []
+    if _normalize_text(row.get("application_point")):
+        codes.append("application-point")
+    if _normalize_text(row.get("reason")):
+        codes.append("rotation-rationale")
+    if _normalize_text(row.get("notes")):
+        codes.append("field-note")
+    if row.get("manual_review_required"):
+        codes.append("manual-review")
+    return codes
+
+
+def _serialize_pesticide_product(row: dict[str, Any]) -> dict[str, Any]:
+    product_names = _sample_strings(list(row.get("product_names", [])), limit=6)
+    primary_name = product_names[0] if product_names else ""
+    return {
+        "product_name": primary_name,
+        "product_names": product_names,
+        "product_aliases": product_names[1:],
+        "active_ingredient": row["active_ingredient"],
+        "target_names": row["target_names"][:4],
+        "matched_targets": row["target_names"][:4],
+        "moa_code_group": row["moa_code_group"],
+        "registration_status": row["registration_status"],
+        "dilution": row["dilution"],
+        "cycle_recommendation": row["cycle_recommendation"],
+        "cycle_solution": row["cycle_recommendation"] or None,
+        "rotation_slot": row.get("rotation_slot") or None,
+        "rotation_slot_index": _parse_rotation_slot_index(row.get("rotation_slot")),
+        "rotation_slot_label": _format_rotation_slot_label(row.get("rotation_slot")),
+        "mixing_caution": row["mixing_caution"],
+        "manual_review_required": row["registration_status"] in _PESTICIDE_MANUAL_REVIEW_STATUSES,
+        "operational_status": (
+            "manual-review-required"
+            if row["registration_status"] in _PESTICIDE_MANUAL_REVIEW_STATUSES
+            else "ready"
+        ),
+        "source_sheet": row["source_sheet"],
+        "source_row": row["source_row"],
+        "reason_codes": _collect_pesticide_product_reason_codes(row),
+        "notes_farmer_friendly": None,
+        "recommendation_reason": None,
+        "application_method": None,
+    }
+
+
+def _serialize_rotation_step(
+    row: dict[str, Any],
+    *,
+    step_index: int,
+    alternative_reason_code: str | None = None,
+) -> dict[str, Any]:
+    product_names = _sample_strings(list(row.get("product_names", [])), limit=6)
+    primary_name = product_names[0] if product_names else ""
+    return {
+        "rotation_theme": row["rotation_theme"],
+        "rotation_slot": _format_rotation_slot_label(
+            row.get("rotation_slot"),
+            fallback_index=step_index,
+        ),
+        "rotation_slot_index": _parse_rotation_slot_index(row.get("rotation_slot")),
+        "rotation_step_index": step_index,
+        "rotation_step_label": f"{step_index}단계",
+        "target_name": row["target_name"],
+        "matched_targets": row.get("target_names", [])[:4],
+        "product_name": primary_name,
+        "product_names": product_names,
+        "product_aliases": product_names[1:],
+        "active_ingredient": row["active_ingredient"],
+        "moa_code_group": row["moa_code_group"],
+        "application_point": row["application_point"],
+        "reason": row["reason"],
+        "notes": row["notes"],
+        "reason_codes": _collect_rotation_step_reason_codes(row),
+        "reason_summary": None,
+        "registration_status": row["registration_status"],
+        "mixing_caution": row["mixing_caution"] or None,
+        "dilution": row["dilution"] or None,
+        "cycle_recommendation": row["cycle_recommendation"] or None,
+        "cycle_solution": row["cycle_recommendation"] or None,
+        "manual_review_required": row["manual_review_required"],
+        "operational_status": (
+            "manual-review-required" if row["manual_review_required"] else "ready"
+        ),
+        "source_sheet": row["source_sheet"],
+        "source_row": row["source_row"],
+        "alternative_reason_code": alternative_reason_code,
+        "alternative_reason": None,
+    }
+
+
+def _resolve_rotation_alternative_reason_code(
+    row: dict[str, Any],
+    *,
+    selected_identity_keys: set[str],
+) -> str:
+    identity_key = _rotation_identity_key(row)
+    if identity_key and identity_key in selected_identity_keys:
+        return "duplicate-moa"
+    if row.get("manual_review_required"):
+        return "manual-review"
+    return "backup-option"
+
+
+def _build_rotation_guidance(
+    rotation_program: list[dict[str, Any]],
+    rotation_alternatives: list[dict[str, Any]],
+) -> dict[str, Any]:
+    ready_steps = [
+        row for row in rotation_program if row.get("operational_status") == "ready"
+    ]
+    manual_review_steps = [
+        row
+        for row in rotation_program
+        if row.get("operational_status") == "manual-review-required"
+    ]
+    first_ready = ready_steps[0] if ready_steps else None
+    return {
+        "summary": None,
+        "recommended_opening_step": first_ready.get("rotation_step_label")
+        if first_ready
+        else (rotation_program[0].get("rotation_step_label") if rotation_program else None),
+        "recommended_opening_step_index": first_ready.get("rotation_step_index")
+        if first_ready
+        else (
+            rotation_program[0].get("rotation_step_index")
+            if rotation_program
+            else None
+        ),
+        "rotation_step_count": len(rotation_program),
+        "ready_step_count": len(ready_steps),
+        "manual_review_step_count": len(manual_review_steps),
+        "alternative_count": len(rotation_alternatives),
+        "policy_code": "registered-first-unique-moa",
+        "policy_label": None,
+    }
+
+
 _NUTRIENT_ANALYTE_LABELS = {
     "n_no3": "N-NO3",
     "n_nh4": "N-NH4",
@@ -1831,48 +2012,37 @@ def recommend_pesticides(
     }
 
     product_recommendations = [
-        {
-            "product_names": row["product_names"],
-            "active_ingredient": row["active_ingredient"],
-            "target_names": row["target_names"][:4],
-            "moa_code_group": row["moa_code_group"],
-            "registration_status": row["registration_status"],
-            "dilution": row["dilution"],
-            "cycle_recommendation": row["cycle_recommendation"],
-            "mixing_caution": row["mixing_caution"],
-            "manual_review_required": row["registration_status"] in _PESTICIDE_MANUAL_REVIEW_STATUSES,
-            "operational_status": (
-                "manual-review-required"
-                if row["registration_status"] in _PESTICIDE_MANUAL_REVIEW_STATUSES
-                else "ready"
-            ),
-            "source_sheet": row["source_sheet"],
-            "source_row": row["source_row"],
-        }
+        _serialize_pesticide_product(row)
         for _, row in ranked_products[:limit]
     ]
     rotation_program = [
-        {
-            "rotation_theme": row["rotation_theme"],
-            "target_name": row["target_name"],
-            "product_names": row["product_names"],
-            "active_ingredient": row["active_ingredient"],
-            "moa_code_group": row["moa_code_group"],
-            "application_point": row["application_point"],
-            "reason": row["reason"],
-            "notes": row["notes"],
-            "registration_status": row["registration_status"],
-            "mixing_caution": row["mixing_caution"] or None,
-            "dilution": row["dilution"] or None,
-            "cycle_recommendation": row["cycle_recommendation"] or None,
-            "manual_review_required": row["manual_review_required"],
-            "operational_status": (
-                "manual-review-required" if row["manual_review_required"] else "ready"
-            ),
-            "source_sheet": row["source_sheet"],
-            "source_row": row["source_row"],
-        }
+        _serialize_rotation_step(row, step_index=index + 1)
+        for index, row in enumerate(selected_rotations)
+    ]
+    selected_rotation_row_refs = {
+        (row["source_sheet"], row["source_row"]) for row in selected_rotations
+    }
+    selected_identity_keys = {
+        _rotation_identity_key(row)
         for row in selected_rotations
+        if _rotation_identity_key(row)
+    }
+    rotation_alternatives = [
+        _serialize_rotation_step(
+            row,
+            step_index=index + 1,
+            alternative_reason_code=_resolve_rotation_alternative_reason_code(
+                row,
+                selected_identity_keys=selected_identity_keys,
+            ),
+        )
+        for index, row in enumerate(
+            [
+                row
+                for _, row in ranked_rotations
+                if (row["source_sheet"], row["source_row"]) not in selected_rotation_row_refs
+            ][:limit]
+        )
     ]
     moa_rows = [
         {
@@ -1928,6 +2098,11 @@ def recommend_pesticides(
         "matched_targets": _sample_strings(matched_targets, limit=12),
         "product_recommendations": product_recommendations,
         "rotation_program": rotation_program,
+        "rotation_alternatives": rotation_alternatives,
+        "rotation_guidance": _build_rotation_guidance(
+            rotation_program,
+            rotation_alternatives,
+        ),
         "moa_reference": moa_rows,
         "registration_status_counts": returned_status_counts,
         "candidate_registration_status_counts": candidate_status_counts,
