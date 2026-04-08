@@ -20,8 +20,12 @@ export const useRtrProfiles = () => {
 
                 if (!cancelled) {
                     setProfiles({
+                        status: data.status,
                         version: data.version,
                         updatedAt: data.updatedAt,
+                        mode: data.mode,
+                        optimizerEnabled: data.optimizerEnabled,
+                        availableModes: data.availableModes,
                         profiles: data.profiles,
                     });
                     setError(null);

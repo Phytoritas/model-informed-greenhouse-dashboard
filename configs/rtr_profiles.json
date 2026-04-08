@@ -1,6 +1,10 @@
 {
-  "version": 1,
+  "version": 2,
   "updatedAt": "2026-04-03T11:22:11.514973+00:00",
+  "availableModes": [
+    "baseline",
+    "optimizer"
+  ],
   "profiles": {
     "Tomato": {
       "crop": "Tomato",
@@ -20,6 +24,29 @@
         "meanAbsoluteErrorC": 0.1017,
         "selectionSource": "curated-windows",
         "windowCount": 1
+      },
+      "baseline": {
+        "baseTempC": 18.553,
+        "slopeCPerMjM2": 0.7913,
+        "toleranceC": 1.0,
+        "baseline_target_C": 18.553
+      },
+      "optimizer": {
+        "enabled": true,
+        "default_mode": "balanced",
+        "max_delta_temp_C": 1.5,
+        "max_rtr_ratio_delta": 0.04,
+        "temp_slew_rate_C_per_step": 0.12,
+        "weights": {
+          "temp": 1.0,
+          "node": 130.0,
+          "carbon": 110.0,
+          "sink": 90.0,
+          "resp": 25.0,
+          "risk": 120.0,
+          "energy": 25.0,
+          "labor": 18.0
+        }
       }
     },
     "Cucumber": {
@@ -40,6 +67,29 @@
         "meanAbsoluteErrorC": 0.2542,
         "selectionSource": "curated-windows",
         "windowCount": 1
+      },
+      "baseline": {
+        "baseTempC": 18.132,
+        "slopeCPerMjM2": 0.3099,
+        "toleranceC": 1.0,
+        "baseline_target_C": 18.132
+      },
+      "optimizer": {
+        "enabled": true,
+        "default_mode": "balanced",
+        "max_delta_temp_C": 1.2,
+        "max_rtr_ratio_delta": 0.03,
+        "temp_slew_rate_C_per_step": 0.12,
+        "weights": {
+          "temp": 1.0,
+          "node": 150.0,
+          "carbon": 120.0,
+          "sink": 80.0,
+          "resp": 20.0,
+          "risk": 120.0,
+          "energy": 25.0,
+          "labor": 20.0
+        }
       }
     }
   }

@@ -212,6 +212,39 @@ export interface ProducePricesPayload {
 }
 
 export type RtrCalibrationMode = 'baseline' | 'fitted' | 'insufficient-data';
+export type RtrSurfaceMode = 'baseline' | 'optimizer';
+export type RtrOptimizationMode =
+    | 'growth_priority'
+    | 'balanced'
+    | 'energy_saving'
+    | 'labor_saving'
+    | 'custom_weights';
+
+export interface RtrBaselineProfile {
+    baseTempC: number;
+    slopeCPerMjM2: number;
+    toleranceC: number;
+}
+
+export interface RtrOptimizerWeights {
+    temp: number;
+    node: number;
+    carbon: number;
+    sink: number;
+    resp: number;
+    risk: number;
+    energy: number;
+    labor: number;
+}
+
+export interface RtrOptimizerProfileConfig {
+    enabled: boolean;
+    default_mode: RtrOptimizationMode;
+    max_delta_temp_C: number;
+    max_rtr_ratio_delta: number;
+    temp_slew_rate_C_per_step: number;
+    weights: RtrOptimizerWeights;
+}
 
 export interface RtrCalibrationMetadata {
     mode: RtrCalibrationMode;
@@ -225,21 +258,291 @@ export interface RtrCalibrationMetadata {
     windowCount?: number;
 }
 
-export interface RtrProfile {
+export interface RtrProfile extends RtrBaselineProfile {
     crop: CropType;
     strategyLabel: string;
     sourceNote: string;
-    baseTempC: number;
-    slopeCPerMjM2: number;
-    toleranceC: number;
     lightToRadiantDivisor: number;
     calibration: RtrCalibrationMetadata;
+    baseline?: RtrBaselineProfile;
+    optimizer?: RtrOptimizerProfileConfig;
 }
 
 export interface RtrProfilesPayload {
     version: number;
     updatedAt: string;
+    status?: string;
+    mode?: RtrSurfaceMode;
+    optimizerEnabled?: boolean;
+    availableModes?: RtrSurfaceMode[];
     profiles: Record<CropType, RtrProfile>;
+}
+
+export interface RtrAreaUnitMeta {
+    greenhouse_area_m2: number;
+    actual_area_m2: number;
+    actual_area_pyeong: number;
+}
+
+export interface RtrControlTargets {
+    day_min_temp_C: number;
+    night_min_temp_C: number;
+    mean_temp_C: number;
+    vent_bias_C: number;
+    screen_bias_pct: number;
+    co2_target_ppm: number;
+}
+
+export interface RtrObjectiveBreakdown {
+    assimilation_gain: number;
+    respiration_cost: number;
+    node_target_penalty: number;
+    carbon_margin_penalty: number;
+    sink_overload_penalty: number;
+    humidity_risk_penalty: number;
+    disease_penalty: number;
+    energy_cost: number;
+    energy_cost_krw: number;
+    labor_cost: number;
+    labor_index: number;
+}
+
+export interface RtrFeasibility {
+    target_node_hit: boolean;
+    carbon_margin_positive: boolean;
+    risk_flags: Array<Record<string, unknown>>;
+    confidence?: number;
+}
+
+export interface RtrCanonicalState {
+    timestamp?: string;
+    crop: string;
+    greenhouse_id?: string;
+    env: {
+        T_air_C: number;
+        T_canopy_C: number;
+        RH_pct: number;
+        VPD_kPa: number;
+        CO2_ppm: number;
+        PAR_umol_m2_s: number;
+        outside_T_C: number;
+    };
+    flux: {
+        gross_assim_umol_m2_s: number;
+        net_assim_umol_m2_s: number;
+        respiration_proxy_umol_m2_s: number;
+        transpiration_g_m2_s: number;
+        latent_heat_W_m2: number;
+        sensible_heat_W_m2: number;
+        stomatal_conductance_m_s: number;
+    };
+    growth: {
+        LAI: number;
+        node_count: number;
+        predicted_node_rate_day: number;
+        fruit_load: number;
+        sink_demand: number;
+        source_capacity: number;
+        vegetative_dry_matter_g_m2: number;
+        fruit_dry_matter_g_m2: number;
+        harvested_fruit_dry_matter_g_m2: number;
+    };
+    crop_specific: {
+        cucumber?: {
+            leaf_area_by_rank: number[];
+            upper_leaf_activity: number;
+            middle_leaf_activity: number;
+            bottom_leaf_activity: number;
+            remaining_leaves: number;
+        };
+        tomato?: {
+            truss_cohorts: Array<Record<string, unknown>>;
+            active_trusses: number;
+            fruit_partition_ratio: number;
+            upper_leaf_activity?: number;
+            middle_leaf_activity?: number;
+            bottom_leaf_activity?: number;
+        };
+    };
+    energy: {
+        Q_load_kW: number;
+        P_elec_kW: number;
+        COP_current: number;
+        daily_kWh: number;
+    };
+    events: {
+        recent_leaf_removal: Array<Record<string, unknown>>;
+        recent_fruit_thinning: Array<Record<string, unknown>>;
+        recent_harvest: Array<Record<string, unknown>>;
+        recent_setpoint_changes: Array<Record<string, unknown>>;
+    };
+    baseline_rtr: {
+        baseTempC: number;
+        slopeCPerMjM2: number;
+        baseline_target_C: number;
+    };
+    optimizer?: RtrOptimizerProfileConfig;
+}
+
+export interface RtrStateResponse {
+    status: string;
+    crop: CropType;
+    greenhouse_id: string;
+    snapshot_id: string;
+    canonical_state: RtrCanonicalState;
+    baseline_rtr: RtrCanonicalState['baseline_rtr'];
+    optimizer_enabled: boolean;
+    area_unit_meta: RtrAreaUnitMeta;
+}
+
+export interface RtrEquivalentSummary {
+    baseline_ratio: number;
+    optimized_ratio: number;
+    delta_ratio: number;
+    delta_temp_C: number;
+}
+
+export interface RtrCropSpecificInsight {
+    crop: 'cucumber' | 'tomato';
+    remaining_leaves?: number;
+    leaf_area_by_rank?: number[];
+    layer_activity: {
+        upper: number;
+        middle: number;
+        bottom: number;
+    };
+    bottleneck_layer?: 'upper' | 'middle' | 'bottom';
+    recent_leaf_removal_count?: number;
+    active_trusses?: number;
+    fruit_partition_ratio?: number;
+    dominant_cohort_id?: number | null;
+    dominant_cohort_sink?: number;
+    recent_fruit_thinning_count?: number;
+}
+
+export interface RtrExplanationPayload {
+    summary: string;
+    target_node_development_per_day: number;
+    baseline_mean_temp_C: number;
+    optimized_mean_temp_C: number;
+    reason_tags: string[];
+    crop_summary: string;
+    missing_work_event_warning?: string | null;
+}
+
+export interface RtrUnitsM2Projection {
+    greenhouse_area_m2: number;
+    actual_area_m2: number;
+    actual_area_pyeong: number;
+    yield_proxy_kg_m2_day: number;
+    yield_proxy_kg_m2_week: number;
+    energy_kwh_m2_day: number;
+    energy_krw_m2_day: number;
+    labor_index_m2_day: number;
+    node_development_day: number;
+}
+
+export interface RtrActualAreaProjection {
+    actual_area_m2: number;
+    actual_area_pyeong: number;
+    yield_kg_day: number;
+    yield_kg_week: number;
+    energy_kwh_day: number;
+    energy_krw_day: number;
+    labor_index_day: number;
+}
+
+export interface RtrOptimizeResponse {
+    status: string;
+    mode: RtrSurfaceMode;
+    crop: CropType;
+    greenhouse_id: string;
+    snapshot_id: string;
+    baseline: {
+        mode: 'baseline';
+        targets: RtrControlTargets;
+        objective_breakdown: RtrObjectiveBreakdown;
+        feasibility: RtrFeasibility;
+    };
+    optimal_targets: RtrControlTargets;
+    rtr_equivalent: RtrEquivalentSummary;
+    objective_breakdown: RtrObjectiveBreakdown;
+    feasibility: RtrFeasibility;
+    crop_specific_insight: RtrCropSpecificInsight;
+    warning_badges: string[];
+    units_m2: RtrUnitsM2Projection;
+    actual_area_projection: RtrActualAreaProjection;
+    explanation_payload: RtrExplanationPayload;
+    solver: {
+        success: boolean;
+        message: string;
+        method: string;
+        stage1_success?: boolean;
+        stage2_success?: boolean;
+        stage1_message?: string;
+        stage2_message?: string;
+    };
+}
+
+export interface RtrScenarioRow {
+    label: string;
+    mode: RtrSurfaceMode | 'custom';
+    mean_temp_C: number;
+    day_min_temp_C: number;
+    night_min_temp_C: number;
+    node_rate_day: number;
+    net_carbon: number;
+    respiration: number;
+    energy_kwh_m2_day: number;
+    labor_index: number;
+    yield_trend: string;
+    recommendation_badge: string;
+    objective_breakdown: RtrObjectiveBreakdown;
+    actual_area_projection?: {
+        energy_kwh_day: number;
+        labor_index_day: number;
+    };
+}
+
+export interface RtrScenarioResponse {
+    status: string;
+    crop: CropType;
+    greenhouse_id: string;
+    snapshot_id: string;
+    target_node_development_per_day: number;
+    scenarios: RtrScenarioRow[];
+    area_unit_meta: RtrAreaUnitMeta;
+}
+
+export interface RtrSensitivityEntry {
+    sensitivity_id?: string;
+    control: string;
+    target: string;
+    derivative: number;
+    elasticity: number;
+    direction: 'increase' | 'decrease';
+    trust_region: {
+        low: number;
+        high: number;
+    };
+    method: string;
+    perturbation_size: number;
+    valid: boolean;
+    scenario_alignment: boolean;
+    created_at?: string;
+}
+
+export interface RtrSensitivityResponse {
+    status: string;
+    mode: RtrSurfaceMode;
+    crop: CropType;
+    greenhouse_id: string;
+    snapshot_id: string;
+    target_horizon: string;
+    step_c: number;
+    sensitivities: RtrSensitivityEntry[];
+    optimized_targets: RtrControlTargets;
+    area_unit_meta: RtrAreaUnitMeta;
 }
 
 export interface MetricHistoryPoint {
