@@ -854,6 +854,60 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
             },
         },
         {
+            "label": "offset_minus_0_3c",
+            "mode": "offset",
+            "mean_temp_C": 18.8,
+            "node_rate_day": 0.45,
+            "net_carbon": 0.03,
+            "respiration": 3.2,
+            "energy_kwh_m2_day": 0.14,
+            "labor_index": 0.04,
+            "yield_proxy_basis_net_assim": 7.2,
+            "yield_trend": "guarded",
+            "recommendation_badge": "compare",
+            "confidence": 0.7,
+            "risk_flags": [],
+            "objective_breakdown": {
+                "energy_cost_krw": 20.2,
+            },
+        },
+        {
+            "label": "offset_plus_0_3c",
+            "mode": "offset",
+            "mean_temp_C": 19.4,
+            "node_rate_day": 0.62,
+            "net_carbon": 0.11,
+            "respiration": 3.7,
+            "energy_kwh_m2_day": 0.17,
+            "labor_index": 0.06,
+            "yield_proxy_basis_net_assim": 8.2,
+            "yield_trend": "up",
+            "recommendation_badge": "compare",
+            "confidence": 0.82,
+            "risk_flags": [],
+            "objective_breakdown": {
+                "energy_cost_krw": 23.5,
+            },
+        },
+        {
+            "label": "offset_plus_0_6c",
+            "mode": "offset",
+            "mean_temp_C": 19.7,
+            "node_rate_day": 0.66,
+            "net_carbon": 0.12,
+            "respiration": 3.9,
+            "energy_kwh_m2_day": 0.19,
+            "labor_index": 0.07,
+            "yield_proxy_basis_net_assim": 8.3,
+            "yield_trend": "up",
+            "recommendation_badge": "compare",
+            "confidence": 0.8,
+            "risk_flags": [{"code": "respiration_watch"}],
+            "objective_breakdown": {
+                "energy_cost_krw": 25.6,
+            },
+        },
+        {
             "label": "balanced",
             "mode": "optimizer",
             "mean_temp_C": 19.5,
@@ -959,6 +1013,28 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
                 "trust_region": {"low": -0.4, "high": 0.4},
                 "method": "finite_difference",
                 "perturbation_size": 0.4,
+                "valid": True,
+            },
+            {
+                "control": "screen_bias",
+                "target": "humidity_risk_penalty",
+                "derivative": -0.03,
+                "elasticity": -0.08,
+                "direction": "decrease",
+                "trust_region": {"low": -4.0, "high": 4.0},
+                "method": "finite_difference",
+                "perturbation_size": 4.0,
+                "valid": True,
+            },
+            {
+                "control": "screen_bias",
+                "target": "disease_penalty",
+                "derivative": -0.02,
+                "elasticity": -0.05,
+                "direction": "decrease",
+                "trust_region": {"low": -4.0, "high": 4.0},
+                "method": "finite_difference",
+                "perturbation_size": 4.0,
                 "valid": True,
             },
         ]
@@ -1125,8 +1201,10 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
     assert scenario_response.status_code == 200
     scenario_payload = scenario_response.json()
     assert scenario_payload["status"] == "success"
-    assert len(scenario_payload["scenarios"]) == 6
+    assert len(scenario_payload["scenarios"]) == 9
     assert scenario_payload["scenarios"][0]["label"] == "baseline"
+    assert scenario_payload["scenarios"][1]["label"] == "offset_minus_0_3c"
+    assert scenario_payload["scenarios"][2]["label"] == "offset_plus_0_3c"
     assert scenario_payload["scenarios"][0]["confidence"] >= 0.2
     assert "risk_flags" in scenario_payload["scenarios"][0]
     assert scenario_payload["scenarios"][0]["yield_kg_m2_day"] >= 0.0
@@ -1139,8 +1217,12 @@ def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
     sensitivity_payload = sensitivity_response.json()
     assert sensitivity_payload["status"] == "success"
     assert sensitivity_payload["mode"] == "optimizer"
-    assert len(sensitivity_payload["sensitivities"]) == 3
+    assert len(sensitivity_payload["sensitivities"]) == 5
     assert sensitivity_payload["sensitivities"][0]["method"] == "finite_difference"
+    assert any(
+        row["control"] == "screen_bias" and row["target"] == "humidity_risk_penalty"
+        for row in sensitivity_payload["sensitivities"]
+    )
 
 
 def test_rtr_calibration_state_and_preview_routes_return_house_scoped_windows(
