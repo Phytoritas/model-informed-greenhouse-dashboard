@@ -9,6 +9,7 @@ import type {
     RtrStateResponse,
     SensorData,
     TemperatureSettings,
+    TelemetryStatus,
 } from '../types';
 import { AreaUnitProvider } from '../context/AreaUnitContext';
 import { LocaleProvider } from '../i18n/LocaleProvider';
@@ -202,6 +203,15 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
             risk_flags: [],
             confidence: 0.86,
         },
+        flux_projection: {
+            gross_assim_umol_m2_s: 22.4,
+            net_assim_umol_m2_s: 18.7,
+            respiration_umol_m2_s: 3.7,
+            carbon_margin: 0.21,
+            day_Q_load_kW: 9.2,
+            night_Q_load_kW: 6.4,
+            stomatal_conductance_m_s: 0.34,
+        },
         crop_specific_insight: {
             crop: 'cucumber',
             remaining_leaves: 16,
@@ -250,6 +260,14 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
             ],
             crop_summary: '하위엽 기여가 낮아 온도를 크게 올리기보다 소폭 상향에 그칩니다.',
             missing_work_event_warning: '최근 적엽 기록이 부족하면 해석 신뢰도가 낮아질 수 있습니다.',
+        },
+        control_guidance: {
+            target_horizon: 'today',
+            day_hold_hours: 14,
+            night_hold_hours: 10,
+            change_limit_C_per_step: 0.12,
+            max_delta_temp_C: 1.2,
+            max_rtr_ratio_delta: 0.03,
         },
         solver: {
             success: true,
@@ -310,9 +328,22 @@ function buildScenarioResponse(): RtrScenarioResponse {
                 respiration: 0.09,
                 energy_kwh_m2_day: 2.4,
                 labor_index: 0.42,
+                yield_kg_m2_day: 0.036,
+                yield_kg_m2_week: 0.252,
                 yield_trend: 'stable',
-                recommendation_badge: '기준선',
+                recommendation_badge: 'baseline',
+                confidence: 0.74,
+                risk_flags: [],
                 objective_breakdown: baselineBreakdown,
+                actual_area_projection: {
+                    actual_area_m2: 2809.92,
+                    actual_area_pyeong: 850,
+                    yield_kg_day: 101.16,
+                    yield_kg_week: 708.12,
+                    energy_kwh_day: 6743.81,
+                    energy_krw_day: 814876.8,
+                    labor_index_day: 1180.17,
+                },
             },
             {
                 label: 'balanced',
@@ -325,9 +356,22 @@ function buildScenarioResponse(): RtrScenarioResponse {
                 respiration: 0.11,
                 energy_kwh_m2_day: 2.9,
                 labor_index: 0.57,
+                yield_kg_m2_day: 0.043,
+                yield_kg_m2_week: 0.301,
                 yield_trend: 'up',
-                recommendation_badge: '권장',
+                recommendation_badge: 'recommended',
+                confidence: 0.86,
+                risk_flags: [],
                 objective_breakdown: balancedBreakdown,
+                actual_area_projection: {
+                    actual_area_m2: 2809.92,
+                    actual_area_pyeong: 850,
+                    yield_kg_day: 120.8,
+                    yield_kg_week: 845.6,
+                    energy_kwh_day: 8140.2,
+                    energy_krw_day: 977880,
+                    labor_index_day: 1601.65,
+                },
             },
         ],
     };
@@ -428,6 +472,7 @@ function renderPanel(options?: {
     optimizerEnabled?: boolean;
     profile?: RtrProfile | null;
     profileLoading?: boolean;
+    telemetryStatus?: TelemetryStatus;
 }) {
     if (options?.locale) {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, options.locale);
@@ -440,6 +485,7 @@ function renderPanel(options?: {
                     crop="Cucumber"
                     currentData={SENSOR_FIXTURE}
                     history={[SENSOR_FIXTURE]}
+                    telemetryStatus={options?.telemetryStatus}
                     temperatureSettings={TEMPERATURE_SETTINGS}
                     weather={null}
                     loading={false}
@@ -467,10 +513,13 @@ describe('RTROptimizerPanel', () => {
             setTargetNodeDevelopmentPerDay: vi.fn(),
             optimizationMode: 'balanced',
             setOptimizationMode: vi.fn(),
+            customScenario: null,
+            setCustomScenario: vi.fn(),
             includeEnergyCost: true,
             setIncludeEnergyCost: vi.fn(),
             includeLaborCost: true,
             setIncludeLaborCost: vi.fn(),
+            telemetryOptimizationBlocked: false,
             loading: false,
             loadingState: false,
             loadingOptimize: false,
@@ -498,8 +547,8 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getAllByText('기준선').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('기준선 비교 카드')).toBeTruthy();
         expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
-        expect(screen.getByText(/120\.8 kg/)).toBeTruthy();
-        expect(screen.getByText(/977,880 원/)).toBeTruthy();
+        expect(screen.getByText('실면적 120.8 kg/일 · 845.6 kg/주')).toBeTruthy();
+        expect(screen.getByText('실면적 8,140.2 kWh/일 · 977,880 원/일')).toBeTruthy();
     });
 
     it('syncs server area meta into context and reruns the optimizer with user area overrides', async () => {
@@ -589,9 +638,22 @@ describe('RTROptimizerPanel', () => {
             respiration: 0.12,
             energy_kwh_m2_day: 3.1,
             labor_index: 0.61,
+            yield_kg_m2_day: 0.045,
+            yield_kg_m2_week: 0.315,
             yield_trend: 'up',
-            recommendation_badge: '비교',
+            recommendation_badge: 'compare',
+            confidence: 0.81,
+            risk_flags: [],
             objective_breakdown: buildOptimizeResponse().objective_breakdown,
+            actual_area_projection: {
+                actual_area_m2: 2809.92,
+                actual_area_pyeong: 850,
+                yield_kg_day: 126.45,
+                yield_kg_week: 885.15,
+                energy_kwh_day: 8710.75,
+                energy_krw_day: 1043502,
+                labor_index_day: 1714.05,
+            },
         });
 
         useRtrOptimizerMock.mockReturnValue({
@@ -603,10 +665,13 @@ describe('RTROptimizerPanel', () => {
             setTargetNodeDevelopmentPerDay: vi.fn(),
             optimizationMode: 'balanced',
             setOptimizationMode: vi.fn(),
+            customScenario: null,
+            setCustomScenario: vi.fn(),
             includeEnergyCost: true,
             setIncludeEnergyCost: vi.fn(),
             includeLaborCost: true,
             setIncludeLaborCost: vi.fn(),
+            telemetryOptimizationBlocked: true,
             loading: false,
             loadingState: false,
             loadingOptimize: false,
@@ -618,5 +683,129 @@ describe('RTROptimizerPanel', () => {
         renderPanel();
 
         expect(await screen.findByText('Custom +0.6°C')).toBeTruthy();
+    });
+    it('renders stale telemetry warnings, risk details, and scenario badges in English', async () => {
+        const optimizeResponse = buildOptimizeResponse();
+        optimizeResponse.feasibility.risk_flags = [
+            {
+                code: 'disease_risk_high',
+                severity: 'high',
+                message: 'Resulting RH exceeds the bounded disease-risk ceiling.',
+                control: 'rh_target',
+            },
+        ];
+
+        useRtrOptimizerMock.mockReturnValue({
+            stateResponse: buildStateResponse(),
+            optimizeResponse,
+            scenarioResponse: buildScenarioResponse(),
+            sensitivityResponse: buildSensitivityResponse(),
+            targetNodeDevelopmentPerDay: 0.68,
+            setTargetNodeDevelopmentPerDay: vi.fn(),
+            optimizationMode: 'balanced',
+            setOptimizationMode: vi.fn(),
+            customScenario: null,
+            setCustomScenario: vi.fn(),
+            includeEnergyCost: true,
+            setIncludeEnergyCost: vi.fn(),
+            includeLaborCost: true,
+            setIncludeLaborCost: vi.fn(),
+            telemetryOptimizationBlocked: false,
+            loading: false,
+            loadingState: false,
+            loadingOptimize: false,
+            error: null,
+            refreshState: vi.fn(),
+            refreshOptimization: vi.fn(),
+        });
+
+        renderPanel({ locale: 'en', telemetryStatus: 'stale' });
+
+        expect(await screen.findByText('RTR optimizer')).toBeTruthy();
+        expect(screen.getByText(/Sensor telemetry is stale/)).toBeTruthy();
+        expect(screen.getByText('Constraint and risk warnings')).toBeTruthy();
+        expect(screen.getByText('Disease-risk humidity')).toBeTruthy();
+        expect(screen.getByText('Sink overload risk')).toBeTruthy();
+        expect(screen.getByText('Hold time')).toBeTruthy();
+        expect(screen.getByText('Change limit')).toBeTruthy();
+        expect(screen.getAllByText('Recommended').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('Yield up').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('8,140.2 kWh/day @ actual area')).toBeTruthy();
+    });
+
+    it('gates the optimizer UI and falls back to baseline compare when telemetry is offline', async () => {
+        useRtrOptimizerMock.mockReturnValue({
+            stateResponse: buildStateResponse(),
+            optimizeResponse: null,
+            scenarioResponse: null,
+            sensitivityResponse: null,
+            targetNodeDevelopmentPerDay: 0.68,
+            setTargetNodeDevelopmentPerDay: vi.fn(),
+            optimizationMode: 'balanced',
+            setOptimizationMode: vi.fn(),
+            customScenario: null,
+            setCustomScenario: vi.fn(),
+            includeEnergyCost: true,
+            setIncludeEnergyCost: vi.fn(),
+            includeLaborCost: true,
+            setIncludeLaborCost: vi.fn(),
+            telemetryOptimizationBlocked: true,
+            loading: false,
+            loadingState: false,
+            loadingOptimize: false,
+            error: null,
+            refreshState: vi.fn(),
+            refreshOptimization: vi.fn(),
+        });
+
+        renderPanel({ telemetryStatus: 'offline' });
+
+        expect(await screen.findByText('실시간 수신이 오래돼 RTR 최적화를 잠시 제한합니다.')).toBeTruthy();
+        expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
+        expect(screen.queryByText('목표 마디 전개')).toBeNull();
+    });
+
+    it('commits a custom compare scenario when manual setpoints are applied', async () => {
+        const setCustomScenario = vi.fn();
+        useRtrOptimizerMock.mockReturnValue({
+            stateResponse: buildStateResponse(),
+            optimizeResponse: buildOptimizeResponse(),
+            scenarioResponse: buildScenarioResponse(),
+            sensitivityResponse: buildSensitivityResponse(),
+            targetNodeDevelopmentPerDay: 0.68,
+            setTargetNodeDevelopmentPerDay: vi.fn(),
+            optimizationMode: 'balanced',
+            setOptimizationMode: vi.fn(),
+            customScenario: null,
+            setCustomScenario,
+            includeEnergyCost: true,
+            setIncludeEnergyCost: vi.fn(),
+            includeLaborCost: true,
+            setIncludeLaborCost: vi.fn(),
+            telemetryOptimizationBlocked: false,
+            loading: false,
+            loadingState: false,
+            loadingOptimize: false,
+            error: null,
+            refreshState: vi.fn(),
+            refreshOptimization: vi.fn(),
+        });
+
+        renderPanel();
+
+        fireEvent.change(screen.getByLabelText('비교 이름'), { target: { value: '사용자 +0.4°C' } });
+        fireEvent.change(screen.getByLabelText('주간 최소 온도 custom'), { target: { value: '20.4' } });
+        fireEvent.change(screen.getByLabelText('야간 최소 온도 custom'), { target: { value: '18.8' } });
+        fireEvent.change(screen.getByLabelText('환기 편차 custom'), { target: { value: '0.2' } });
+        fireEvent.change(screen.getByLabelText('스크린 편차 custom'), { target: { value: '4.5' } });
+        fireEvent.click(screen.getByRole('button', { name: '비교에 반영' }));
+
+        expect(setCustomScenario).toHaveBeenCalledWith({
+            label: '사용자 +0.4°C',
+            day_min_temp_C: 20.4,
+            night_min_temp_C: 18.8,
+            vent_bias_C: 0.2,
+            screen_bias_pct: 4.5,
+        });
     });
 });

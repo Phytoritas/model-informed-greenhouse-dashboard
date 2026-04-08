@@ -402,6 +402,16 @@ export interface RtrEquivalentSummary {
     delta_temp_C: number;
 }
 
+export interface RtrFluxProjection {
+    gross_assim_umol_m2_s: number;
+    net_assim_umol_m2_s: number;
+    respiration_umol_m2_s: number;
+    carbon_margin: number;
+    day_Q_load_kW: number;
+    night_Q_load_kW: number;
+    stomatal_conductance_m_s: number;
+}
+
 export interface RtrCropSpecificInsight {
     crop: 'cucumber' | 'tomato';
     remaining_leaves?: number;
@@ -428,6 +438,15 @@ export interface RtrExplanationPayload {
     reason_tags: string[];
     crop_summary: string;
     missing_work_event_warning?: string | null;
+}
+
+export interface RtrControlGuidance {
+    target_horizon: 'today' | 'next_24h' | 'day+night split';
+    day_hold_hours: number;
+    night_hold_hours: number;
+    change_limit_C_per_step: number;
+    max_delta_temp_C: number;
+    max_rtr_ratio_delta: number;
 }
 
 export interface RtrUnitsM2Projection {
@@ -468,11 +487,13 @@ export interface RtrOptimizeResponse {
     rtr_equivalent: RtrEquivalentSummary;
     objective_breakdown: RtrObjectiveBreakdown;
     feasibility: RtrFeasibility;
+    flux_projection: RtrFluxProjection;
     crop_specific_insight: RtrCropSpecificInsight;
     warning_badges: string[];
     units_m2: RtrUnitsM2Projection;
     actual_area_projection: RtrActualAreaProjection;
     explanation_payload: RtrExplanationPayload;
+    control_guidance: RtrControlGuidance;
     solver: {
         success: boolean;
         message: string;
@@ -495,13 +516,14 @@ export interface RtrScenarioRow {
     respiration: number;
     energy_kwh_m2_day: number;
     labor_index: number;
+    yield_kg_m2_day: number;
+    yield_kg_m2_week: number;
     yield_trend: string;
     recommendation_badge: string;
+    confidence: number;
+    risk_flags: Array<Record<string, unknown>>;
     objective_breakdown: RtrObjectiveBreakdown;
-    actual_area_projection?: {
-        energy_kwh_day: number;
-        labor_index_day: number;
-    };
+    actual_area_projection?: RtrActualAreaProjection;
 }
 
 export interface RtrScenarioResponse {
