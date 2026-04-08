@@ -43,6 +43,11 @@ def build_actual_area_projection(
     energy_kwh_m2_day: float = 0.0,
     energy_krw_m2_day: float = 0.0,
     labor_index_m2_day: float = 0.0,
+    heating_energy_kwh_m2_day: float = 0.0,
+    cooling_energy_kwh_m2_day: float = 0.0,
+    labor_hours_m2_day: float = 0.0,
+    labor_cost_krw_m2_day: float = 0.0,
+    margin_krw_m2_day: float = 0.0,
 ) -> dict[str, Any]:
     actual_area_m2 = float(area_meta.get("actual_area_m2") or 0.0)
     return {
@@ -52,5 +57,10 @@ def build_actual_area_projection(
         "yield_kg_week": round(project_per_m2_value(yield_kg_m2_week, actual_area_m2), 6),
         "energy_kwh_day": round(project_per_m2_value(energy_kwh_m2_day, actual_area_m2), 6),
         "energy_krw_day": round(project_per_m2_value(energy_krw_m2_day, actual_area_m2), 6),
+        "heating_energy_kwh_day": round(project_per_m2_value(heating_energy_kwh_m2_day, actual_area_m2), 6),
+        "cooling_energy_kwh_day": round(project_per_m2_value(cooling_energy_kwh_m2_day, actual_area_m2), 6),
         "labor_index_day": round(project_per_m2_value(labor_index_m2_day, actual_area_m2), 6),
+        "labor_hours_day": round(project_per_m2_value(labor_hours_m2_day, actual_area_m2), 6),
+        "labor_cost_krw_day": round(project_per_m2_value(labor_cost_krw_m2_day, actual_area_m2), 6),
+        "margin_krw_day": round(project_per_m2_value(margin_krw_m2_day, actual_area_m2), 6),
     }

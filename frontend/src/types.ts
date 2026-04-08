@@ -218,7 +218,12 @@ export type RtrOptimizationMode =
     | 'balanced'
     | 'energy_saving'
     | 'labor_saving'
-    | 'custom_weights';
+    | 'custom_weights'
+    | 'yield_priority'
+    | 'energy_priority'
+    | 'labor_priority'
+    | 'cooling_saving'
+    | 'heating_saving';
 
 export interface RtrBaselineProfile {
     baseTempC: number;
@@ -235,6 +240,14 @@ export interface RtrOptimizerWeights {
     risk: number;
     energy: number;
     labor: number;
+    assim: number;
+    yield: number;
+    heating: number;
+    cooling: number;
+    ventilation: number;
+    humidity: number;
+    disease: number;
+    stress: number;
 }
 
 export interface RtrOptimizerProfileConfig {
@@ -348,13 +361,32 @@ export interface RtrAreaUnitMeta {
     actual_area_pyeong: number;
 }
 
+export interface RtrActuatorAvailability {
+    heating: boolean;
+    cooling: boolean;
+    ventilation: boolean;
+    thermal_screen: boolean;
+    circulation_fan: boolean;
+    co2: boolean;
+    dehumidification: boolean;
+    fogging_or_evap_cooling: boolean;
+    cooling_modes: string[];
+}
+
 export interface RtrControlTargets {
     day_min_temp_C: number;
     night_min_temp_C: number;
     mean_temp_C: number;
+    day_heating_min_temp_C?: number;
+    night_heating_min_temp_C?: number;
+    day_cooling_target_C?: number;
+    night_cooling_target_C?: number;
     vent_bias_C: number;
     screen_bias_pct: number;
+    circulation_fan_pct?: number;
     co2_target_ppm: number;
+    dehumidification_bias?: number;
+    fogging_or_evap_cooling_intensity?: number;
 }
 
 export interface RtrObjectiveBreakdown {
@@ -365,10 +397,20 @@ export interface RtrObjectiveBreakdown {
     sink_overload_penalty: number;
     humidity_risk_penalty: number;
     disease_penalty: number;
+    stress_penalty?: number;
+    heating_energy_cost?: number;
+    cooling_energy_cost?: number;
+    ventilation_energy_cost?: number;
     energy_cost: number;
     energy_cost_krw: number;
+    heating_energy_cost_krw?: number;
+    cooling_energy_cost_krw?: number;
+    ventilation_energy_cost_krw?: number;
     labor_cost: number;
     labor_index: number;
+    labor_hours_m2_day?: number;
+    yield_penalty?: number;
+    gross_margin_proxy_krw_m2_day?: number;
 }
 
 export interface RtrFeasibility {
@@ -457,6 +499,12 @@ export interface RtrStateResponse {
     baseline_rtr: RtrCanonicalState['baseline_rtr'];
     optimizer_enabled: boolean;
     area_unit_meta: RtrAreaUnitMeta;
+    actuator_availability?: RtrActuatorAvailability;
+    optimizer_defaults?: RtrOptimizerProfileConfig;
+    current_per_m_projections?: RtrUnitsM2Projection;
+    current_actual_area_projection?: RtrActualAreaProjection;
+    current_control_effect_trace?: RtrControlEffectTrace;
+    current_risk_flags?: Array<Record<string, unknown>>;
 }
 
 export interface RtrEquivalentSummary {
@@ -474,6 +522,14 @@ export interface RtrFluxProjection {
     day_Q_load_kW: number;
     night_Q_load_kW: number;
     stomatal_conductance_m_s: number;
+    transpiration_g_m2_s?: number;
+    latent_heat_W_m2?: number;
+    sensible_heat_W_m2?: number;
+    T_air_C?: number;
+    T_leaf_C?: number;
+    RH_pct?: number;
+    VPD_kPa?: number;
+    CO2_ppm?: number;
 }
 
 export interface RtrCropSpecificInsight {
@@ -521,8 +577,13 @@ export interface RtrUnitsM2Projection {
     yield_proxy_kg_m2_week: number;
     energy_kwh_m2_day: number;
     energy_krw_m2_day: number;
+    heating_energy_kwh_m2_day?: number;
+    cooling_energy_kwh_m2_day?: number;
     labor_index_m2_day: number;
+    labor_hours_m2_day?: number;
+    labor_cost_krw_m2_day?: number;
     node_development_day: number;
+    gross_margin_proxy_krw_m2_day?: number;
 }
 
 export interface RtrActualAreaProjection {
@@ -532,7 +593,61 @@ export interface RtrActualAreaProjection {
     yield_kg_week: number;
     energy_kwh_day: number;
     energy_krw_day: number;
+    heating_energy_kwh_day?: number;
+    cooling_energy_kwh_day?: number;
     labor_index_day: number;
+    labor_hours_day?: number;
+    labor_cost_krw_day?: number;
+    margin_krw_day?: number;
+}
+
+export interface RtrEnergySummary {
+    heating_energy_kWh_m2_day: number;
+    cooling_energy_kWh_m2_day: number;
+    ventilation_energy_kWh_m2_day: number;
+    total_energy_kWh_m2_day: number;
+    heating_cost_krw_m2_day: number;
+    cooling_cost_krw_m2_day: number;
+    ventilation_cost_krw_m2_day: number;
+    total_energy_cost_krw_m2_day: number;
+}
+
+export interface RtrLaborSummary {
+    harvest_load_index: number;
+    training_load_index: number;
+    pruning_load_index: number;
+    thinning_load_index: number;
+    pollination_or_cluster_management_index: number;
+    canopy_management_load_index: number;
+    labor_index: number;
+    labor_hours_m2_day: number;
+    labor_cost_krw_m2_day: number;
+    predicted_harvest_frequency_increase?: number;
+    predicted_pruning_thinning_demand_increase?: number;
+}
+
+export interface RtrYieldSummary {
+    predicted_yield_kg_m2_day: number;
+    predicted_yield_kg_m2_week: number;
+    harvest_trend_delta_pct: number;
+    gross_margin_proxy_krw_m2_day: number;
+}
+
+export interface RtrControlEffectTrace {
+    day?: Record<string, number>;
+    night?: Record<string, number>;
+    env?: {
+        Tin_post_C?: number;
+        Tleaf_post_C?: number;
+        RH_post_pct?: number;
+        VPD_post_kPa?: number;
+        CO2_post_ppm?: number;
+        air_exchange_post?: number;
+        H_post_W_m2?: number;
+        LE_post_W_m2?: number;
+        transpiration_post_g_m2_s?: number;
+        condensation_risk_post?: number;
+    };
 }
 
 export interface RtrOptimizeResponse {
@@ -556,6 +671,11 @@ export interface RtrOptimizeResponse {
     warning_badges: string[];
     units_m2: RtrUnitsM2Projection;
     actual_area_projection: RtrActualAreaProjection;
+    actuator_availability?: RtrActuatorAvailability;
+    energy_summary?: RtrEnergySummary;
+    labor_summary?: RtrLaborSummary;
+    yield_summary?: RtrYieldSummary;
+    control_effect_trace?: RtrControlEffectTrace;
     explanation_payload: RtrExplanationPayload;
     control_guidance: RtrControlGuidance;
     solver: {
@@ -566,28 +686,47 @@ export interface RtrOptimizeResponse {
         stage2_success?: boolean;
         stage1_message?: string;
         stage2_message?: string;
+        stage2_coordination?: string;
+        coordinated_candidate?: Record<string, unknown>;
     };
 }
 
 export interface RtrScenarioRow {
     label: string;
     mode: RtrSurfaceMode | 'custom' | 'offset';
+    group?: 'baseline' | 'hvac' | 'vent-screen' | 'optimizer';
     mean_temp_C: number;
     day_min_temp_C: number;
     night_min_temp_C: number;
+    day_heating_min_temp_C?: number;
+    night_heating_min_temp_C?: number;
+    day_cooling_target_C?: number;
+    night_cooling_target_C?: number;
+    vent_bias_C?: number;
+    screen_bias_pct?: number;
+    circulation_fan_pct?: number;
+    co2_target_ppm?: number;
     node_rate_day: number;
     net_carbon: number;
+    net_assimilation?: number;
     respiration: number;
+    humidity_penalty?: number;
+    disease_penalty?: number;
     energy_kwh_m2_day: number;
+    heating_energy_kwh_m2_day?: number;
+    cooling_energy_kwh_m2_day?: number;
+    total_energy_cost_krw_m2_day?: number;
     labor_index: number;
     yield_kg_m2_day: number;
     yield_kg_m2_week: number;
+    harvest_trend_delta_pct?: number;
     yield_trend: string;
     recommendation_badge: string;
     confidence: number;
     risk_flags: Array<Record<string, unknown>>;
     objective_breakdown: RtrObjectiveBreakdown;
     actual_area_projection?: RtrActualAreaProjection;
+    control_effect_trace?: RtrControlEffectTrace;
 }
 
 export interface RtrScenarioResponse {
@@ -629,6 +768,7 @@ export interface RtrSensitivityResponse {
     sensitivities: RtrSensitivityEntry[];
     optimized_targets: RtrControlTargets;
     area_unit_meta: RtrAreaUnitMeta;
+    actuator_availability?: RtrActuatorAvailability;
 }
 
 export interface MetricHistoryPoint {

@@ -245,9 +245,15 @@ class RTROptimizeRequest(BaseModel):
         "energy_saving",
         "labor_saving",
         "custom_weights",
+        "yield_priority",
+        "energy_priority",
+        "labor_priority",
+        "cooling_saving",
+        "heating_saving",
     ] = "balanced"
     include_energy_cost: bool = True
     include_labor_cost: bool = False
+    include_cooling_cost: bool = True
     user_actual_area_pyeong: Optional[float] = None
     user_actual_area_m2: Optional[float] = None
     target_horizon: Literal["today", "next_24h", "day+night split"] = "today"
@@ -260,10 +266,17 @@ class RTRCustomScenarioRequest(BaseModel):
     label: Optional[str] = "custom"
     day_min_temp_C: Optional[float] = None
     night_min_temp_C: Optional[float] = None
+    day_heating_min_temp_C: Optional[float] = None
+    night_heating_min_temp_C: Optional[float] = None
+    day_cooling_target_C: Optional[float] = None
+    night_cooling_target_C: Optional[float] = None
     vent_bias_C: Optional[float] = 0.0
     screen_bias_pct: Optional[float] = 0.0
+    circulation_fan_pct: Optional[float] = None
     co2_target_ppm: Optional[float] = None
     rh_target_pct: Optional[float] = None
+    dehumidification_bias: Optional[float] = None
+    fogging_or_evap_cooling_intensity: Optional[float] = None
 
 
 class RTRScenarioRequest(RTROptimizeRequest):
@@ -815,11 +828,14 @@ def _build_rtr_calibration_preview_payload(
 
 
 def _build_rtr_baseline_candidate(context, optimization_inputs):
+    from .services.rtr.control_effects import build_baseline_control_candidate
     from .services.rtr.objective_terms import evaluate_rtr_candidate
 
-    baseline_target_c = float(context.canonical_state["baseline_rtr"]["baseline_target_C"])
-    baseline_day_c = max(float(context.ops_config.get("heating_set_C", baseline_target_c)), baseline_target_c)
-    baseline_night_c = float(context.ops_config.get("heating_set_C", baseline_target_c))
+    baseline_candidate = build_baseline_control_candidate(
+        env=context.canonical_state["env"],
+        ops_config=context.ops_config,
+        baseline_target_c=float(context.canonical_state["baseline_rtr"]["baseline_target_C"]),
+    )
     return evaluate_rtr_candidate(
         context=context,
         optimization_inputs=optimization_inputs,
@@ -832,12 +848,47 @@ def _build_rtr_baseline_candidate(context, optimization_inputs):
             "risk": 0.0,
             "energy": 0.0,
             "labor": 0.0,
+            "assim": 0.0,
+            "yield": 0.0,
+            "heating": 0.0,
+            "cooling": 0.0,
+            "ventilation": 0.0,
+            "humidity": 0.0,
+            "disease": 0.0,
+            "stress": 0.0,
         },
-        day_min_temp_c=baseline_day_c,
-        night_min_temp_c=baseline_night_c,
-        co2_target_ppm=float(context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
+        day_min_temp_c=baseline_candidate.day_heating_min_temp_C,
+        night_min_temp_c=baseline_candidate.night_heating_min_temp_C,
+        day_cooling_target_c=baseline_candidate.day_cooling_target_C,
+        night_cooling_target_c=baseline_candidate.night_cooling_target_C,
+        co2_target_ppm=baseline_candidate.co2_target_ppm,
         rh_target_pct=float(context.canonical_state["env"]["RH_pct"]),
     )
+
+
+def _resolve_active_rtr_weights(context, optimization_inputs):
+    from .services.rtr.controller_contract import build_weight_vector
+
+    optimizer_defaults = (
+        context.canonical_state.get("optimizer")
+        or context.crop_profile.get("optimizer")
+        or {}
+    )
+    return build_weight_vector(
+        optimizer_defaults,
+        optimization_inputs.optimization_mode,
+        include_energy_cost=optimization_inputs.include_energy_cost,
+        include_labor_cost=optimization_inputs.include_labor_cost,
+        include_cooling_cost=optimization_inputs.include_cooling_cost,
+        custom_weights=optimization_inputs.custom_weights,
+    )
+
+
+def _coalesce_optional_number(*values, default):
+    for value in values:
+        if value is not None:
+            return float(value)
+    return float(default)
 
 
 def _estimate_rtr_yield_proxy_kg_m2_day(context) -> float:
@@ -1003,6 +1054,44 @@ def _build_rtr_control_guidance(context, optimization_inputs) -> Dict[str, Any]:
     }
 
 
+def _build_rtr_projection_payloads(context, area_meta, candidate: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    from .services.rtr.unit_projection import build_actual_area_projection
+
+    yield_summary = candidate.get("yield_projection", {}) or {}
+    energy_summary = candidate.get("energy_summary", {}) or {}
+    labor_summary = candidate.get("labor_projection", {}) or {}
+    units_m2 = {
+        "greenhouse_area_m2": round(float(area_meta["greenhouse_area_m2"] or 0.0), 6),
+        "actual_area_m2": round(float(area_meta["actual_area_m2"] or 0.0), 6),
+        "actual_area_pyeong": round(float(area_meta["actual_area_pyeong"] or 0.0), 6),
+        "yield_proxy_kg_m2_day": round(float(yield_summary.get("predicted_yield_kg_m2_day", 0.0)), 6),
+        "yield_proxy_kg_m2_week": round(float(yield_summary.get("predicted_yield_kg_m2_week", 0.0)), 6),
+        "energy_kwh_m2_day": round(float(energy_summary.get("total_energy_kWh_m2_day", 0.0)), 6),
+        "energy_krw_m2_day": round(float(energy_summary.get("total_energy_cost_krw_m2_day", 0.0)), 6),
+        "heating_energy_kwh_m2_day": round(float(energy_summary.get("heating_energy_kWh_m2_day", 0.0)), 6),
+        "cooling_energy_kwh_m2_day": round(float(energy_summary.get("cooling_energy_kWh_m2_day", 0.0)), 6),
+        "labor_index_m2_day": round(float(labor_summary.get("labor_index", 0.0)), 6),
+        "labor_hours_m2_day": round(float(labor_summary.get("labor_hours_m2_day", 0.0)), 6),
+        "labor_cost_krw_m2_day": round(float(labor_summary.get("labor_cost_krw_m2_day", 0.0)), 6),
+        "node_development_day": round(float(candidate["node_summary"]["predicted_rate_day"]), 6),
+        "gross_margin_proxy_krw_m2_day": round(float(yield_summary.get("gross_margin_proxy_krw_m2_day", 0.0)), 6),
+    }
+    actual_area_projection = build_actual_area_projection(
+        area_meta=area_meta,
+        yield_kg_m2_day=float(yield_summary.get("predicted_yield_kg_m2_day", 0.0)),
+        yield_kg_m2_week=float(yield_summary.get("predicted_yield_kg_m2_week", 0.0)),
+        energy_kwh_m2_day=float(energy_summary.get("total_energy_kWh_m2_day", 0.0)),
+        energy_krw_m2_day=float(energy_summary.get("total_energy_cost_krw_m2_day", 0.0)),
+        heating_energy_kwh_m2_day=float(energy_summary.get("heating_energy_kWh_m2_day", 0.0)),
+        cooling_energy_kwh_m2_day=float(energy_summary.get("cooling_energy_kWh_m2_day", 0.0)),
+        labor_index_m2_day=float(labor_summary.get("labor_index", 0.0)),
+        labor_hours_m2_day=float(labor_summary.get("labor_hours_m2_day", 0.0)),
+        labor_cost_krw_m2_day=float(labor_summary.get("labor_cost_krw_m2_day", 0.0)),
+        margin_krw_m2_day=float(yield_summary.get("gross_margin_proxy_krw_m2_day", 0.0)),
+    )
+    return units_m2, actual_area_projection
+
+
 def _serialize_rtr_solver(solver_payload: Dict[str, Any]) -> Dict[str, Any]:
     stage1_success = bool(solver_payload.get("stage1_success", False))
     stage2_success = bool(solver_payload.get("stage2_success", False))
@@ -1016,6 +1105,8 @@ def _serialize_rtr_solver(solver_payload: Dict[str, Any]) -> Dict[str, Any]:
         "stage2_success": stage2_success,
         "stage1_message": stage1_message,
         "stage2_message": stage2_message,
+        "stage2_coordination": solver_payload.get("stage2_coordination"),
+        "coordinated_candidate": solver_payload.get("coordinated_candidate"),
     }
 
 
@@ -2330,6 +2421,7 @@ async def get_rtr_profiles():
 async def get_rtr_state(crop: str, greenhouse_id: Optional[str] = None, snapshot_id: Optional[str] = None):
     """Return the canonical internal RTR state plus baseline and area metadata."""
     from .services.model_runtime.model_state_store import ModelStateStore
+    from .services.rtr.control_effects import build_actuator_availability
     from .services.rtr.internal_model_bridge import build_internal_model_context
 
     normalized_crop = _validate_crop(crop)
@@ -2351,6 +2443,22 @@ async def get_rtr_state(crop: str, greenhouse_id: Optional[str] = None, snapshot
         actual_area_m2=float(area_meta["actual_area_m2"] or greenhouse_config["greenhouse"]["area_m2"]),
         cost_per_kwh=_get_crop_cost_per_kwh(normalized_crop),
     )
+    optimizer_inputs = _build_rtr_request_bundle(
+        {
+            "crop": normalized_crop,
+            "greenhouse_id": resolved_greenhouse_id,
+            "snapshot_id": snapshot_record["snapshot_id"],
+            "target_node_development_per_day": float(context.canonical_state["growth"]["predicted_node_rate_day"]),
+            "optimization_mode": "balanced",
+            "include_energy_cost": True,
+            "include_labor_cost": False,
+            "include_cooling_cost": True,
+            "user_actual_area_m2": area_meta["actual_area_m2"],
+            "user_actual_area_pyeong": area_meta["actual_area_pyeong"],
+        }
+    )[6]
+    baseline_candidate = _build_rtr_baseline_candidate(context, optimizer_inputs)
+    units_m2, actual_area_projection = _build_rtr_projection_payloads(context, area_meta, baseline_candidate)
     return {
         "status": "success",
         "crop": normalized_crop,
@@ -2360,6 +2468,12 @@ async def get_rtr_state(crop: str, greenhouse_id: Optional[str] = None, snapshot
         "baseline_rtr": context.canonical_state["baseline_rtr"],
         "optimizer_enabled": bool(context.canonical_state.get("optimizer", {}).get("enabled", False)),
         "area_unit_meta": area_meta,
+        "actuator_availability": build_actuator_availability(context.ops_config).as_dict(),
+        "optimizer_defaults": context.canonical_state.get("optimizer", {}) or {},
+        "current_per_m_projections": units_m2,
+        "current_actual_area_projection": actual_area_projection,
+        "current_control_effect_trace": baseline_candidate.get("control_effect_trace", {}),
+        "current_risk_flags": baseline_candidate.get("feasibility", {}).get("risk_flags", []),
     }
 
 
@@ -2368,7 +2482,7 @@ async def optimize_rtr(req: RTROptimizeRequest):
     """Optimize minimum-feasible RTR temperatures from the internal crop-energy model only."""
     from .services.rtr.lagrangian_optimizer import optimize_rtr_targets
     from .services.rtr.rtr_deriver import derive_rtr_equivalent
-    from .services.rtr.unit_projection import build_actual_area_projection
+    from .services.rtr.control_effects import build_actuator_availability
 
     (
         crop,
@@ -2414,26 +2528,7 @@ async def optimize_rtr(req: RTROptimizeRequest):
             - (0.05 * len(warning_badges)),
         ),
     )
-    yield_proxy_kg_m2_day = _estimate_rtr_yield_proxy_kg_m2_day(context)
-    units_m2 = {
-        "greenhouse_area_m2": round(float(area_meta["greenhouse_area_m2"] or 0.0), 6),
-        "actual_area_m2": round(float(area_meta["actual_area_m2"] or 0.0), 6),
-        "actual_area_pyeong": round(float(area_meta["actual_area_pyeong"] or 0.0), 6),
-        "yield_proxy_kg_m2_day": round(yield_proxy_kg_m2_day, 6),
-        "yield_proxy_kg_m2_week": round(yield_proxy_kg_m2_day * 7.0, 6),
-        "energy_kwh_m2_day": round(float(optimized_candidate["objective_breakdown"]["energy_cost"]), 6),
-        "energy_krw_m2_day": round(float(optimized_candidate["objective_breakdown"]["energy_cost_krw"]), 6),
-        "labor_index_m2_day": round(float(optimized_candidate["objective_breakdown"]["labor_index"]), 6),
-        "node_development_day": round(float(optimized_candidate["node_summary"]["predicted_rate_day"]), 6),
-    }
-    actual_area_projection = build_actual_area_projection(
-        area_meta=area_meta,
-        yield_kg_m2_day=yield_proxy_kg_m2_day,
-        yield_kg_m2_week=yield_proxy_kg_m2_day * 7.0,
-        energy_kwh_m2_day=float(optimized_candidate["objective_breakdown"]["energy_cost"]),
-        energy_krw_m2_day=float(optimized_candidate["objective_breakdown"]["energy_cost_krw"]),
-        labor_index_m2_day=float(optimized_candidate["objective_breakdown"]["labor_index"]),
-    )
+    units_m2, actual_area_projection = _build_rtr_projection_payloads(context, area_meta, optimized_candidate)
     return {
         "status": "success",
         "mode": "optimizer",
@@ -2458,6 +2553,11 @@ async def optimize_rtr(req: RTROptimizeRequest):
         "warning_badges": warning_badges,
         "units_m2": units_m2,
         "actual_area_projection": actual_area_projection,
+        "actuator_availability": build_actuator_availability(context.ops_config).as_dict(),
+        "energy_summary": optimized_candidate.get("energy_summary", {}),
+        "labor_summary": optimized_candidate.get("labor_projection", {}),
+        "yield_summary": optimized_candidate.get("yield_projection", {}),
+        "control_effect_trace": optimized_candidate.get("control_effect_trace", {}),
         "explanation_payload": explanation_payload,
         "control_guidance": control_guidance,
         "solver": _serialize_rtr_solver(optimized_candidate["solver"]),
@@ -2469,7 +2569,6 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
     """Compare baseline and optimizer RTR scenarios over the internal model stack."""
     from .services.rtr.objective_terms import evaluate_rtr_candidate
     from .services.rtr.scenario_runner import run_rtr_scenarios
-    from .services.rtr.unit_projection import build_actual_area_projection
 
     (
         crop,
@@ -2487,29 +2586,57 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
     )
     if req.custom_scenario is not None:
         custom = req.custom_scenario
+        active_weights = _resolve_active_rtr_weights(context, optimization_inputs)
         custom_eval = evaluate_rtr_candidate(
             context=context,
             optimization_inputs=optimization_inputs,
-            weights={
-                "temp": 1.0,
-                "node": 1.0,
-                "carbon": 1.0,
-                "sink": 1.0,
-                "resp": 1.0,
-                "risk": 1.0,
-                "energy": 1.0,
-                "labor": 1.0,
-            },
-            day_min_temp_c=float(custom.day_min_temp_C or context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])),
-            night_min_temp_c=float(custom.night_min_temp_C or context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])),
-            vent_bias_c=float(custom.vent_bias_C or 0.0),
-            screen_bias_pct=float(custom.screen_bias_pct or 0.0),
-            co2_target_ppm=float(custom.co2_target_ppm or context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"])),
-            rh_target_pct=float(custom.rh_target_pct or context.canonical_state["env"]["RH_pct"]),
+            weights=active_weights,
+            day_min_temp_c=_coalesce_optional_number(
+                custom.day_heating_min_temp_C,
+                custom.day_min_temp_C,
+                default=context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"]),
+            ),
+            night_min_temp_c=_coalesce_optional_number(
+                custom.night_heating_min_temp_C,
+                custom.night_min_temp_C,
+                default=context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"]),
+            ),
+            day_cooling_target_c=_coalesce_optional_number(
+                custom.day_cooling_target_C,
+                default=context.ops_config.get("cooling_set_C", context.canonical_state["env"]["T_air_C"] + 7.0),
+            ),
+            night_cooling_target_c=_coalesce_optional_number(
+                custom.night_cooling_target_C,
+                default=max(
+                    float(context.ops_config.get("cooling_set_C", context.canonical_state["env"]["T_air_C"] + 7.0)) - 1.0,
+                    float(context.ops_config.get("heating_set_C", context.canonical_state["env"]["T_air_C"])) + 1.0,
+                ),
+            ),
+            vent_bias_c=_coalesce_optional_number(custom.vent_bias_C, default=0.0),
+            screen_bias_pct=_coalesce_optional_number(custom.screen_bias_pct, default=0.0),
+            circulation_fan_pct=_coalesce_optional_number(custom.circulation_fan_pct, default=35.0),
+            co2_target_ppm=_coalesce_optional_number(
+                custom.co2_target_ppm,
+                default=context.ops_config.get("co2_target_ppm", context.canonical_state["env"]["CO2_ppm"]),
+            ),
+            rh_target_pct=_coalesce_optional_number(
+                custom.rh_target_pct,
+                default=context.canonical_state["env"]["RH_pct"],
+            ),
+            dehumidification_bias=_coalesce_optional_number(custom.dehumidification_bias, default=0.0),
+            fogging_or_evap_cooling_intensity=_coalesce_optional_number(
+                custom.fogging_or_evap_cooling_intensity,
+                default=0.0,
+            ),
         )
         custom_constraint_checks = custom_eval.get("constraint_checks", {}) or {}
         custom_feasibility = custom_eval.get("feasibility", {}) or {}
         custom_flux_projection = custom_eval.get("flux_projection", {}) or {}
+        custom_controls = custom_eval.get("controls", {}) or {}
+        custom_objective_breakdown = custom_eval.get("objective_breakdown", {}) or {}
+        custom_energy_summary = custom_eval.get("energy_summary", {}) or {}
+        custom_yield_summary = custom_eval.get("yield_projection", {}) or {}
+        custom_node_summary = custom_eval.get("node_summary", {}) or {}
         custom_risk_flags = custom_feasibility.get("risk_flags") or []
         custom_confidence = max(
             0.2,
@@ -2524,48 +2651,79 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
             {
                 "label": str(custom.label or "custom"),
                 "mode": "custom",
-                "mean_temp_C": custom_eval["controls"]["mean_temp_C"],
-                "day_min_temp_C": custom_eval["controls"]["day_min_temp_C"],
-                "night_min_temp_C": custom_eval["controls"]["night_min_temp_C"],
-                    "node_rate_day": custom_eval["node_summary"]["predicted_rate_day"],
-                    "net_carbon": custom_flux_projection["carbon_margin"],
-                    "respiration": custom_flux_projection["respiration_umol_m2_s"],
-                    "energy_kwh_m2_day": custom_eval["objective_breakdown"]["energy_cost"],
-                    "labor_index": custom_eval["objective_breakdown"]["labor_index"],
-                    "yield_proxy_basis_net_assim": float(
-                        custom_flux_projection.get(
-                            "net_assim_umol_m2_s",
-                            context.canonical_state["flux"]["net_assim_umol_m2_s"],
-                        )
-                    ),
+                "mean_temp_C": custom_controls.get("mean_temp_C", 0.0),
+                "day_min_temp_C": custom_controls.get("day_min_temp_C", 0.0),
+                "night_min_temp_C": custom_controls.get("night_min_temp_C", 0.0),
+                "day_heating_min_temp_C": custom_controls.get("day_heating_min_temp_C", custom_controls.get("day_min_temp_C", 0.0)),
+                "night_heating_min_temp_C": custom_controls.get("night_heating_min_temp_C", custom_controls.get("night_min_temp_C", 0.0)),
+                "day_cooling_target_C": custom_controls.get("day_cooling_target_C", context.ops_config.get("cooling_set_C", 26.0)),
+                "night_cooling_target_C": custom_controls.get("night_cooling_target_C", max(float(context.ops_config.get("cooling_set_C", 26.0)) - 1.0, float(context.ops_config.get("heating_set_C", 18.0)) + 1.0)),
+                "vent_bias_C": custom_controls.get("vent_bias_C", 0.0),
+                "screen_bias_pct": custom_controls.get("screen_bias_pct", 0.0),
+                "circulation_fan_pct": custom_controls.get("circulation_fan_pct", 0.0),
+                "co2_target_ppm": custom_controls.get("co2_target_ppm", 0.0),
+                "node_rate_day": custom_node_summary.get("predicted_rate_day", 0.0),
+                "net_carbon": custom_flux_projection.get("carbon_margin", 0.0),
+                "net_assimilation": custom_flux_projection.get("net_assim_umol_m2_s", 0.0),
+                "respiration": custom_flux_projection.get("respiration_umol_m2_s", 0.0),
+                "humidity_penalty": custom_objective_breakdown.get("humidity_risk_penalty", 0.0),
+                "disease_penalty": custom_objective_breakdown.get("disease_penalty", 0.0),
+                "energy_kwh_m2_day": custom_objective_breakdown.get("energy_cost", 0.0),
+                "heating_energy_kwh_m2_day": custom_energy_summary.get("heating_energy_kWh_m2_day", 0.0),
+                "cooling_energy_kwh_m2_day": custom_energy_summary.get("cooling_energy_kWh_m2_day", 0.0),
+                "total_energy_cost_krw_m2_day": custom_energy_summary.get("total_energy_cost_krw_m2_day", 0.0),
+                "labor_index": custom_objective_breakdown.get("labor_index", 0.0),
+                "yield_kg_m2_day": custom_yield_summary.get("predicted_yield_kg_m2_day", 0.0),
+                "yield_kg_m2_week": custom_yield_summary.get("predicted_yield_kg_m2_week", 0.0),
+                "harvest_trend_delta_pct": custom_yield_summary.get("harvest_trend_delta_pct", 0.0),
                 "yield_trend": "up" if custom_feasibility.get("carbon_margin_positive") else "guarded",
                 "recommendation_badge": "custom",
+                "group": "optimizer",
                 "confidence": round(custom_confidence, 6),
                 "risk_flags": custom_risk_flags,
-                "objective_breakdown": custom_eval["objective_breakdown"],
+                "objective_breakdown": custom_objective_breakdown,
+                "energy_summary": custom_energy_summary,
+                "yield_summary": custom_yield_summary,
+                "control_effect_trace": custom_eval.get("control_effect_trace", {}),
             }
         )
-    base_yield_proxy_kg_m2_day = _estimate_rtr_yield_proxy_kg_m2_day(context)
-    base_net_assim = max(float(context.canonical_state["flux"]["net_assim_umol_m2_s"] or 0.0), 1e-6)
     for row in scenarios:
         objective_breakdown = row.get("objective_breakdown", {}) or {}
-        scenario_net_assim = max(float(row.pop("yield_proxy_basis_net_assim", 0.0)), 0.0)
-        yield_proxy_kg_m2_day = round(
-            max(0.0, base_yield_proxy_kg_m2_day * (scenario_net_assim / base_net_assim)),
-            6,
+        row.setdefault("net_assimilation", float(row.get("yield_proxy_basis_net_assim", 0.0)))
+        row.setdefault("yield_kg_m2_day", 0.0)
+        row.setdefault("yield_kg_m2_week", float(row.get("yield_kg_m2_day", 0.0)) * 7.0)
+        row.setdefault("harvest_trend_delta_pct", 0.0)
+        row.setdefault("heating_energy_kwh_m2_day", 0.0)
+        row.setdefault("cooling_energy_kwh_m2_day", 0.0)
+        row.setdefault(
+            "total_energy_cost_krw_m2_day",
+            float(objective_breakdown.get("energy_cost_krw", 0.0)),
         )
-        row["yield_kg_m2_day"] = yield_proxy_kg_m2_day
-        row["yield_kg_m2_week"] = round(yield_proxy_kg_m2_day * 7.0, 6)
         row["confidence"] = round(float(row.get("confidence", 0.0)), 6)
         row["risk_flags"] = row.get("risk_flags") or []
-        row["actual_area_projection"] = build_actual_area_projection(
-            area_meta=area_meta,
-            yield_kg_m2_day=yield_proxy_kg_m2_day,
-            yield_kg_m2_week=yield_proxy_kg_m2_day * 7.0,
-            energy_kwh_m2_day=float(row["energy_kwh_m2_day"]),
-            energy_krw_m2_day=float(objective_breakdown.get("energy_cost_krw", 0.0)),
-            labor_index_m2_day=float(row["labor_index"]),
-        )
+        row["actual_area_projection"] = _build_rtr_projection_payloads(
+            context,
+            area_meta,
+            {
+                "yield_projection": {
+                    "predicted_yield_kg_m2_day": float(row.get("yield_kg_m2_day", 0.0)),
+                    "predicted_yield_kg_m2_week": float(row.get("yield_kg_m2_week", 0.0)),
+                    "gross_margin_proxy_krw_m2_day": float(objective_breakdown.get("gross_margin_proxy_krw_m2_day", 0.0)),
+                },
+                "energy_summary": row.get("energy_summary", {
+                    "total_energy_kWh_m2_day": float(row.get("energy_kwh_m2_day", 0.0)),
+                    "total_energy_cost_krw_m2_day": float(row.get("total_energy_cost_krw_m2_day", objective_breakdown.get("energy_cost_krw", 0.0))),
+                    "heating_energy_kWh_m2_day": float(row.get("heating_energy_kwh_m2_day", 0.0)),
+                    "cooling_energy_kWh_m2_day": float(row.get("cooling_energy_kwh_m2_day", 0.0)),
+                }),
+                "labor_projection": {
+                    "labor_index": float(row.get("labor_index", 0.0)),
+                    "labor_hours_m2_day": float(objective_breakdown.get("labor_hours_m2_day", 0.0)),
+                    "labor_cost_krw_m2_day": float(objective_breakdown.get("labor_cost", 0.0)),
+                },
+                "node_summary": {"predicted_rate_day": float(row.get("node_rate_day", 0.0))},
+            },
+        )[1]
     return {
         "status": "success",
         "crop": crop,
@@ -2581,6 +2739,7 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
 async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
     """Compute local temperature sensitivities around the optimized RTR solution."""
     from .services.rtr.lagrangian_optimizer import optimize_rtr_targets
+    from .services.rtr.control_effects import build_actuator_availability
     from .services.rtr.scenario_runner import compute_rtr_temperature_sensitivity
 
     (
@@ -2621,6 +2780,7 @@ async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
         "sensitivities": stored_rows,
         "optimized_targets": optimized_candidate["controls"],
         "area_unit_meta": area_meta,
+        "actuator_availability": build_actuator_availability(context.ops_config).as_dict(),
     }
 
 

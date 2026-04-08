@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #39 is merged on `main` via PR #40, there is no active implementation branch on the baseline, and the older issue #3 still remains only as the optional content-calibration follow-up for real approved windows."
+    "note": "Issue #41 is linked to `feat/41-introduce-actuator-first-post-control-rtr-seam` and PR #42, while `main` still preserves the merged issue #39 baseline beneath the active validating loop. The older issue #3 still remains only as the optional content-calibration follow-up for real approved windows."
   },
   "harness_setup": {
     "status": "pass",
@@ -194,5 +194,21 @@
   "issue34_pr_validation": {
     "status": "pass",
     "note": "PR #35 merged issue #34 into `main` after the green local ladder (`npm --prefix frontend run test`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest tests/test_rtr_optimizer.py`, `poetry run pytest tests/test_smoke.py -k rtr`, `poetry run pytest`) and successful GitHub Actions Backend/Frontend validation."
+  },
+  "issue41_actuator_first_hvac_optimizer": {
+    "status": "pass",
+    "note": "Issue #41 promotes RTR from temperature-first plus auxiliary heuristics to an actuator-first control seam: heating, cooling, ventilation, thermal screen, circulation fan, and CO2 now flow through `actuator_bridge -> post_control_state -> crop_bridge -> objective_terms`, scenario/sensitivity surfaces reflect those first-class controls, and the dashboard keeps m²-canonical plus actual-area projection outputs."
+  },
+  "issue41_blocker_fixup": {
+    "status": "pass",
+    "note": "The post-review fix-up removes ventilation-energy double counting, aligns optimize/scenario baseline semantics through a shared baseline control candidate, makes sensitivity objective weights honor `include_energy_cost`/`include_labor_cost` even in `custom_weights` mode, and preserves explicit zero-valued circulation-fan overrides in custom scenarios."
+  },
+  "issue41_local_validation": {
+    "status": "pass",
+    "note": "Issue #41 is locally green after the blocker fix-up: `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, and `git diff --check` all pass, with pytest now at `144 passed, 31 warnings`."
+  },
+  "issue41_pr_validation": {
+    "status": "validating",
+    "note": "PR #42 is open on the latest pushed issue #41 branch head after the follow-up fixes for the reviewer-blocking findings and the validating-state harness sync. GitHub Actions Backend/Frontend validation must be re-checked on that latest head before merge."
   }
 }
