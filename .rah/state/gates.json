@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "There is no active repo-level product branch in the root worktree now that issues #47 and #49 are merged. The root repository is normalized onto `main`, while issue #3 still remains only as the optional content-calibration follow-up for real approved windows."
+    "note": "Issue #57 is active on branch `fix/57-reduce-frontend-entry-chunk-size-with-route-level-code-splitting` for the bounded frontend code-splitting follow-up over clean `main`."
   },
   "harness_setup": {
     "status": "pass",
@@ -238,5 +238,17 @@
   "root_postmerge_cleanup": {
     "status": "pass",
     "note": "After issue #49 merged, the root repository was normalized back to clean `main`, local-only artifacts were hidden with `.git/info/exclude`, and obsolete issue43/45/47/49 worktree folders were removed once lingering `vite`/`esbuild`/`uvicorn` processes were stopped."
+  },
+  "issue57_frontend_chunk_split": {
+    "status": "pass",
+    "note": "The frontend build now splits React, router, and lucide vendor groups in `frontend/vite.config.ts`, reducing the production `index` chunk from `513.46 kB` to `284.08 kB` and removing the Vite >500 kB warning without changing runtime surfaces."
+  },
+  "issue57_local_validation": {
+    "status": "pass",
+    "note": "Issue #57 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, and `npm --prefix frontend run build` after the vendor chunk split landed."
+  },
+  "issue57_pr_validation": {
+    "status": "pending",
+    "note": "PR #58 is open for issue #57 and the project item has been moved to `Validating`; wait for GitHub Actions Backend/Frontend validation on the latest head before merge."
   }
 }
