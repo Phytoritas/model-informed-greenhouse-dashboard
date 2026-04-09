@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue47-phytosync-shadcn-gap-closure-validating-on-pr48",
+  "current_stage": "issue49-warm-editorial-phytosync-followup-pr50-merged",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-phytosync-route-shell",
-  "active_issue": 47,
-  "active_branch": "feat/47-close-remaining-phytosync-shadcn-redesign-prompt-gaps",
+  "active_issue": null,
+  "active_branch": null,
   "implementation_blocked": false,
-  "next_action": "Watch PR #48 (`[Doc] Close remaining PhytoSync shadcn redesign prompt gaps`) on `feat/47-close-remaining-phytosync-shadcn-redesign-prompt-gaps`. The branch now lands the route-driven PhytoSync workspace shell, design tokens and style layers, the ask/search workspace, Korean copy cleanup, and accessibility/test hardening. If GitHub Actions pass, merge and resync `main`; if they fail, fix only the failing surface on the same branch.",
+  "next_action": "Issue #49 is merged through PR #50 at merge commit `553c36df422416b9001b19dbb43f8a52fa6ef8d3`. The root repository is normalized onto clean `main` with obsolete issue worktrees removed. Next either open a fresh issue/branch for more PhytoSync UI polish on top of `main`, or return to the optional issue #3 grower-window calibration follow-up.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "codex_phytosync_shadcn_redesign_prompt.md gap-closure follow-up over the merged issue #45 UI baseline"
+  "directive_file": "codex_phytosync_shadcn_redesign_prompt.md warm editorial follow-up over the merged issue #47 route-shell baseline"
 }
