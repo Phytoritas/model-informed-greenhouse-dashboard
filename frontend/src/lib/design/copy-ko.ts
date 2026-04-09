@@ -1,0 +1,16 @@
+export const phytoSyncCopyKo = {
+  brand: 'PhytoSync',
+  workspaces: '워크스페이스',
+  overview: '오늘 개요',
+  control: '환경 제어',
+  growth: '생육·작업',
+  nutrient: '양액·관수',
+  protection: '방제',
+  harvest: '수확·출하',
+  resources: '자원·비용',
+  alerts: '알림',
+  ask: '질문하기',
+  search: '자료 찾기',
+  evidence: '참고 메모',
+  reviewState: '판단 안정도',
+} as const;

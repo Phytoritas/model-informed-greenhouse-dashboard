@@ -1,0 +1,27 @@
+@layer components {
+  .sg-chart-frame {
+    position: relative;
+    min-height: 260px;
+  }
+
+  .sg-chart-surface .recharts-wrapper,
+  .sg-chart-surface .recharts-surface {
+    transition: opacity 140ms ease;
+  }
+
+  .sg-chart-surface .recharts-cartesian-grid-horizontal line,
+  .sg-chart-surface .recharts-cartesian-grid-vertical line {
+    stroke: rgba(82, 97, 113, 0.12);
+  }
+
+  .sg-chart-surface .recharts-tooltip-wrapper {
+    filter: drop-shadow(0 16px 32px rgba(11, 28, 48, 0.14));
+  }
+
+  .sg-chart-surface .recharts-default-tooltip {
+    border: 0 !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: var(--sg-shadow-card) !important;
+  }
+}
