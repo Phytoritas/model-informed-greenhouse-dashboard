@@ -11,6 +11,7 @@ interface SmartGrowSurfacePanelProps {
     loading?: boolean;
     error?: string | null;
     onOpenSurface?: (surfaceKey: SmartGrowAdvisorySurfaceSummary['key']) => void;
+    layoutMode?: 'default' | 'compact';
 }
 
 const SURFACE_ICON = {
@@ -81,6 +82,7 @@ export default function SmartGrowSurfacePanel({
     loading = false,
     error = null,
     onOpenSurface,
+    layoutMode = 'default',
 }: SmartGrowSurfacePanelProps) {
     const { locale } = useLocale();
     const cropLabel = getCropLabel(crop, locale);
@@ -177,6 +179,7 @@ export default function SmartGrowSurfacePanel({
     });
     const featuredSurface = orderedSurfaces[0] ?? null;
     const supportingSurfaces = orderedSurfaces.slice(1);
+    const isCompact = layoutMode === 'compact';
 
     return (
         <DashboardCard
@@ -210,7 +213,7 @@ export default function SmartGrowSurfacePanel({
                 </div>
             ) : (
                 <div className="space-y-4">
-                    <div className="grid gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)]">
+                    <div className={`grid gap-3 ${isCompact ? 'xl:grid-cols-1' : 'md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)]'}`}>
                         <div
                             className="rounded-[28px] px-5 py-5 sg-tint-green md:row-span-2"
                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
@@ -266,7 +269,7 @@ export default function SmartGrowSurfacePanel({
                     </div>
 
                     {featuredSurface ? (
-                        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.28fr)_minmax(0,0.92fr)]">
+                        <div className={`grid gap-4 ${isCompact ? 'grid-cols-1' : 'xl:grid-cols-[minmax(0,1.28fr)_minmax(0,0.92fr)]'}`}>
                             {(() => {
                                 const Icon = SURFACE_ICON[featuredSurface.key];
                                 const ready = featuredSurface.status === 'ready';
@@ -287,15 +290,15 @@ export default function SmartGrowSurfacePanel({
                                     >
                                         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/18 blur-3xl" />
                                         <div className="relative flex flex-col gap-6">
-                                            <div className="flex flex-wrap items-start justify-between gap-4">
-                                                <div className="flex items-start gap-3">
+                                            <div className={`flex flex-wrap items-start gap-4 ${isCompact ? 'flex-col' : 'justify-between'}`}>
+                                                <div className="flex min-w-0 items-start gap-3">
                                                     <div
                                                         className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
                                                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                                     >
                                                         <Icon className="h-6 w-6" />
                                                     </div>
-                                                    <div className="min-w-0">
+                                                    <div className="min-w-0 flex-1">
                                                         <div className="sg-eyebrow">{copy.featuredSurface}</div>
                                                         <div className="mt-3 text-[clamp(1.65rem,2.1vw,2.45rem)] font-semibold tracking-[-0.07em] text-[color:var(--sg-text-strong)]">
                                                             {labels[featuredSurface.key]}
@@ -313,7 +316,7 @@ export default function SmartGrowSurfacePanel({
                                                 </div>
                                             </div>
 
-                                            <div className="grid gap-3 md:grid-cols-3">
+                                            <div className={`grid gap-3 ${isCompact ? 'sm:grid-cols-2 xl:grid-cols-1' : 'md:grid-cols-3'}`}>
                                                 <LauncherStatPill label={copy.requiredInputs} value={featuredSurface.requiredFields.length} />
                                                 <LauncherStatPill label={copy.optionalInputs} value={featuredSurface.optionalFields.length} />
                                                 <LauncherStatPill label={copy.supportRange} value={coverageCount} />
@@ -333,7 +336,7 @@ export default function SmartGrowSurfacePanel({
                                                 </div>
                                             ) : null}
 
-                                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <div className={`flex flex-wrap items-center gap-3 ${isCompact ? 'justify-start' : 'justify-between'}`}>
                                                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                                                     {copy.supportingSurface}
                                                 </div>
@@ -392,7 +395,7 @@ export default function SmartGrowSurfacePanel({
                                                 </div>
                                             </div>
 
-                                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                            <div className={`mt-4 grid gap-3 ${isCompact ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-1' : 'sm:grid-cols-2'}`}>
                                                 <LauncherStatPill label={copy.requiredInputs} value={surface.requiredFields.length} />
                                                 <LauncherStatPill label={copy.supportRange} value={coverageCount} />
                                             </div>

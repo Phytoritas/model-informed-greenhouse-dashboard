@@ -1,86 +1,112 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { AdvancedModelMetrics, SensorData } from '../../types';
+
+vi.mock('../ChatAssistant', () => ({
+    default: ({ layoutMode }: { layoutMode?: string }) => (
+        <div>{`ChatAssistant:${layoutMode ?? 'drawer'}`}</div>
+    ),
+}));
+
+vi.mock('./AskKnowledgeBoard', () => ({
+    default: ({ query }: { query: string }) => (
+        <div>{`AskKnowledgeBoard:${query || 'empty'}`}</div>
+    ),
+}));
+
+vi.mock('./AskRecentFlow', () => ({
+    default: () => <div>AskRecentFlow</div>,
+}));
+
+vi.mock('./AskResultSummary', () => ({
+    default: () => <div>AskResultSummary</div>,
+}));
+
 import AskSearchPage from './AskSearchPage';
 
 const baseProps = {
-    locale: 'ko' as const,
+    locale: 'en' as const,
     crop: 'Cucumber' as const,
-    cropLabel: '오이',
+    cropLabel: 'Cucumber',
     summary: {
         cropKey: 'cucumber',
         surfaces: [],
-        advisorySurfaceNames: ['양액', '방제'],
-        pendingParsers: ['PDF'],
+        advisorySurfaceNames: ['Nutrient', 'Protection'],
+        pendingParsers: ['pdf'],
         pesticideReady: true,
         nutrientReady: true,
         nutrientCorrectionReady: false,
         nutrientCorrectionDraftMode: null,
         nutrientCorrectionLimitation: null,
     },
-    actionsNow: ['지금 환기 편차를 보수적으로 유지합니다.'],
-    actionsToday: ['야간 습도 상승 구간을 먼저 확인합니다.'],
-    note: '자료를 찾은 뒤 바로 다음 운영 판단으로 이어가세요.',
+    actionsNow: ['Keep the vent line steady.'],
+    actionsToday: ['Review humidity after sunset.'],
+    note: 'Keep the assistant flow inside one page.',
     signals: [
-        { label: '센서 상태', value: '실시간 · 2분 전' },
-        { label: '시장', value: '오이 12,400원' },
+        { label: 'Data', value: 'Live' },
+        { label: 'Market', value: 'Connected' },
     ],
+    currentData: {
+        timestamp: Date.now(),
+        temperature: 22.4,
+        humidity: 67,
+        co2: 540,
+        light: 410,
+        vpd: 1.12,
+        stomatalConductance: 0.34,
+        photosynthesis: 16.8,
+        fieldAvailability: {
+            temperature: true,
+            humidity: true,
+            co2: true,
+            light: true,
+            vpd: true,
+            stomatalConductance: true,
+        },
+    } as unknown as SensorData,
+    metrics: {
+        energy: { consumption: 12.4, efficiency: 3.18 },
+        growth: { lai: 3.2, developmentStage: 'vegetative' },
+        yield: { predictedWeekly: 126.5 },
+    } as unknown as AdvancedModelMetrics,
+    onOpenSearch: vi.fn(),
 };
 
 describe('AskSearchPage', () => {
-    it('renders only the ask composer by default', () => {
-        const onOpenAsk = vi.fn();
-        const onOpenSearch = vi.fn();
+    it('renders the inline chat surface by default', () => {
+        render(<AskSearchPage {...baseProps} />);
 
-        render(
-            <AskSearchPage
-                {...baseProps}
-                onOpenAsk={onOpenAsk}
-                onOpenSearch={onOpenSearch}
-            />,
-        );
-
-        expect(screen.getByRole('heading', { name: /오이 운영 질문을 바로 시작하세요/ })).toBeTruthy();
-        expect(screen.getByRole('button', { name: '질문하기' })).toBeTruthy();
-        expect(screen.getByRole('button', { name: '자료 찾기' })).toBeTruthy();
-        expect(screen.queryByRole('heading', { name: '질문 흐름 안에서 바로 자료를 찾습니다' })).toBeNull();
-        expect(screen.queryByText('지금 이어지는 질문 맥락')).toBeNull();
-
-        fireEvent.click(screen.getByRole('button', { name: '질문하기' }));
-        fireEvent.click(screen.getByRole('button', { name: '자료 찾기' }));
-
-        expect(onOpenAsk).toHaveBeenCalledTimes(1);
-        expect(onOpenSearch).toHaveBeenCalledTimes(1);
+        expect(screen.getByText('ChatAssistant:inline')).toBeTruthy();
+        expect(screen.queryByText(/AskKnowledgeBoard:/)).toBeNull();
+        expect(screen.queryByText('AskRecentFlow')).toBeNull();
+        expect(screen.queryByText('AskResultSummary')).toBeNull();
     });
 
-    it('renders only the inline knowledge board on the search panel', () => {
+    it('renders the inline knowledge board and hydrates a seeded search query', async () => {
         render(
             <AskSearchPage
                 {...baseProps}
-                activePanel="ask-search"
-                onOpenAsk={vi.fn()}
-                onOpenSearch={vi.fn()}
+                activePanel="assistant-search"
+                searchRequest={{ query: 'powdery mildew rotation', nonce: 1 }}
             />,
         );
 
-        expect(screen.getByRole('heading', { name: '질문 흐름 안에서 바로 자료를 찾습니다' })).toBeTruthy();
-        expect(screen.getByText('질문하기를 열지 않아도, 이 화면 안에서 바로 검색하고 연결된 문서를 읽을 수 있습니다.')).toBeTruthy();
-        expect(screen.queryByRole('heading', { name: /오이 운영 질문을 바로 시작하세요/ })).toBeNull();
-        expect(screen.queryByText('지금 이어지는 질문 맥락')).toBeNull();
+        expect(await screen.findByText('AskKnowledgeBoard:powdery mildew rotation')).toBeTruthy();
+        expect(screen.queryByText('ChatAssistant:inline')).toBeNull();
+        expect(screen.queryByText('AskRecentFlow')).toBeNull();
     });
 
-    it('renders only the recent-flow summary on the history panel', () => {
+    it('renders the history summary without chat or search surfaces', () => {
         render(
             <AskSearchPage
                 {...baseProps}
-                activePanel="ask-history"
-                onOpenAsk={vi.fn()}
-                onOpenSearch={vi.fn()}
+                activePanel="assistant-history"
             />,
         );
 
-        expect(screen.getByText('지금 이어지는 질문 맥락')).toBeTruthy();
-        expect(screen.getByText('검색 뒤에 열릴 운영 도구')).toBeTruthy();
-        expect(screen.queryByRole('heading', { name: /오이 운영 질문을 바로 시작하세요/ })).toBeNull();
-        expect(screen.queryByRole('heading', { name: '질문 흐름 안에서 바로 자료를 찾습니다' })).toBeNull();
+        expect(screen.getByText('AskRecentFlow')).toBeTruthy();
+        expect(screen.getByText('AskResultSummary')).toBeTruthy();
+        expect(screen.queryByText('ChatAssistant:inline')).toBeNull();
+        expect(screen.queryByText(/AskKnowledgeBoard:/)).toBeNull();
     });
 });

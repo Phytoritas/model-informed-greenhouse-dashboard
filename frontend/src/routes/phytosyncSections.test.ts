@@ -22,7 +22,7 @@ describe('phytosyncSections', () => {
             'harvest',
             'resources',
             'alerts',
-            'ask',
+            'assistant',
         ]);
         expect(enSections.map((section) => section.key)).toEqual(koSections.map((section) => section.key));
     });
@@ -31,7 +31,7 @@ describe('phytosyncSections', () => {
         const sections = buildPhytoSections('ko');
         const overview = sections.find((section) => section.key === 'overview');
         const harvest = sections.find((section) => section.key === 'harvest');
-        const ask = sections.find((section) => section.key === 'ask');
+        const assistant = sections.find((section) => section.key === 'assistant');
         const growth = sections.find((section) => section.key === 'growth');
 
         expect(overview?.path).toBe('/overview');
@@ -46,16 +46,19 @@ describe('phytosyncSections', () => {
         expect(harvest?.workspace).toBe('advisor');
         expect(harvest?.advisorTab).toBe('harvest_market');
 
-        expect(ask?.path).toBe('/ask');
-        expect(ask?.workspace).toBe('knowledge');
-        expect(ask?.tabs.map((tab) => tab.label)).toEqual(['질문', '자료 찾기', '최근 흐름']);
+        expect(assistant?.path).toBe('/assistant');
+        expect(assistant?.workspace).toBe('knowledge');
+        expect(assistant?.tabs.map((tab) => tab.id)).toEqual(['assistant-chat', 'assistant-search', 'assistant-history']);
+        expect(assistant?.tabs.map((tab) => tab.label)).toEqual(['질문', '자료 찾기', '최근 흐름']);
     });
 
-    it('matches nested paths and falls back to overview on unknown paths', () => {
+    it('matches nested paths, keeps /ask as an alias, and falls back to overview on unknown paths', () => {
         const sections = buildPhytoSections('en');
 
         expect(findPhytoSection(sections, '/harvest/week').key).toBe('harvest');
         expect(findPhytoSection(sections, '/resources/energy').key).toBe('resources');
+        expect(findPhytoSection(sections, '/assistant').key).toBe('assistant');
+        expect(findPhytoSection(sections, '/ask').key).toBe('assistant');
         expect(findPhytoSection(sections, '/not-a-real-route').key).toBe('overview');
     });
 
@@ -66,7 +69,7 @@ describe('phytosyncSections', () => {
         expect(getDefaultSectionPathForWorkspace('advisor')).toBe('/growth');
         expect(getDefaultSectionPathForWorkspace('resources')).toBe('/resources');
         expect(getDefaultSectionPathForWorkspace('alerts')).toBe('/alerts');
-        expect(getDefaultSectionPathForWorkspace('knowledge')).toBe('/ask');
+        expect(getDefaultSectionPathForWorkspace('knowledge')).toBe('/assistant');
 
         expect(getSectionPathForAdvisorTab('environment')).toBe('/growth');
         expect(getSectionPathForAdvisorTab('physiology')).toBe('/growth');

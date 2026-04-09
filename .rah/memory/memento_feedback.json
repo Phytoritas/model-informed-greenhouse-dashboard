@@ -1,0 +1,50 @@
+{
+  "items": [
+    {
+      "timestamp": "2026-04-10T00:00:09+09:00",
+      "tool_name": "recall",
+      "search_event_id": "1373",
+      "relevant": true,
+      "sufficient": false,
+      "context": "issue61 harness resume",
+      "suggestion": "repo-specific issue61 fragments and current .rah drift details should rank higher than cross-repo workflow fragments"
+    },
+    {
+      "timestamp": "2026-04-10T00:36:24+09:00",
+      "tool_name": "recall",
+      "search_event_id": "1381",
+      "relevant": false,
+      "sufficient": false,
+      "context": "issue61 legacy compatibility phase",
+      "suggestion": "need repo-local issue61 implementation fragments that mention legacy compatibility frame extraction instead of empty cross-workspace recall"
+    },
+    {
+      "timestamp": "2026-04-10T00:48:43.1053685+09:00",
+      "tool_name": "recall",
+      "search_event_id": "1389",
+      "relevant": false,
+      "sufficient": false,
+      "context": "issue61 legacy retirement follow-up",
+      "suggestion": "need repo-local issue61 fragments covering /legacy redirect retirement and dead wrapper cleanup"
+    },
+    {
+      "timestamp": "2026-04-10T01:10:08.1958908+09:00",
+      "tool_name": "recall",
+      "search_event_id": "1407",
+      "relevant": false,
+      "sufficient": false,
+      "context": "issue61 assistant alias phase",
+      "suggestion": "need repo-local issue61 fragments covering assistant canonicalization and bounded /ask compatibility semantics"
+    },
+    {
+      "timestamp": "2026-04-10T01:10:08.1958908+09:00",
+      "tool_name": "recall",
+      "search_event_id": "1415",
+      "relevant": false,
+      "sufficient": false,
+      "context": "issue61 assistant alias follow-up",
+      "suggestion": "need repo-local issue61 fragments covering assistant canonicalization, validation status, and remaining ask-* compatibility decisions"
+    }
+  ],
+  "note": "Append recall feedback entries here after meaningful memory use."
+}

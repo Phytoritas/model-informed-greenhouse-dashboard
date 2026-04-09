@@ -57,8 +57,8 @@ export default function TopBar({
     const resolvedPageDescription = pageDescription ?? copy.tagline;
 
     return (
-        <header className="sticky top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
-            <div className="sg-glass mx-auto flex max-w-[2140px] flex-col gap-4 rounded-[34px] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+        <header className="px-4 pt-4 sm:px-6 lg:px-8">
+            <div className="sg-glass mx-auto flex max-w-[1536px] flex-col gap-4 rounded-[34px] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 items-center gap-4">
                     <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[linear-gradient(135deg,var(--sg-accent-violet),#7e2c2d)] text-white" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
                         <Sprout className="h-7 w-7" />
