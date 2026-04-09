@@ -2,7 +2,7 @@
 
 ## Active State
 - No repo-level delivery issue is currently active in the root control-plane state.
-- Root branch is normalized to clean `main` at `553c36df422416b9001b19dbb43f8a52fa6ef8d3`.
+- Root branch is normalized to clean `main` at `c8febc2e3a2b3df0c11d2d19e1a5127194c83b99`.
 - The only intentionally open long-tail follow-up remains issue `#3` for real grower-approved RTR calibration windows.
 - Issue `#3` still remains intentionally `Blocked`, but only as the optional real grower-window calibration follow-up behind the landed RTR UI/runtime baseline.
 
@@ -23,25 +23,28 @@
   - warmer `DESIGN.md`-aligned paper surfaces and red-led editorial accents
   - actual tab switching in the ask workspace instead of stacked in-page panels
   - wider shell, warmer advisor/assistant/RTR treatment, and route-level resources/alerts/ask cockpit surfaces
+- `main` now also includes the merged issue `#53` remaining warm-palette retune:
+  - warm editorial palette extended through the remaining dashboard, RTR, advisor, analytics, market, and knowledge-drawer surfaces
+  - shared button/badge/status primitives aligned to the earth-led accent system
+  - visible literal cool palette classes removed from user-facing shell/component surfaces
 
 ## Latest Delivered Slice
-- Issue `#49` shipped the last major PhytoSync UI follow-up on top of the merged issue `#47` route shell:
-  - warm editorial theme translation over the previous cooler cockpit reinterpretation
-  - `/ask` panel-native switching with visible URL/hash synchronization
-  - new `AlertsCommandCenter`, `ResourcesCommandCenter`, and `AskKnowledgeBoard` route surfaces
-  - wider shell/layout tuning and deeper warm treatment across advisor, assistant, dashboard, and RTR surfaces
-- Final feature commit on the issue `#49` branch:
-  - `699a95d` `feat: finish warm editorial phytosync ui follow-up`
+- Issue `#53` finished the remaining warm-palette sweep on top of the merged issue `#49` UI baseline:
+  - shell, crop detail, analytics, market, advisor runtime, pending tabs, RTR, assistant drawer, and status primitives now share the warm editorial palette
+  - route shell copy and telemetry accents now match the paper-surface direction instead of the earlier cool cockpit holdovers
+  - no new runtime/API surface was introduced; this was a visual-system and component-tone closure pass
+- Final feature commit on the issue `#53` branch:
+  - `77edc42` `feat: retune remaining dashboard surfaces to warm palette`
 
 ## Latest Validation
-- The latest issue `#49` lane stayed green locally with:
+- The latest issue `#53` lane stayed green locally with:
   - `npm --prefix frontend run lint`
   - `npm --prefix frontend run test -- --pool=threads`
   - `npm --prefix frontend run build`
-- PR `#50` merged after GitHub Actions `Backend Validation` plus `Frontend Validation` both passed on push run `24184534147` and pull_request run `24184543933`.
-- Root `main` is now fast-forwarded to merge commit `553c36df422416b9001b19dbb43f8a52fa6ef8d3`, and obsolete issue43/45/47/49 worktree folders were removed locally.
+- PR `#54` merged after GitHub Actions `Backend Validation` plus `Frontend Validation` both passed on runs `24188042400` and `24188044429`.
+- Root `main` is now fast-forwarded to merge commit `c8febc2e3a2b3df0c11d2d19e1a5127194c83b99`.
 
 ## Exact Next Step
-1. If more PhytoSync or SmartGrow UI work is needed, open a fresh issue/branch on top of the current clean `main` baseline instead of reviving merged branches or deleted issue worktrees.
-2. Otherwise return to issue `#3` only when real grower-approved tomato/cucumber good-production windows are ready for calibration intake.
-3. Keep local screenshots, temporary data documents, `.claude/`, `node_modules/`, and `stitch/` out of root `git status` via `.git/info/exclude` rather than tracked `.gitignore` edits.
+1. If more frontend refinement is needed, open a fresh issue/branch on top of the current clean `main` baseline instead of reviving merged branches.
+2. Prefer a bounded performance follow-up next if the chunk-size warning needs to be addressed through code-splitting.
+3. Otherwise return to issue `#3` only when real grower-approved tomato/cucumber good-production windows are ready for calibration intake.
