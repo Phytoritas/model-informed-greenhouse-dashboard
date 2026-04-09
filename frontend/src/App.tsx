@@ -292,6 +292,128 @@ function resolveSensorDisplayState(
   return deriveSensorFieldState(availability[fieldKey], telemetryStatus);
 }
 
+type WorkspaceOverviewAction = {
+  label: string;
+  onClick: () => void;
+  variant: 'primary' | 'secondary';
+};
+
+type WorkspaceSupportCard = {
+  label: string;
+  value: string;
+  detail: string;
+  toneClass: string;
+};
+
+function WorkspaceOverviewCard({
+  eyebrow,
+  title,
+  description,
+  icon: Icon,
+  toneClass,
+  iconClass,
+  kicker,
+  lead,
+  detail,
+  badge,
+  actions,
+  supportCards,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: WorkspaceNavItem['icon'];
+  toneClass: string;
+  iconClass: string;
+  kicker: string;
+  lead: string;
+  detail: string;
+  badge: string;
+  actions: WorkspaceOverviewAction[];
+  supportCards: WorkspaceSupportCard[];
+}) {
+  return (
+    <DashboardCard
+      eyebrow={eyebrow}
+      title={title}
+      description={description}
+      className="bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(244,247,242,0.86))]"
+    >
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.26fr)_minmax(0,0.74fr)]">
+        <article
+          className={`relative overflow-hidden rounded-[32px] px-6 py-6 ${toneClass}`}
+          style={{ boxShadow: 'var(--sg-shadow-soft)' }}
+        >
+          <div className="absolute -right-8 -top-6 h-32 w-32 rounded-full bg-white/20 blur-3xl" />
+          <div className="relative flex h-full flex-col justify-between gap-6">
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
+                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                  >
+                    <Icon className={`h-6 w-6 ${iconClass}`} />
+                  </div>
+                  <div>
+                    <div className="sg-eyebrow">{kicker}</div>
+                    <div className="mt-3 text-[clamp(1.7rem,2.2vw,2.5rem)] font-semibold tracking-[-0.07em] text-[color:var(--sg-text-strong)]">
+                      {lead}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  className={`rounded-full bg-white/84 px-4 py-2 text-xs font-semibold ${iconClass}`}
+                  style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                >
+                  {badge}
+                </span>
+              </div>
+              <p className="max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
+                {detail}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {actions.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={action.onClick}
+                  className={action.variant === 'primary'
+                    ? 'rounded-full bg-[color:var(--sg-text-strong)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--sg-accent-forest)]'
+                    : 'rounded-full bg-white/82 px-4 py-2 text-sm font-semibold text-[color:var(--sg-text-strong)] transition hover:-translate-y-0.5'}
+                  style={action.variant === 'secondary' ? { boxShadow: 'var(--sg-shadow-card)' } : undefined}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </article>
+        <div className="grid gap-3">
+          {supportCards.map((card) => (
+            <article
+              key={`${card.label}-${card.value}`}
+              className={`rounded-[24px] px-4 py-4 ${card.toneClass}`}
+              style={{ boxShadow: 'var(--sg-shadow-card)' }}
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+                {card.label}
+              </div>
+              <div className="mt-2 text-lg font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+                {card.value}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                {card.detail}
+              </p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </DashboardCard>
+  );
+}
+
 function App() {
   const { locale, setLocale } = useLocale();
   const copy = APP_COPY[locale];
@@ -435,7 +557,7 @@ function App() {
     return state === 'missing' ? unresolvedSensorValue : value;
   }, [sensorFieldAvailability, telemetry.status, unresolvedSensorValue]);
 
-  const primaryKpiTiles = useMemo<KpiTileData[]>(() => [
+  const primaryKpiTiles: KpiTileData[] = [
     {
       key: 'temperature',
       label: sensorCopy.temperature.title,
@@ -492,40 +614,9 @@ function App() {
       color: 'bg-yellow-500',
       lastReceived: buildFieldAgeLabel('light'),
     },
-  ], [
-    buildFieldAgeLabel,
-    buildKpiValue,
-    buildTrendDetail,
-    co2State,
-    co2Status,
-    co2Trend,
-    currentData.co2,
-    currentData.humidity,
-    currentData.light,
-    currentData.temperature,
-    hasTelemetryData,
-    humidityState,
-    humidityStatus,
-    humidityTrend,
-    lightState,
-    lightStatus,
-    lightTrend,
-    locale,
-    sensorCopy.carbonDioxide.title,
-    sensorCopy.carbonDioxide.unit,
-    sensorCopy.humidity.title,
-    sensorCopy.humidity.unit,
-    sensorCopy.light.title,
-    sensorCopy.light.unit,
-    sensorCopy.temperature.title,
-    sensorCopy.temperature.unit,
-    tempStatus,
-    temperatureState,
-    temperatureTrend,
-    unresolvedSensorValue,
-  ]);
+  ];
 
-  const secondaryKpiTiles = useMemo<KpiTileData[]>(() => [
+  const secondaryKpiTiles: KpiTileData[] = [
     {
       key: 'vpd',
       label: sensorCopy.vpd.title,
@@ -556,26 +647,7 @@ function App() {
       lastReceived: buildFieldAgeLabel('stomatalConductance'),
       fractionDigits: 3,
     },
-  ], [
-    buildFieldAgeLabel,
-    buildKpiValue,
-    buildTrendDetail,
-    currentData.stomatalConductance,
-    currentData.vpd,
-    hasTelemetryData,
-    locale,
-    sensorCopy.stomatalConductance.title,
-    sensorCopy.stomatalConductance.unit,
-    sensorCopy.vpd.title,
-    sensorCopy.vpd.unit,
-    stomatalState,
-    stomatalStatus,
-    stomatalTrend,
-    unresolvedSensorValue,
-    vpdState,
-    vpdStatus,
-    vpdTrend,
-  ]);
+  ];
   const selectedCropLabel = getCropLabel(selectedCrop, locale);
   const selectedRtrProfile = rtrProfilesPayload?.profiles[selectedCrop] ?? null;
   const optimizerEnabled =
@@ -686,7 +758,7 @@ function App() {
       setActiveWorkspace('knowledge');
     }
     setIsChatOpen((prev) => !prev);
-  }, [isChatOpen]);
+  }, [isChatOpen, setActiveWorkspace, setIsChatOpen, setShouldRenderChat]);
 
   const handleOpenRagAssistant = useCallback((request?: RagAssistantLaunchRequest) => {
     setShouldRenderRagAssistant(true);
@@ -732,7 +804,15 @@ function App() {
       nonce: Date.now(),
     });
     setIsRagAssistantOpen(true);
-  }, [locale, selectedCropLabel, smartGrowSummary]);
+  }, [
+    locale,
+    selectedCropLabel,
+    setActiveWorkspace,
+    setIsRagAssistantOpen,
+    setRagAssistantRequest,
+    setShouldRenderRagAssistant,
+    smartGrowSummary,
+  ]);
 
   const handleOpenAdvisorTabs = useCallback((
     tab: PromptAdvisorTabKey = 'environment',
@@ -748,7 +828,7 @@ function App() {
     requestAnimationFrame(() => {
       advisorTabsAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-  }, []);
+  }, [setActiveWorkspace, setAdvisorOpenRequest, setIsAdvisorTabsOpen]);
 
   const handleOpenSmartGrowSurface = useCallback((surfaceKey: 'pesticide' | 'nutrient' | 'nutrient_correction') => {
     if (surfaceKey === 'pesticide') {
@@ -761,6 +841,13 @@ function App() {
     }
     handleOpenAdvisorTabs('nutrient');
   }, [handleOpenAdvisorTabs]);
+
+  const handleWorkspaceSelect = useCallback((workspace: DashboardWorkspaceKey) => {
+    setActiveWorkspace(workspace);
+    if (workspace === 'advisor') {
+      setIsAdvisorTabsOpen(true);
+    }
+  }, [setActiveWorkspace, setIsAdvisorTabsOpen]);
 
   useEffect(() => {
     if (telemetry.lastMessageAt === null) {
@@ -942,6 +1029,205 @@ function App() {
       body: risk,
     })),
   ];
+  const runtimeViolationCount = runtimeViolations.length;
+
+  const activeWorkspaceItem = activeWorkspace === 'command'
+    ? null
+    : workspaceItems.find((item) => item.key === activeWorkspace) ?? null;
+  const leadMarketItem = producePrices?.items?.[0] ?? null;
+  const readySurfaces = smartGrowSummary?.surfaces.filter((surface) => surface.status === 'ready').length ?? 0;
+  const parserPending = smartGrowSummary?.pendingParsers.length ?? 0;
+  const leadAlert = alertItems[0] ?? null;
+  const weatherSignal = weather
+    ? `${weather.current.temperature_c.toFixed(1)}°C · ${weather.current.weather_label}`
+    : (locale === 'ko' ? '예보 연결 대기' : 'Forecast pending');
+  const priceSignal = leadMarketItem
+    ? `${leadMarketItem.display_name} ${leadMarketItem.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${locale === 'ko' ? '원' : ' KRW'}`
+    : (locale === 'ko' ? '시장 데이터 대기' : 'Market data pending');
+  const energySignal = `${modelMetrics.energy.consumption.toFixed(1)} kW · ${locale === 'ko' ? '효율' : 'efficiency'} ${modelMetrics.energy.efficiency.toFixed(2)}`;
+  const cropSignal = `${locale === 'ko' ? 'LAI' : 'LAI'} ${modelMetrics.growth.lai.toFixed(1)} · ${locale === 'ko' ? '광합성' : 'Assim.'} ${currentData.photosynthesis.toFixed(1)}`;
+  const alertSignal = leadAlert
+    ? leadAlert.title
+    : (locale === 'ko' ? '현재 긴급 경보 없음' : 'No urgent alert');
+
+  const renderWorkspaceOverview = () => {
+    if (!activeWorkspaceItem || activeWorkspace === 'command') {
+      return <div />;
+    }
+
+    switch (activeWorkspace) {
+      case 'advisor':
+        return (
+          <WorkspaceOverviewCard
+            eyebrow={activeWorkspaceItem.label}
+            title={heroCopy.advisor}
+            description={heroCopy.advisorDesc}
+            icon={activeWorkspaceItem.icon}
+            toneClass="sg-tint-blue"
+            iconClass="text-[color:var(--sg-accent-blue)]"
+            kicker={locale === 'ko' ? '오늘의 해석 동선' : 'Interpretation path'}
+            lead={locale === 'ko'
+              ? '환경 · 생리 · 작업 판단을 한 번에 이어서 검토합니다.'
+              : 'Review environment, physiology, and work guidance in one flow.'}
+            detail={locale === 'ko'
+              ? '탭별 권장안은 살아 있고, SmartGrow 안전 도구와 함께 바로 열 수 있습니다.'
+              : 'Each advisor tab stays action-first and links directly to SmartGrow operating tools.'}
+            badge={locale === 'ko' ? '권장안 우선' : 'Action first'}
+            actions={[
+              { label: locale === 'ko' ? '환경 탭 열기' : 'Open environment', onClick: () => handleOpenAdvisorTabs('environment'), variant: 'primary' },
+              { label: locale === 'ko' ? '양액 도구 보기' : 'Open nutrient tool', onClick: () => handleOpenSmartGrowSurface('nutrient'), variant: 'secondary' },
+            ]}
+            supportCards={[
+              { label: locale === 'ko' ? '준비된 도구' : 'Ready tools', value: `${readySurfaces}`, detail: locale === 'ko' ? '즉시 계산 가능한 SmartGrow surface 수' : 'SmartGrow surfaces ready to open now.', toneClass: 'sg-tint-green' },
+              { label: locale === 'ko' ? '주요 외기 신호' : 'Outdoor signal', value: weatherSignal, detail: locale === 'ko' ? '환기와 야간 운전 판단에 바로 연결됩니다.' : 'Feed this into vent and night operation posture.', toneClass: 'sg-tint-blue' },
+              { label: locale === 'ko' ? '생육 해석' : 'Crop read', value: cropSignal, detail: locale === 'ko' ? '세력과 동화 상태를 함께 읽습니다.' : 'Read canopy slack and assimilation together.', toneClass: 'sg-tint-violet' },
+            ]}
+          />
+        );
+      case 'rtr':
+        return (
+          <WorkspaceOverviewCard
+            eyebrow={activeWorkspaceItem.label}
+            title={heroCopy.rtr}
+            description={heroCopy.rtrDesc}
+            icon={activeWorkspaceItem.icon}
+            toneClass="sg-tint-violet"
+            iconClass="text-[color:var(--sg-accent-violet)]"
+            kicker={locale === 'ko' ? '제어 스튜디오' : 'Control studio'}
+            lead={locale === 'ko'
+              ? '목표 마디 전개, 탄소 여유, 비용을 함께 보는 제어 해를 선택합니다.'
+              : 'Choose the control lane that balances node progress, carbon margin, and cost.'}
+            detail={locale === 'ko'
+              ? 'RTR equivalent는 보조 지표로 남기고, 실제 제어 차이는 난방·냉방·환기·스크린으로 읽습니다.'
+              : 'Keep RTR equivalent secondary and read the real control deltas through HVAC, vent, and screen choices.'}
+            badge={locale === 'ko' ? '최소충분 제어' : 'Minimum sufficient'}
+            actions={[
+              { label: locale === 'ko' ? '생리 탭 연계' : 'Link physiology', onClick: () => handleOpenAdvisorTabs('physiology'), variant: 'primary' },
+              { label: locale === 'ko' ? '자원 비용 보기' : 'Open resources', onClick: () => setActiveWorkspace('resources'), variant: 'secondary' },
+            ]}
+            supportCards={[
+              { label: locale === 'ko' ? '텔레메트리 상태' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary, detail: locale === 'ko' ? '추천안 신뢰도는 센서 freshness에 직접 연결됩니다.' : 'Recommendation confidence follows sensor freshness.', toneClass: 'sg-tint-neutral' },
+              { label: locale === 'ko' ? '제어 제약' : 'Control blockers', value: `${runtimeViolationCount}`, detail: locale === 'ko' ? '현재 runtime 제약 또는 risk flag 수' : 'Current runtime violations or risk flags.', toneClass: 'sg-tint-amber' },
+              { label: locale === 'ko' ? '에너지 신호' : 'Energy signal', value: energySignal, detail: locale === 'ko' ? '냉난방 비용과 효율을 함께 봅니다.' : 'Keep heating/cooling cost and efficiency in view.', toneClass: 'sg-tint-green' },
+            ]}
+          />
+        );
+      case 'crop':
+        return (
+          <WorkspaceOverviewCard
+            eyebrow={activeWorkspaceItem.label}
+            title={heroCopy.crop}
+            description={heroCopy.cropDesc}
+            icon={activeWorkspaceItem.icon}
+            toneClass="sg-tint-green"
+            iconClass="text-[color:var(--sg-accent-forest)]"
+            kicker={locale === 'ko' ? '생육 · 작업 판단' : 'Crop and work'}
+            lead={locale === 'ko'
+              ? '세력, LAI, 수확 추세와 작업 부하를 같은 맥락에서 봅니다.'
+              : 'Read vigor, LAI, harvest trend, and work pressure together.'}
+            detail={locale === 'ko'
+              ? '오늘 적엽·유인·수확 판단을 작업 탭과 경보 흐름에 바로 연결할 수 있습니다.'
+              : 'Tie today’s pruning, training, and harvest decisions directly into work guidance and alerts.'}
+            badge={locale === 'ko' ? '생육 우선' : 'Crop first'}
+            actions={[
+              { label: locale === 'ko' ? '작업 탭 열기' : 'Open work tab', onClick: () => handleOpenAdvisorTabs('work'), variant: 'primary' },
+              { label: locale === 'ko' ? '경보 확인' : 'Review alerts', onClick: () => setActiveWorkspace('alerts'), variant: 'secondary' },
+            ]}
+            supportCards={[
+              { label: locale === 'ko' ? '생육 단계' : 'Stage', value: getDevelopmentStageLabel(modelMetrics.growth.developmentStage, locale), detail: locale === 'ko' ? '현재 작기 단계와 작업 밀도를 함께 판단합니다.' : 'Use stage to frame labor density and crop posture.', toneClass: 'sg-tint-green' },
+              { label: locale === 'ko' ? '예상 주간 수확' : 'Weekly yield', value: `${modelMetrics.yield.predictedWeekly.toFixed(1)} kg`, detail: locale === 'ko' ? '수확 피크를 작업 계획과 같이 봅니다.' : 'Keep harvest peaks close to work planning.', toneClass: 'sg-tint-amber' },
+              { label: locale === 'ko' ? '생육 해석' : 'Crop read', value: cropSignal, detail: locale === 'ko' ? '동화와 canopy 상태를 함께 읽습니다.' : 'Read assimilation and canopy state together.', toneClass: 'sg-tint-blue' },
+            ]}
+          />
+        );
+      case 'resources':
+        return (
+          <WorkspaceOverviewCard
+            eyebrow={activeWorkspaceItem.label}
+            title={heroCopy.resourcesTitle}
+            description={heroCopy.resourcesDescription}
+            icon={activeWorkspaceItem.icon}
+            toneClass="sg-tint-green"
+            iconClass="text-[color:var(--sg-accent-forest)]"
+            kicker={locale === 'ko' ? '비용과 외기 흐름' : 'Economics and weather'}
+            lead={locale === 'ko'
+              ? '날씨, 가격, 에너지 부하를 같은 판에서 보고 운영 비용을 가늠합니다.'
+              : 'Read weather, market, and energy load together before making cost-sensitive moves.'}
+            detail={locale === 'ko'
+              ? '총량 환산은 부가 정보로 유지하고, 기본 판단은 항상 m 기준 지표에서 시작합니다.'
+              : 'Keep actual-area projection secondary while decisions still start from per-meter metrics.'}
+            badge={locale === 'ko' ? 'm 기준 우선' : 'Per-meter first'}
+            actions={[
+              { label: locale === 'ko' ? '지식 근거 보기' : 'Open knowledge', onClick: () => setActiveWorkspace('knowledge'), variant: 'primary' },
+              { label: locale === 'ko' ? 'RTR 비용 비교' : 'Compare RTR cost', onClick: () => setActiveWorkspace('rtr'), variant: 'secondary' },
+            ]}
+            supportCards={[
+              { label: locale === 'ko' ? '주요 외기 신호' : 'Outdoor signal', value: weatherSignal, detail: locale === 'ko' ? '환기와 냉난방 부하를 같이 읽습니다.' : 'Tie this directly to vent and HVAC load.', toneClass: 'sg-tint-blue' },
+              { label: locale === 'ko' ? '가격 신호' : 'Market signal', value: priceSignal, detail: locale === 'ko' ? '출하 판단에 쓰는 첫 가격 신호입니다.' : 'The first market signal for shipping posture.', toneClass: 'sg-tint-amber' },
+              { label: locale === 'ko' ? '에너지/부하' : 'Energy / load', value: energySignal, detail: locale === 'ko' ? '현재 소비와 효율을 같이 봅니다.' : 'Read draw and efficiency together.', toneClass: 'sg-tint-green' },
+            ]}
+          />
+        );
+      case 'alerts':
+        return (
+          <WorkspaceOverviewCard
+            eyebrow={activeWorkspaceItem.label}
+            title={heroCopy.alertsWorkspaceTitle}
+            description={heroCopy.alertsWorkspaceDescription}
+            icon={activeWorkspaceItem.icon}
+            toneClass="sg-tint-amber"
+            iconClass="text-[color:var(--sg-accent-amber)]"
+            kicker={locale === 'ko' ? '위험과 차단 요인' : 'Risks and blockers'}
+            lead={locale === 'ko'
+              ? '지금 막아야 할 리스크와, 검토만 하면 되는 신호를 분리해서 봅니다.'
+              : 'Separate the risks that need intervention now from the signals that only need review.'}
+            detail={locale === 'ko'
+              ? '경보는 읽는 목록이 아니라, RTR와 Advisor 흐름으로 바로 이어지는 운영 체크포인트입니다.'
+              : 'Treat alerts as operating checkpoints that flow straight into RTR and advisor actions.'}
+            badge={locale === 'ko' ? '즉시 점검' : 'Check now'}
+            actions={[
+              { label: locale === 'ko' ? 'RTR 점검' : 'Open RTR', onClick: () => setActiveWorkspace('rtr'), variant: 'primary' },
+              { label: locale === 'ko' ? '환경 탭 확인' : 'Open environment', onClick: () => handleOpenAdvisorTabs('environment'), variant: 'secondary' },
+            ]}
+            supportCards={[
+              { label: locale === 'ko' ? '최상위 경보' : 'Lead alert', value: alertSignal, detail: locale === 'ko' ? '지금 가장 먼저 확인할 운영 이슈입니다.' : 'The first operating issue to review now.', toneClass: 'sg-tint-amber' },
+              { label: locale === 'ko' ? '리스크 개수' : 'Risk count', value: `${alertItems.length}`, detail: locale === 'ko' ? 'critical, warning, info, resolved를 합친 현재 카드 수' : 'Current cards across critical, warning, info, and resolved.', toneClass: 'sg-tint-neutral' },
+              { label: locale === 'ko' ? '텔레메트리 상태' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary, detail: locale === 'ko' ? '알림 품질은 센서 freshness와 함께 판단합니다.' : 'Judge alert confidence with sensor freshness.', toneClass: 'sg-tint-blue' },
+            ]}
+          />
+        );
+      case 'knowledge':
+        return (
+          <WorkspaceOverviewCard
+            eyebrow={activeWorkspaceItem.label}
+            title={heroCopy.knowledgeTitle}
+            description={heroCopy.knowledgeDescription}
+            icon={activeWorkspaceItem.icon}
+            toneClass="sg-tint-violet"
+            iconClass="text-[color:var(--sg-accent-violet)]"
+            kicker={locale === 'ko' ? '근거와 설명' : 'Evidence and explanation'}
+            lead={locale === 'ko'
+              ? '지식 검색과 상담 도우미를 같은 흐름으로 열어, 설명과 근거를 분리하지 않습니다.'
+              : 'Keep evidence search and assistant explanation in one lane instead of splitting them apart.'}
+            detail={locale === 'ko'
+              ? 'RTR, 양액, 방제 판단이 막히면 바로 근거 검색으로 넘어가고, 이어서 AI 설명을 붙입니다.'
+              : 'Move straight from blocked RTR, nutrient, or pesticide questions into grounded search and then explanation.'}
+            badge={locale === 'ko' ? '근거 우선' : 'Evidence first'}
+            actions={[
+              { label: heroCopy.knowledgeAssistant, onClick: handleChatToggle, variant: 'primary' },
+              { label: heroCopy.knowledgeRag, onClick: () => handleOpenRagAssistant(), variant: 'secondary' },
+            ]}
+            supportCards={[
+              { label: locale === 'ko' ? '준비된 도구' : 'Ready tools', value: `${readySurfaces}`, detail: locale === 'ko' ? '지식과 연결된 SmartGrow surface 수' : 'SmartGrow surfaces already linked to knowledge.', toneClass: 'sg-tint-violet' },
+              { label: locale === 'ko' ? '파서 대기' : 'Parser pending', value: `${parserPending}`, detail: locale === 'ko' ? '추가 문서 파싱이 끝나면 근거 범위가 넓어집니다.' : 'Coverage expands after more source parsing completes.', toneClass: 'sg-tint-neutral' },
+              { label: locale === 'ko' ? '시장/운영 신호' : 'Operating signal', value: priceSignal, detail: locale === 'ko' ? '가격과 운영 이슈를 바로 근거 검색으로 잇습니다.' : 'Use this as the next grounded-search starting point.', toneClass: 'sg-tint-amber' },
+            ]}
+          />
+        );
+      default:
+        return <div />;
+    }
+  };
 
   const commandTray = (
     <DashboardCard
@@ -980,7 +1266,7 @@ function App() {
             <button
               key={item.key}
               type="button"
-              onClick={() => setActiveWorkspace(item.key as DashboardWorkspaceKey)}
+              onClick={() => handleWorkspaceSelect(item.key as DashboardWorkspaceKey)}
               className={`rounded-[24px] px-4 py-4 text-left text-sm font-semibold text-[color:var(--sg-text-strong)] transition hover:-translate-y-0.5 ${item.tone} ${isActive ? 'ring-2 ring-[color:var(--sg-accent-violet)]/35' : ''}`}
               style={{ boxShadow: isActive ? 'var(--sg-shadow-soft)' : 'var(--sg-shadow-card)' }}
             >
@@ -1028,29 +1314,7 @@ function App() {
           />
         </div>
       )
-    : (
-        <DashboardCard
-          eyebrow={workspaceItems.find((item) => item.key === activeWorkspace)?.label}
-          title={selectedCropLabel}
-          description={workspaceItems.find((item) => item.key === activeWorkspace)?.description}
-          className="bg-white/55"
-        >
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[22px] bg-[color:var(--sg-surface-strong)] px-4 py-4 text-sm font-semibold text-[color:var(--sg-text-strong)]">
-              {heroPrimaryNarrative}
-            </div>
-            <div className="rounded-[22px] bg-[color:var(--sg-surface-strong)] px-4 py-4 text-sm text-[color:var(--sg-text-muted)]">
-              {heroSummary}
-            </div>
-            <div className="rounded-[22px] bg-[color:var(--sg-surface-strong)] px-4 py-4 text-sm text-[color:var(--sg-text-muted)]">
-              {telemetryDetail ?? kpiStatusSummary}
-            </div>
-            <div className="rounded-[22px] bg-[color:var(--sg-surface-strong)] px-4 py-4 text-sm text-[color:var(--sg-text-muted)]">
-              {optimizerEnabled ? heroCopy.optimizerReady : heroCopy.optimizerBlocked}
-            </div>
-          </div>
-        </DashboardCard>
-      );
+    : renderWorkspaceOverview();
 
   const baseAdvisorPanel = (
     <div className="flex h-[480px] flex-col">
@@ -1405,11 +1669,11 @@ function App() {
           getCropLabel={getCropLabel}
         />
       )}
-      sidebar={(
+          sidebar={(
         <WorkspaceNav
           items={workspaceItems}
           activeWorkspace={activeWorkspace}
-          onSelect={setActiveWorkspace}
+          onSelect={handleWorkspaceSelect}
         />
       )}
       commandTray={commandTray}
