@@ -21,14 +21,32 @@ def _respiration_to_umol(respiration_g_ch2o_s: float) -> float:
     return max(0.0, respiration_g_ch2o_s) / 30.03 * 1_000_000.0
 
 
+def _normalize_leaf_area_by_rank(leaf_area_by_rank: list[Any] | None) -> list[float]:
+    normalized: list[float] = []
+    for entry in list(leaf_area_by_rank or []):
+        if isinstance(entry, Mapping):
+            normalized.append(
+                round(
+                    _safe_float(
+                        entry.get("leaf_area_index", entry.get("area_m2_m2", entry.get("value"))),
+                        0.0,
+                    ),
+                    6,
+                )
+            )
+        else:
+            normalized.append(round(_safe_float(entry, 0.0), 6))
+    return normalized
+
+
 def _layer_contribution_summary(
     *,
     total_net_assim_umol_m2_s: float,
     post_par_umol_m2_s: float,
     layer_activity: Mapping[str, float],
-    leaf_area_by_rank: list[float] | None = None,
+    leaf_area_by_rank: list[Any] | None = None,
 ) -> dict[str, Any]:
-    leaf_area_by_rank = list(leaf_area_by_rank or [])
+    leaf_area_by_rank = _normalize_leaf_area_by_rank(leaf_area_by_rank)
     total_leaf_area = max(sum(leaf_area_by_rank), 1e-6)
     weights = {
         "upper": max(0.0, float(layer_activity.get("upper", 0.0))) * 1.15,

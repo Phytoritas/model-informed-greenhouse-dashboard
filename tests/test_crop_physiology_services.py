@@ -98,6 +98,29 @@ def test_tomato_snapshot_exposes_layer_activity() -> None:
     assert snapshot["gas_exchange"]["canopy_gross_assimilation_umol_m2_s"] >= 0
 
 
+def test_legacy_energy_balance_solver_runs_without_scipy_runtime_dependency() -> None:
+    cucumber = _seed_cucumber_adapter().model
+    cucumber.T_a = 294.15
+    cucumber.u = 0.4
+    cucumber.RH = 0.68
+    cucumber.u_PAR = 650.0
+    cucumber.f_c = 0.82
+    cucumber.solve_coupled_energy_balance()
+
+    tomato = _seed_tomato_adapter().model
+    tomato.T_a = 295.15
+    tomato.u = 0.45
+    tomato.RH = 0.7
+    tomato.u_PAR = 720.0
+    tomato.f_c = 0.78
+    tomato.solve_coupled_energy_balance()
+
+    assert math.isfinite(cucumber.T_c)
+    assert math.isfinite(cucumber.LE)
+    assert math.isfinite(tomato.T_c)
+    assert math.isfinite(tomato.LE)
+
+
 def test_coupled_leaf_exchange_guardrails_invalid_ambient_co2() -> None:
     result = solve_coupled_leaf_exchange(
         ambient_co2_ppm=0.0,

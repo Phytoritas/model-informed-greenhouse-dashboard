@@ -929,6 +929,98 @@ def test_rtr_state_route_returns_canonical_shape(
     assert payload["optimizer_enabled"] is True
 
 
+def test_rtr_state_route_returns_provisional_payload_when_runtime_is_inactive(
+    monkeypatch,
+) -> None:
+    backend_main = _backend_main()
+
+    def _inactive_snapshot(**kwargs):
+        raise backend_main.HTTPException(
+            status_code=400,
+            detail="Model runtime is inactive. Call /api/start first or provide snapshot_id.",
+        )
+
+    monkeypatch.setattr(backend_main, "_resolve_runtime_snapshot_record", _inactive_snapshot)
+    client = TestClient(get_app())
+
+    response = client.get("/api/rtr/state", params={"crop": "cucumber"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "provisional"
+    assert payload["snapshot_id"] == "runtime-inactive"
+    assert payload["current_risk_flags"][0]["kind"] == "runtime_inactive"
+    assert payload["canonical_state"]["growth"]["predicted_node_rate_day"] == 0.0
+
+
+def test_rtr_state_route_accepts_cucumber_leaf_area_rank_dicts(
+    monkeypatch,
+) -> None:
+    backend_main = _backend_main()
+    context = _fake_context(
+        crop="cucumber",
+        par_umol_m2_s=910.0,
+        co2_ppm=710.0,
+        t_air_c=18.8,
+        outside_t_c=7.5,
+        source_capacity=1.02,
+        sink_demand=0.81,
+        fruit_load=13.0,
+        source_sink_balance=0.16,
+    )
+    context.canonical_state["crop_specific"]["cucumber"]["leaf_area_by_rank"] = [
+        {"rank": 18, "leaf_area_index": 0.084321, "area_cm2": 310.0},
+        {"rank": 17, "leaf_area_index": 0.081234, "area_cm2": 298.0},
+        {"rank": 16, "leaf_area_index": 0.079876, "area_cm2": 284.0},
+    ]
+
+    class _Store:
+        def list_work_events(self, *args, **kwargs):
+            return []
+
+    fake_internal_bridge = types.ModuleType(
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.internal_model_bridge"
+    )
+    fake_internal_bridge.build_internal_model_context = lambda **kwargs: context
+    model_state_store = importlib.import_module(
+        "model_informed_greenhouse_dashboard.backend.app.services.model_runtime.model_state_store"
+    )
+    monkeypatch.setattr(model_state_store, "ModelStateStore", lambda: _Store())
+    monkeypatch.setattr(
+        backend_main,
+        "_resolve_runtime_snapshot_record",
+        lambda **kwargs: ("house-a", {"snapshot_id": "snap-rtr-dict", "crop": "cucumber"}),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.internal_model_bridge",
+        fake_internal_bridge,
+    )
+
+    client = TestClient(get_app())
+    response = client.get("/api/rtr/state", params={"crop": "cucumber"})
+
+    assert response.status_code == 200
+    crop_bridge = importlib.import_module(
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.crop_bridge"
+    )
+    layer_summary = crop_bridge.evaluate_post_control_crop_state(
+        context=context,
+        phase="day",
+        post_control_state={
+            "env": {
+                "T_air_C": 19.1,
+                "T_leaf_C": 19.6,
+                "RH_pct": 76.0,
+                "CO2_ppm": 710.0,
+                "PAR_umol_m2_s": 910.0,
+            }
+        },
+    )["crop_specific"]["cucumber"]
+    assert layer_summary["leaf_area_by_rank"] == [0.084321, 0.081234, 0.079876]
+    assert layer_summary["leaf_area_total_m2_m2"] == 0.245431
+
+
 def test_rtr_optimize_scenario_and_sensitivity_routes_return_optimizer_surfaces(
     monkeypatch,
 ) -> None:

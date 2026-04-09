@@ -18,11 +18,12 @@
 
 import pandas as pd
 import numpy as np
-from scipy.optimize import fsolve
 import os
 import math
 import logging
 from datetime import datetime, timedelta
+
+from model_informed_greenhouse_dashboard.numerics import solve_scalar_root
 
 # Photon energy conversion (MJ per µmol PAR)
 PHOTON_UMOL_TO_MJ = 0.218e-6
@@ -872,21 +873,25 @@ class TomatoModel:
     def solve_coupled_energy_balance(self):
         """
         Solves the fully coupled energy balance equation to find the canopy temperature (T_c).
-        This uses a numerical solver (fsolve) to find the root of the energy balance residual function.
+        This uses a bounded scalar root solver to find the energy-balance residual zero.
         """
         initial_guess = self.T_a
         try:
-            solution, infodict, ier, mesg = fsolve(
-                self._energy_balance_residual, initial_guess, full_output=True
+            solution = solve_scalar_root(
+                self._energy_balance_residual,
+                float(initial_guess),
+                lower_bound=float(self.T_a) - 20.0,
+                upper_bound=float(self.T_a) + 20.0,
             )
-            if ier == 1:
-                self.T_c = solution[0]
+            if solution.success:
+                self.T_c = float(solution.root)
                 self.convergence_status_Tc = True
                 self.H = self.calculate_sensible_heat(self.T_c)
                 self.LE = self.calculate_canopy_latent_heat(self.T_c)
             else:
                 logger.warning(
-                    f"Energy balance solver failed: {mesg}. Falling back to T_c = T_a."
+                    "Energy balance solver failed: %s. Falling back to T_c = T_a.",
+                    solution.message,
                 )
                 self.T_c = self.T_a
                 self.convergence_status_Tc = False
@@ -903,9 +908,14 @@ class TomatoModel:
         """
         This helper function calculates the energy balance residual (Rn - H - LE)
         for a given guess of canopy temperature (t_c_k_guess).
-        The fsolve function will try to find the t_c_k_guess that makes this residual zero.
         """
-        t_c_k = t_c_k_guess[0]
+        if isinstance(t_c_k_guess, (list, tuple)):
+            t_c_k = float(t_c_k_guess[0])
+        else:
+            try:
+                t_c_k = float(t_c_k_guess[0])
+            except Exception:
+                t_c_k = float(t_c_k_guess)
         # Resistances
         self.r_b = 70 / self.u**0.5 if self.u > 0 else 500
         self.r_ah = 50 * (self.leaf_dimension / self.u) ** 0.5 if self.u > 0 else 5000

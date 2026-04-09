@@ -36,7 +36,9 @@ function extractRecommendationCandidates(response: ConsultResponse | null): stri
         ...(display?.actions_now ?? []),
         ...(display?.actions_today ?? []),
         ...(display?.actions_week ?? []),
-    ].map((action) => action.trim()).filter(Boolean);
+    ]
+        .map((action) => action.trim())
+        .filter(Boolean);
     if (structuredDisplayActions.length > 0) {
         return structuredDisplayActions.slice(0, 5);
     }
@@ -55,7 +57,7 @@ function extractRecommendationCandidates(response: ConsultResponse | null): stri
     }
 
     const recommendationMatch = text.match(
-        /^##\s+(?:Recommendations(?:\s*\(.*?\))?|권장 조치|지금 할 일|오늘 할 일)\s*\n([\s\S]*?)(?:\n##\s+|\s*$)/im,
+        /^##\s+(?:Recommendations(?:\s*\(.*?\))?)\s*\n([\s\S]*?)(?:\n##\s+|\s*$)/im,
     );
     const recommendationBlock = recommendationMatch?.[1] ?? text;
 
@@ -70,9 +72,10 @@ function extractRecommendationCandidates(response: ConsultResponse | null): stri
 
 export const useAiAssistant = () => {
     const { locale } = useLocale();
-    const [aiAnalysis, setAiAnalysis] = useState<string>("");
+    const [aiAnalysis, setAiAnalysis] = useState('');
     const [aiDisplay, setAiDisplay] = useState<AdvisorDisplayPayload | null>(null);
     const [aiModelRuntime, setAiModelRuntime] = useState<ModelRuntimePayload | null>(null);
+    const [aiError, setAiError] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const requestIdRef = useRef(0);
 
@@ -85,13 +88,14 @@ export const useAiAssistant = () => {
         producePrices?: ProducePricesPayload | null,
         weather?: WeatherOutlook | null,
         rtrProfile?: RtrProfile | null,
-        callback?: (recommendations: string[]) => void
+        callback?: (recommendations: string[]) => void,
     ) => {
         requestIdRef.current += 1;
         const requestId = requestIdRef.current;
         setIsAnalyzing(true);
         setAiDisplay(null);
         setAiModelRuntime(null);
+        setAiError(null);
         try {
             const cropKey = crop.toLowerCase();
             const dashboard = buildAiDashboardContext({
@@ -107,7 +111,7 @@ export const useAiAssistant = () => {
             const res = await fetch(`${API_URL}/advisor/summary`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ crop: cropKey, dashboard, language: locale })
+                body: JSON.stringify({ crop: cropKey, dashboard, language: locale }),
             });
             const raw = await res.text();
             let json: ConsultResponse | null = null;
@@ -125,22 +129,26 @@ export const useAiAssistant = () => {
             if (requestId !== requestIdRef.current) {
                 return;
             }
-            setAiAnalysis(json?.text || "");
+
+            setAiAnalysis(json?.text || '');
             setAiDisplay(json?.machine_payload?.display ?? null);
             setAiModelRuntime(json?.machine_payload?.model_runtime ?? null);
+            setAiError(null);
             if (callback) {
                 callback(extractRecommendationCandidates(json));
             }
-        } catch {
+        } catch (error) {
             if (requestId !== requestIdRef.current) {
                 return;
             }
+            const message = error instanceof Error ? error.message : 'unknown_error';
             setAiDisplay(null);
             setAiModelRuntime(null);
+            setAiError(message);
             setAiAnalysis(
                 locale === 'ko'
-                    ? '모델 상담을 잠시 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.'
-                    : 'AI consulting is temporarily unavailable. Please try again shortly.',
+                    ? `모델 상담을 일시적으로 사용할 수 없습니다.\n원인: ${message}`
+                    : `AI consulting is temporarily unavailable. Cause: ${message}`,
             );
         } finally {
             if (requestId === requestIdRef.current) {
@@ -153,7 +161,8 @@ export const useAiAssistant = () => {
         aiAnalysis,
         aiDisplay,
         aiModelRuntime,
+        aiError,
         isAnalyzing,
-        analyzeData
+        analyzeData,
     };
 };

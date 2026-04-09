@@ -25,6 +25,7 @@ export const useRtrCalibration = ({
     crop,
     greenhouseId,
 }: UseRtrCalibrationOptions) => {
+    const cropKey = crop.toLowerCase();
     const [stateResponse, setStateResponse] = useState<RtrCalibrationStateResponse | null>(null);
     const [previewResponse, setPreviewResponse] = useState<RtrCalibrationPreviewResponse | null>(null);
     const [loadingState, setLoadingState] = useState(true);
@@ -35,7 +36,7 @@ export const useRtrCalibration = ({
     const refreshState = useCallback(async () => {
         setLoadingState(true);
         try {
-            const params = new URLSearchParams({ crop });
+            const params = new URLSearchParams({ crop: cropKey });
             if (greenhouseId) {
                 params.set('greenhouse_id', greenhouseId);
             }
@@ -49,7 +50,7 @@ export const useRtrCalibration = ({
         } finally {
             setLoadingState(false);
         }
-    }, [crop, greenhouseId]);
+    }, [cropKey, greenhouseId]);
 
     useEffect(() => {
         setStateResponse(null);
@@ -72,7 +73,7 @@ export const useRtrCalibration = ({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        crop,
+                        crop: cropKey,
                         greenhouse_id: greenhouseId,
                         selection_mode: selectionMode,
                         windows,
@@ -88,7 +89,7 @@ export const useRtrCalibration = ({
                 setLoadingPreview(false);
             }
         },
-        [crop, greenhouseId],
+        [cropKey, greenhouseId],
     );
 
     const saveCalibration = useCallback(
@@ -105,7 +106,7 @@ export const useRtrCalibration = ({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        crop,
+                        crop: cropKey,
                         greenhouse_id: greenhouseId,
                         selection_mode: selectionMode,
                         windows,
@@ -122,7 +123,7 @@ export const useRtrCalibration = ({
                 setSaving(false);
             }
         },
-        [crop, greenhouseId, refreshState],
+        [cropKey, greenhouseId, refreshState],
     );
 
     return {

@@ -422,3 +422,108 @@ def test_fetch_featured_produce_prices_preserves_cards_when_trend_enrichment_fai
     assert payload["trend"]["market_key"] == "retail"
     assert len(payload["trend"]["unavailable_series"]) == 4
     assert payload["trend"]["unavailable_series"][0]["display_name"] == "Tomato"
+
+
+def test_fetch_featured_produce_prices_returns_snapshot_when_trend_enrichment_times_out(
+    monkeypatch,
+) -> None:
+    class FakeResponse:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return self._payload
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def get(self, url: str, params: dict) -> FakeResponse:
+            assert params["action"] == "dailySalesList"
+            return FakeResponse(
+                {
+                    "price": [
+                        _make_row(
+                            product_name="토마토/토마토",
+                            productno="321",
+                            unit="1kg",
+                            dpr1="5,196",
+                            dpr2="5,234",
+                            dpr3="5,219",
+                            dpr4="5,663",
+                            direction="0",
+                            value="0.7",
+                        ),
+                        _make_row(
+                            product_name="방울토마토/방울토마토",
+                            productno="437",
+                            unit="1kg",
+                            dpr1="10,639",
+                            dpr2="10,639",
+                            dpr3="10,357",
+                            dpr4="11,707",
+                            direction="2",
+                            value="0.0",
+                        ),
+                        _make_row(
+                            product_name="오이/다다기계통",
+                            productno="313",
+                            unit="10ea",
+                            dpr1="8,505",
+                            dpr2="8,450",
+                            dpr3="10,880",
+                            dpr4="10,035",
+                            direction="1",
+                            value="0.7",
+                        ),
+                        _make_row(
+                            product_name="오이/취청",
+                            productno="315",
+                            unit="10ea",
+                            dpr1="12,999",
+                            dpr2="13,043",
+                            dpr3="14,777",
+                            dpr4="16,271",
+                            direction="0",
+                            value="0.3",
+                        ),
+                    ]
+                }
+            )
+
+    async def slow_build_trend_series_for_item(*args, **kwargs):
+        await asyncio.sleep(0.02)
+        return {"key": "late"}
+
+    produce_prices._produce_price_cache["payload"] = None
+    produce_prices._produce_price_cache["expires_at"] = 0.0
+    monkeypatch.setattr(produce_prices.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        produce_prices,
+        "_build_trend_series_for_item",
+        slow_build_trend_series_for_item,
+    )
+    monkeypatch.setattr(
+        produce_prices,
+        "PRODUCE_TREND_ENRICHMENT_TIMEOUT_SECONDS",
+        0.001,
+    )
+
+    payload = asyncio.run(produce_prices.fetch_featured_produce_prices(force_refresh=True))
+
+    assert len(payload["items"]) == 4
+    assert payload["trend"]["series"] == []
+    assert len(payload["trend"]["unavailable_series"]) == 4
+    assert all(
+        item["reason"] == "Retail trend enrichment timed out."
+        for item in payload["trend"]["unavailable_series"]
+    )

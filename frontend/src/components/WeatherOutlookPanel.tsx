@@ -1,8 +1,9 @@
-import { CloudRain, CloudSun, MapPinned, Thermometer, Wind } from 'lucide-react';
+import { MapPinned, SunMedium, Thermometer, Wind } from 'lucide-react';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
 import { getCountryLabel, getWeatherLabel } from '../utils/displayCopy';
 import type { WeatherOutlook } from '../types';
+import DashboardCard from './common/DashboardCard';
 
 interface WeatherOutlookPanelProps {
     weather: WeatherOutlook | null;
@@ -11,51 +12,116 @@ interface WeatherOutlookPanelProps {
     compact?: boolean;
 }
 
+function WeatherSignalTile({
+    icon: Icon,
+    label,
+    value,
+    detail,
+    tone,
+}: {
+    icon: typeof Thermometer;
+    label: string;
+    value: string;
+    detail: string;
+    tone: 'blue' | 'amber' | 'violet';
+}) {
+    const toneClass = {
+        blue: 'sg-tint-blue text-[color:var(--sg-accent-blue)]',
+        amber: 'sg-tint-amber text-[color:var(--sg-accent-amber)]',
+        violet: 'sg-tint-violet text-[color:var(--sg-accent-violet)]',
+    }[tone];
+
+    return (
+        <article
+            className={`relative overflow-hidden rounded-[24px] px-4 py-4 ${toneClass}`}
+            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+        >
+            <div className="absolute right-3 top-3 h-16 w-16 rounded-full bg-white/18 blur-2xl" />
+            <div className="relative flex items-start gap-3">
+                <div
+                    className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-white/84"
+                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                >
+                    <Icon className="h-4.5 w-4.5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="sg-eyebrow">{label}</div>
+                    <div className="mt-2 text-lg font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
+                        {value}
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">
+                        {detail}
+                    </p>
+                </div>
+            </div>
+        </article>
+    );
+}
+
 const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: WeatherOutlookPanelProps) => {
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            title: '대구 실시간 날씨',
-            subtitle: '현재 상태와 3일 전망',
-            loading: '대구 실시간 날씨를 불러오는 중...',
-            unavailable: '날씨 패널을 불러올 수 없습니다',
+            eyebrow: '외기 흐름',
+            title: '대구 외기 관측',
+            subtitle: '현재 외기와 3일 전망을 운영 판단 기준으로 다시 묶어 보여줍니다.',
+            loading: '대구 외기 정보를 불러오는 중입니다...',
+            unavailable: '외기 정보를 아직 불러오지 못했습니다.',
+            currentLead: '지금 외기',
+            currentNarrative: '오늘 환기와 보수 운전의 기준이 되는 바깥 기상입니다.',
             feelsLike: '체감',
-            cachedSummary: '실시간 외부 날씨 연결이 일시적으로 불안정해 최근 대구 캐시 날씨를 표시 중입니다.',
-            fallbackSummary: '실시간 외부 날씨 연결이 일시적으로 불안정해 대체 대구 전망을 표시 중입니다.',
+            summaryLive: '실시간 외기 연동 중입니다.',
+            summaryCached: '실시간 외기 연결이 흔들려 최근 캐시를 기준으로 보여줍니다.',
+            summaryFallback: '실시간 외기 연결이 없어 대체 전망을 기준으로 보여줍니다.',
             providerLive: '실시간',
             providerCached: '최근 캐시',
             providerFallback: '대체 전망',
-            humidityClouds: '습도 / 운량',
-            windRain: '바람 / 강수',
-            humidityShort: '습도',
-            cloudShort: '운량',
+            humidityClouds: '습도와 구름',
+            humidityCloudsDetail: '상대습도와 운량을 함께 봅니다.',
+            windRain: '바람과 강수',
+            windRainDetail: '환기 손실과 비 예보를 함께 봅니다.',
+            sunHours: '일사와 일조',
+            sunHoursDetail: '복사량과 일조 시간을 함께 봅니다.',
+            humidity: '습도',
+            clouds: '구름',
             rainRisk: '강수 확률',
             shortwave: '단파복사',
             windMax: '최대 풍속',
-            sunHours: '시간 일조',
+            sunshine: '일조',
+            forecastTitle: '3일 운영 캘린더',
+            forecastBody: '야간 운전, 환기 개시, 작업 리듬에 바로 연결되는 외기 요약입니다.',
         }
         : {
-            title: 'Daegu Live Weather',
-            subtitle: 'Current conditions + 3-day outlook for Daegu',
-            loading: 'Loading live Daegu weather...',
-            unavailable: 'Weather panel is unavailable',
-            feelsLike: 'feels like',
-            cachedSummary: 'Live outside weather is temporarily unstable, so the latest cached Daegu weather snapshot is being shown.',
-            fallbackSummary: 'Live outside weather is temporarily unavailable, so a fallback Daegu outlook is being shown.',
+            eyebrow: 'Outside climate',
+            title: 'Daegu outside weather',
+            subtitle: 'Current outside conditions and the next 3 days translated into operating context.',
+            loading: 'Loading Daegu outside weather...',
+            unavailable: 'Outside weather is unavailable.',
+            currentLead: 'Current outside climate',
+            currentNarrative: 'The outdoor signal that should anchor today’s vent and protection posture.',
+            feelsLike: 'Feels like',
+            summaryLive: 'Live outside weather feed is connected.',
+            summaryCached: 'The live feed is unstable, so the latest cached outside weather is shown.',
+            summaryFallback: 'The live feed is unavailable, so a fallback outlook is shown.',
             providerLive: 'Live',
             providerCached: 'Cached',
             providerFallback: 'Fallback',
-            humidityClouds: 'Humidity / Clouds',
-            windRain: 'Wind / Rain',
-            humidityShort: 'RH',
-            cloudShort: 'Cloud',
+            humidityClouds: 'Humidity and clouds',
+            humidityCloudsDetail: 'Relative humidity and cloud cover in one read.',
+            windRain: 'Wind and rain',
+            windRainDetail: 'Vent loss pressure and precipitation together.',
+            sunHours: 'Radiation and sun',
+            sunHoursDetail: 'Shortwave sum and sunshine duration together.',
+            humidity: 'Humidity',
+            clouds: 'Clouds',
             rainRisk: 'Rain risk',
             shortwave: 'Shortwave',
             windMax: 'Wind max',
-            sunHours: 'h sun',
+            sunshine: 'Sunshine',
+            forecastTitle: '3-day operating calendar',
+            forecastBody: 'A compact outside-weather strip for vent timing, night protection, and work rhythm.',
         };
-    const formatForecastLabel = (date: string): string =>
-        formatLocaleDate(locale, `${date}T00:00:00`, { month: 'short', day: 'numeric', weekday: 'short' });
+
     const today = weather?.daily[0];
     const providerLabel = weather?.source.provider ?? 'Open-Meteo';
     const providerKey = providerLabel.toLowerCase();
@@ -66,126 +132,201 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
         : isSyntheticFallback
             ? copy.providerFallback
             : copy.providerLive;
+    const providerNarrative = isCachedFallback
+        ? copy.summaryCached
+        : isSyntheticFallback
+            ? copy.summaryFallback
+            : copy.summaryLive;
     const currentWeatherLabel = weather
         ? isSyntheticFallback
             ? weather.current.weather_label
             : getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)
         : '';
-    const summary = weather
-        ? isCachedFallback
-            ? copy.cachedSummary
-            : isSyntheticFallback
-                ? copy.fallbackSummary
-                : locale === 'ko'
-                    ? `현재 대구는 ${currentWeatherLabel} 상태이며 기온은 ${weather.current.temperature_c.toFixed(1)}°C, 풍속은 ${weather.current.wind_speed_kmh.toFixed(1)} km/h입니다. 오늘은 최고 ${(today?.temperature_max_c ?? weather.current.temperature_c).toFixed(1)}°C / 최저 ${(today?.temperature_min_c ?? weather.current.temperature_c).toFixed(1)}°C, 강수 확률 최대 ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}%가 예상됩니다.`
-                    : `Daegu is currently ${currentWeatherLabel.toLowerCase()} at ${weather.current.temperature_c.toFixed(1)}°C with ${weather.current.wind_speed_kmh.toFixed(1)} km/h wind. Today reaches ${(today?.temperature_max_c ?? weather.current.temperature_c).toFixed(1)}°C / ${(today?.temperature_min_c ?? weather.current.temperature_c).toFixed(1)}°C with up to ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}% rain risk.`
-        : '';
+
+    const forecastCards = compact ? [] : weather?.daily.slice(0, 3) ?? [];
+    const formatForecastLabel = (date: string): string =>
+        formatLocaleDate(locale, `${date}T00:00:00`, { month: 'short', day: 'numeric', weekday: 'short' });
 
     return (
-    <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
-        <div className={`flex items-start justify-between gap-3 ${compact ? 'mb-2' : 'mb-4'}`}>
-            <div>
-                <div className="flex items-center gap-2 text-slate-800">
-                    <CloudSun className="h-5 w-5 text-sky-500" />
-                    <h3 className={compact ? 'text-sm font-semibold' : 'font-semibold'}>{copy.title}</h3>
+        <DashboardCard
+            eyebrow={copy.eyebrow}
+            title={weather ? `${weather.location.name}, ${getCountryLabel(weather.location.country, locale)}` : copy.title}
+            description={!compact ? copy.subtitle : undefined}
+            className="sg-tint-blue"
+            actions={(
+                <div
+                    className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-blue)]"
+                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                >
+                    {providerDisplayLabel}
                 </div>
-                {!compact && <p className="mt-1 text-xs text-slate-400">{copy.subtitle}</p>}
-            </div>
-            <div className="rounded-full bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
-                {providerDisplayLabel}
-            </div>
-        </div>
-
-        {loading ? (
-            <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">{copy.loading}</div>
-        ) : error ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                {copy.unavailable}
-            </div>
-        ) : weather ? (
-            <div className="flex h-full flex-col space-y-4">
-                <div className="rounded-lg bg-gradient-to-br from-sky-50 to-cyan-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                <MapPinned className="h-3.5 w-3.5 text-sky-600" />
-                                <span>{weather.location.name}, {getCountryLabel(weather.location.country, locale)}</span>
-                            </div>
-                            <div className="mt-2 flex items-baseline gap-2 text-slate-900">
-                                <span className="text-3xl font-bold">{weather.current.temperature_c.toFixed(1)}°C</span>
-                                <span className="text-sm text-slate-500">
-                                    {copy.feelsLike} {weather.current.apparent_temperature_c.toFixed(1)}°C
-                                </span>
-                            </div>
-                            <p className="mt-2 text-sm font-medium text-slate-700">{currentWeatherLabel}</p>
-                        </div>
-                        <div className="rounded-2xl bg-white/80 px-3 py-2 text-right text-xs text-slate-500 shadow-sm">
-                            <div>{formatLocaleDateTime(locale, weather.current.time)}</div>
-                            <div className="mt-1">{weather.location.timezone}</div>
-                        </div>
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-600">{summary}</p>
+            )}
+        >
+            {loading ? (
+                <div
+                    className="rounded-[28px] bg-white/82 px-5 py-12 text-center text-sm text-[color:var(--sg-text-muted)]"
+                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                >
+                    {copy.loading}
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                            <Thermometer className="h-4 w-4 text-orange-500" />
-                            <span>{copy.humidityClouds}</span>
-                        </div>
-                        <div className="mt-2 text-sm text-slate-700">
-                            {copy.humidityShort} {weather.current.relative_humidity_pct.toFixed(0)}% | {copy.cloudShort} {weather.current.cloud_cover_pct.toFixed(0)}%
-                        </div>
-                    </div>
-                    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                            <Wind className="h-4 w-4 text-teal-500" />
-                            <span>{copy.windRain}</span>
-                        </div>
-                        <div className="mt-2 text-sm text-slate-700">
-                            {weather.current.wind_speed_kmh.toFixed(1)} km/h | {weather.current.precipitation_mm.toFixed(1)} mm
-                        </div>
-                    </div>
+            ) : error || !weather ? (
+                <div className="rounded-[28px] bg-[color:var(--sg-tint-amber)] px-5 py-12 text-center text-sm text-[color:var(--sg-accent-amber)]">
+                    {copy.unavailable}
                 </div>
-
-                {!compact && (
-                <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-                    {weather.daily.map((day) => (
-                        <div key={day.date} className="h-full rounded-lg border border-slate-100 p-3">
-                            <div className="flex items-start justify-between gap-3">
-                                <div>
-                                    <div className="text-sm font-semibold text-slate-800">{formatForecastLabel(day.date)}</div>
-                                    <div className="mt-1 text-xs text-slate-500">{getWeatherLabel(day.weather_code, day.weather_label, locale)}</div>
-                                </div>
-                                <div className="text-right text-sm text-slate-700">
-                                    <div className="font-semibold">{day.temperature_max_c.toFixed(1)}°C / {day.temperature_min_c.toFixed(1)}°C</div>
-                                    <div className="mt-1 text-xs text-slate-500">{day.sunshine_duration_h.toFixed(1)} {copy.sunHours}</div>
-                                </div>
-                            </div>
-                            <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-500">
-                                <div className="rounded-md bg-slate-50 px-2 py-2">
-                                    <div className="flex items-center gap-1">
-                                        <CloudRain className="h-3.5 w-3.5 text-cyan-500" />
-                                        <span>{copy.rainRisk}</span>
+            ) : (
+                <div className="flex h-full flex-col gap-4">
+                    <div className={`grid gap-4 ${compact ? 'xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]'}`}>
+                        <article
+                            className="relative overflow-hidden rounded-[32px] px-5 py-5"
+                            style={{
+                                background: 'linear-gradient(135deg, rgba(196,231,255,0.94), rgba(255,255,255,0.88))',
+                                boxShadow: 'var(--sg-shadow-soft)',
+                            }}
+                        >
+                            <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/24 blur-3xl" />
+                            <div className="relative flex h-full flex-col gap-5">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                    <div className="flex items-start gap-3">
+                                        <div
+                                            className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
+                                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                        >
+                                            <MapPinned className="h-5.5 w-5.5 text-[color:var(--sg-accent-blue)]" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="sg-eyebrow">{copy.currentLead}</div>
+                                            <div className="mt-3 text-[clamp(2.2rem,2rem+1vw,3.4rem)] font-semibold tracking-[-0.07em] text-[color:var(--sg-text-strong)]">
+                                                {weather.current.temperature_c.toFixed(1)}°C
+                                            </div>
+                                            <div className="mt-2 text-base font-semibold text-[color:var(--sg-text-strong)]">
+                                                {currentWeatherLabel}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="mt-1 font-medium text-slate-700">{day.precipitation_probability_max_pct.toFixed(0)}%</div>
+                                    <div
+                                        className="rounded-[22px] bg-white/82 px-4 py-3 text-right text-xs text-[color:var(--sg-text-muted)]"
+                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                    >
+                                        <div>{formatLocaleDateTime(locale, weather.current.time)}</div>
+                                        <div className="mt-1 font-medium text-[color:var(--sg-text-strong)]">{weather.location.timezone}</div>
+                                    </div>
                                 </div>
-                                <div className="rounded-md bg-slate-50 px-2 py-2">
-                                    <div>{copy.shortwave}</div>
-                                    <div className="mt-1 font-medium text-slate-700">{day.shortwave_radiation_sum_mj_m2.toFixed(1)} MJ m⁻²</div>
-                                </div>
-                                <div className="rounded-md bg-slate-50 px-2 py-2">
-                                    <div>{copy.windMax}</div>
-                                    <div className="mt-1 font-medium text-slate-700">{day.wind_speed_max_kmh.toFixed(1)} km/h</div>
+
+                                <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                                    <div>
+                                        <p className="max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
+                                            {weather.summary}
+                                        </p>
+                                        <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--sg-accent-blue)]">
+                                            {copy.currentNarrative}
+                                        </p>
+                                    </div>
+                                    <div
+                                        className="rounded-[24px] bg-white/84 px-4 py-4"
+                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                    >
+                                        <div className="sg-eyebrow">{providerDisplayLabel}</div>
+                                        <div className="mt-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                                            {copy.feelsLike} {weather.current.apparent_temperature_c.toFixed(1)}°C
+                                        </div>
+                                        <p className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
+                                            {providerNarrative}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
+                        </article>
+
+                        <div className="grid gap-4">
+                            <WeatherSignalTile
+                                icon={Thermometer}
+                                label={copy.humidityClouds}
+                                value={`${copy.humidity} ${weather.current.relative_humidity_pct.toFixed(0)}% · ${copy.clouds} ${weather.current.cloud_cover_pct.toFixed(0)}%`}
+                                detail={copy.humidityCloudsDetail}
+                                tone="blue"
+                            />
+                            <WeatherSignalTile
+                                icon={Wind}
+                                label={copy.windRain}
+                                value={`${weather.current.wind_speed_kmh.toFixed(1)} km/h · ${copy.rainRisk} ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}%`}
+                                detail={copy.windRainDetail}
+                                tone="amber"
+                            />
+                            <WeatherSignalTile
+                                icon={SunMedium}
+                                label={copy.sunHours}
+                                value={`${(today?.shortwave_radiation_sum_mj_m2 ?? 0).toFixed(1)} MJ/m2 · ${copy.sunshine} ${(today?.sunshine_duration_h ?? 0).toFixed(1)}h`}
+                                detail={copy.sunHoursDetail}
+                                tone="violet"
+                            />
                         </div>
-                    ))}
+                    </div>
+
+                    {forecastCards.length > 0 ? (
+                        <section
+                            className="rounded-[30px] bg-white/76 px-5 py-5"
+                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                        >
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <div className="sg-eyebrow">{copy.forecastTitle}</div>
+                                    <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                                        {copy.forecastBody}
+                                    </p>
+                                </div>
+                                <div className="rounded-full bg-[color:var(--sg-tint-blue)] px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-blue)]">
+                                    {forecastCards.length} day outlook
+                                </div>
+                            </div>
+
+                            <div className="mt-5 grid gap-3 xl:grid-cols-3">
+                                {forecastCards.map((day) => (
+                                    <article
+                                        key={day.date}
+                                        className="rounded-[24px] bg-[color:var(--sg-surface-strong)] px-4 py-4"
+                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                                                    {formatForecastLabel(day.date)}
+                                                </div>
+                                                <div className="mt-1 text-xs text-[color:var(--sg-text-muted)]">
+                                                    {getWeatherLabel(day.weather_code, day.weather_label, locale)}
+                                                </div>
+                                            </div>
+                                            <div className="text-right text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                                                {day.temperature_max_c.toFixed(1)}° / {day.temperature_min_c.toFixed(1)}°
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-blue)] px-3 py-3">
+                                                <div className="text-[color:var(--sg-text-faint)]">{copy.rainRisk}</div>
+                                                <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
+                                                    {day.precipitation_probability_max_pct.toFixed(0)}%
+                                                </div>
+                                            </div>
+                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-neutral)] px-3 py-3">
+                                                <div className="text-[color:var(--sg-text-faint)]">{copy.shortwave}</div>
+                                                <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
+                                                    {day.shortwave_radiation_sum_mj_m2.toFixed(1)} MJ/m2
+                                                </div>
+                                            </div>
+                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-violet)] px-3 py-3">
+                                                <div className="text-[color:var(--sg-text-faint)]">{copy.windMax}</div>
+                                                <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
+                                                    {day.wind_speed_max_kmh.toFixed(1)} km/h
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
+                    ) : null}
                 </div>
-                )}
-            </div>
-        ) : null}
-    </div>
+            )}
+        </DashboardCard>
     );
 };
 
