@@ -501,7 +501,7 @@ const AdvisorTabs = ({
         }
         : {
             title: 'Advisor Tabs',
-            subtitle: `Run deterministic advisory flows for ${cropLabel}.`,
+            subtitle: `Check today’s grower-help actions for ${cropLabel}.`,
             close: 'Close',
             environment: 'Environment',
             physiology: 'Physiology',

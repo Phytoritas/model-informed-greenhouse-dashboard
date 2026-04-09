@@ -12,7 +12,7 @@ export type DashboardWorkspaceKey =
     | 'knowledge';
 
 export interface WorkspaceNavItem {
-    key: DashboardWorkspaceKey;
+    key: string;
     label: string;
     shortLabel: string;
     description: string;
@@ -21,8 +21,8 @@ export interface WorkspaceNavItem {
 
 interface WorkspaceNavProps {
     items: WorkspaceNavItem[];
-    activeWorkspace: DashboardWorkspaceKey;
-    onSelect: (workspace: DashboardWorkspaceKey) => void;
+    activeWorkspace: string;
+    onSelect: (workspace: string) => void;
 }
 
 function WorkspaceButton({
@@ -87,12 +87,12 @@ export default function WorkspaceNav({
     const activeItem = items.find((item) => item.key === activeWorkspace) ?? items[0];
     const copy = locale === 'ko'
         ? {
-            workspaces: '워크스페이스',
-            commandNote: '운영 메모',
+            workspaces: '메뉴',
+            commandNote: '현재 선택',
         }
         : {
-            workspaces: 'Workspaces',
-            commandNote: 'Command note',
+            workspaces: 'Menu',
+            commandNote: 'Current section',
         };
 
     return (
@@ -116,7 +116,7 @@ export default function WorkspaceNav({
                 <div className="mt-4 rounded-[28px] bg-[linear-gradient(180deg,rgba(232,232,251,0.92),rgba(255,255,255,0.96))] px-4 py-4 text-sm leading-6 text-[color:var(--sg-text-muted)]">
                     <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{copy.commandNote}</div>
                     <p className="mt-2">
-                        {activeItem?.shortLabel} · {activeItem?.description}
+                        {activeItem?.label} · {activeItem?.description}
                     </p>
                 </div>
             </aside>

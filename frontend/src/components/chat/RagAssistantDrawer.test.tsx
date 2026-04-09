@@ -123,9 +123,7 @@ describe('RagAssistantDrawer', () => {
             source: 'advisor',
         });
 
-        expect(
-            await screen.findByText('지식 자료를 정리 중입니다. 잠시 후 다시 시도해 주세요.'),
-        ).toBeTruthy();
+        expect(await screen.findByText('자료를 정리 중입니다. 잠시 후 다시 시도해 주세요.')).toBeTruthy();
         expect(screen.queryByText(/reindex/i)).toBeNull();
     });
 });
