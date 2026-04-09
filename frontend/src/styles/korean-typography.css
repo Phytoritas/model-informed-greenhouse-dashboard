@@ -1,0 +1,27 @@
+html[lang="ko"] body,
+html[lang="ko"] button,
+html[lang="ko"] input,
+html[lang="ko"] textarea,
+html[lang="ko"] select {
+  letter-spacing: -0.012em;
+  word-break: keep-all;
+}
+
+html[lang="ko"] .sg-card-description,
+html[lang="ko"] .sg-metric-subtitle,
+html[lang="ko"] .sg-card-title,
+html[lang="ko"] .sg-eyebrow {
+  word-break: keep-all;
+}
+
+html[lang="ko"] .sg-card-description {
+  line-height: 1.78;
+}
+
+html[lang="ko"] .sg-card-title {
+  line-height: 1.22;
+}
+
+html[lang="ko"] .sg-eyebrow {
+  letter-spacing: 0.08em;
+}

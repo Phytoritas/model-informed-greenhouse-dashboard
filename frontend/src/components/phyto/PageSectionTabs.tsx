@@ -21,11 +21,14 @@ export default function PageSectionTabs({
     }
 
     return (
-        <Tabs>
-            <TabsList>
+        <Tabs aria-label="Page sections">
+            <TabsList role="tablist" aria-label="Page sections">
                 {tabs.map((tab) => (
                     <TabsTrigger
                         key={tab.id}
+                        role="tab"
+                        aria-selected={tab.id === activeId}
+                        aria-current={tab.id === activeId ? 'page' : undefined}
                         data-active={tab.id === activeId}
                         onClick={() => onSelect?.(tab.id)}
                     >

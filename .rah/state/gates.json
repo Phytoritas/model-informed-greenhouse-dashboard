@@ -208,7 +208,19 @@
     "note": "Issue #41 is locally green after the blocker fix-up: `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, and `git diff --check` all pass, with pytest now at `144 passed, 31 warnings`."
   },
   "issue41_pr_validation": {
+    "status": "pass",
+    "note": "PR #42 merged issue #41 into `main` after the actuator-first RTR seam and blocker-fix follow-up stayed green locally and GitHub Actions Backend/Frontend validation both passed on the final head."
+  },
+  "issue47_prompt_gap_closure": {
+    "status": "pass",
+    "note": "Issue #47 closes the remaining `codex_phytosync_shadcn_redesign_prompt.md` gaps over the merged issue #45 UI baseline by landing route-driven `PhytoSync` workspace modules, shared design-token/style layers, a dedicated ask/search workspace, Korean visible-copy cleanup, and accessibility/test hardening without breaking existing dashboard/runtime surfaces."
+  },
+  "issue47_local_validation": {
+    "status": "pass",
+    "note": "Issue #47 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, and `npm --prefix frontend run build` after the ask/search route shell, Korean copy cleanup, and tab/accessibility regressions were fixed."
+  },
+  "issue47_pr_validation": {
     "status": "validating",
-    "note": "PR #42 is open on the latest pushed issue #41 branch head after the follow-up fixes for the reviewer-blocking findings and the validating-state harness sync. GitHub Actions Backend/Frontend validation must be re-checked on that latest head before merge."
+    "note": "PR #48 is open on `feat/47-close-remaining-phytosync-shadcn-redesign-prompt-gaps` at commit `f07dad5`, and GitHub Actions Backend/Frontend validation are in progress on the latest push and pull_request runs."
   }
 }
