@@ -172,13 +172,13 @@ const WorkTab = (props: WorkTabProps) => {
     if (props.status !== 'error' && analysis) {
         return (
             <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.9fr)_minmax(0,1.1fr)]">
-                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                <div className="sg-advisor-shell sg-advisor-shell-amber space-y-4">
                     <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                             {copy.title}
                         </div>
-                        <h3 className="mt-2 text-lg font-semibold text-slate-900">{copy.summary}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{analysis.summary}</p>
+                        <h3 className="mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.summary}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">{analysis.summary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
@@ -210,7 +210,7 @@ const WorkTab = (props: WorkTabProps) => {
                         subtitle={copy.title}
                         badges={analysis.monitoring_checklist.slice(0, 2)}
                     >
-                        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                        <div className="grid gap-2 text-sm text-[color:var(--sg-text-muted)] sm:grid-cols-2">
                             <div>{copy.nextDayHarvest}: {formatValue(analysis.context_snapshot.next_day_harvest_kg, 2, ' kg')}</div>
                             <div>{copy.nextDayEtc}: {formatValue(analysis.context_snapshot.next_day_etc_mm, 1, ' mm')}</div>
                             <div>{copy.dailyEnergy}: {formatValue(analysis.context_snapshot.daily_energy_kwh, 1, ' kWh')}</div>
@@ -242,12 +242,12 @@ const WorkTab = (props: WorkTabProps) => {
                             ]}
                         >
                             {workEventCompare.status === 'history-unavailable' ? (
-                                <div className="text-sm leading-relaxed text-slate-500">
+                                <div className="text-sm leading-relaxed text-[color:var(--sg-text-faint)]">
                                     {workEventCompare.summary || copy.compareUnavailable}
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-3">
+                                    <div className="grid gap-2 text-sm text-[color:var(--sg-text-muted)] sm:grid-cols-2 xl:grid-cols-3">
                                         <div>{copy.compareCurrentState}: {formatValue(workEventCompare.current_state.leaf_count, 0)}</div>
                                         <div>LAI: {formatValue(workEventCompare.current_state.lai, 2)}</div>
                                         <div>{copy.harvestableFruits}: {formatValue(workEventCompare.current_state.fruit_load, 0)}</div>
@@ -258,7 +258,7 @@ const WorkTab = (props: WorkTabProps) => {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                             {copy.compareHistory}
                                         </div>
                                         {workEventCompare.history.length ? (
@@ -272,7 +272,7 @@ const WorkTab = (props: WorkTabProps) => {
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div className="text-sm text-slate-500">{copy.compareNoHistory}</div>
+                                            <div className="text-sm text-[color:var(--sg-text-faint)]">{copy.compareNoHistory}</div>
                                         )}
                                     </div>
 
@@ -280,7 +280,7 @@ const WorkTab = (props: WorkTabProps) => {
                                         {workEventCompare.options.map((option) => (
                                             <div
                                                 key={`${option.comparison_kind}-${option.action}`}
-                                                className="rounded-2xl border border-slate-200 bg-white p-4"
+                                                className="sg-advisor-inset"
                                             >
                                                 <div className="flex flex-wrap gap-2">
                                                     <AdvisorConfidenceBadge label={option.action} tone="success" />
@@ -289,9 +289,9 @@ const WorkTab = (props: WorkTabProps) => {
                                                         tone={option.risk === 'high' ? 'warning' : option.risk === 'medium' ? 'info' : 'neutral'}
                                                     />
                                                 </div>
-                                                <div className="mt-3 space-y-2 text-sm text-slate-600">
+                                                <div className="mt-3 space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                                                     <div>
-                                                        <span className="font-semibold text-slate-900">{copy.compareOperatorNote}: </span>
+                                                        <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.compareOperatorNote}: </span>
                                                         {option.operator_note}
                                                     </div>
                                                     <div>{copy.compareYield7d}: {formatSignedValue(option.expected_yield_delta_7d, 2, ' kg')}</div>
@@ -302,7 +302,7 @@ const WorkTab = (props: WorkTabProps) => {
                                                     <div>{copy.compareBalance}: {formatSignedValue(option.expected_source_sink_balance_delta, 3)}</div>
                                                     {(option.agronomy_flags?.length ?? 0) > 0 ? (
                                                         <div className="space-y-2">
-                                                            <div className="font-semibold text-slate-900">{copy.compareAgronomy}</div>
+                                                            <div className="font-semibold text-[color:var(--sg-text-strong)]">{copy.compareAgronomy}</div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {(option.agronomy_flags ?? []).map((flag: string) => (
                                                                     <AdvisorConfidenceBadge
@@ -315,7 +315,7 @@ const WorkTab = (props: WorkTabProps) => {
                                                         </div>
                                                     ) : null}
                                                     <div className="space-y-2">
-                                                        <div className="font-semibold text-slate-900">{copy.compareImmediateDelta}</div>
+                                                        <div className="font-semibold text-[color:var(--sg-text-strong)]">{copy.compareImmediateDelta}</div>
                                                         <div className="flex flex-wrap gap-2">
                                                             {Object.entries(option.immediate_state_delta ?? {}).map(([key, value]) => (
                                                                 <AdvisorConfidenceBadge
@@ -358,33 +358,33 @@ const WorkTab = (props: WorkTabProps) => {
                                     : [getLocalizedTokenLabel(analysis.current_state.workload_balance, locale)]
                             }
                         >
-                            <div className="space-y-3 text-sm text-slate-600">
+                            <div className="space-y-3 text-sm text-[color:var(--sg-text-muted)]">
                                 <div>
-                                    <span className="font-semibold text-slate-900">{copy.diagnosis}: </span>
+                                    <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.diagnosis}: </span>
                                     {analysis.current_state.diagnosis}
                                 </div>
                                 <div>
-                                    <span className="font-semibold text-slate-900">{copy.operatingMode}: </span>
+                                    <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.operatingMode}: </span>
                                     {getLocalizedTokenLabel(analysis.current_state.operating_mode, locale)}
                                 </div>
                                 <div>
-                                    <span className="font-semibold text-slate-900">{copy.primaryConstraint}: </span>
+                                    <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.primaryConstraint}: </span>
                                     {getLocalizedTokenLabel(analysis.current_state.primary_constraint, locale)}
                                 </div>
                                 <div>
-                                    <span className="font-semibold text-slate-900">{copy.laborStrategy}: </span>
+                                    <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.laborStrategy}: </span>
                                     {getLocalizedTokenLabel(analysis.current_state.labor_strategy, locale)}
                                 </div>
                                 <div>
-                                    <span className="font-semibold text-slate-900">{copy.workloadBalance}: </span>
+                                    <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.workloadBalance}: </span>
                                     {getLocalizedTokenLabel(analysis.current_state.workload_balance, locale)}
                                 </div>
                                 <div>
-                                    <span className="font-semibold text-slate-900">{copy.deviation}: </span>
+                                    <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.deviation}: </span>
                                     {getLocalizedTokenLabel(analysis.current_state.deviation, locale)}
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="font-semibold text-slate-900">{copy.riskFlags}</div>
+                                    <div className="font-semibold text-[color:var(--sg-text-strong)]">{copy.riskFlags}</div>
                                     <div className="flex flex-wrap gap-2">
                                         {analysis.current_state.risk_flags.map((item) => (
                                             <AdvisorConfidenceBadge
@@ -396,12 +396,12 @@ const WorkTab = (props: WorkTabProps) => {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="font-semibold text-slate-900">{copy.hypotheses}</div>
+                                    <div className="font-semibold text-[color:var(--sg-text-strong)]">{copy.hypotheses}</div>
                                     <ul className="space-y-2">
                                         {analysis.current_state.cause_hypotheses.map((item) => (
                                             <li
                                                 key={item}
-                                                className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                                className="sg-advisor-note"
                                             >
                                                 {item}
                                             </li>
@@ -412,11 +412,11 @@ const WorkTab = (props: WorkTabProps) => {
                         </AdvisorActionCard>
 
                         <AdvisorActionCard title={copy.expectedEffects} subtitle={copy.title}>
-                            <ul className="space-y-2 text-sm text-slate-600">
+                            <ul className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                                 {analysis.expected_effects.map((item) => (
                                     <li
                                         key={item}
-                                        className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                        className="sg-advisor-note"
                                     >
                                         {item}
                                     </li>
@@ -426,11 +426,11 @@ const WorkTab = (props: WorkTabProps) => {
                     </div>
 
                     <AdvisorActionCard title={copy.checklist} subtitle={copy.title}>
-                        <ul className="space-y-2 text-sm text-slate-600">
+                        <ul className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {analysis.monitoring_checklist.map((item) => (
                                 <li
                                     key={item}
-                                    className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                    className="sg-advisor-note"
                                 >
                                     {item}
                                 </li>

@@ -351,11 +351,15 @@ describe('useRtrOptimizer', () => {
             expect(result.current.optimizeResponse).not.toBeNull();
         });
 
+        const stateCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/state'));
+        expect(stateCall?.[0]).toEqual(expect.stringContaining('/rtr/state?crop=cucumber'));
+
         expect(result.current.targetNodeDevelopmentPerDay).toBe(0.73);
 
         const optimizeCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/optimize'));
         expect(optimizeCall).toBeTruthy();
         const optimizeBody = JSON.parse(String((optimizeCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+        expect(optimizeBody.crop).toBe('cucumber');
         expect(optimizeBody.target_node_development_per_day).toBe(0.73);
         expect(optimizeBody.optimization_mode).toBe('energy_saving');
     });

@@ -111,13 +111,13 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
     if (props.status !== 'error' && analysis) {
         return (
             <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.92fr)_minmax(0,1.08fr)]">
-                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                <div className="sg-advisor-shell sg-advisor-shell-green space-y-4">
                     <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                             {copy.title}
                         </div>
-                        <h3 className="mt-2 text-lg font-semibold text-slate-900">{copy.summary}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{analysis.summary}</p>
+                        <h3 className="mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.summary}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">{analysis.summary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
@@ -135,30 +135,30 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                     </div>
 
                     <AdvisorActionCard title={copy.currentState} subtitle={copy.title}>
-                        <div className="space-y-3 text-sm text-slate-600">
+                        <div className="space-y-3 text-sm text-[color:var(--sg-text-muted)]">
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.diagnosis}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.diagnosis}: </span>
                                 {analysis.current_state.diagnosis}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.balanceState}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.balanceState}: </span>
                                 {getLocalizedTokenLabel(analysis.current_state.balance_state, locale)}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.deviation}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.deviation}: </span>
                                 {analysis.current_state.deviation}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.cropContext}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.cropContext}: </span>
                                 {analysis.current_state.crop_specific_context}
                             </div>
                             <div className="space-y-2">
-                                <div className="font-semibold text-slate-900">{copy.hypotheses}</div>
+                                <div className="font-semibold text-[color:var(--sg-text-strong)]">{copy.hypotheses}</div>
                                 <ul className="space-y-2">
                                     {analysis.current_state.cause_hypotheses.map((item) => (
                                         <li
                                             key={item}
-                                            className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                            className="sg-advisor-note"
                                         >
                                             {item}
                                         </li>
@@ -169,7 +169,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                     </AdvisorActionCard>
 
                     <AdvisorActionCard title={copy.context} subtitle={copy.title}>
-                        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                        <div className="grid gap-2 text-sm text-[color:var(--sg-text-muted)] sm:grid-cols-2">
                             <div>{copy.insideTemp}: {formatValue(analysis.context_snapshot.inside_temp_c, 1, ' °C')}</div>
                             <div>{copy.insideHumidity}: {formatValue(analysis.context_snapshot.inside_humidity_pct, 0, '%')}</div>
                             <div>{copy.canopyTemp}: {formatValue(analysis.context_snapshot.canopy_temp_c, 1, ' °C')}</div>
@@ -211,15 +211,15 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                                 {analysis.supporting_signals.map((signal) => (
                                     <div
                                         key={`${signal.label}-${signal.value}`}
-                                        className="rounded-2xl border border-slate-200 bg-white p-4"
+                                        className="sg-advisor-inset"
                                     >
-                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                             {signal.label}
                                         </div>
-                                        <div className="mt-2 text-sm font-semibold text-slate-900">
+                                        <div className="mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                             {signal.value}
                                         </div>
-                                        <div className="mt-2 text-sm leading-relaxed text-slate-600">
+                                        <div className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                             {signal.interpretation}
                                         </div>
                                     </div>
@@ -232,17 +232,17 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                                 {analysis.follow_up_actions.map((action) => (
                                     <div
                                         key={`${action.time_window}-${action.title}`}
-                                        className="rounded-2xl border border-slate-200 bg-white p-4"
+                                        className="sg-advisor-inset"
                                     >
                                         <div className="flex flex-wrap gap-2">
                                             <AdvisorConfidenceBadge label={getLocalizedTokenLabel(action.time_window, locale)} tone="success" />
                                         </div>
-                                        <div className="mt-3 text-sm font-semibold text-slate-900">
+                                        <div className="mt-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                             {action.title}
                                         </div>
-                                        <div className="mt-2 text-sm text-slate-600">{action.rationale}</div>
-                                        <div className="mt-2 text-sm text-slate-600">{action.operator}</div>
-                                        <div className="mt-2 text-sm text-slate-500">{action.expected_effect}</div>
+                                        <div className="mt-2 text-sm text-[color:var(--sg-text-muted)]">{action.rationale}</div>
+                                        <div className="mt-2 text-sm text-[color:var(--sg-text-muted)]">{action.operator}</div>
+                                        <div className="mt-2 text-sm text-[color:var(--sg-text-faint)]">{action.expected_effect}</div>
                                     </div>
                                 ))}
                             </div>
@@ -250,11 +250,11 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                     </div>
 
                     <AdvisorActionCard title={copy.checklist} subtitle={copy.title}>
-                        <ul className="space-y-2 text-sm text-slate-600">
+                        <ul className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {analysis.monitoring_checklist.map((item) => (
                                 <li
                                     key={item}
-                                    className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                    className="sg-advisor-note"
                                 >
                                     {item}
                                 </li>

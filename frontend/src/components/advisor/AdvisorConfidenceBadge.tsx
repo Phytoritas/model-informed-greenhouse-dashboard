@@ -4,11 +4,11 @@ interface AdvisorConfidenceBadgeProps {
 }
 
 const TONE_CLASSES: Record<NonNullable<AdvisorConfidenceBadgeProps['tone']>, string> = {
-    neutral: 'border-slate-200 bg-slate-100 text-slate-600',
-    info: 'border-sky-200 bg-sky-100 text-sky-700',
-    success: 'border-emerald-200 bg-emerald-100 text-emerald-700',
-    warning: 'border-amber-200 bg-amber-100 text-amber-700',
-    danger: 'border-rose-200 bg-rose-100 text-rose-700',
+    neutral: 'bg-white/82 text-[color:var(--sg-text-muted)]',
+    info: 'bg-[color:var(--sg-accent-blue-soft)] text-[color:var(--sg-accent-blue)]',
+    success: 'bg-[color:var(--sg-accent-forest-soft)] text-[color:var(--sg-accent-success)]',
+    warning: 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]',
+    danger: 'bg-rose-100 text-rose-700',
 };
 
 const AdvisorConfidenceBadge = ({
@@ -16,7 +16,8 @@ const AdvisorConfidenceBadge = ({
     tone = 'neutral',
 }: AdvisorConfidenceBadgeProps) => (
     <span
-        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${TONE_CLASSES[tone]}`}
+        className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${TONE_CLASSES[tone]}`}
+        style={{ boxShadow: 'var(--sg-shadow-card)' }}
     >
         {label}
     </span>

@@ -1,14 +1,70 @@
-const DEFAULT_BACKEND_HOST =
-  typeof window !== "undefined" &&
-  (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost")
-    ? window.location.hostname
-    : "localhost";
-
-const DEFAULT_BACKEND_ORIGIN = `http://${DEFAULT_BACKEND_HOST}:8000`;
+const LOCAL_BACKEND_PORT_CANDIDATES = ["8003", "8000"] as const;
 
 function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }
+
+function isLocalPreviewHost(hostname: string): boolean {
+  return hostname === "127.0.0.1" || hostname === "localhost";
+}
+
+function readBrowserBackendOverride(): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const queryOrigin = params.get("backendOrigin")?.trim();
+    if (queryOrigin) {
+      const normalizedQueryOrigin = normalizeBaseUrl(queryOrigin);
+      window.localStorage.setItem("smartgrow.backendOrigin", normalizedQueryOrigin);
+      return normalizedQueryOrigin;
+    }
+  } catch {
+    // Ignore malformed query strings and fall back to storage/default logic.
+  }
+
+  try {
+    const storedOrigin = window.localStorage.getItem("smartgrow.backendOrigin")?.trim();
+    return storedOrigin ? normalizeBaseUrl(storedOrigin) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function inferDefaultBackendOrigin(): string {
+  if (typeof window === "undefined") {
+    return "http://localhost:8003";
+  }
+
+  const { hostname, origin, port, protocol } = window.location;
+  const browserOverride = readBrowserBackendOverride();
+  if (browserOverride) {
+    return browserOverride;
+  }
+
+  if (!isLocalPreviewHost(hostname)) {
+    return origin;
+  }
+
+  if (
+    LOCAL_BACKEND_PORT_CANDIDATES.includes(
+      port as (typeof LOCAL_BACKEND_PORT_CANDIDATES)[number],
+    ) ||
+    port === ""
+  ) {
+    return origin;
+  }
+
+  const preferredPort =
+    ((import.meta.env.VITE_BACKEND_PORT as string | undefined) ?? "").trim() ||
+    LOCAL_BACKEND_PORT_CANDIDATES[0];
+
+  return `${protocol}//${hostname}:${preferredPort}`;
+}
+
+const DEFAULT_BACKEND_ORIGIN = inferDefaultBackendOrigin();
 
 function toWsOrigin(httpOrigin: string): string {
   try {

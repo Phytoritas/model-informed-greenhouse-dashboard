@@ -16,6 +16,7 @@ PRODUCE_PRICE_CACHE_TTL_SECONDS = 30 * 60
 PRODUCE_TREND_HISTORY_DAYS = 14
 PRODUCE_TREND_FORECAST_DAYS = 14
 PRODUCE_TREND_NORMAL_YEAR_WINDOWS = (3, 5, 10)
+PRODUCE_TREND_ENRICHMENT_TIMEOUT_SECONDS = 2.5
 
 # The official KAMIS docs publish `test/test` as the sample credentials for
 # the daily price endpoint. Production deployments can override them via env.
@@ -78,6 +79,81 @@ FEATURED_PRODUCE_TARGETS_BY_SOURCE_NAME = {
 }
 
 _produce_price_cache: Dict[str, Any] = {"expires_at": 0.0, "payload": None}
+
+
+def _utc_iso_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def build_featured_produce_prices_fallback_payload(*, reason: str) -> Dict[str, Any]:
+    """Return a stable payload when live KAMIS fetches are unavailable."""
+
+    fallback_reason = str(reason).strip() or "Live produce price refresh failed."
+    cached_payload = _produce_price_cache.get("payload")
+    fallback_now = _utc_iso_now()
+
+    if isinstance(cached_payload, dict) and cached_payload:
+        source = dict(cached_payload.get("source") or {})
+        source.update(
+            {
+                "status": "fallback-cache",
+                "fetched_at": fallback_now,
+                "fallback_reason": fallback_reason,
+            }
+        )
+        _produce_price_cache["expires_at"] = time.time() + 60
+        return {
+            **cached_payload,
+            "source": source,
+            "summary": cached_payload.get("summary")
+            or "KAMIS live market data is temporarily unavailable. Showing the latest cached snapshot.",
+        }
+
+    reference_date = datetime.now(timezone.utc).date().isoformat()
+    unavailable_series = [
+        {
+            "key": target["productno"],
+            "display_name": target["display_name"],
+            "reason": fallback_reason,
+        }
+        for target in FEATURED_PRODUCE_TARGETS
+    ]
+    empty_markets = {
+        market_key: {
+            "market_key": market_key,
+            "market_label": MARKET_KEY_TO_LABEL[market_key],
+            "summary": "Live KAMIS pricing is temporarily unavailable for this market.",
+            "items": [],
+        }
+        for market_key in ("retail", "wholesale")
+    }
+    payload = {
+        "source": {
+            "provider": "KAMIS",
+            "docs_url": KAMIS_OPEN_API_DOCS_URL,
+            "endpoint": "dailySalesList + periodRetailProductList (retail trend overlay)",
+            "auth_mode": "fallback",
+            "status": "fallback-unavailable",
+            "fetched_at": fallback_now,
+            "latest_day": "",
+            "fallback_reason": fallback_reason,
+        },
+        "summary": "KAMIS live market data is temporarily unavailable. The market panel will recover automatically on the next refresh.",
+        "items": [],
+        "markets": empty_markets,
+        "trend": {
+            "market_key": "retail",
+            "reference_date": reference_date,
+            "history_days": PRODUCE_TREND_HISTORY_DAYS,
+            "forecast_days": PRODUCE_TREND_FORECAST_DAYS,
+            "normal_year_windows": list(PRODUCE_TREND_NORMAL_YEAR_WINDOWS),
+            "series": [],
+            "unavailable_series": unavailable_series,
+        },
+    }
+    _produce_price_cache["payload"] = payload
+    _produce_price_cache["expires_at"] = time.time() + 60
+    return payload
 
 
 def _parse_krw(value: str | None) -> int:
@@ -445,7 +521,7 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
 
     limits = httpx.Limits(max_connections=12, max_keepalive_connections=6)
     async with httpx.AsyncClient(
-        timeout=10.0,
+        timeout=httpx.Timeout(4.5, connect=3.0),
         follow_redirects=True,
         limits=limits,
     ) as client:
@@ -486,19 +562,26 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
             timezone.utc
         ).date()
 
-        trend_series_results = await asyncio.gather(
-            *[
-                _build_trend_series_for_item(
-                    client,
-                    item=item,
-                    reference_date=reference_date,
-                    kamis_api_key=kamis_api_key,
-                    kamis_api_id=kamis_api_id,
-                )
-                for item in retail_items
-            ],
-            return_exceptions=True,
-        )
+        trend_tasks = [
+            _build_trend_series_for_item(
+                client,
+                item=item,
+                reference_date=reference_date,
+                kamis_api_key=kamis_api_key,
+                kamis_api_id=kamis_api_id,
+            )
+            for item in retail_items
+        ]
+        try:
+            trend_series_results = await asyncio.wait_for(
+                asyncio.gather(*trend_tasks, return_exceptions=True),
+                timeout=PRODUCE_TREND_ENRICHMENT_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            trend_series_results = [
+                TimeoutError("Retail trend enrichment timed out.")
+                for _ in retail_items
+            ]
 
     trend_series: list[Dict[str, Any]] = []
     unavailable_series: list[Dict[str, str]] = []

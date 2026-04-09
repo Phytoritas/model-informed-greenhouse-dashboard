@@ -1693,11 +1693,21 @@ def test_build_advisor_tab_response_lands_work_with_dashboard_context(
 
 def test_build_advisor_tab_response_work_stays_monitoring_first_without_planning_visibility(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        model_state_store,
+    )
+
     monkeypatch.setattr(
         advisor_orchestration,
         "build_knowledge_catalog",
         lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        model_state_store,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "monitoring-first.sqlite3",
     )
 
     payload = advisor_orchestration.build_advisor_tab_response(

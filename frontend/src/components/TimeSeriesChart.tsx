@@ -4,7 +4,6 @@ import {
     Legend,
     Line,
     LineChart,
-    ResponsiveContainer,
     Tooltip,
     XAxis,
     YAxis,
@@ -13,6 +12,7 @@ import type { ReactNode } from 'react';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDateTime, formatLocaleTime } from '../i18n/locale';
 import { useStableChartData } from '../hooks/useStableChartData';
+import ChartFrame from './charts/ChartFrame';
 
 interface DataKey {
     key: string;
@@ -76,9 +76,9 @@ function TimeSeriesChartInner<T extends { timestamp?: number }>({
                 {icon}
                 <h3 className="font-semibold">{title}</h3>
             </div>
-            <div style={{ height }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={height}>
-                    <LineChart data={chartData}>
+            <ChartFrame style={{ height }} minHeight={height}>
+                {({ width, height: containerHeight }) => (
+                    <LineChart width={Math.max(width, 1)} height={Math.max(containerHeight, height)} data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis
                             dataKey="timestamp"
@@ -105,8 +105,8 @@ function TimeSeriesChartInner<T extends { timestamp?: number }>({
                             />
                         ))}
                     </LineChart>
-                </ResponsiveContainer>
-            </div>
+                )}
+            </ChartFrame>
         </div>
     );
 }

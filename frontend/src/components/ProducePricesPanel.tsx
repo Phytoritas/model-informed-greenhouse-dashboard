@@ -2,8 +2,6 @@ import { useState } from 'react';
 import {
     ArrowDownRight,
     ArrowUpRight,
-    Banknote,
-    CalendarDays,
     LineChart as LineChartIcon,
     Minus,
     Sprout,
@@ -14,7 +12,6 @@ import {
     Line,
     LineChart,
     ReferenceLine,
-    ResponsiveContainer,
     Tooltip,
     XAxis,
     YAxis,
@@ -29,6 +26,8 @@ import type {
     ProducePricesPayload,
 } from '../types';
 import { getProduceDisplayName } from '../utils/displayCopy';
+import ChartFrame from './charts/ChartFrame';
+import DashboardCard from './common/DashboardCard';
 
 interface ProducePricesPanelProps {
     prices: ProducePricesPayload | null;
@@ -171,49 +170,81 @@ const ComparisonChip = ({
     price: number;
     locale: AppLocale;
 }) => (
-    <div className="rounded-md bg-slate-50 px-2 py-2">
-        <div>{label}</div>
-        <div className="mt-1 font-medium text-slate-700">{formatKrw(locale, price)}</div>
+    <div className="rounded-[18px] bg-white/82 px-3 py-3 shadow-[var(--sg-shadow-card)]">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{label}</div>
+        <div className="mt-2 font-semibold text-[color:var(--sg-text-strong)]">{formatKrw(locale, price)}</div>
     </div>
 );
+
+function MarketMetaTile({
+    label,
+    value,
+    detail,
+}: {
+    label: string;
+    value: string;
+    detail: string;
+}) {
+    return (
+        <div
+            className="rounded-[24px] bg-white/84 px-4 py-4"
+            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+        >
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-text-faint)]">
+                {label}
+            </div>
+            <div className="mt-3 text-lg font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
+                {value}
+            </div>
+            <div className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
+                {detail}
+            </div>
+        </div>
+    );
+}
 
 const ProducePriceCard = ({
     item,
     locale,
+    index,
 }: {
     item: ProducePriceEntry;
     locale: AppLocale;
+    index: number;
 }) => {
     const direction = getDirectionMeta(locale)[item.direction];
 
     return (
-        <div className="rounded-lg border border-slate-100 p-3">
-            <div className="flex items-start justify-between gap-3">
+        <div className="relative overflow-hidden rounded-[28px] bg-white/88 p-4 shadow-[var(--sg-shadow-card)]">
+            <div className="absolute right-4 top-4 text-sm font-semibold tracking-[-0.05em] text-[color:var(--sg-text-faint)]">
+                {String(index + 1).padStart(2, '0')}
+            </div>
+            <div className="flex items-start justify-between gap-3 pr-8">
                 <div>
-                    <div className="text-sm font-semibold text-slate-800">
+                    <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                         {getProduceDisplayName(item.display_name, locale)}
                     </div>
-                    <div className="mt-1 text-[11px] text-slate-500">
+                    <div className="mt-1 text-[11px] text-[color:var(--sg-text-muted)]">
                         {item.source_name} / {item.unit} / {localizeMarketLabel(item.market_label, locale)}
                     </div>
                 </div>
                 <div
-                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium ${direction.accentClassName}`}
+                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold shadow-[var(--sg-shadow-card)] ${direction.accentClassName}`}
                 >
                     <direction.Icon className="h-3.5 w-3.5" />
                     <span>{direction.label}</span>
                 </div>
             </div>
-            <div className="mt-3 flex items-baseline justify-between gap-3">
-                <div className="text-xl font-bold text-slate-900">
+            <div className="mt-4 flex items-baseline justify-between gap-3">
+                <div className="text-xl font-bold text-[color:var(--sg-text-strong)]">
                     {formatKrw(locale, item.current_price_krw)}
                 </div>
-                <div className="text-xs font-medium text-slate-500">
+                <div className="text-xs font-medium text-[color:var(--sg-text-muted)]">
                     {item.day_over_day_pct > 0 ? '+' : ''}
                     {item.day_over_day_pct.toFixed(1)}% {locale === 'ko' ? '전일 대비' : 'vs 1d'}
                 </div>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-500">
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[color:var(--sg-text-muted)]">
                 <ComparisonChip
                     label={locale === 'ko' ? '전일' : '1d ago'}
                     price={item.previous_day_price_krw}
@@ -282,14 +313,14 @@ const TrendChart = ({
 
     if (!selectedSeries) {
         return (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="rounded-[24px] bg-[color:var(--sg-tint-amber)] p-4 text-sm text-[color:var(--sg-accent-amber)]">
                 {copy.unavailable}
             </div>
         );
     }
 
     return (
-        <div className="flex h-full flex-col rounded-lg border border-slate-100 bg-slate-50/70 p-4">
+        <div className="flex h-full flex-col rounded-[30px] bg-[color:var(--sg-tint-neutral)] p-5 shadow-[var(--sg-shadow-card)]">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
@@ -300,9 +331,9 @@ const TrendChart = ({
                         {copy.description}
                     </p>
                 </div>
-                <div className="rounded-2xl bg-white px-3 py-2 text-right text-[11px] text-slate-500 shadow-sm">
+                <div className="rounded-[22px] bg-white/88 px-3 py-2 text-right text-[11px] text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
                     <div>{copy.reference}</div>
-                    <div className="mt-1 font-semibold text-slate-700">
+                    <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                         {formatSurveyDay(locale, prices.trend.reference_date)}
                     </div>
                 </div>
@@ -314,10 +345,10 @@ const TrendChart = ({
                         key={series.key}
                         type="button"
                         onClick={() => setSelectedKey(series.key)}
-                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
                             series.key === selectedSeries.key
-                                ? 'border-emerald-200 bg-emerald-100 text-emerald-800'
-                                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800'
+                                ? 'border-transparent bg-[color:var(--sg-accent-forest)] text-white shadow-[var(--sg-shadow-card)]'
+                                : 'border-white/70 bg-white/86 text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
                         }`}
                     >
                         {getProduceDisplayName(series.display_name, locale)}
@@ -325,9 +356,9 @@ const TrendChart = ({
                 ))}
             </div>
 
-            <div className="mt-4 h-72 lg:h-[22rem]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={256}>
-                    <LineChart data={selectedSeries.points} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+            <ChartFrame className="mt-4 h-72 lg:h-[22rem]" minHeight={256}>
+                {({ width, height }) => (
+                    <LineChart width={Math.max(width, 1)} height={Math.max(height, 256)} data={selectedSeries.points} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis
                             dataKey="date"
@@ -420,18 +451,18 @@ const TrendChart = ({
                             connectNulls={false}
                         />
                     </LineChart>
-                </ResponsiveContainer>
-            </div>
+                )}
+            </ChartFrame>
 
             <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-slate-500 sm:grid-cols-2">
-                <div className="rounded-md bg-white px-3 py-2 shadow-sm">
-                    <div className="font-medium text-slate-700">{copy.seriesWindow}</div>
+                <div className="rounded-[18px] bg-white/88 px-3 py-3 shadow-[var(--sg-shadow-card)]">
+                    <div className="font-medium text-[color:var(--sg-text-strong)]">{copy.seriesWindow}</div>
                     <div className="mt-1">
                         {copy.windowLabel(selectedSeries.history_days, selectedSeries.forecast_days)}
                     </div>
                 </div>
-                <div className="rounded-md bg-white px-3 py-2 shadow-sm">
-                    <div className="font-medium text-slate-700">{copy.futureCoverage}</div>
+                <div className="rounded-[18px] bg-white/88 px-3 py-3 shadow-[var(--sg-shadow-card)]">
+                    <div className="font-medium text-[color:var(--sg-text-strong)]">{copy.futureCoverage}</div>
                     <div className="mt-1">
                         3y {coverageRangeLabel(selectedSeries.points, 'normal_3y_sample_count', 3)} / 5y {coverageRangeLabel(selectedSeries.points, 'normal_5y_sample_count', 5)} / 10y {coverageRangeLabel(selectedSeries.points, 'normal_10y_sample_count', 10)}
                     </div>
@@ -439,7 +470,7 @@ const TrendChart = ({
             </div>
 
             {unavailableSeries.length > 0 ? (
-                <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                <div className="mt-3 rounded-[18px] bg-[color:var(--sg-tint-amber)] px-3 py-3 text-[11px] text-[color:var(--sg-accent-amber)]">
                     {copy.unavailablePrefix} {unavailableSeries.map((series) => getProduceDisplayName(series.display_name, locale)).join(', ')}. {copy.unavailableSuffix}
                 </div>
             ) : null}
@@ -461,6 +492,14 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             noItems: '현재 선택한 시장에 표시할 주요 품목이 없습니다.',
             trendNoteTitle: '추세선 기준',
             trendNote: 'KAMIS 계절성 추세선은 현재 소매 평균가격만 제공합니다. 도매 탭에서도 좌측 차트는 소매 기준으로 유지됩니다.',
+            surveyBasis: '조사 기준',
+            featuredCount: '주요 품목 수',
+            trendBasis: '차트 기준',
+            leadMarket: '지금 읽을 시장 신호',
+            leadItem: '대표 품목',
+            livePulse: '시장 펄스',
+            currentSelection: '현재 선택',
+            sourceLabel: '데이터 소스',
         }
         : {
             title: 'Live Produce Prices',
@@ -472,6 +511,14 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             noItems: 'No featured produce items are available for the selected market right now.',
             trendNoteTitle: 'Trend basis',
             trendNote: 'KAMIS seasonal overlays currently expose retail average prices only. The left chart stays on retail history even when the wholesale tab is selected.',
+            surveyBasis: 'Survey basis',
+            featuredCount: 'Featured items',
+            trendBasis: 'Chart basis',
+            leadMarket: 'Market signal to read first',
+            leadItem: 'Lead item',
+            livePulse: 'Market pulse',
+            currentSelection: 'Current selection',
+            sourceLabel: 'Data source',
         };
 
     const activeMarketKey: ProduceMarketKey | null = prices
@@ -484,73 +531,115 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                     : selectedMarket
         : null;
     const activeMarket = prices && activeMarketKey ? prices.markets[activeMarketKey] : null;
+    const leadMarketItem = activeMarket?.items?.[0] ?? null;
 
     return (
-        <div className="flex h-full flex-col rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                    <div className="flex items-center gap-2 text-slate-800">
-                        <Banknote className="h-5 w-5 text-emerald-600" />
-                        <h3 className="font-semibold">{copy.title}</h3>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-400">{copy.subtitle}</p>
-                </div>
-                <div className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700">
+        <DashboardCard
+            eyebrow="KAMIS"
+            title={copy.title}
+            description={copy.subtitle}
+            className="sg-tint-amber"
+            actions={(
+                <div className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-amber)] shadow-[var(--sg-shadow-card)]">
                     KAMIS
                 </div>
-            </div>
-
+            )}
+        >
             {loading ? (
-                <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">{copy.loading}</div>
+                <div className="rounded-[26px] bg-white/82 p-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">{copy.loading}</div>
             ) : error ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <div className="rounded-[26px] bg-[color:var(--sg-tint-amber)] p-5 text-sm text-[color:var(--sg-accent-amber)]">
                     {copy.unavailable}: {error}
                 </div>
             ) : prices && activeMarket ? (
                 <div className="flex h-full flex-col space-y-4">
-                    <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-lime-50 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                    <Sprout className="h-3.5 w-3.5 text-emerald-600" />
-                                    <span>{prices.source.provider} {prices.source.endpoint}</span>
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.22fr)_minmax(0,0.78fr)]">
+                        <article
+                            className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(225,245,203,0.96),rgba(255,255,255,0.9))] px-6 py-6"
+                            style={{ boxShadow: 'var(--sg-shadow-soft)' }}
+                        >
+                            <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/22 blur-3xl" />
+                            <div className="relative flex flex-col gap-5">
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                    <div className="flex items-start gap-3">
+                                        <div
+                                            className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
+                                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                        >
+                                            <Sprout className="h-6 w-6 text-[color:var(--sg-accent-forest)]" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="sg-eyebrow">{copy.livePulse}</div>
+                                            <div className="mt-3 text-[clamp(1.7rem,2.2vw,2.55rem)] font-semibold tracking-[-0.07em] text-[color:var(--sg-text-strong)]">
+                                                {localizeMarketLabel(activeMarket.market_label, locale)}
+                                            </div>
+                                            <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
+                                                {buildProduceSummary(prices, activeMarket, locale)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="rounded-full bg-white/84 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-forest)] shadow-[var(--sg-shadow-card)]">
+                                        {copy.leadMarket}
+                                    </div>
                                 </div>
-                                <div className="mt-3 flex flex-wrap gap-2">
+
+                                <div className="flex flex-wrap gap-2">
                                     {(['retail', 'wholesale'] as ProduceMarketKey[]).map((marketKey) => (
                                         <button
                                             key={marketKey}
                                             type="button"
                                             onClick={() => setSelectedMarket(marketKey)}
-                                            className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+                                            className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
                                                 marketKey === activeMarketKey
-                                                    ? 'border-emerald-200 bg-white text-emerald-800 shadow-sm'
-                                                    : 'border-emerald-100 bg-emerald-50/60 text-slate-600 hover:border-emerald-200 hover:text-slate-800'
+                                                    ? 'border-transparent bg-[color:var(--sg-accent-forest)] text-white shadow-[var(--sg-shadow-card)]'
+                                                    : 'border-white/70 bg-white/80 text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
                                             }`}
                                         >
                                             {marketKey === 'retail' ? copy.retail : copy.wholesale}
                                         </button>
                                     ))}
                                 </div>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                                    {buildProduceSummary(prices, activeMarket, locale)}
-                                </p>
-                            </div>
-                            <div className="rounded-2xl bg-white/80 px-3 py-2 text-right text-xs text-slate-500 shadow-sm">
-                                <div className="flex items-center justify-end gap-1">
-                                    <CalendarDays className="h-3.5 w-3.5 text-emerald-600" />
-                                    <span>{formatSurveyDay(locale, prices.source.latest_day)}</span>
+
+                                <div className="grid gap-3 md:grid-cols-3">
+                                    <MarketMetaTile
+                                        label={copy.currentSelection}
+                                        value={localizeMarketLabel(activeMarket.market_label, locale)}
+                                        detail={`${copy.sourceLabel} · ${prices.source.provider}`}
+                                    />
+                                    <MarketMetaTile
+                                        label={copy.surveyBasis}
+                                        value={formatSurveyDay(locale, prices.source.latest_day)}
+                                        detail={copy.leadItem}
+                                    />
+                                    <MarketMetaTile
+                                        label={copy.featuredCount}
+                                        value={String(activeMarket.items.length)}
+                                        detail={leadMarketItem ? getProduceDisplayName(leadMarketItem.display_name, locale) : copy.noItems}
+                                    />
                                 </div>
-                                <div className="mt-1">
-                                    {localizeMarketLabel(activeMarket.market_label, locale)}
-                                </div>
                             </div>
+                        </article>
+
+                        <div className="grid gap-4">
+                            <MarketMetaTile
+                                label={copy.trendBasis}
+                                value={localizeMarketLabel(prices.trend.market_key, locale)}
+                                detail={copy.trendNote}
+                            />
+                            {leadMarketItem ? (
+                                <ProducePriceCard item={leadMarketItem} locale={locale} index={0} />
+                            ) : (
+                                <div className="rounded-[24px] bg-white/82 px-4 py-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
+                                    {copy.noItems}
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(250px,0.95fr)] lg:items-start">
                         <div className="space-y-3">
                             {activeMarketKey !== prices.trend.market_key ? (
-                                <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-3 text-[11px] text-sky-800">
+                                <div className="rounded-[22px] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-[11px] text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
                                     <div className="font-semibold">{copy.trendNoteTitle}</div>
                                     <div className="mt-1 leading-relaxed">{copy.trendNote}</div>
                                 </div>
@@ -559,12 +648,12 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                         </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                            {activeMarket.items.length > 0 ? (
-                                activeMarket.items.map((item) => (
-                                    <ProducePriceCard key={item.key} item={item} locale={locale} />
+                            {activeMarket.items.length > 1 ? (
+                                activeMarket.items.slice(1).map((item, index) => (
+                                    <ProducePriceCard key={item.key} item={item} locale={locale} index={index + 1} />
                                 ))
                             ) : (
-                                <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                                <div className="rounded-[24px] bg-white/82 px-4 py-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
                                     {copy.noItems}
                                 </div>
                             )}
@@ -572,7 +661,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                     </div>
                 </div>
             ) : null}
-        </div>
+        </DashboardCard>
     );
 };
 

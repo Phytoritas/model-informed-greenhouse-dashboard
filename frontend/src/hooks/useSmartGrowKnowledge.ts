@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { API_URL } from '../config';
 import type { CropType } from '../types';
 
+const KNOWLEDGE_STATUS_REFRESH_MS = 60_000;
+const KNOWLEDGE_STATUS_RECOVERY_REFRESH_MS = 5_000;
+
 type AdvisorySurfacePayload = {
     status?: string;
     route?: string;
@@ -67,18 +70,6 @@ const SURFACE_KEYS = [
     'nutrient_correction',
 ] as const;
 
-const EMPTY_SUMMARY: SmartGrowKnowledgeSummary = {
-    cropKey: 'tomato',
-    advisorySurfaceNames: [],
-    pendingParsers: [],
-    surfaces: [],
-    pesticideReady: false,
-    nutrientReady: false,
-    nutrientCorrectionReady: false,
-    nutrientCorrectionDraftMode: null,
-    nutrientCorrectionLimitation: null,
-};
-
 function deriveSurfaceSummary(
     key: typeof SURFACE_KEYS[number],
     payload: AdvisorySurfacePayload | undefined,
@@ -131,15 +122,15 @@ export function useSmartGrowKnowledge(crop: CropType) {
     const [summary, setSummary] = useState<SmartGrowKnowledgeSummary | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const cropKey = cropToApiKey(crop);
+    const hasSummary = summary !== null && error === null;
+    const refreshMs = hasSummary ? KNOWLEDGE_STATUS_REFRESH_MS : KNOWLEDGE_STATUS_RECOVERY_REFRESH_MS;
 
     useEffect(() => {
         const controller = new AbortController();
-        const cropKey = cropToApiKey(crop);
 
         async function loadKnowledgeStatus() {
-            setLoading(true);
-            setSummary(null);
-            setError(null);
+            setLoading(!hasSummary);
             try {
                 const response = await fetch(
                     `${API_URL}/knowledge/status?crop=${encodeURIComponent(cropKey)}`,
@@ -166,7 +157,6 @@ export function useSmartGrowKnowledge(crop: CropType) {
                 if (controller.signal.aborted) {
                     return;
                 }
-                setSummary({ ...EMPTY_SUMMARY, cropKey });
                 setError(err instanceof Error ? err.message : 'unknown_error');
             } finally {
                 if (!controller.signal.aborted) {
@@ -176,8 +166,14 @@ export function useSmartGrowKnowledge(crop: CropType) {
         }
 
         void loadKnowledgeStatus();
-        return () => controller.abort();
-    }, [crop]);
+        const interval = window.setInterval(() => {
+            void loadKnowledgeStatus();
+        }, refreshMs);
+        return () => {
+            controller.abort();
+            window.clearInterval(interval);
+        };
+    }, [crop, cropKey, hasSummary, refreshMs]);
 
     return {
         summary,

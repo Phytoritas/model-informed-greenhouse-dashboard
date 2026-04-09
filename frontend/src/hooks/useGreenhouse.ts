@@ -793,6 +793,8 @@ export const useGreenhouse = () => {
         fieldAvailability: { ...DEFAULT_SENSOR_FIELD_AVAILABILITY },
         fieldTimestamps: { ...DEFAULT_SENSOR_FIELD_TIMESTAMPS },
     };
+    const forecastDays = forecastByCrop[selectedCrop]?.daily?.length ?? 0;
+    const forecastRefreshMs = forecastDays > 0 ? 60000 : 5000;
 
     // Fetch forecast for the active crop with stale-request protection
     const fetchForecast = useCallback(async (cropOverride?: CropType) => {
@@ -823,9 +825,9 @@ export const useGreenhouse = () => {
         void fetchForecast(selectedCrop);
         const interval = window.setInterval(() => {
             void fetchForecast(selectedCrop);
-        }, 60000);
+        }, forecastRefreshMs);
         return () => clearInterval(interval);
-    }, [fetchForecast, selectedCrop]);
+    }, [fetchForecast, forecastRefreshMs, selectedCrop]);
 
     const currentData = currentDataByCrop[selectedCrop];
     const history = historyByCrop[selectedCrop];

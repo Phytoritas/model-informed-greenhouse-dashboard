@@ -14,6 +14,7 @@ interface AiAdvisorProps {
     analysis: string;
     display?: AdvisorDisplayPayload | null;
     modelRuntime?: ModelRuntimePayload | null;
+    error?: string | null;
     isLoading: boolean;
     onRefresh: () => void;
     onOpenDetails?: () => void;
@@ -115,6 +116,7 @@ const AiAdvisor = ({
     analysis,
     display = null,
     modelRuntime = null,
+    error = null,
     isLoading,
     onRefresh,
     onOpenDetails,
@@ -162,6 +164,7 @@ const AiAdvisor = ({
             noRisks: '즉시 표시할 위험이 없습니다.',
             noMonitor: '추가 모니터링 항목이 없습니다.',
             fallbackTitle: '상세 설명',
+            analysisUnavailable: '분석 응답을 불러오지 못했습니다.',
         }
         : {
             title: 'AI Advisor',
@@ -200,6 +203,7 @@ const AiAdvisor = ({
             noRisks: 'No immediate risk is highlighted.',
             noMonitor: 'No extra monitoring items are listed.',
             fallbackTitle: 'Detailed explanation',
+            analysisUnavailable: 'Analysis response is unavailable.',
         };
 
     const advisoryBadges = smartGrowSummary
@@ -306,7 +310,7 @@ const AiAdvisor = ({
                 {smartGrowLoading ? (
                     <p className="text-xs text-indigo-50">{copy.advisoryLoading}</p>
                 ) : smartGrowError ? (
-                    <p className="text-xs text-rose-100">{copy.advisoryUnavailable}</p>
+                    <p className="text-xs text-rose-100">{copy.advisoryUnavailable}: {smartGrowError}</p>
                 ) : smartGrowSummary ? (
                     <>
                         {advisoryBadges.length > 0 ? (
@@ -362,6 +366,12 @@ const AiAdvisor = ({
                             </div>
                         ) : null}
                     </>
+                ) : null}
+
+                {error ? (
+                    <p className="mt-3 text-xs text-rose-100">
+                        {copy.analysisUnavailable}: {error}
+                    </p>
                 ) : null}
 
                 {modelRuntime ? (
