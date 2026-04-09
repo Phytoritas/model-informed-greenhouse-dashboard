@@ -246,5 +246,9 @@
   "issue57_local_validation": {
     "status": "pass",
     "note": "Issue #57 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, and `npm --prefix frontend run build` after the vendor chunk split landed."
+  },
+  "issue57_pr_validation": {
+    "status": "pending",
+    "note": "PR #58 is open for issue #57 and the project item has been moved to `Validating`; wait for GitHub Actions Backend/Frontend validation on the latest head before merge."
   }
 }
