@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { formatReadinessBadge, getReadinessDescriptor } from '../../lib/design/readiness';
 import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorActionTimeline from './AdvisorActionTimeline';
@@ -19,6 +20,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
     const analysis = props.result?.machine_payload.environment_analysis;
     const advisorActions = props.result?.machine_payload.advisor_actions;
     const modelRuntime = props.result?.machine_payload.model_runtime;
+    const readiness = getReadinessDescriptor(analysis?.confidence, locale);
     const copy = locale === 'ko'
         ? {
             title: '환경제어',
@@ -36,7 +38,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             checklist: '확인 체크리스트',
             context: '현재 문맥',
             urgency: '긴급도',
-            confidence: '판단 안정도',
+            confidence: '반영 상태',
             diagnosis: '진단',
             operatingMode: '운영 모드',
             recoveryObjective: '회복 목표',
@@ -83,7 +85,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             checklist: 'Monitoring checklist',
             context: 'Context snapshot',
             urgency: 'Urgency',
-            confidence: 'Decision readiness',
+            confidence: 'Readiness',
             diagnosis: 'Diagnosis',
             operatingMode: 'Operating mode',
             recoveryObjective: 'Recovery objective',
@@ -144,8 +146,8 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
                         <AdvisorConfidenceBadge
-                            label={`${copy.confidence}:${Math.round(analysis.confidence * 100)}%`}
-                            tone="info"
+                            label={formatReadinessBadge(analysis.confidence, locale, copy.confidence)}
+                            tone={readiness.tone}
                         />
                         <AdvisorConfidenceBadge
                             label={`${copy.operatingMode}:${getLocalizedTokenLabel(analysis.current_state.operating_mode, locale)}`}

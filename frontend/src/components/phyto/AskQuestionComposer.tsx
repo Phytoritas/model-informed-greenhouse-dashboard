@@ -33,7 +33,7 @@ export default function AskQuestionComposer({
         description: 'Begin with the blocked question, then move into search and follow-up explanation.',
         ask: 'Ask',
         search: 'Search',
-        quick: 'Quick search',
+        quick: 'Find quickly',
       };
 
   return (

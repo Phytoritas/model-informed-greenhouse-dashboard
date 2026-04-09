@@ -34,7 +34,7 @@ export default function DashboardHeader({
     getCropLabel,
 }: DashboardHeaderProps) {
     const brandName = 'PhytoSync';
-    const brandSuffix = locale === 'ko' ? '재배 도움' : 'Grower help';
+    const brandSuffix = locale === 'ko' ? '재배 도움' : 'Grower support';
 
     return (
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm">

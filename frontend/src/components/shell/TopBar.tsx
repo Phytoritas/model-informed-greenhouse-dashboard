@@ -48,7 +48,7 @@ export default function TopBar({
             tagline: 'Connect today’s operations, climate control, and crop momentum in one place.',
             language: 'Language',
             assistant: 'Ask',
-            search: 'Search houses, work, or supplies',
+            search: 'Search work, materials, or houses',
             alerts: 'Alerts',
             pageTitle: 'Greenhouse operations today',
         };
@@ -58,13 +58,13 @@ export default function TopBar({
 
     return (
         <header className="sticky top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
-            <div className="sg-glass mx-auto flex max-w-[1880px] flex-col gap-4 rounded-[34px] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="sg-glass mx-auto flex max-w-[2140px] flex-col gap-4 rounded-[34px] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex min-w-0 items-center gap-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[linear-gradient(135deg,var(--sg-accent-forest),#295c47)] text-white" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
+                    <div className="flex h-14 w-14 items-center justify-center rounded-[22px] bg-[linear-gradient(135deg,var(--sg-accent-violet),#7e2c2d)] text-white" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
                         <Sprout className="h-7 w-7" />
                     </div>
                     <div className="min-w-0">
-                        <div className="sg-eyebrow text-[color:var(--sg-accent-forest)]">{copy.brand}</div>
+                        <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{copy.brand}</div>
                         <h1 className="mt-1 font-[family-name:var(--sg-font-display)] text-[clamp(1.3rem,1rem+1vw,2rem)] font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
                             {resolvedPageTitle}
                         </h1>
@@ -84,7 +84,7 @@ export default function TopBar({
                         </div>
                         <Badge variant="muted" className="hidden items-center gap-2 md:inline-flex">
                             <Search className="h-4 w-4" />
-                            {locale === 'ko' ? '빠른 찾기' : 'Quick search'}
+                            {locale === 'ko' ? '빠른 찾기' : 'Find quickly'}
                         </Badge>
                         <button
                             type="button"
@@ -98,7 +98,7 @@ export default function TopBar({
                         <Button
                             onClick={onAssistantToggle}
                             variant={assistantOpen ? 'tonal' : 'default'}
-                            className={assistantOpen ? 'text-white bg-[color:var(--sg-accent-violet)] hover:bg-[#4f54a8]' : 'rounded-full'}
+                            className={assistantOpen ? 'rounded-full bg-[color:var(--sg-accent-violet)] text-white hover:bg-[#98242f]' : 'rounded-full'}
                         >
                             <MessageCircle className="h-4 w-4" />
                             {copy.assistant}
@@ -126,7 +126,7 @@ export default function TopBar({
                         </div>
                         <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-2 py-1.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                             <span className="hidden text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)] sm:inline">
-                                {selectedCrop === 'Cucumber' ? (locale === 'ko' ? '오이 모드' : 'Cucumber mode') : (locale === 'ko' ? '토마토 모드' : 'Tomato mode')}
+                                {selectedCrop === 'Cucumber' ? (locale === 'ko' ? '오이 모드' : 'Cucumber lane') : (locale === 'ko' ? '토마토 모드' : 'Tomato lane')}
                             </span>
                             {(['Cucumber', 'Tomato'] as CropType[]).map((crop) => (
                                 <button
@@ -135,7 +135,7 @@ export default function TopBar({
                                     onClick={() => onCropChange(crop)}
                                     className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                                         selectedCrop === crop
-                                            ? 'bg-[color:var(--sg-accent-forest)] text-white'
+                                            ? 'bg-[color:var(--sg-accent-violet)] text-white'
                                             : 'text-[color:var(--sg-text-muted)]'
                                     }`}
                                     style={selectedCrop === crop ? { boxShadow: 'var(--sg-shadow-soft)' } : undefined}

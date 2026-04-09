@@ -94,14 +94,14 @@ export default function WorkspaceNav({
       }
     : {
         workspaces: 'Menu',
-        commandNote: 'Current section',
+        commandNote: 'Current lane',
       };
 
   return (
     <>
       <Sidebar className="hidden min-h-[calc(100vh-8rem)] lg:block">
         <SidebarHeader>
-          <div className="sg-eyebrow text-[color:var(--sg-accent-forest)]">{copy.workspaces}</div>
+          <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{copy.workspaces}</div>
           <div className="mt-2 text-lg font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">{activeItem?.label}</div>
           <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">{activeItem?.description}</p>
         </SidebarHeader>

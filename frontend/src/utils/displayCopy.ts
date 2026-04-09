@@ -30,11 +30,11 @@ const DASHBOARD_SENSOR_TITLES = {
         stomatalConductance: 'Stomatal Conductance',
     },
     ko: {
-        temperature: '기온',
-        humidity: '상대습도',
-        carbonDioxide: 'CO₂ 농도',
-        light: '유효 광량 (PPFD)',
-        vpd: '수분부족분 (VPD)',
+        temperature: '온도',
+        humidity: '습도',
+        carbonDioxide: '이산화탄소',
+        light: '광량',
+        vpd: '공기 건조도',
         stomatalConductance: '기공전도도',
     },
 } as const;
