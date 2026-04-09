@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import type { SmartGrowKnowledgeSummary } from '../../hooks/useSmartGrowKnowledge';
+import type { CropType } from '../../types';
+import AskKnowledgeBoard from './AskKnowledgeBoard';
 import AskQuestionComposer from './AskQuestionComposer';
 import AskRecentFlow from './AskRecentFlow';
 import AskResultSummary from './AskResultSummary';
 
 interface AskSearchPageProps {
   locale: 'ko' | 'en';
+  crop: CropType;
   cropLabel: string;
   summary: SmartGrowKnowledgeSummary | null;
   actionsNow: string[];
@@ -13,11 +17,12 @@ interface AskSearchPageProps {
   signals: Array<{ label: string; value: string }>;
   onOpenAsk: () => void;
   onOpenSearch: () => void;
-  onQuickSearch: (query: string) => void;
+  activePanel?: 'ask-chat' | 'ask-search' | 'ask-history';
 }
 
 export default function AskSearchPage({
   locale,
+  crop,
   cropLabel,
   summary,
   actionsNow,
@@ -26,8 +31,10 @@ export default function AskSearchPage({
   signals,
   onOpenAsk,
   onOpenSearch,
-  onQuickSearch,
+  activePanel = 'ask-chat',
 }: AskSearchPageProps) {
+  const [searchDraft, setSearchDraft] = useState('');
+  const [searchRequest, setSearchRequest] = useState<{ query: string; nonce: number } | null>(null);
   const quickSearches = locale === 'ko'
     ? [
         `${cropLabel} 환경 제어 기준`,
@@ -42,28 +49,46 @@ export default function AskSearchPage({
 
   return (
     <div className="space-y-6">
-      <AskQuestionComposer
-        locale={locale}
-        cropLabel={cropLabel}
-        onOpenAsk={onOpenAsk}
-        onOpenSearch={onOpenSearch}
-        quickSearches={quickSearches}
-        onQuickSearch={onQuickSearch}
-      />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <AskRecentFlow
+      {activePanel === 'ask-chat' ? (
+        <AskQuestionComposer
           locale={locale}
-          nowItems={actionsNow}
-          todayItems={actionsToday}
-          pendingParsers={summary?.pendingParsers ?? []}
+          cropLabel={cropLabel}
+          onOpenAsk={onOpenAsk}
+          onOpenSearch={onOpenSearch}
+          quickSearches={quickSearches}
+          onQuickSearch={(query) => {
+            setSearchDraft(query);
+            setSearchRequest({ query, nonce: Date.now() });
+          }}
         />
-        <AskResultSummary
+      ) : null}
+      {activePanel === 'ask-search' ? (
+        <AskKnowledgeBoard
           locale={locale}
-          readyTools={summary?.advisorySurfaceNames ?? []}
-          note={note}
-          signals={signals}
+          crop={crop}
+          cropLabel={cropLabel}
+          query={searchDraft}
+          onQueryChange={setSearchDraft}
+          searchRequest={searchRequest}
+          onOpenSearch={onOpenSearch}
         />
-      </div>
+      ) : null}
+      {activePanel === 'ask-history' ? (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <AskRecentFlow
+            locale={locale}
+            nowItems={actionsNow}
+            todayItems={actionsToday}
+            pendingParsers={summary?.pendingParsers ?? []}
+          />
+          <AskResultSummary
+            locale={locale}
+            readyTools={summary?.advisorySurfaceNames ?? []}
+            note={note}
+            signals={signals}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

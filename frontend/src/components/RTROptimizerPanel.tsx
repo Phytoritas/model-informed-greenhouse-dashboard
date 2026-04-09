@@ -21,6 +21,7 @@ import type {
     WeatherOutlook,
 } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
+import { getReadinessDescriptor } from '../lib/design/readiness';
 import { getCropLabel } from '../utils/displayCopy';
 import { useAreaUnit } from '../context/AreaUnitContext';
 import { useRtrOptimizer } from '../hooks/useRtrOptimizer';
@@ -423,11 +424,11 @@ function renderCropSpecificInsight(
     if (insight.crop === 'cucumber') {
         return (
             <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg bg-slate-50 p-3">
+                                    <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] p-3">
                     <div className="text-[11px] text-slate-500">{locale === 'ko' ? '남은 엽수' : 'Remaining leaves'}</div>
                     <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(insight.remaining_leaves, 0, locale)}</div>
                 </div>
-                <div className="rounded-lg bg-slate-50 p-3">
+                                    <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] p-3">
                     <div className="text-[11px] text-slate-500">{locale === 'ko' ? '병목 엽층' : 'Bottleneck layer'}</div>
                     <div className="mt-1 text-lg font-semibold capitalize text-slate-900">
                         {locale === 'ko'
@@ -459,11 +460,11 @@ function renderCropSpecificInsight(
 
     return (
         <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg bg-slate-50 p-3">
+                                    <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] p-3">
                 <div className="text-[11px] text-slate-500">{locale === 'ko' ? '활성 화방' : 'Active trusses'}</div>
                 <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(insight.active_trusses, 0, locale)}</div>
             </div>
-            <div className="rounded-lg bg-slate-50 p-3">
+                                    <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] p-3">
                 <div className="text-[11px] text-slate-500">{locale === 'ko' ? '과실 분배비' : 'Fruit partition ratio'}</div>
                 <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(insight.fruit_partition_ratio, 2, locale)}</div>
             </div>
@@ -567,7 +568,7 @@ const RTROptimizerPanel = ({
             recommendedMeanTemp: '추천 최소 평균온도',
             deltaTemp: '기준선 대비 ΔT',
             rtrEquivalent: '최적 RTR 환산값',
-            confidence: '판단 안정도',
+            confidence: '반영 상태',
             gainLoss: '이득/손실 균형',
             cropInsight: '작물별 해석',
             setpoints: '추천 제어값',
@@ -639,17 +640,17 @@ const RTROptimizerPanel = ({
             recommendedMeanTemp: 'Recommended minimum mean temp',
             deltaTemp: 'ΔT vs baseline',
             rtrEquivalent: 'Optimized RTR equivalent',
-            confidence: 'Decision readiness',
+            confidence: 'Readiness',
             gainLoss: 'Gain/loss trade-off',
             cropInsight: 'Crop-specific insight',
             setpoints: 'Control result',
-            scenarios: 'Scenario compare',
-            customScenarioTitle: 'Custom compare scenario',
+            scenarios: 'Scenario review',
+            customScenarioTitle: 'Custom review row',
             customScenarioBody: 'Add your own heating, cooling, vent, screen, fan, and CO2 row to compare it against the baseline and recommended control.',
             customLabel: 'Scenario label',
-            customApply: 'Apply compare row',
+            customApply: 'Apply review row',
             customReset: 'Reset',
-            baselineCard: 'Baseline comparison card',
+            baselineCard: 'Baseline review card',
             refresh: 'Refresh',
             includeEnergy: 'Include energy cost',
             includeCooling: 'Include cooling cost',
@@ -788,6 +789,7 @@ const RTROptimizerPanel = ({
     const hasOptimizerSurface = optimizeResponse !== null || scenarioResponse !== null || sensitivityResponse !== null;
     const targetHit = optimizeResponse?.feasibility.target_node_hit ?? false;
     const confidence = optimizeResponse?.feasibility.confidence ?? null;
+    const readiness = getReadinessDescriptor(confidence, locale);
     const energySummary = optimizeResponse?.energy_summary ?? null;
     const laborSummary = optimizeResponse?.labor_summary ?? null;
     const yieldSummary = optimizeResponse?.yield_summary ?? null;
@@ -824,8 +826,8 @@ const RTROptimizerPanel = ({
 
     if (isProfilePending) {
         return (
-            <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                            <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-slate-700">
                     <p className="font-semibold text-slate-900">{copy.profileLoadingTitle}</p>
                     <p className="mt-1">{copy.profileLoadingBody}</p>
                 </div>
@@ -835,13 +837,13 @@ const RTROptimizerPanel = ({
 
     if (isProfileUnavailable || !optimizerEnabled) {
         return (
-            <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                 {profileError ? (
                     <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
                         {profileError}
                     </div>
                 ) : null}
-                <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                                <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-slate-700">
                     <p className="font-semibold text-slate-900">{copy.disabledTitle}</p>
                     <p className="mt-1">{isProfileUnavailable ? copy.profileFallbackBody : copy.disabledBody}</p>
                 </div>
@@ -864,8 +866,8 @@ const RTROptimizerPanel = ({
 
     if (telemetryStatus === 'offline' || (telemetryStatus === 'stale' && !hasOptimizerSurface)) {
         return (
-            <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
-                <div className="mb-4 rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-700">
+                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                            <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-slate-700">
                     <p className="font-semibold text-slate-900">{copy.telemetryBlockedTitle}</p>
                     <p className="mt-1">{copy.telemetryBlockedBody}</p>
                     {telemetryWarning ? (
@@ -890,7 +892,7 @@ const RTROptimizerPanel = ({
     }
 
     return (
-        <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-slate-800">
@@ -917,17 +919,17 @@ const RTROptimizerPanel = ({
                     </div>
                 ) : null}
                 {waitingForTarget ? (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">
+                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-slate-700">
                         {copy.waitingTarget}
                     </div>
                 ) : null}
                 {telemetryWarning ? (
-                    <div className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">
+                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-slate-700">
                         {telemetryWarning}
                     </div>
                 ) : null}
                 {lowConfidence ? (
-                    <div className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">
+                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-slate-700">
                         {locale === 'ko'
                             ? `현재 추천안은 추가 확인이 필요합니다. 작업 이벤트와 최신 센서를 다시 확인한 뒤 적용하는 것이 좋습니다.`
                             : `This recommendation needs extra review, so refresh work events and telemetry before applying aggressive changes.`}
@@ -935,7 +937,7 @@ const RTROptimizerPanel = ({
                 ) : null}
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                    <label className="rounded-lg bg-slate-50 p-3 text-xs font-medium text-slate-600">
+                                    <label className="rounded-[18px] bg-[color:var(--sg-surface-muted)] p-3 text-xs font-medium text-slate-600">
                         <span>{copy.targetNode}</span>
                         <input
                             aria-label={copy.targetNode}
@@ -982,7 +984,7 @@ const RTROptimizerPanel = ({
                         <div className="text-[11px] text-slate-500">{copy.confidence}</div>
                         <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-slate-900">
                             {targetHit ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
-                            {formatNumber(confidence === null ? null : confidence * 100, 0, locale)}%
+                            {readiness.label}
                         </div>
                     </div>
                     <div className="rounded-lg bg-slate-50 p-3">
@@ -1598,14 +1600,14 @@ const RTROptimizerPanel = ({
                                                             </span>
                                                             <span
                                                                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                                                    row.confidence >= 0.8
+                                                                    getReadinessDescriptor(row.confidence, locale).tone === 'success'
                                                                         ? 'bg-emerald-100 text-emerald-800'
-                                                                        : row.confidence >= 0.65
+                                                                        : getReadinessDescriptor(row.confidence, locale).tone === 'info'
                                                                             ? 'bg-amber-100 text-amber-800'
                                                                             : 'bg-slate-200 text-slate-700'
                                                                 }`}
                                                             >
-                                                                {copy.confidence} {formatNumber(row.confidence * 100, 0, locale)}%
+                                                                {copy.confidence} {getReadinessDescriptor(row.confidence, locale).label}
                                                             </span>
                                                         </div>
                                                         <div className="mt-1 text-[10px] text-slate-500">
