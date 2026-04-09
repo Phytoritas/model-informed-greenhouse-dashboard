@@ -1,5 +1,5 @@
 {
-  "earliest_restart_point": "Continue from the issue #61 control-plane-synced routed-shell loop; after re-reading the wakeup packet and current loop, decide whether the remaining `ask-*` panel/hash compatibility should stay until after the first PR.",
+  "earliest_restart_point": "Use `main` as the merged issue61 routed-shell baseline after re-reading the wakeup packet and current loop, then create a fresh issue/branch before the next non-trivial change.",
   "agents_and_workflow_gate": {
     "status": "pass",
     "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the active issue #61 branch linkage are all satisfied for the Coral Stay routed-shell loop."
@@ -18,11 +18,11 @@
   },
   "assistant_alias_canonicalization": {
     "status": "pass",
-    "note": "`frontend/src/routes/phytosyncSections.ts` now uses `assistant` as the canonical knowledge-section key/path and normalizes `/ask` into `/assistant`, while preserving the `/ask` redirect plus `ask-*` panel ids as bounded compatibility semantics until after the first PR."
+    "note": "`frontend/src/routes/phytosyncSections.ts` now uses `assistant` as the canonical knowledge-section key/path, normalizes `/ask` into `/assistant`, and that canonical baseline is merged on `main` via PR #62."
   },
   "assistant_hash_compatibility_decision": {
     "status": "pass",
-    "note": "The remaining `ask-chat|ask-search|ask-history` aliases are explicitly retained as inbound compatibility for old `/ask#...` or `/assistant#ask-*` deep links, and route regressions now lock that behavior so the first issue #61 PR does not silently break bookmarks."
+    "note": "The remaining `ask-chat|ask-search|ask-history` aliases were retained as inbound compatibility for old `/ask#...` or `/assistant#ask-*` deep links, and PR #62 merged that behavior onto `main` without silently breaking bookmarks."
   },
   "agents_intake": {
     "status": "pass",
@@ -30,7 +30,11 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue `#61` is active on branch `hyp/61-rebuild-phytosync-into-coral-stay-routed-shell`, and the current `.rah` control plane is bound to that live routed-shell redesign loop."
+    "note": "Issue `#61` is closed and merged via PR #62, so `main` is now the routed-shell baseline and the next non-trivial loop must start from a fresh issue/branch linkage."
+  },
+  "issue61_merge_complete": {
+    "status": "pass",
+    "note": "PR #62 merged the issue #61 routed-shell bundle and mobile-nav follow-up into `main`, and the GitHub issue/project state is now `Closed` / `Done`."
   },
   "harness_setup": {
     "status": "pass",
