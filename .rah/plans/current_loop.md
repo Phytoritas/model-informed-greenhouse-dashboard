@@ -1,9 +1,9 @@
 # Current Loop
 
 ## Active State
-- Active issue: `#47`
-- Active branch: `feat/47-close-remaining-phytosync-shadcn-redesign-prompt-gaps`
-- PR `#48` is the active validating lane for the remaining `codex_phytosync_shadcn_redesign_prompt.md` gap-closure work.
+- No repo-level delivery issue is currently active in the root control-plane state.
+- Root branch is normalized to clean `main` at `553c36df422416b9001b19dbb43f8a52fa6ef8d3`.
+- The only intentionally open long-tail follow-up remains issue `#3` for real grower-approved RTR calibration windows.
 - Issue `#3` still remains intentionally `Blocked`, but only as the optional real grower-window calibration follow-up behind the landed RTR UI/runtime baseline.
 
 ## Latest Delivered Baseline
@@ -15,24 +15,33 @@
   - premium command-center shell styling over the existing greenhouse dashboard runtime
   - layout, navigation, advisor, weather, market, and decision-surface polish
   - route-safe frontend stabilization, Korean-first visual hierarchy, and improved live-surface presentation
+- `main` also includes the merged issue `#47` prompt-gap closure baseline:
+  - route-driven `PhytoSync` workspace shell modules
+  - shared design-token/style layers plus ask/search workspace routing
+  - Korean visible-copy cleanup and accessibility/test hardening
+- `main` now also includes the merged issue `#49` warm editorial follow-up:
+  - warmer `DESIGN.md`-aligned paper surfaces and red-led editorial accents
+  - actual tab switching in the ask workspace instead of stacked in-page panels
+  - wider shell, warmer advisor/assistant/RTR treatment, and route-level resources/alerts/ask cockpit surfaces
 
-## Active Delivery Slice
-- Issue `#47` closes the remaining prompt-alignment gaps on top of that merged UI baseline:
-  - route-driven `PhytoSync` workspace shell modules under `frontend/src/routes/`
-  - shared design token, layout, Korean copy, and style-layer files under `frontend/src/lib/design/` and `frontend/src/styles/`
-  - a dedicated ask/search workspace under `frontend/src/components/phyto/`
-  - Korean visible-copy cleanup that replaces stale `Review state`, `Evidence level`, and similar prompt-forbidden labels
-  - accessibility hardening for section tabs and navigation, plus Vitest coverage for the new route-shell surfaces
+## Latest Delivered Slice
+- Issue `#49` shipped the last major PhytoSync UI follow-up on top of the merged issue `#47` route shell:
+  - warm editorial theme translation over the previous cooler cockpit reinterpretation
+  - `/ask` panel-native switching with visible URL/hash synchronization
+  - new `AlertsCommandCenter`, `ResourcesCommandCenter`, and `AskKnowledgeBoard` route surfaces
+  - wider shell/layout tuning and deeper warm treatment across advisor, assistant, dashboard, and RTR surfaces
+- Final feature commit on the issue `#49` branch:
+  - `699a95d` `feat: finish warm editorial phytosync ui follow-up`
 
 ## Latest Validation
-- The active issue `#47` lane is locally green with:
+- The latest issue `#49` lane stayed green locally with:
   - `npm --prefix frontend run lint`
   - `npm --prefix frontend run test -- --pool=threads`
   - `npm --prefix frontend run build`
-- The issue `#47` branch is committed as `f07dad5` and pushed to origin.
-- PR `#48` is open and GitHub Actions `Backend Validation` plus `Frontend Validation` are in progress on both the push and pull_request runs.
+- PR `#50` merged after GitHub Actions `Backend Validation` plus `Frontend Validation` both passed on push run `24184534147` and pull_request run `24184543933`.
+- Root `main` is now fast-forwarded to merge commit `553c36df422416b9001b19dbb43f8a52fa6ef8d3`, and obsolete issue43/45/47/49 worktree folders were removed locally.
 
 ## Exact Next Step
-1. Watch PR `#48` GitHub Actions on the latest pushed issue `#47` branch head.
-2. If any remote check fails, fix only that failing surface on the same issue `#47` branch and rerun the local frontend ladder before pushing again.
-3. If PR `#48` goes green, merge it, fast-forward `main`, and reset `.rah` back to a merged no-active-loop baseline while keeping issue `#3` blocked as the optional calibration follow-up.
+1. If more PhytoSync or SmartGrow UI work is needed, open a fresh issue/branch on top of the current clean `main` baseline instead of reviving merged branches or deleted issue worktrees.
+2. Otherwise return to issue `#3` only when real grower-approved tomato/cucumber good-production windows are ready for calibration intake.
+3. Keep local screenshots, temporary data documents, `.claude/`, `node_modules/`, and `stitch/` out of root `git status` via `.git/info/exclude` rather than tracked `.gitignore` edits.
