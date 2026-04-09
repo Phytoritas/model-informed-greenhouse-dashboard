@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #41 is linked to `feat/41-introduce-actuator-first-post-control-rtr-seam` and PR #42, while `main` still preserves the merged issue #39 baseline beneath the active validating loop. The older issue #3 still remains only as the optional content-calibration follow-up for real approved windows."
+    "note": "There is no active repo-level product branch in the root worktree now that issues #47 and #49 are merged. The root repository is normalized onto `main`, while issue #3 still remains only as the optional content-calibration follow-up for real approved windows."
   },
   "harness_setup": {
     "status": "pass",
@@ -220,7 +220,23 @@
     "note": "Issue #47 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, and `npm --prefix frontend run build` after the ask/search route shell, Korean copy cleanup, and tab/accessibility regressions were fixed."
   },
   "issue47_pr_validation": {
-    "status": "validating",
-    "note": "PR #48 is open on `feat/47-close-remaining-phytosync-shadcn-redesign-prompt-gaps` at commit `f07dad5`, and GitHub Actions Backend/Frontend validation are in progress on the latest push and pull_request runs."
+    "status": "pass",
+    "note": "PR #48 merged issue #47 into `main` at `4515742b0c63b73856564d65ce5353a9dfdd027d` after the route-shell gap-closure branch stayed green locally and GitHub Actions Backend/Frontend validation both passed."
+  },
+  "issue49_warm_editorial_followup": {
+    "status": "pass",
+    "note": "Issue #49 adds the warmer `DESIGN.md` translation over the merged issue #47 route shell: warm paper surfaces, red-led editorial accents, wider layout treatment, real ask-tab switching, and route-level resources/alerts/ask command-center surfaces without regressing the landed advisor/RTR/runtime contracts."
+  },
+  "issue49_local_validation": {
+    "status": "pass",
+    "note": "Issue #49 stayed locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, `npm --prefix frontend run build`, and `git diff --check` before the branch was pushed."
+  },
+  "issue49_pr_validation": {
+    "status": "pass",
+    "note": "PR #50 merged issue #49 into `main` at `553c36df422416b9001b19dbb43f8a52fa6ef8d3` after GitHub Actions Backend/Frontend validation both passed on push run `24184534147` and pull_request run `24184543933`."
+  },
+  "root_postmerge_cleanup": {
+    "status": "pass",
+    "note": "After issue #49 merged, the root repository was normalized back to clean `main`, local-only artifacts were hidden with `.git/info/exclude`, and obsolete issue43/45/47/49 worktree folders were removed once lingering `vite`/`esbuild`/`uvicorn` processes were stopped."
   }
 }
