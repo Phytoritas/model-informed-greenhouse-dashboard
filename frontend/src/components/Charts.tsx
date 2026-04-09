@@ -71,10 +71,10 @@ const Charts = ({ data }: ChartsProps) => {
             key: 'vpd-transpiration',
             title: copy.vpdTranspiration,
             dataKeys: [
-                { key: 'vpd', name: copy.vpd, color: '#8b5cf6' },
-                { key: 'transpiration', name: copy.transpiration, color: '#06b6d4' },
+                { key: 'vpd', name: copy.vpd, color: '#b52330' },
+                { key: 'transpiration', name: copy.transpiration, color: '#8a5c4d' },
             ],
-            icon: <Droplets className="h-4 w-4 text-blue-500" />,
+            icon: <Droplets className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />,
         },
         {
             key: 'photosynthesis',
@@ -100,7 +100,7 @@ const Charts = ({ data }: ChartsProps) => {
             dataKeys: [
                 { key: 'energyUsage', name: copy.electricalDemandLine, color: '#f59e0b' },
             ],
-            icon: <Zap className="h-4 w-4 text-orange-500" />,
+            icon: <Zap className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />,
         },
     ], [copy]);
 
@@ -109,9 +109,9 @@ const Charts = ({ data }: ChartsProps) => {
             <div className="space-y-6">
                 <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-slate-800">{copy.title}</h3>
+                        <h3 className="text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-[color:var(--sg-text-faint)]">
                         {copy.lastUpdate}: {lastUpdate}
                     </div>
                 </div>

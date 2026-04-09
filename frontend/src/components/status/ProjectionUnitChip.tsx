@@ -23,8 +23,8 @@ export default function ProjectionUnitChip({ kind, className }: ProjectionUnitCh
             className={cn(
                 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.01em]',
                 kind === 'canonical'
-                    ? 'bg-slate-200 text-slate-800'
-                    : 'bg-emerald-100 text-emerald-900',
+                    ? 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-strong)]'
+                    : 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
                 className,
             )}
         >

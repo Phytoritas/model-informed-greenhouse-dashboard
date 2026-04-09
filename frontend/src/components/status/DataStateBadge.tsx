@@ -11,15 +11,15 @@ interface DataStateBadgeProps {
 }
 
 const BADGE_CLASSNAME: Record<ExtendedDataState, string> = {
-    live: 'bg-emerald-100 text-emerald-900',
-    delayed: 'bg-amber-100 text-amber-900',
-    stale: 'bg-orange-100 text-orange-900',
-    offline: 'bg-rose-100 text-rose-900',
-    missing: 'bg-slate-200 text-slate-700',
-    unavailable: 'bg-slate-200 text-slate-700',
-    blocked: 'bg-violet-100 text-violet-900',
-    provisional: 'bg-sky-100 text-sky-900',
-    loading: 'bg-slate-200 text-slate-700',
+    live: 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
+    delayed: 'bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]',
+    stale: 'bg-[color:var(--sg-status-stale-bg)] text-[color:var(--sg-status-stale-text)]',
+    offline: 'bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]',
+    missing: 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]',
+    unavailable: 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]',
+    blocked: 'bg-[color:var(--sg-status-blocked-bg)] text-[color:var(--sg-status-blocked-text)]',
+    provisional: 'bg-[color:var(--sg-status-provisional-bg)] text-[color:var(--sg-status-provisional-text)]',
+    loading: 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]',
 };
 
 const LABELS: Record<ExtendedDataState, Record<'ko' | 'en', string>> = {

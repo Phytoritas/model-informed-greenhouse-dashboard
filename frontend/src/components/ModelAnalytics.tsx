@@ -114,71 +114,71 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Growth Model Card */}
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+            <div className="sg-warm-panel p-5">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <div className="p-2 bg-green-100 rounded-lg text-green-600">
+                        <div className="rounded-2xl bg-[color:var(--sg-accent-earth-soft)] p-2 text-[color:var(--sg-accent-earth)]">
                             <Leaf className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-slate-800">{copy.growthModel}</h3>
-                            <p className="text-xs text-slate-400">{getCropModelLabel(crop, locale)}</p>
+                            <h3 className="font-semibold text-[color:var(--sg-text-strong)]">{copy.growthModel}</h3>
+                            <p className="text-xs text-[color:var(--sg-text-subtle)]">{getCropModelLabel(crop, locale)}</p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-lg font-bold text-slate-800">{lai.toFixed(1)}</p>
-                        <p className="text-[11px] text-slate-400">{UNIT_LABELS.leafAreaIndex}</p>
+                        <p className="text-lg font-bold text-[color:var(--sg-text-strong)]">{lai.toFixed(1)}</p>
+                        <p className="text-[11px] text-[color:var(--sg-text-subtle)]">{UNIT_LABELS.leafAreaIndex}</p>
                     </div>
                 </div>
 
                 <ChartFrame className="h-40 w-full" minHeight={160}>
                     {({ width, height }) => (
                         <LineChart width={Math.max(width, 1)} height={Math.max(height, 160)} data={growthData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadccd" />
                             <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <Tooltip
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                                contentStyle={{ borderRadius: '16px', border: '1px solid #e4d2bf', boxShadow: '0 18px 40px -28px rgba(103, 71, 54, 0.45)' }}
                                 itemStyle={{ fontSize: '12px' }}
                                 formatter={(value: number, name: string) => [value.toFixed(1), name]}
                             />
-                            <Line type="monotone" dataKey="biomass" stroke="#16a34a" strokeWidth={2} dot={false} name={copy.biomassLine} />
+                            <Line type="monotone" dataKey="biomass" stroke="#a14a35" strokeWidth={2} dot={false} name={copy.biomassLine} />
                         </LineChart>
                     )}
                 </ChartFrame>
-                <div className="mt-2 flex justify-between text-xs text-slate-500">
-                    <span>{copy.stage}: <span className="font-medium text-green-700">{getDevelopmentStageLabel(metrics.growth.developmentStage, locale)}</span></span>
+                <div className="mt-2 flex justify-between text-xs text-[color:var(--sg-text-muted)]">
+                    <span>{copy.stage}: <span className="font-medium text-[color:var(--sg-accent-earth)]">{getDevelopmentStageLabel(metrics.growth.developmentStage, locale)}</span></span>
                     <span>{copy.rate}: +{metrics.growth.growthRate.toFixed(1)} g m⁻² d⁻¹</span>
                 </div>
             </div>
 
             {/* Yield Prediction Card */}
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+            <div className="sg-warm-panel p-5">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                        <div className="rounded-2xl bg-[color:var(--sg-accent-harvest-soft)] p-2 text-[color:var(--sg-accent-harvest)]">
                             <Scale className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-slate-800">{copy.yieldForecast}</h3>
-                            <p className="text-xs text-slate-400">{copy.aiInference}</p>
+                            <h3 className="font-semibold text-[color:var(--sg-text-strong)]">{copy.yieldForecast}</h3>
+                            <p className="text-xs text-[color:var(--sg-text-subtle)]">{copy.aiInference}</p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-lg font-bold text-slate-800">{predictedWeekly.toFixed(1)}</p>
-                        <p className="text-[11px] text-slate-400">{UNIT_LABELS.weeklyYield}</p>
+                        <p className="text-lg font-bold text-[color:var(--sg-text-strong)]">{predictedWeekly.toFixed(1)}</p>
+                        <p className="text-[11px] text-[color:var(--sg-text-subtle)]">{UNIT_LABELS.weeklyYield}</p>
                     </div>
                 </div>
 
                 <ChartFrame className="h-40 w-full" minHeight={160}>
                     {({ width, height }) => (
                         <BarChart width={Math.max(width, 1)} height={Math.max(height, 160)} data={yieldData} barSize={20}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadccd" />
                             <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <Tooltip
                                 cursor={{ fill: '#f8fafc' }}
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                                contentStyle={{ borderRadius: '16px', border: '1px solid #e4d2bf', boxShadow: '0 18px 40px -28px rgba(103, 71, 54, 0.45)' }}
                                 itemStyle={{ fontSize: '12px' }}
                                 formatter={(value: number, name: string) => [value.toFixed(1), name]}
                             />
@@ -190,28 +190,28 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                         </BarChart>
                     )}
                 </ChartFrame>
-                <div className="mt-2 flex justify-between text-xs text-slate-500">
-                    <span>{readiness.lead}: <span className="font-medium text-orange-700">{readiness.label}</span></span>
+                <div className="mt-2 flex justify-between text-xs text-[color:var(--sg-text-muted)]">
+                    <span>{readiness.lead}: <span className="font-medium text-[color:var(--sg-accent-harvest)]">{readiness.label}</span></span>
                     <span>{copy.harvestReady}: ~{metrics.yield.harvestableFruits.toFixed(0)}</span>
                 </div>
             </div>
 
             {/* Energy Efficiency Card */}
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+            <div className="sg-warm-panel p-5">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                        <div className="rounded-2xl bg-[color:var(--sg-accent-earth-soft)] p-2 text-[color:var(--sg-accent-earth)]">
                             <Zap className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-slate-800">{copy.energyModel}</h3>
-                            <p className="text-xs text-slate-400">{copy.efficiencyCost}</p>
+                            <h3 className="font-semibold text-[color:var(--sg-text-strong)]">{copy.energyModel}</h3>
+                            <p className="text-xs text-[color:var(--sg-text-subtle)]">{copy.efficiencyCost}</p>
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="flex items-center justify-end gap-1 text-slate-800">
+                        <div className="flex items-center justify-end gap-1 text-[color:var(--sg-text-strong)]">
                             <p className="text-lg font-bold">{energyEfficiency.toFixed(1)}</p>
-                            <p className="text-xs font-normal text-slate-400">COP</p>
+                            <p className="text-xs font-normal text-[color:var(--sg-text-subtle)]">COP</p>
                         </div>
                     </div>
                 </div>
@@ -219,29 +219,29 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                 <ChartFrame className="h-40 w-full" minHeight={160}>
                     {({ width, height }) => (
                         <LineChart width={Math.max(width, 1)} height={Math.max(height, 160)} data={energyData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eadccd" />
                             <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <Tooltip
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                                contentStyle={{ borderRadius: '16px', border: '1px solid #e4d2bf', boxShadow: '0 18px 40px -28px rgba(103, 71, 54, 0.45)' }}
                                 itemStyle={{ fontSize: '12px' }}
                                 formatter={(value: number, name: string) => [value.toFixed(2), name]}
                             />
-                            <Line type="monotone" dataKey="powerKw" stroke="#2563eb" strokeWidth={2} dot={false} name={copy.electricalDemand} />
-                            <Line type="monotone" dataKey="loadKw" stroke="#60a5fa" strokeWidth={2} dot={false} name={copy.thermalLoad} />
+                            <Line type="monotone" dataKey="powerKw" stroke="#a14a35" strokeWidth={2} dot={false} name={copy.electricalDemand} />
+                            <Line type="monotone" dataKey="loadKw" stroke="#7a8f58" strokeWidth={2} dot={false} name={copy.thermalLoad} />
                         </LineChart>
                     )}
                 </ChartFrame>
-                <div className="mt-2 flex justify-between text-xs text-slate-500">
-                    <span>{copy.load}: <span className="font-medium text-slate-700">{thermalLoadKw.toFixed(1)} kW</span></span>
-                    <span>{copy.estimatedCost}: <span className="font-medium text-slate-700">{costLabel}</span></span>
+                <div className="mt-2 flex justify-between text-xs text-[color:var(--sg-text-muted)]">
+                    <span>{copy.load}: <span className="font-medium text-[color:var(--sg-text-strong)]">{thermalLoadKw.toFixed(1)} kW</span></span>
+                    <span>{copy.estimatedCost}: <span className="font-medium text-[color:var(--sg-text-strong)]">{costLabel}</span></span>
                 </div>
-                <div className="mt-3 bg-blue-50 rounded-lg p-3 border border-blue-100">
+                <div className="mt-3 rounded-2xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-accent-earth-soft)] p-3">
                     <div className="flex items-center gap-2 mb-1">
-                        <TrendingUp className="w-3 h-3 text-blue-600" />
-                        <span className="text-xs font-bold text-blue-800">{copy.optimizationInsight}</span>
+                        <TrendingUp className="w-3 h-3 text-[color:var(--sg-accent-earth)]" />
+                        <span className="text-xs font-bold text-[color:var(--sg-accent-earth)]">{copy.optimizationInsight}</span>
                     </div>
-                    <p className="text-xs text-blue-700 leading-snug">
+                    <p className="text-xs text-[color:var(--sg-accent-earth)] leading-snug">
                         {energyEfficiency > 3
                             ? copy.highEfficiency
                             : copy.efficiencyDrop}

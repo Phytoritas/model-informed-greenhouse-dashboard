@@ -29,10 +29,10 @@ interface TimeSeriesChartProps<T extends { timestamp?: number }> {
 }
 
 const TOOLTIP_STYLE = {
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    border: '1px solid #e2e8f0',
+    backgroundColor: 'rgba(255, 251, 246, 0.98)',
+    border: '1px solid rgba(123, 93, 78, 0.12)',
     borderRadius: '12px',
-    boxShadow: '0 10px 24px rgba(15, 23, 42, 0.10)',
+    boxShadow: '0 12px 28px rgba(90, 64, 63, 0.10)',
 } as const;
 
 const LEGEND_STYLE = { fontSize: '12px', paddingTop: '10px' } as const;
@@ -60,7 +60,7 @@ function TimeSeriesChartInner<T extends { timestamp?: number }>({
 
     if (!data || data.length === 0) {
         return (
-            <div className="flex h-full flex-col items-center justify-center rounded-xl border border-slate-100 bg-white p-6 text-slate-400 shadow-sm">
+            <div className="sg-warm-panel flex h-full flex-col items-center justify-center p-6 text-[color:var(--sg-text-faint)]">
                 <div className="mb-2 flex items-center gap-2 opacity-50">
                     {icon}
                     <span className="font-medium">{title}</span>
@@ -71,23 +71,23 @@ function TimeSeriesChartInner<T extends { timestamp?: number }>({
     }
 
     return (
-        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-            <div className="mb-4 flex items-center gap-2 text-slate-700">
+        <div className="sg-warm-panel p-4">
+            <div className="mb-4 flex items-center gap-2 text-[color:var(--sg-text)]">
                 {icon}
                 <h3 className="font-semibold">{title}</h3>
             </div>
             <ChartFrame style={{ height }} minHeight={height}>
                 {({ width, height: containerHeight }) => (
                     <LineChart width={Math.max(width, 1)} height={Math.max(containerHeight, height)} data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(123, 93, 78, 0.12)" />
                         <XAxis
                             dataKey="timestamp"
                             tickFormatter={tickFormatter}
-                            stroke="#94a3b8"
+                            stroke="#927d72"
                             tick={{ fontSize: 11 }}
                             minTickGap={24}
                         />
-                        <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                        <YAxis stroke="#927d72" tick={{ fontSize: 11 }} />
                         <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={labelFormatter} />
                         <Legend wrapperStyle={LEGEND_STYLE} />
                         {dataKeys.map(({ key, name, color }) => (

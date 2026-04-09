@@ -17,7 +17,7 @@ export function TooltipContent({ className, ...props }: HTMLAttributes<HTMLDivEl
     return (
         <div
             className={cn(
-                'pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden -translate-x-1/2 rounded-[14px] bg-slate-900 px-3 py-2 text-xs font-medium text-white shadow-[var(--sg-shadow-card)] group-hover:block',
+                'pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden -translate-x-1/2 rounded-[14px] bg-[color:var(--sg-text-strong)] px-3 py-2 text-xs font-medium text-white shadow-[var(--sg-shadow-card)] group-hover:block',
                 className,
             )}
             {...props}

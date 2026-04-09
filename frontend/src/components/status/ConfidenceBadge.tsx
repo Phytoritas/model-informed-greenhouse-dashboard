@@ -8,10 +8,10 @@ interface ConfidenceBadgeProps {
 }
 
 const TONE_CLASS_NAMES = {
-    neutral: 'bg-slate-200 text-slate-700',
-    info: 'bg-amber-100 text-amber-900',
-    success: 'bg-emerald-100 text-emerald-900',
-    warning: 'bg-rose-100 text-rose-900',
+    neutral: 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]',
+    info: 'bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]',
+    success: 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
+    warning: 'bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]',
 } as const;
 
 export default function ConfidenceBadge({ value, className }: ConfidenceBadgeProps) {

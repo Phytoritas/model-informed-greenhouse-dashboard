@@ -117,17 +117,17 @@ const RTROutlookPanel = ({
             badgeBaseline: '기준선',
             balanced: {
                 badge: 'RTR 기준선 근처',
-                tone: 'bg-emerald-100 text-emerald-700',
+                tone: 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
                 description: '온도와 광이 비교적 균형 있게 움직이고 있습니다.',
             },
             'warm-for-light': {
                 badge: '광량 대비 고온',
-                tone: 'bg-rose-100 text-rose-700',
+                tone: 'bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]',
                 description: '현재 광량보다 온도가 앞서 있어 작물이 더 생식생장 쪽으로 기울 수 있습니다.',
             },
             'cool-for-light': {
                 badge: '광량 대비 저온',
-                tone: 'bg-sky-100 text-sky-700',
+                tone: 'bg-[color:var(--sg-status-provisional-bg)] text-[color:var(--sg-status-provisional-text)]',
                 description: '현재 온도보다 광이 강해 작물이 더 영양생장 쪽으로 기울 수 있습니다.',
             },
         }
@@ -158,17 +158,17 @@ const RTROutlookPanel = ({
             badgeBaseline: 'Baseline',
             balanced: {
                 badge: 'Near RTR line',
-                tone: 'bg-emerald-100 text-emerald-700',
+                tone: 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
                 description: 'Temperature and light are moving together in a balanced range.',
             },
             'warm-for-light': {
                 badge: 'Warm for light',
-                tone: 'bg-rose-100 text-rose-700',
+                tone: 'bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]',
                 description: 'Temperature is running ahead of the available light, which can push the crop more generative.',
             },
             'cool-for-light': {
                 badge: 'Cool for light',
-                tone: 'bg-sky-100 text-sky-700',
+                tone: 'bg-[color:var(--sg-status-provisional-bg)] text-[color:var(--sg-status-provisional-text)]',
                 description: 'Light is strong relative to the current temperature, which can push the crop more vegetative.',
             },
         };
@@ -195,105 +195,105 @@ const RTROutlookPanel = ({
         : copy.selectionFallback;
 
     return (
-        <div className={`flex h-full flex-col rounded-xl border border-slate-100 bg-white shadow-sm ${compact ? 'p-3' : 'p-5'}`}>
+        <div className={`sg-warm-panel flex h-full flex-col ${compact ? 'p-3' : 'p-5'}`}>
             <div className={`flex items-start justify-between gap-3 ${compact ? 'mb-2' : 'mb-4'}`}>
                 <div>
-                    <div className="flex items-center gap-2 text-slate-800">
-                        <Target className="h-5 w-5 text-emerald-600" />
+                    <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
+                        <Target className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
                         <h3 className={compact ? 'text-sm font-semibold' : 'font-semibold'}>{copy.title}</h3>
                     </div>
                     {!compact && (
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-[color:var(--sg-text-faint)]">
                         {copy.subtitle}
                     </p>
                     )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                    <div className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700">
+                    <div className="rounded-full bg-[color:var(--sg-status-live-bg)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-status-live-text)]">
                         {profileBadge}
                     </div>
                     {profileLoading ? (
-                        <div className="text-[11px] text-slate-400">{copy.profileLoading}</div>
+                        <div className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.profileLoading}</div>
                     ) : null}
                 </div>
             </div>
 
             <div className="flex h-full flex-col space-y-4">
-                <div className="rounded-lg bg-gradient-to-br from-emerald-50 to-lime-50 p-4">
+                <div className="rounded-[24px] bg-[linear-gradient(180deg,rgba(255,247,239,0.98),rgba(247,215,216,0.92))] p-4">
                     <div className="flex items-center justify-between gap-3">
                         <div>
-                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                <Leaf className="h-3.5 w-3.5 text-emerald-600" />
+                            <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--sg-text-muted)]">
+                                <Leaf className="h-3.5 w-3.5 text-[color:var(--sg-accent-violet)]" />
                                 <span>{copy.rolling}</span>
                             </div>
-                            <div className="mt-2 flex items-baseline gap-2 text-slate-900">
+                            <div className="mt-2 flex items-baseline gap-2 text-[color:var(--sg-text-strong)]">
                                 <span className="text-3xl font-bold">{liveSnapshot.deltaTempC.toFixed(1)}&deg;C</span>
-                                <span className="text-sm text-slate-500">{copy.vsProfile}</span>
+                                <span className="text-sm text-[color:var(--sg-text-muted)]">{copy.vsProfile}</span>
                             </div>
-                            <p className="mt-2 text-sm font-medium text-slate-700">{balanceCopy.description}</p>
-                            <p className="mt-2 text-xs leading-relaxed text-slate-500">{localizedSourceNote}</p>
+                            <p className="mt-2 text-sm font-medium text-[color:var(--sg-text)]">{balanceCopy.description}</p>
+                            <p className="mt-2 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">{localizedSourceNote}</p>
                         </div>
                         <div className={`rounded-2xl px-3 py-2 text-right text-xs font-medium shadow-sm ${balanceCopy.tone}`}>
                             {balanceCopy.badge}
                         </div>
                     </div>
-                    <div className="mt-3 text-xs text-slate-500">
+                    <div className="mt-3 text-xs text-[color:var(--sg-text-muted)]">
                         {copy.coverage} {liveSnapshot.windowHours.toFixed(1)} h / 24 h
-                        <span className="ml-2 font-medium text-slate-700">{liveSnapshot.coveragePct.toFixed(0)}%</span>
+                        <span className="ml-2 font-medium text-[color:var(--sg-text)]">{liveSnapshot.coveragePct.toFixed(0)}%</span>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                            <Sun className="h-4 w-4 text-amber-500" />
+                    <div className="sg-warm-subpanel p-3">
+                        <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--sg-text-muted)]">
+                            <Sun className="h-4 w-4 text-[color:var(--sg-accent-amber)]" />
                             <span>{copy.radiationSum}</span>
                         </div>
-                        <div className="mt-2 text-lg font-semibold text-slate-800">
+                        <div className="mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">
                             {liveSnapshot.radiationSumMjM2D.toFixed(1)} MJ m⁻²
                         </div>
-                        <div className="mt-1 text-xs text-slate-500">
+                        <div className="mt-1 text-xs text-[color:var(--sg-text-muted)]">
                             DLI {liveSnapshot.dliMolM2D.toFixed(1)} mol m⁻² d⁻¹
                         </div>
                     </div>
-                    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                            <Thermometer className="h-4 w-4 text-orange-500" />
+                    <div className="sg-warm-subpanel p-3">
+                        <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--sg-text-muted)]">
+                            <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />
                             <span>{copy.meanTemp}</span>
                         </div>
-                        <div className="mt-2 text-lg font-semibold text-slate-800">
+                        <div className="mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">
                             {liveSnapshot.averageTempC.toFixed(1)}&deg;C
                         </div>
-                        <div className="mt-1 text-xs text-slate-500">
+                        <div className="mt-1 text-xs text-[color:var(--sg-text-muted)]">
                             {copy.exampleTarget} {liveSnapshot.targetTempC.toFixed(1)}&deg;C
                         </div>
                     </div>
                 </div>
 
                 {!compact && (
-                <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-                    <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                        <CalendarDays className="h-4 w-4 text-slate-500" />
+                <div className="sg-warm-subpanel p-4">
+                    <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--sg-text-muted)]">
+                        <CalendarDays className="h-4 w-4 text-[color:var(--sg-text-faint)]" />
                         <span>{copy.steeringPlan}</span>
                     </div>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
                         {loading ? (
-                            <div className="rounded-md bg-white px-3 py-3 text-sm text-slate-500">
+                            <div className="rounded-[18px] bg-white/84 px-3 py-3 text-sm text-[color:var(--sg-text-muted)]">
                                 {copy.forecastLoading}
                             </div>
                         ) : forecastTargets.length > 0 ? (
                             forecastTargets.map((day) => (
-                                <div key={day.date} className="h-full rounded-md bg-white px-3 py-3">
+                                <div key={day.date} className="h-full rounded-[18px] bg-white/84 px-3 py-3">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <div className="text-sm font-semibold text-slate-800">{formatForecastLabel(day.date)}</div>
-                                            <div className="mt-1 text-xs text-slate-500">{getWeatherLabel(undefined, day.weatherLabel, locale)}</div>
+                                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatForecastLabel(day.date)}</div>
+                                            <div className="mt-1 text-xs text-[color:var(--sg-text-muted)]">{getWeatherLabel(undefined, day.weatherLabel, locale)}</div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-sm font-semibold text-slate-800">
+                                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                                 {day.targetTempC.toFixed(1)}&deg;C
                                             </div>
-                                            <div className="mt-1 text-xs text-slate-500">
+                                            <div className="mt-1 text-xs text-[color:var(--sg-text-muted)]">
                                                 {day.radiationSumMjM2D.toFixed(1)} MJ m⁻² d⁻¹
                                             </div>
                                         </div>
@@ -301,13 +301,13 @@ const RTROutlookPanel = ({
                                 </div>
                             ))
                         ) : (
-                            <div className="rounded-md bg-white px-3 py-3 text-sm text-slate-500">
+                            <div className="rounded-[18px] bg-white/84 px-3 py-3 text-sm text-[color:var(--sg-text-muted)]">
                                 {copy.forecastWaiting}
                             </div>
                         )}
                     </div>
                     {error ? (
-                        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800">
+                        <div className="mt-3 rounded-[18px] border border-[color:var(--sg-accent-amber-soft)] bg-[color:var(--sg-accent-amber-soft)] px-3 py-3 text-xs text-[color:var(--sg-accent-earth)]">
                             {copy.weatherUnavailable}: {error}
                         </div>
                     ) : null}
@@ -315,8 +315,8 @@ const RTROutlookPanel = ({
                 )}
 
                 {!compact && (
-                <div className="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-xs leading-relaxed text-slate-500">
-                    <div className="font-medium text-slate-700">{localizedStrategyLabel}</div>
+                <div className="rounded-[20px] border border-[color:var(--sg-outline-soft)] px-3 py-3 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
+                    <div className="font-medium text-[color:var(--sg-text)]">{localizedStrategyLabel}</div>
                     <div className="mt-1">
                         {copy.referenceLine}: T24 = {effectiveProfile.baseTempC.toFixed(1)} + {effectiveProfile.slopeCPerMjM2.toFixed(2)} x radiation sum (MJ m⁻² d⁻¹).
                     </div>
@@ -335,7 +335,7 @@ const RTROutlookPanel = ({
                         {copy.currentControlWindow}: {temperatureSettings.heating}&deg;C to {temperatureSettings.cooling}&deg;C.
                     </div>
                     {profileError ? (
-                        <div className="mt-1 text-amber-700">
+                        <div className="mt-1 text-[color:var(--sg-accent-earth)]">
                             {copy.profileEndpointUnavailable}: {profileError}
                         </div>
                     ) : null}
