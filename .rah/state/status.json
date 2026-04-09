@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue53-warm-editorial-palette-retune-pr54-merged",
+  "current_stage": "issue57-frontend-chunk-splitting-local-validation-passed",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-phytosync-route-shell",
-  "active_issue": null,
-  "active_branch": null,
+  "active_issue": 57,
+  "active_branch": "fix/57-reduce-frontend-entry-chunk-size-with-route-level-code-splitting",
   "implementation_blocked": false,
-  "next_action": "Issue #53 is merged through PR #54 at merge commit `c8febc2e3a2b3df0c11d2d19e1a5127194c83b99`. The root repository is back on clean `main`, and the PhytoSync warm-editorial retune now extends through the remaining dashboard, advisor, RTR, market, and assistant surfaces. Next either open a fresh issue/branch for chunk-splitting or further UI refinement on top of `main`, or return to the optional issue #3 grower-window calibration follow-up.",
+  "next_action": "Issue #57 now has a bounded frontend performance slice in flight: `frontend/vite.config.ts` splits React, router, and lucide vendor groups so the production entry chunk drops from `513.46 kB` to `284.08 kB` and the Vite chunk-size warning disappears locally. Next commit, push, open a PR, and move the project item to `Validating` once remote Backend/Frontend validation starts.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "codex_phytosync_shadcn_redesign_prompt.md warm editorial palette retune over the merged route-shell baseline"
+  "directive_file": "frontend chunk-size warning code-splitting follow-up over the merged issue53/55 baseline"
 }
