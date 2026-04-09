@@ -129,36 +129,36 @@ const AreaUnitPanel = ({
             : copy.sourceDefault;
 
     return (
-        <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <section className="sg-warm-panel p-4">
             <div className="mb-3">
                 <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="text-sm font-semibold text-slate-900">{copy.title}</h4>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200">
+                    <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h4>
+                    <span className="sg-chip-neutral rounded-full px-2.5 py-1 text-[11px] font-medium">
                         {sourceChipLabel}
                     </span>
                 </div>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{copy.subtitle}</p>
-                <p className="mt-1 text-[11px] leading-5 text-slate-500">{sourceDescription}</p>
+                <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.subtitle}</p>
+                <p className="mt-1 text-[11px] leading-5 text-[color:var(--sg-text-faint)]">{sourceDescription}</p>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-                <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+                <label className="flex flex-col gap-1 text-xs font-medium text-[color:var(--sg-text-muted)]">
                     <span>{copy.pyeong}</span>
                     <input
                         aria-label={copy.pyeong}
                         inputMode="decimal"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                        className="sg-field-input"
                         value={actualAreaPyeong ?? ''}
                         onChange={(event) => onActualAreaPyeongChange(parseAreaInput(event.target.value))}
                         placeholder={copy.pyeongPlaceholder}
                     />
                 </label>
-                <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+                <label className="flex flex-col gap-1 text-xs font-medium text-[color:var(--sg-text-muted)]">
                     <span>{copy.m2}</span>
                     <input
                         aria-label={copy.m2}
                         inputMode="decimal"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                        className="sg-field-input"
                         value={actualAreaM2 ?? ''}
                         onChange={(event) => onActualAreaM2Change(parseAreaInput(event.target.value))}
                         placeholder={copy.m2Placeholder}
@@ -166,58 +166,58 @@ const AreaUnitPanel = ({
                 </label>
             </div>
 
-            <div className="mt-3 rounded-lg border border-dashed border-slate-300 bg-white/80 px-3 py-2 text-xs text-slate-600">
-                <span className="font-medium text-slate-900">{copy.canonical}:</span>{' '}
+            <div className="mt-3 rounded-[20px] border border-[color:var(--sg-outline-soft)] bg-white/80 px-3 py-2 text-xs text-[color:var(--sg-text-muted)]">
+                <span className="font-medium text-[color:var(--sg-text-strong)]">{copy.canonical}:</span>{' '}
                 {formatNumber(canonicalAreaM2, 1, locale)} m²
             </div>
 
             {unitsM2 ? (
                 <div className="mt-4">
-                    <h5 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{copy.canonicalMetrics}</h5>
+                    <h5 className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--sg-text-faint)]">{copy.canonicalMetrics}</h5>
                     <dl className="mt-2 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalYieldDay}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.yield_proxy_kg_m2_day, 3, locale)} kg</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalYieldDay}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.yield_proxy_kg_m2_day, 3, locale)} kg</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalYieldWeek}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.yield_proxy_kg_m2_week, 3, locale)} kg</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalYieldWeek}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.yield_proxy_kg_m2_week, 3, locale)} kg</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalEnergy}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.energy_kwh_m2_day, 3, locale)} kWh</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalEnergy}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.energy_kwh_m2_day, 3, locale)} kWh</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalCost}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.energy_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalCost}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.energy_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalHeating}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.heating_energy_kwh_m2_day, 3, locale)} kWh</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalHeating}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.heating_energy_kwh_m2_day, 3, locale)} kWh</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalCooling}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.cooling_energy_kwh_m2_day, 3, locale)} kWh</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalCooling}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.cooling_energy_kwh_m2_day, 3, locale)} kWh</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalLabor}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.labor_index_m2_day, 3, locale)}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalLabor}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.labor_index_m2_day, 3, locale)}</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalLaborHours}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.labor_hours_m2_day, 3, locale)} h</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalLaborHours}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.labor_hours_m2_day, 3, locale)} h</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalLaborCost}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.labor_cost_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalLaborCost}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.labor_cost_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalNode}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.node_development_day, 3, locale)}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalNode}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.node_development_day, 3, locale)}</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.canonicalMargin}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(unitsM2.gross_margin_proxy_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalMargin}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.gross_margin_proxy_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
                         </div>
                     </dl>
                 </div>
@@ -225,47 +225,47 @@ const AreaUnitPanel = ({
 
             {projection ? (
                 <div className="mt-4">
-                    <h5 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{copy.actualProjection}</h5>
+                    <h5 className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--sg-text-faint)]">{copy.actualProjection}</h5>
                     <dl className="mt-2 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionYieldDay}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.yield_kg_day, 1, locale)} kg</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionYieldDay}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.yield_kg_day, 1, locale)} kg</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionYieldWeek}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.yield_kg_week, 1, locale)} kg</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionYieldWeek}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.yield_kg_week, 1, locale)} kg</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionEnergy}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.energy_kwh_day, 1, locale)} kWh</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionEnergy}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.energy_kwh_day, 1, locale)} kWh</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionHeating}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.heating_energy_kwh_day, 1, locale)} kWh</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionHeating}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.heating_energy_kwh_day, 1, locale)} kWh</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionCooling}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.cooling_energy_kwh_day, 1, locale)} kWh</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionCooling}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.cooling_energy_kwh_day, 1, locale)} kWh</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionCost}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.energy_krw_day, 0, locale)} {copy.costUnit}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionCost}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.energy_krw_day, 0, locale)} {copy.costUnit}</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionLabor}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.labor_index_day, 2, locale)}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionLabor}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.labor_index_day, 2, locale)}</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionLaborHours}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.labor_hours_day, 2, locale)} h</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionLaborHours}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.labor_hours_day, 2, locale)} h</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionLaborCost}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.labor_cost_krw_day, 0, locale)} {copy.costUnit}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionLaborCost}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.labor_cost_krw_day, 0, locale)} {copy.costUnit}</dd>
                         </div>
-                        <div className="rounded-lg bg-white px-3 py-2">
-                            <dt className="text-[11px] text-slate-500">{copy.projectionMargin}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatNumber(projection.margin_krw_day, 0, locale)} {copy.costUnit}</dd>
+                        <div className="sg-warm-subpanel px-3 py-2">
+                            <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionMargin}</dt>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.margin_krw_day, 0, locale)} {copy.costUnit}</dd>
                         </div>
                     </dl>
                 </div>

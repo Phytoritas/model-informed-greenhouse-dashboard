@@ -608,7 +608,7 @@ function App() {
       trend: humidityTrend.trend,
       trendDetail: humidityState === 'missing' ? '' : buildTrendDetail(humidityTrend, sensorCopy.humidity.unit),
       icon: Droplets,
-      color: 'bg-blue-500',
+      color: 'bg-[color:var(--sg-accent-harvest)]',
       lastReceived: buildFieldAgeLabel('humidity'),
     },
     {
@@ -622,7 +622,7 @@ function App() {
       trend: co2Trend.trend,
       trendDetail: co2State === 'missing' ? '' : buildTrendDetail(co2Trend, sensorCopy.carbonDioxide.unit),
       icon: CloudFog,
-      color: 'bg-slate-600',
+      color: 'bg-[color:var(--sg-accent-earth)]',
       lastReceived: buildFieldAgeLabel('co2'),
     },
     {
@@ -1431,8 +1431,8 @@ function App() {
             <>
               <div>
                 <div className="mb-4 flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-slate-500" />
-                  <h2 className="text-lg font-semibold text-slate-800">{locale === 'ko' ? '?앹쑁 異붿꽭 遺꾩꽍' : 'Growth analytics'}: {selectedCropLabel}</h2>
+                  <Activity className="h-5 w-5 text-[color:var(--sg-accent-earth)]" />
+                  <h2 className="text-lg font-semibold text-[color:var(--sg-text-strong)]">{locale === 'ko' ? '?앹쑁 異붿꽭 遺꾩꽍' : 'Growth analytics'}: {selectedCropLabel}</h2>
                 </div>
                 <Suspense fallback={<LoadingSkeleton title={copy.advancedModelAnalytics} loadingMessage={copy.advancedModelAnalyticsLoading} minHeightClassName="min-h-[320px]" />}>
                   <ModelAnalytics
@@ -1667,8 +1667,8 @@ function App() {
                   />
                   <div>
                     <div className="mb-4 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-slate-500" />
-                      <h2 className="text-lg font-semibold text-slate-800">{copy.advancedModelAnalytics}: {selectedCropLabel}</h2>
+                      <Activity className="h-5 w-5 text-[color:var(--sg-accent-earth)]" />
+                      <h2 className="text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.advancedModelAnalytics}: {selectedCropLabel}</h2>
                     </div>
                     <Suspense fallback={<LoadingSkeleton title={copy.advancedModelAnalytics} loadingMessage={copy.advancedModelAnalyticsLoading} minHeightClassName="min-h-[320px]" />}>
                       <ModelAnalytics

@@ -65,15 +65,15 @@ const SensorCard = ({
     const showLoadingState = status === 'loading' && typeof value !== 'number';
     const sparklinePath = buildSparklinePath(sparklineValues);
     const statusClassName = status === 'live'
-        ? 'bg-emerald-100 text-emerald-700'
+        ? 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]'
         : status === 'stale'
-            ? 'bg-amber-100 text-amber-700'
+            ? 'bg-[color:var(--sg-status-stale-bg)] text-[color:var(--sg-status-stale-text)]'
             : status === 'offline'
-                ? 'bg-rose-100 text-rose-700'
-                : 'bg-slate-100 text-slate-600';
+                ? 'bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]'
+                : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]';
 
     return (
-        <div className={`bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow h-full ${className || ''}`}>
+        <div className={`sg-warm-panel h-full p-4 transition-shadow hover:-translate-y-[1px] ${className || ''}`}>
             <div className="flex justify-between items-start mb-2">
                 <div className={`p-2 rounded-lg ${color} bg-opacity-10`}>
                     <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
@@ -86,8 +86,8 @@ const SensorCard = ({
                     ) : null}
                     {trend ? (
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${trend === 'up' ? 'bg-red-100 text-red-600' :
-                                trend === 'down' ? 'bg-blue-100 text-blue-600' :
-                                    'bg-slate-100 text-slate-600'
+                                trend === 'down' ? 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]' :
+                                    'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]'
                             }`}>
                             {trend === 'up' ? '↗' : trend === 'down' ? '↘' : '→'}
                         </span>
@@ -95,31 +95,31 @@ const SensorCard = ({
                 </div>
             </div>
             <div>
-                <p className="text-sm text-slate-500 font-medium leading-snug">{title}</p>
+                <p className="text-sm font-medium leading-snug text-[color:var(--sg-text-muted)]">{title}</p>
                 {showLoadingState ? (
                     <div className="mt-3 animate-pulse space-y-2">
-                        <div className="h-8 w-24 rounded bg-slate-100" />
-                        <div className="h-3 w-20 rounded bg-slate-100" />
+                        <div className="h-8 w-24 rounded bg-[color:var(--sg-status-muted-bg)]" />
+                        <div className="h-3 w-20 rounded bg-[color:var(--sg-status-muted-bg)]" />
                     </div>
                 ) : (
                     <>
-                        <h4 className="mt-1 text-2xl font-bold text-slate-800">{displayValue}</h4>
-                        <p className="mt-1 text-xs leading-snug text-slate-400">{unit}</p>
+                        <h4 className="mt-1 text-2xl font-bold text-[color:var(--sg-text-strong)]">{displayValue}</h4>
+                        <p className="mt-1 text-xs leading-snug text-[color:var(--sg-text-faint)]">{unit}</p>
                     </>
                 )}
                 {detailLines.map((line) => (
-                    <p key={line} className="text-xs text-slate-500 mt-2 leading-snug">
+                    <p key={line} className="mt-2 text-xs leading-snug text-[color:var(--sg-text-muted)]">
                         {line}
                     </p>
                 ))}
                 {idealRange && (
-                    <p className="text-xs text-slate-400 mt-2 flex items-start gap-1 leading-snug">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    <p className="mt-2 flex items-start gap-1 text-xs leading-snug text-[color:var(--sg-text-faint)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[color:var(--sg-accent-forest)]"></span>
                         {locale === 'ko' ? `목표 범위: ${idealRange}` : `Target band: ${idealRange}`}
                     </p>
                 )}
                 {sparklinePath ? (
-                    <div className="mt-3 rounded-lg bg-slate-50 px-2 py-2">
+                    <div className="mt-3 rounded-[18px] bg-[color:var(--sg-status-muted-bg)] px-2 py-2">
                         <svg
                             viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
                             className="h-7 w-full overflow-visible"

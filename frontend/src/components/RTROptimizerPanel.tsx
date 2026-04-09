@@ -56,6 +56,12 @@ const MODE_ORDER: RtrOptimizationMode[] = [
     'heating_saving',
 ];
 const DEFAULT_OPTIMIZATION_MODE: RtrOptimizationMode = 'balanced';
+const sectionPanelClass = 'sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4';
+const metricTileClass = 'sg-warm-subpanel p-3';
+const metricLabelClass = 'text-[11px] text-[color:var(--sg-text-muted)]';
+const metricValueClass = 'mt-1 text-lg font-semibold text-[color:var(--sg-text-strong)]';
+const metricValueLargeClass = 'mt-1 text-xl font-semibold text-[color:var(--sg-text-strong)]';
+const metricMetaClass = 'mt-1 text-[11px] text-[color:var(--sg-text-muted)]';
 
 function formatNumber(
     value: number | null | undefined,
@@ -291,12 +297,12 @@ function getScenarioGroupLabel(group: string, locale: 'en' | 'ko'): string {
 
 function getRiskSeverityClass(severity: string): string {
     if (severity === 'high') {
-        return 'border-rose-200 bg-rose-50 text-rose-800';
+        return 'border-[color:var(--sg-accent-rose)]/20 bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]';
     }
     if (severity === 'medium') {
-        return 'border-amber-200 bg-amber-50 text-amber-800';
+        return 'border-[color:var(--sg-accent-amber)]/20 bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]';
     }
-    return 'border-slate-200 bg-slate-50 text-slate-700';
+    return 'border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]';
 }
 
 function getRiskFlagTitle(code: string, locale: 'en' | 'ko'): string {
@@ -378,15 +384,15 @@ function getScenarioBadgeLabel(value: string, locale: 'en' | 'ko'): string {
 
 function getScenarioBadgeClass(value: string): string {
     if (value === 'recommended') {
-        return 'bg-emerald-100 text-emerald-800';
+        return 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]';
     }
     if (value === 'baseline') {
-        return 'bg-slate-200 text-slate-700';
+        return 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]';
     }
     if (value === 'custom') {
-        return 'bg-violet-100 text-violet-800';
+        return 'bg-[color:var(--sg-accent-rose-soft)] text-[color:var(--sg-accent-rose)]';
     }
-    return 'bg-sky-100 text-sky-800';
+    return 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]';
 }
 
 function getYieldTrendLabel(value: string, locale: 'en' | 'ko'): string {
@@ -405,12 +411,12 @@ function getYieldTrendLabel(value: string, locale: 'en' | 'ko'): string {
 
 function getYieldTrendClass(value: string): string {
     if (value === 'up') {
-        return 'bg-emerald-50 text-emerald-700';
+        return 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]';
     }
     if (value === 'guarded') {
-        return 'bg-amber-50 text-amber-700';
+        return 'bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]';
     }
-    return 'bg-slate-100 text-slate-700';
+    return 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]';
 }
 
 function renderCropSpecificInsight(
@@ -424,13 +430,13 @@ function renderCropSpecificInsight(
     if (insight.crop === 'cucumber') {
         return (
             <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] p-3">
-                    <div className="text-[11px] text-slate-500">{locale === 'ko' ? '남은 엽수' : 'Remaining leaves'}</div>
-                    <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(insight.remaining_leaves, 0, locale)}</div>
+                                    <div className={metricTileClass}>
+                    <div className={metricLabelClass}>{locale === 'ko' ? '남은 엽수' : 'Remaining leaves'}</div>
+                    <div className={metricValueClass}>{formatNumber(insight.remaining_leaves, 0, locale)}</div>
                 </div>
-                                    <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] p-3">
-                    <div className="text-[11px] text-slate-500">{locale === 'ko' ? '병목 엽층' : 'Bottleneck layer'}</div>
-                    <div className="mt-1 text-lg font-semibold capitalize text-slate-900">
+                                    <div className={metricTileClass}>
+                    <div className={metricLabelClass}>{locale === 'ko' ? '병목 엽층' : 'Bottleneck layer'}</div>
+                    <div className="mt-1 text-lg font-semibold capitalize text-[color:var(--sg-text-strong)]">
                         {locale === 'ko'
                             ? insight.bottleneck_layer === 'upper'
                                 ? '상위엽'
@@ -440,17 +446,17 @@ function renderCropSpecificInsight(
                             : insight.bottleneck_layer}
                     </div>
                 </div>
-                <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-                    <div className="text-[11px] text-slate-500">{locale === 'ko' ? '상/중/하 엽 활동도' : 'Layer activity'}</div>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-700">
+                <div className={metricTileClass}>
+                    <div className={metricLabelClass}>{locale === 'ko' ? '상/중/하 엽 활동도' : 'Layer activity'}</div>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-[color:var(--sg-text)]">
                         <span>{locale === 'ko' ? '상위엽' : 'Upper'} {formatNumber(insight.layer_activity.upper, 2, locale)}</span>
                         <span>{locale === 'ko' ? '중위엽' : 'Middle'} {formatNumber(insight.layer_activity.middle, 2, locale)}</span>
                         <span>{locale === 'ko' ? '하위엽' : 'Bottom'} {formatNumber(insight.layer_activity.bottom, 2, locale)}</span>
                     </div>
                 </div>
-                <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-                    <div className="text-[11px] text-slate-500">{locale === 'ko' ? '최근 적엽 이벤트' : 'Recent leaf-removal events'}</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900">
+                <div className={metricTileClass}>
+                    <div className={metricLabelClass}>{locale === 'ko' ? '최근 적엽 이벤트' : 'Recent leaf-removal events'}</div>
+                    <div className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                         {formatNumber(insight.recent_leaf_removal_count, 0, locale)}
                     </div>
                 </div>
@@ -460,23 +466,23 @@ function renderCropSpecificInsight(
 
     return (
         <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] p-3">
-                <div className="text-[11px] text-slate-500">{locale === 'ko' ? '활성 화방' : 'Active trusses'}</div>
-                <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(insight.active_trusses, 0, locale)}</div>
+                                    <div className={metricTileClass}>
+                <div className={metricLabelClass}>{locale === 'ko' ? '활성 화방' : 'Active trusses'}</div>
+                <div className={metricValueClass}>{formatNumber(insight.active_trusses, 0, locale)}</div>
             </div>
-                                    <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] p-3">
-                <div className="text-[11px] text-slate-500">{locale === 'ko' ? '과실 분배비' : 'Fruit partition ratio'}</div>
-                <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(insight.fruit_partition_ratio, 2, locale)}</div>
+                                    <div className={metricTileClass}>
+                <div className={metricLabelClass}>{locale === 'ko' ? '과실 분배비' : 'Fruit partition ratio'}</div>
+                <div className={metricValueClass}>{formatNumber(insight.fruit_partition_ratio, 2, locale)}</div>
             </div>
-            <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-                <div className="text-[11px] text-slate-500">{locale === 'ko' ? '주요 sink cohort' : 'Dominant cohort'}</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
+            <div className={metricTileClass}>
+                <div className={metricLabelClass}>{locale === 'ko' ? '주요 sink cohort' : 'Dominant cohort'}</div>
+                <div className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                     {insight.dominant_cohort_id ?? '-'} / {formatNumber(insight.dominant_cohort_sink, 2, locale)}
                 </div>
             </div>
-            <div className="rounded-lg bg-white p-3 ring-1 ring-slate-200">
-                <div className="text-[11px] text-slate-500">{locale === 'ko' ? '최근 적과 이벤트' : 'Recent thinning events'}</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">
+            <div className={metricTileClass}>
+                <div className={metricLabelClass}>{locale === 'ko' ? '최근 적과 이벤트' : 'Recent thinning events'}</div>
+                <div className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                     {formatNumber(insight.recent_fruit_thinning_count, 0, locale)}
                 </div>
             </div>
@@ -827,8 +833,8 @@ const RTROptimizerPanel = ({
     if (isProfilePending) {
         return (
                         <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-slate-700">
-                    <p className="font-semibold text-slate-900">{copy.profileLoadingTitle}</p>
+                            <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
+                    <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.profileLoadingTitle}</p>
                     <p className="mt-1">{copy.profileLoadingBody}</p>
                 </div>
             </div>
@@ -843,8 +849,8 @@ const RTROptimizerPanel = ({
                         {profileError}
                     </div>
                 ) : null}
-                                <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-slate-700">
-                    <p className="font-semibold text-slate-900">{copy.disabledTitle}</p>
+                                <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
+                    <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.disabledTitle}</p>
                     <p className="mt-1">{isProfileUnavailable ? copy.profileFallbackBody : copy.disabledBody}</p>
                 </div>
                 <RTROutlookPanel
@@ -867,11 +873,11 @@ const RTROptimizerPanel = ({
     if (telemetryStatus === 'offline' || (telemetryStatus === 'stale' && !hasOptimizerSurface)) {
         return (
                         <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-slate-700">
-                    <p className="font-semibold text-slate-900">{copy.telemetryBlockedTitle}</p>
+                            <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
+                    <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.telemetryBlockedTitle}</p>
                     <p className="mt-1">{copy.telemetryBlockedBody}</p>
                     {telemetryWarning ? (
-                        <p className="mt-2 text-xs text-slate-600">{telemetryWarning}</p>
+                        <p className="mt-2 text-xs text-[color:var(--sg-text)]">{telemetryWarning}</p>
                     ) : null}
                 </div>
                 <RTROutlookPanel
@@ -895,19 +901,19 @@ const RTROptimizerPanel = ({
                         <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                    <div className="flex items-center gap-2 text-slate-800">
-                        <CircleGauge className="h-5 w-5 text-emerald-600" />
+                    <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
+                        <CircleGauge className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
                         <h3 className={compact ? 'text-sm font-semibold' : 'font-semibold'}>{copy.title}</h3>
                     </div>
                     {!compact ? (
-                        <p className="mt-1 text-xs text-slate-500">{copy.subtitle}</p>
+                        <p className="mt-1 text-xs text-[color:var(--sg-text-muted)]">{copy.subtitle}</p>
                     ) : null}
                 </div>
                 <button
                     type="button"
                     onClick={() => void refreshOptimization()}
                     disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget || telemetryOptimizationBlocked}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-rose)] hover:text-[color:var(--sg-accent-rose)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-accent-violet-soft)]"
                 >
                     {copy.refresh}
                 </button>
@@ -919,17 +925,17 @@ const RTROptimizerPanel = ({
                     </div>
                 ) : null}
                 {waitingForTarget ? (
-                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-slate-700">
+                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
                         {copy.waitingTarget}
                     </div>
                 ) : null}
                 {telemetryWarning ? (
-                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-slate-700">
+                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
                         {telemetryWarning}
                     </div>
                 ) : null}
                 {lowConfidence ? (
-                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-slate-700">
+                                    <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
                         {locale === 'ko'
                             ? `현재 추천안은 추가 확인이 필요합니다. 작업 이벤트와 최신 센서를 다시 확인한 뒤 적용하는 것이 좋습니다.`
                             : `This recommendation needs extra review, so refresh work events and telemetry before applying aggressive changes.`}
@@ -937,13 +943,13 @@ const RTROptimizerPanel = ({
                 ) : null}
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                                    <label className="rounded-[18px] bg-[color:var(--sg-surface-muted)] p-3 text-xs font-medium text-slate-600">
+                                    <label className="rounded-[18px] bg-[color:var(--sg-surface-muted)] p-3 text-xs font-medium text-[color:var(--sg-text)]">
                         <span>{copy.targetNode}</span>
                         <input
                             aria-label={copy.targetNode}
                             inputMode="decimal"
                             disabled={telemetryOptimizationBlocked}
-                            className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                            className="sg-field-input mt-2"
                             value={targetNodeDevelopmentPerDay ?? ''}
                             onChange={(event) => {
                                 const parsed = Number(event.target.value);
@@ -951,94 +957,94 @@ const RTROptimizerPanel = ({
                             }}
                         />
                     </label>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.predictedNode}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.predictedNode}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(stateResponse?.canonical_state.growth.predicted_node_rate_day, 3, locale)}
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.recommendedMeanTemp}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.recommendedMeanTemp}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(optimizeResponse?.optimal_targets.mean_temp_C, 1, locale)}°C
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.deltaTemp}</div>
-                        <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.deltaTemp}</div>
+                        <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-[color:var(--sg-text-strong)]">
                             {(optimizeResponse?.rtr_equivalent.delta_temp_C ?? 0) >= 0 ? (
                                 <ArrowUpRight className="h-4 w-4 text-rose-600" />
                             ) : (
-                                <ArrowDownRight className="h-4 w-4 text-sky-600" />
+                                <ArrowDownRight className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />
                             )}
                             {formatNumber(optimizeResponse?.rtr_equivalent.delta_temp_C, 2, locale)}°C
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.rtrEquivalent}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.rtrEquivalent}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(optimizeResponse?.rtr_equivalent.optimized_ratio, 3, locale)}
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.confidence}</div>
-                        <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-slate-900">
-                            {targetHit ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.confidence}</div>
+                        <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-[color:var(--sg-text-strong)]">
+                            {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
                             {readiness.label}
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.carbonMargin}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.carbonMargin}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(optimizeResponse?.flux_projection.carbon_margin, 3, locale)}
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.heatingEnergy}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.heatingEnergy}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(energySummary?.heating_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
                         </div>
-                        <div className="mt-1 text-[11px] text-slate-500">
+                        <div className={metricMetaClass}>
                             {formatNumber(energySummary?.heating_energy_kWh_m2_day, 3, locale)} kWh/m²/day
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.coolingEnergy}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.coolingEnergy}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(energySummary?.cooling_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
                         </div>
-                        <div className="mt-1 text-[11px] text-slate-500">
+                        <div className={metricMetaClass}>
                             {formatNumber(energySummary?.cooling_energy_kWh_m2_day, 3, locale)} kWh/m²/day
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.energyCost}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.energyCost}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(energySummary?.total_energy_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
                         </div>
-                        <div className="mt-1 text-[11px] text-slate-500">
+                        <div className={metricMetaClass}>
                             {locale === 'ko'
                                 ? `실면적 ${formatNumber(optimizeResponse?.actual_area_projection.energy_kwh_day, 1, locale)} kWh/일`
                                 : `${formatNumber(optimizeResponse?.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day @ actual area`}
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.laborCost}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.laborCost}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(laborSummary?.labor_index, 3, locale)}
                         </div>
-                        <div className="mt-1 text-[11px] text-slate-500">
+                        <div className={metricMetaClass}>
                             {locale === 'ko'
                                 ? `실면적 ${formatNumber(optimizeResponse?.actual_area_projection.labor_cost_krw_day, 0, locale)} 원/일`
                                 : `${formatNumber(optimizeResponse?.actual_area_projection.labor_cost_krw_day, 0, locale)} KRW/day @ actual area`}
                         </div>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3">
-                        <div className="text-[11px] text-slate-500">{copy.yieldChange}</div>
-                        <div className="mt-1 text-xl font-semibold text-slate-900">
+                    <div className={metricTileClass}>
+                        <div className={metricLabelClass}>{copy.yieldChange}</div>
+                        <div className={metricValueLargeClass}>
                             {formatNumber(yieldSummary?.harvest_trend_delta_pct, 1, locale)}%
                         </div>
-                        <div className="mt-1 text-[11px] text-slate-500">
+                        <div className={metricMetaClass}>
                             {locale === 'ko'
                                 ? `실면적 ${formatNumber(optimizeResponse?.actual_area_projection.yield_kg_day, 1, locale)} kg/일`
                                 : `${formatNumber(optimizeResponse?.actual_area_projection.yield_kg_day, 1, locale)} kg/day @ actual area`}
@@ -1055,14 +1061,14 @@ const RTROptimizerPanel = ({
                             disabled={telemetryOptimizationBlocked}
                             className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                                 optimizationMode === mode
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    ? 'bg-[color:var(--sg-accent-violet)] text-white'
+                                    : 'bg-[color:var(--sg-surface-muted)] text-[color:var(--sg-text)] hover:bg-[color:var(--sg-accent-earth-soft)]'
                             }`}
                         >
                             {getModeLabel(mode, locale)}
                         </button>
                     ))}
-                    <label className="ml-auto flex items-center gap-2 text-xs text-slate-600">
+                    <label className="ml-auto flex items-center gap-2 text-xs text-[color:var(--sg-text)]">
                         <input
                             type="checkbox"
                             checked={includeEnergyCost}
@@ -1071,7 +1077,7 @@ const RTROptimizerPanel = ({
                         />
                         {copy.includeEnergy}
                     </label>
-                    <label className="flex items-center gap-2 text-xs text-slate-600">
+                    <label className="flex items-center gap-2 text-xs text-[color:var(--sg-text)]">
                         <input
                             type="checkbox"
                             checked={includeCoolingCost}
@@ -1080,7 +1086,7 @@ const RTROptimizerPanel = ({
                         />
                         {copy.includeCooling}
                     </label>
-                    <label className="flex items-center gap-2 text-xs text-slate-600">
+                    <label className="flex items-center gap-2 text-xs text-[color:var(--sg-text)]">
                         <input
                             type="checkbox"
                             checked={includeLaborCost}
@@ -1104,10 +1110,10 @@ const RTROptimizerPanel = ({
                     </div>
                 ) : null}
                 {riskFlags.length > 0 ? (
-                    <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <section className={sectionPanelClass}>
                         <div className="mb-3 flex items-center gap-2">
                             <BadgeAlert className="h-4 w-4 text-amber-600" />
-                            <h4 className="text-sm font-semibold text-slate-900">
+                            <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                 {locale === 'ko' ? '제약 및 위험 경고' : 'Constraint and risk warnings'}
                             </h4>
                         </div>
@@ -1145,117 +1151,117 @@ const RTROptimizerPanel = ({
                     onActualAreaPyeongChange={(value) => setActualAreaPyeong(crop, value)}
                 />
 
-                <section className="rounded-xl border border-slate-200 p-4">
+                <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-emerald-600" />
-                        <h4 className="text-sm font-semibold text-slate-900">{copy.gainLoss}</h4>
+                        <Activity className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.gainLoss}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.assimilationGain}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.objective_breakdown.assimilation_gain, 3, locale)}</div>
-                            <div className="mt-1 text-[11px] text-slate-500">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.assimilationGain}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.objective_breakdown.assimilation_gain, 3, locale)}</div>
+                            <div className={metricMetaClass}>
                                 {formatNumber(optimizeResponse?.flux_projection.net_assim_umol_m2_s, 2, locale)} μmol/m²/s
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.respirationCost}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.objective_breakdown.respiration_cost, 3, locale)}</div>
-                            <div className="mt-1 text-[11px] text-slate-500">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.respirationCost}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.objective_breakdown.respiration_cost, 3, locale)}</div>
+                            <div className={metricMetaClass}>
                                 {formatNumber(optimizeResponse?.flux_projection.respiration_umol_m2_s, 2, locale)} μmol/m²/s
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.carbonMargin}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.carbonMargin}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(optimizeResponse?.flux_projection.carbon_margin, 3, locale)}
                             </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
+                            <div className={metricMetaClass}>
                                 {optimizeResponse?.feasibility.carbon_margin_positive ? copy.yes : copy.no}
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.sinkOverload}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.sinkOverload}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(optimizeResponse?.objective_breakdown.sink_overload_penalty, 3, locale)}
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.heatingEnergy}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.heatingEnergy}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(energySummary?.heating_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
                             </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
+                            <div className={metricMetaClass}>
                                 {formatNumber(energySummary?.heating_energy_kWh_m2_day, 3, locale)} kWh/m²/day
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.coolingEnergy}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.coolingEnergy}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(energySummary?.cooling_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
                             </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
+                            <div className={metricMetaClass}>
                                 {formatNumber(energySummary?.cooling_energy_kWh_m2_day, 3, locale)} kWh/m²/day
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.energyCost}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.energyCost}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(energySummary?.total_energy_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}
                             </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
+                            <div className={metricMetaClass}>
                                 {formatNumber(energySummary?.total_energy_kWh_m2_day, 3, locale)} kWh/m²/day
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.laborCost}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.laborCost}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(laborSummary?.labor_index, 3, locale)}
                             </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
+                            <div className={metricMetaClass}>
                                 {formatNumber(laborSummary?.labor_hours_m2_day, 3, locale)} h/m²/day
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.humidityRisk}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.humidityRisk}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(optimizeResponse?.objective_breakdown.humidity_risk_penalty, 3, locale)}
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.diseaseRisk}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.diseaseRisk}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(optimizeResponse?.objective_breakdown.disease_penalty, 3, locale)}
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.stressPenalty}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.stressPenalty}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(optimizeResponse?.objective_breakdown.stress_penalty, 3, locale)}
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.yieldChange}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.yieldChange}</div>
+                            <div className={metricValueClass}>
                                 {formatNumber(yieldSummary?.harvest_trend_delta_pct, 1, locale)}%
                             </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
+                            <div className={metricMetaClass}>
                                 {formatNumber(yieldSummary?.predicted_yield_kg_m2_day, 3, locale)} kg/m²/day
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.targetHit}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{targetHit ? copy.yes : copy.no}</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.targetHit}</div>
+                            <div className={metricValueClass}>{targetHit ? copy.yes : copy.no}</div>
                         </div>
                     </div>
                     {explanationCopy ? (
-                        <div className="mt-4 rounded-lg bg-emerald-50 px-3 py-3 text-sm leading-6 text-slate-700">
-                            <p className="font-medium text-slate-900">{explanationCopy.summary}</p>
+                        <div className="mt-4 rounded-lg bg-[color:var(--sg-status-live-bg)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
+                            <p className="font-medium text-[color:var(--sg-text-strong)]">{explanationCopy.summary}</p>
                             <p className="mt-2">{explanationCopy.crop_summary}</p>
                             {explanationCopy.reason_tags.length > 0 ? (
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {explanationCopy.reason_tags.map((tag) => (
-                                        <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-100">
+                                        <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-status-live-text)] ring-1 ring-[color:var(--sg-outline-soft)]">
                                             {getReasonTagLabel(tag, locale)}
                                         </span>
                                     ))}
@@ -1268,82 +1274,82 @@ const RTROptimizerPanel = ({
                     ) : null}
                 </section>
 
-                <section className="rounded-xl border border-slate-200 p-4">
+                <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Leaf className="h-4 w-4 text-emerald-600" />
-                        <h4 className="text-sm font-semibold text-slate-900">{copy.cropInsight}</h4>
+                        <Leaf className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.cropInsight}</h4>
                     </div>
                     {renderCropSpecificInsight(optimizeResponse?.crop_specific_insight ?? null, locale)}
                 </section>
-                <section className="rounded-xl border border-slate-200 p-4">
+                <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Thermometer className="h-4 w-4 text-emerald-600" />
-                        <h4 className="text-sm font-semibold text-slate-900">{copy.controlEffects}</h4>
+                        <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.controlEffects}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 기온' : 'Post-control air temp'}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.Tin_post_C, 1, locale)}°C</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{locale === 'ko' ? '제어 후 기온' : 'Post-control air temp'}</div>
+                            <div className={metricValueClass}>{formatNumber(postControlEnv?.Tin_post_C, 1, locale)}°C</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 엽온' : 'Post-control leaf temp'}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.Tleaf_post_C, 1, locale)}°C</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{locale === 'ko' ? '제어 후 엽온' : 'Post-control leaf temp'}</div>
+                            <div className={metricValueClass}>{formatNumber(postControlEnv?.Tleaf_post_C, 1, locale)}°C</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 상대습도' : 'Post-control RH'}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.RH_post_pct, 1, locale)}%</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{locale === 'ko' ? '제어 후 상대습도' : 'Post-control RH'}</div>
+                            <div className={metricValueClass}>{formatNumber(postControlEnv?.RH_post_pct, 1, locale)}%</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 VPD' : 'Post-control VPD'}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.VPD_post_kPa, 2, locale)} kPa</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{locale === 'ko' ? '제어 후 VPD' : 'Post-control VPD'}</div>
+                            <div className={metricValueClass}>{formatNumber(postControlEnv?.VPD_post_kPa, 2, locale)} kPa</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{locale === 'ko' ? '제어 후 CO₂' : 'Post-control CO2'}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(postControlEnv?.CO2_post_ppm, 0, locale)} ppm</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{locale === 'ko' ? '제어 후 CO₂' : 'Post-control CO2'}</div>
+                            <div className={metricValueClass}>{formatNumber(postControlEnv?.CO2_post_ppm, 0, locale)} ppm</div>
                         </div>
                     </div>
                 </section>
-                <section className="rounded-xl border border-slate-200 p-4">
+                <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Thermometer className="h-4 w-4 text-emerald-600" />
-                        <h4 className="text-sm font-semibold text-slate-900">{copy.setpoints}</h4>
+                        <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.setpoints}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.dayHeating}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.day_heating_min_temp_C, 1, locale)}°C</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.dayHeating}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.optimal_targets.day_heating_min_temp_C, 1, locale)}°C</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.nightHeating}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.night_heating_min_temp_C, 1, locale)}°C</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.nightHeating}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.optimal_targets.night_heating_min_temp_C, 1, locale)}°C</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.dayCooling}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.day_cooling_target_C, 1, locale)}°C</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.dayCooling}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.optimal_targets.day_cooling_target_C, 1, locale)}°C</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.nightCooling}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.night_cooling_target_C, 1, locale)}°C</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.nightCooling}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.optimal_targets.night_cooling_target_C, 1, locale)}°C</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.ventBias}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.vent_bias_C, 2, locale)}°C</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.ventBias}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.optimal_targets.vent_bias_C, 2, locale)}°C</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.screenBias}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.screen_bias_pct, 1, locale)}%</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.screenBias}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.optimal_targets.screen_bias_pct, 1, locale)}%</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.circulationFan}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.circulation_fan_pct, 0, locale)}%</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.circulationFan}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.optimal_targets.circulation_fan_pct, 0, locale)}%</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.co2Target}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(optimizeResponse?.optimal_targets.co2_target_ppm, 0, locale)} ppm</div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.co2Target}</div>
+                            <div className={metricValueClass}>{formatNumber(optimizeResponse?.optimal_targets.co2_target_ppm, 0, locale)} ppm</div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.holdTime}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.holdTime}</div>
+                            <div className={metricValueClass}>
                                 {controlGuidance
                                     ? locale === 'ko'
                                         ? `주간 ${formatNumber(controlGuidance.day_hold_hours, 0, locale)}h / 야간 ${formatNumber(controlGuidance.night_hold_hours, 0, locale)}h`
@@ -1351,15 +1357,15 @@ const RTROptimizerPanel = ({
                                     : '-'}
                             </div>
                         </div>
-                        <div className="rounded-lg bg-slate-50 p-3">
-                            <div className="text-[11px] text-slate-500">{copy.changeLimit}</div>
-                            <div className="mt-1 text-lg font-semibold text-slate-900">
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.changeLimit}</div>
+                            <div className={metricValueClass}>
                                 {controlGuidance
                                     ? `${formatNumber(controlGuidance.change_limit_C_per_step, 2, locale)}°C/step`
                                     : '-'}
                             </div>
                             {controlGuidance ? (
-                                <div className="mt-1 text-[11px] text-slate-500">
+                                <div className={metricMetaClass}>
                                     {locale === 'ko'
                                         ? `총 변경 한도 ±${formatNumber(controlGuidance.max_delta_temp_C, 1, locale)}°C`
                                         : `Max total delta ±${formatNumber(controlGuidance.max_delta_temp_C, 1, locale)}°C`}
@@ -1369,21 +1375,21 @@ const RTROptimizerPanel = ({
                     </div>
                 </section>
 
-                <section className="rounded-xl border border-slate-200 p-4">
+                <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <FlaskConical className="h-4 w-4 text-emerald-600" />
-                        <h4 className="text-sm font-semibold text-slate-900">{copy.sensitivity}</h4>
+                        <FlaskConical className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.sensitivity}</h4>
                     </div>
                     <div className="space-y-3">
                         {sensitivityRows.map((row) => (
                             <div key={`${row.control}-${row.target}`}>
-                                <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
+                                <div className="mb-1 flex items-center justify-between text-xs text-[color:var(--sg-text)]">
                                     <span>{getSensitivityControlLabel(row.control, locale)} → {getSensitivityTargetLabel(row.target, locale)}</span>
                                     <span>{formatNumber(row.elasticity, 2, locale)}</span>
                                 </div>
-                                <div className="h-2 rounded-full bg-slate-100">
+                                <div className="h-2 rounded-full bg-[color:var(--sg-surface-muted)]">
                                     <div
-                                        className={`h-2 rounded-full ${row.direction === 'increase' ? 'bg-emerald-500' : 'bg-sky-500'}`}
+                                        className={`h-2 rounded-full ${row.direction === 'increase' ? 'bg-[color:var(--sg-accent-violet)]' : 'bg-[color:var(--sg-accent-earth)]'}`}
                                         style={{ width: `${row.widthPct}%` }}
                                     />
                                 </div>
@@ -1392,112 +1398,112 @@ const RTROptimizerPanel = ({
                     </div>
                 </section>
 
-                <section className="rounded-xl border border-slate-200 p-4">
+                <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <CircleGauge className="h-4 w-4 text-emerald-600" />
-                        <h4 className="text-sm font-semibold text-slate-900">{copy.scenarios}</h4>
+                        <CircleGauge className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.scenarios}</h4>
                     </div>
-                    <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div className="mb-4 rounded-lg border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] p-3">
                         <div className="mb-3">
-                            <p className="text-sm font-semibold text-slate-900">{copy.customScenarioTitle}</p>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">{copy.customScenarioBody}</p>
+                            <p className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.customScenarioTitle}</p>
+                            <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.customScenarioBody}</p>
                         </div>
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.customLabel}</span>
                                 <input
                                     aria-label={copy.customLabel}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     disabled={telemetryOptimizationBlocked}
                                     placeholder={defaultCustomLabel}
                                     value={customScenarioDraft.label}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, label: event.target.value }))}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.dayHeating}</span>
                                 <input
                                     aria-label={`${copy.dayHeating} custom`}
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked || actuatorAvailability?.heating === false}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={customScenarioDraft.dayHeatingMinTempC}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, dayHeatingMinTempC: event.target.value }))}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.nightHeating}</span>
                                 <input
                                     aria-label={`${copy.nightHeating} custom`}
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked || actuatorAvailability?.heating === false}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={customScenarioDraft.nightHeatingMinTempC}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, nightHeatingMinTempC: event.target.value }))}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.dayCooling}</span>
                                 <input
                                     aria-label={`${copy.dayCooling} custom`}
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked || actuatorAvailability?.cooling === false}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={customScenarioDraft.dayCoolingTargetC}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, dayCoolingTargetC: event.target.value }))}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.nightCooling}</span>
                                 <input
                                     aria-label={`${copy.nightCooling} custom`}
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked || actuatorAvailability?.cooling === false}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={customScenarioDraft.nightCoolingTargetC}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, nightCoolingTargetC: event.target.value }))}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.ventBias}</span>
                                 <input
                                     aria-label={`${copy.ventBias} custom`}
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked || actuatorAvailability?.ventilation === false}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={customScenarioDraft.ventBiasC}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, ventBiasC: event.target.value }))}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.screenBias}</span>
                                 <input
                                     aria-label={`${copy.screenBias} custom`}
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked || actuatorAvailability?.thermal_screen === false}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={customScenarioDraft.screenBiasPct}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, screenBiasPct: event.target.value }))}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.circulationFan}</span>
                                 <input
                                     aria-label={`${copy.circulationFan} custom`}
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked || actuatorAvailability?.circulation_fan === false}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={customScenarioDraft.circulationFanPct}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, circulationFanPct: event.target.value }))}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.co2Target}</span>
                                 <input
                                     aria-label={`${copy.co2Target} custom`}
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked || actuatorAvailability?.co2 === false}
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={customScenarioDraft.co2TargetPpm}
                                     onChange={(event) => setCustomScenarioDraft((current) => ({ ...current, co2TargetPpm: event.target.value }))}
                                 />
@@ -1531,7 +1537,7 @@ const RTROptimizerPanel = ({
                                     );
                                 }}
                                 disabled={!hasCustomScenarioDraft || telemetryOptimizationBlocked}
-                                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                className="rounded-full bg-[color:var(--sg-accent-violet)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
                             >
                                 {copy.customApply}
                             </button>
@@ -1551,23 +1557,23 @@ const RTROptimizerPanel = ({
                                         co2TargetPpm: '',
                                     });
                                 }}
-                                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                                className="rounded-full border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-earth)] hover:bg-[color:var(--sg-surface-muted)]"
                             >
                                 {copy.customReset}
                             </button>
                             {customScenario ? (
-                                <span className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-[11px] font-medium text-sky-800">
+                                <span className="inline-flex items-center rounded-full bg-[color:var(--sg-accent-earth-soft)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-accent-earth)]">
                                     {getScenarioLabel(customScenario.label, locale)}
                                 </span>
                             ) : null}
                         </div>
                     </div>
                     {scenarioRows.length === 0 ? (
-                        <p className="text-sm text-slate-500">{copy.noScenario}</p>
+                        <p className="text-sm text-[color:var(--sg-text-muted)]">{copy.noScenario}</p>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="min-w-full text-left text-xs text-slate-600">
-                                <thead className="text-[11px] uppercase tracking-wide text-slate-400">
+                            <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
+                                <thead className="text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
                                     <tr>
                                         <th className="px-2 py-2">{copy.modeHeader}</th>
                                         <th className="px-2 py-2">{copy.meanHeader}</th>
@@ -1582,14 +1588,14 @@ const RTROptimizerPanel = ({
                                 <tbody>
                                     {groupedScenarioRows.map((groupEntry) => (
                                         <Fragment key={`scenario-group-${groupEntry.group}`}>
-                                            <tr className="border-t border-slate-200 bg-slate-50">
-                                                <td colSpan={8} className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                            <tr className="border-t border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)]">
+                                                <td colSpan={8} className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--sg-text-muted)]">
                                                     {getScenarioGroupLabel(groupEntry.group, locale)}
                                                 </td>
                                             </tr>
                                             {groupEntry.rows.map((row, index) => (
-                                                <tr key={`${groupEntry.group}-${row.label}-${row.mode}-${index}`} className="border-t border-slate-100">
-                                                    <td className="px-2 py-2 font-medium text-slate-900">
+                                                <tr key={`${groupEntry.group}-${row.label}-${row.mode}-${index}`} className="border-t border-[color:var(--sg-outline-soft)]">
+                                                    <td className="px-2 py-2 font-medium text-[color:var(--sg-text-strong)]">
                                                         <div>{getScenarioLabel(row.label, locale)}</div>
                                                         <div className="mt-1 flex flex-wrap gap-1">
                                                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getScenarioBadgeClass(row.recommendation_badge)}`}>
@@ -1601,19 +1607,19 @@ const RTROptimizerPanel = ({
                                                             <span
                                                                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                                                                     getReadinessDescriptor(row.confidence, locale).tone === 'success'
-                                                                        ? 'bg-emerald-100 text-emerald-800'
+                                                                        ? 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]'
                                                                         : getReadinessDescriptor(row.confidence, locale).tone === 'info'
                                                                             ? 'bg-amber-100 text-amber-800'
-                                                                            : 'bg-slate-200 text-slate-700'
+                                                                            : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]'
                                                                 }`}
                                                             >
                                                                 {copy.confidence} {getReadinessDescriptor(row.confidence, locale).label}
                                                             </span>
                                                         </div>
-                                                        <div className="mt-1 text-[10px] text-slate-500">
+                                                        <div className="mt-1 text-[10px] text-[color:var(--sg-text-muted)]">
                                                             {copy.dayHeating} {formatNumber(row.day_heating_min_temp_C ?? row.day_min_temp_C, 1, locale)}°C · {copy.dayCooling} {formatNumber(row.day_cooling_target_C, 1, locale)}°C
                                                         </div>
-                                                        <div className="mt-1 text-[10px] text-slate-500">
+                                                        <div className="mt-1 text-[10px] text-[color:var(--sg-text-muted)]">
                                                             {copy.ventBias} {formatNumber(row.vent_bias_C, 2, locale)}°C · {copy.screenBias} {formatNumber(row.screen_bias_pct, 1, locale)}% · {copy.circulationFan} {formatNumber(row.circulation_fan_pct, 0, locale)}%
                                                         </div>
                                                         {row.risk_flags.length > 0 ? (
@@ -1621,7 +1627,7 @@ const RTROptimizerPanel = ({
                                                                 {row.risk_flags.slice(0, 2).map((riskFlag, riskIndex) => {
                                                                     const code = String(riskFlag.code ?? `row-risk-${riskIndex}`);
                                                                     return (
-                                                                        <span key={`${row.label}-${code}-${riskIndex}`} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
+                                                                        <span key={`${row.label}-${code}-${riskIndex}`} className="rounded-full bg-[color:var(--sg-surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[color:var(--sg-text)]">
                                                                             {getRiskFlagTitle(code, locale)}
                                                                         </span>
                                                                     );
@@ -1633,23 +1639,23 @@ const RTROptimizerPanel = ({
                                                     <td className="px-2 py-2">{formatNumber(row.node_rate_day, 3, locale)}</td>
                                                     <td className="px-2 py-2">
                                                         <div>{formatNumber(row.net_carbon, 3, locale)}</div>
-                                                        <div className="mt-1 text-[10px] text-slate-400">
+                                                        <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                             {formatNumber(row.net_assimilation, 3, locale)} μmol/m²/s
                                                         </div>
                                                     </td>
                                                     <td className="px-2 py-2">
                                                         <div>{formatNumber(row.humidity_penalty, 3, locale)}</div>
-                                                        <div className="mt-1 text-[10px] text-slate-400">
+                                                        <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                             {copy.diseaseRisk} {formatNumber(row.disease_penalty, 3, locale)}
                                                         </div>
                                                     </td>
                                                     <td className="px-2 py-2">
                                                         <div>{formatNumber(row.total_energy_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}</div>
-                                                        <div className="mt-1 text-[10px] text-slate-400">
+                                                        <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                             {copy.heatingEnergy} {formatNumber(row.heating_energy_kwh_m2_day, 2, locale)} · {copy.coolingEnergy} {formatNumber(row.cooling_energy_kwh_m2_day, 2, locale)}
                                                         </div>
                                                         {row.actual_area_projection ? (
-                                                            <div className="mt-1 text-[10px] text-slate-400">
+                                                            <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                                 {locale === 'ko'
                                                                     ? `실면적 ${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/일 · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} 원/일`
                                                                     : `${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} KRW/day`}
@@ -1658,11 +1664,11 @@ const RTROptimizerPanel = ({
                                                     </td>
                                                     <td className="px-2 py-2">
                                                         <div>{formatNumber(row.yield_kg_m2_day, 3, locale)} kg/m²/day</div>
-                                                        <div className="mt-1 text-[10px] text-slate-400">
+                                                        <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                             Δ {formatNumber(row.harvest_trend_delta_pct, 1, locale)}%
                                                         </div>
                                                         {row.actual_area_projection ? (
-                                                            <div className="mt-1 text-[10px] text-slate-400">
+                                                            <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                                 {locale === 'ko'
                                                                     ? `실면적 ${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/일 · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/주`
                                                                     : `${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/day · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/week`}
@@ -1672,7 +1678,7 @@ const RTROptimizerPanel = ({
                                                     <td className="px-2 py-2">
                                                         <div>{formatNumber(row.labor_index, 3, locale)}</div>
                                                         {row.actual_area_projection ? (
-                                                            <div className="mt-1 text-[10px] text-slate-400">
+                                                            <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                                 {locale === 'ko'
                                                                     ? `실면적 ${formatNumber(row.actual_area_projection.labor_cost_krw_day, 0, locale)} 원/일`
                                                                     : `${formatNumber(row.actual_area_projection.labor_cost_krw_day, 0, locale)} KRW/day`}
@@ -1691,8 +1697,8 @@ const RTROptimizerPanel = ({
 
                 <RTRCalibrationWorkspace key={crop} crop={crop} onSaved={refreshCalibrationConsumers} />
 
-                <details className="rounded-xl border border-slate-200 p-3">
-                    <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900">
+                <details className="rounded-xl border border-[color:var(--sg-outline-soft)] p-3">
+                    <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--sg-text-strong)]">
                         {copy.baselineCard}
                     </summary>
                     <div className="mt-3">
@@ -1713,7 +1719,7 @@ const RTROptimizerPanel = ({
                 </details>
 
                 {(optimizerLoading || loading) ? (
-                    <div className="text-xs text-slate-500">{copy.computing}</div>
+                    <div className="text-xs text-[color:var(--sg-text-muted)]">{copy.computing}</div>
                 ) : null}
             </div>
         </div>
