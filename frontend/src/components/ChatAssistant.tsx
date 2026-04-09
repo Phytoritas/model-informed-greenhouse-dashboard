@@ -13,6 +13,7 @@ import type {
 } from '../types';
 import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
+import { getReadinessDescriptor } from '../lib/design/readiness';
 import { buildAiDashboardContext } from '../utils/aiDashboardContext';
 import { getCropLabel } from '../utils/displayCopy';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
@@ -100,14 +101,15 @@ function ActionTag({
 
     return (
         <div className="space-y-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                 {title}
             </div>
             <div className="flex flex-wrap gap-2">
                 {items.map((item) => (
                     <span
                         key={`${title}-${item}`}
-                        className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700"
+                        className="rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-text-strong)]"
+                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                     >
                         {item}
                     </span>
@@ -120,18 +122,25 @@ function ActionTag({
 function StructuredReply({
     display,
     copy,
+    locale,
 }: {
     display: AdvisorDisplayPayload;
     copy: Record<string, string>;
+    locale: 'ko' | 'en';
 }) {
+    const readiness = getReadinessDescriptor(display.confidence, locale);
+
     return (
-        <div className="mt-3 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div
+            className="mt-3 space-y-3 rounded-[24px] bg-[color:var(--sg-surface-muted)] p-3"
+            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+        >
             {display.summary ? (
                 <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                         {copy.summaryTitle}
                     </div>
-                    <p className="mt-1 text-sm leading-relaxed text-slate-800">{display.summary}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-[color:var(--sg-text-strong)]">{display.summary}</p>
                 </div>
             ) : null}
             <ActionTag title={copy.nowTitle} items={display.actions_now ?? []} />
@@ -139,12 +148,12 @@ function StructuredReply({
             <ActionTag title={copy.weekTitle} items={display.actions_week ?? []} />
             {(display.risks ?? []).length > 0 ? (
                 <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                         {copy.risksTitle}
                     </div>
-                    <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                    <ul className="mt-2 space-y-2 text-sm text-[color:var(--sg-text-strong)]">
                         {(display.risks ?? []).map((risk) => (
-                            <li key={risk} className="rounded-xl bg-white px-3 py-2">
+                            <li key={risk} className="rounded-[18px] bg-white/86 px-3 py-2">
                                 {risk}
                             </li>
                         ))}
@@ -153,12 +162,12 @@ function StructuredReply({
             ) : null}
             {(display.monitor ?? []).length > 0 ? (
                 <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                         {copy.monitorTitle}
                     </div>
-                    <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                    <ul className="mt-2 space-y-2 text-sm text-[color:var(--sg-text-strong)]">
                         {(display.monitor ?? []).map((item) => (
-                            <li key={item} className="rounded-xl bg-white px-3 py-2">
+                            <li key={item} className="rounded-[18px] bg-white/86 px-3 py-2">
                                 {item}
                             </li>
                         ))}
@@ -166,8 +175,8 @@ function StructuredReply({
                 </div>
             ) : null}
             {typeof display.confidence === 'number' ? (
-                <div className="text-[11px] font-medium text-slate-500">
-                    {copy.confidenceLabel}: {Math.round(display.confidence * 100)}%
+                <div className="text-[11px] font-medium text-[color:var(--sg-text-faint)]">
+                    {readiness.lead}: {readiness.label}
                 </div>
             ) : null}
         </div>
@@ -223,7 +232,7 @@ const ChatAssistant = ({
             nowTitle: '지금',
             todayTitle: '오늘',
             weekTitle: '이번 주',
-            confidenceLabel: '판단 안정도',
+            confidenceLabel: '반영 상태',
             promptPesticide: `${cropLabel} 흰가루병 후보 농약을 요약해줘`,
             promptNutrient: `${cropLabel} 현재 단계 양액 레시피와 경계 조건을 정리해줘`,
             promptCorrection: `${cropLabel} 양액 보정 초안의 수동 검토 경계를 설명해줘`,
@@ -241,7 +250,7 @@ const ChatAssistant = ({
             smartGrowHint: 'Open connected screens or continue with the suggested next questions.',
             knowledgeSearch: 'Find materials',
             runtimeTitle: 'Model runtime',
-            runtimeReady: 'Scenario linked',
+            runtimeReady: 'Recommendation linked',
             runtimeFallback: 'Monitoring first',
             runtimeUnavailable: 'Runtime unavailable',
             runtimeRecommended: 'Recommended',
@@ -258,7 +267,7 @@ const ChatAssistant = ({
             nowTitle: 'Now',
             todayTitle: 'Today',
             weekTitle: 'This week',
-            confidenceLabel: 'Decision readiness',
+            confidenceLabel: 'Readiness',
             promptPesticide: `Summarize powdery mildew pesticide candidates for ${cropLabel}`,
             promptNutrient: `Summarize the current nutrient recipe and guardrails for ${cropLabel}`,
             promptCorrection: `Explain the manual-review boundary of the nutrient correction draft for ${cropLabel}`,
@@ -328,24 +337,24 @@ const ChatAssistant = ({
                 ? copy.runtimeUnavailable
                 : copy.runtimeFallback;
         const toneClasses = runtime.status === 'ready'
-            ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white'
+            ? 'sg-tint-green'
             : runtime.status === 'unavailable'
-                ? 'border-rose-200 bg-gradient-to-br from-rose-50 to-white'
-                : 'border-amber-200 bg-gradient-to-br from-amber-50 to-white';
+                ? 'sg-tint-violet'
+                : 'sg-tint-amber';
         const badgeClasses = runtime.status === 'ready'
-            ? 'bg-emerald-100 text-emerald-700'
+            ? 'bg-white/92 text-[color:var(--sg-accent-success)]'
             : runtime.status === 'unavailable'
-                ? 'bg-rose-100 text-rose-700'
-                : 'bg-amber-100 text-amber-700';
+                ? 'bg-white/92 text-[color:var(--sg-accent-danger)]'
+                : 'bg-white/92 text-[color:var(--sg-accent-amber)]';
 
         return (
-            <div className={`mt-3 rounded-2xl border px-3 py-3 shadow-sm ${toneClasses}`}>
+            <div className={`mt-3 rounded-[24px] px-3 py-3 ${toneClasses}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                             {copy.runtimeTitle}
                         </div>
-                        <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                        <p className="mt-1 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
                             {runtime.summary}
                         </p>
                     </div>
@@ -353,31 +362,31 @@ const ChatAssistant = ({
                         {statusLabel}
                     </span>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-700">
-                    <div className="rounded-xl border border-white/80 bg-white/80 px-2.5 py-2">
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{copy.runtimeLai}</div>
-                        <div className="mt-1 font-semibold text-slate-900">{formatRuntimeValue(state.lai, 2)}</div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[color:var(--sg-text-muted)]">
+                    <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeLai}</div>
+                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">{formatRuntimeValue(state.lai, 2)}</div>
                     </div>
-                    <div className="rounded-xl border border-white/80 bg-white/80 px-2.5 py-2">
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{copy.runtimeBalance}</div>
-                        <div className="mt-1 font-semibold text-slate-900">
+                    <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeBalance}</div>
+                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                             {formatRuntimeValue(state.source_sink_balance, 2)}
                         </div>
                     </div>
-                    <div className="rounded-xl border border-white/80 bg-white/80 px-2.5 py-2">
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{copy.runtimeCanopyA}</div>
-                        <div className="mt-1 font-semibold text-slate-900">
+                    <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeCanopyA}</div>
+                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                             {formatRuntimeValue(state.canopy_net_assimilation_umol_m2_s, 1, ' µmol')}
                         </div>
                     </div>
-                    <div className="rounded-xl border border-white/80 bg-white/80 px-2.5 py-2">
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{copy.runtimeLimiting}</div>
-                        <div className="mt-1 font-semibold text-slate-900">{state.limiting_factor ?? '-'}</div>
+                    <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeLimiting}</div>
+                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">{state.limiting_factor ?? '-'}</div>
                     </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                     {recommendedAction ? (
-                        <span className="rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
+                        <span className="rounded-full bg-[color:var(--sg-accent-violet)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
                             {copy.runtimeRecommended}: {recommendedAction}
                         </span>
                     ) : null}
@@ -387,13 +396,14 @@ const ChatAssistant = ({
                         return (
                             <span
                                 key={`${controlKey}-${lever.direction}`}
-                                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-700"
+                                className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-medium text-[color:var(--sg-text-strong)]"
+                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 {copy.runtimeLevers}: {label} · {localizeDirection(lever.direction, locale)}
                             </span>
                         );
                     })}
-                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-700">
+                    <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-medium text-[color:var(--sg-text-strong)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                         {copy.runtimeConstraints}: {violations.length ? violations.length : copy.runtimeNoConstraints}
                     </span>
                 </div>
@@ -476,27 +486,35 @@ const ChatAssistant = ({
     }
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[500px] w-96 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between bg-slate-900 p-4 text-white">
+        <div
+            className="fixed bottom-6 right-6 z-50 flex h-[560px] w-[28rem] flex-col overflow-hidden rounded-[32px]"
+            style={{
+                background: 'linear-gradient(160deg, rgba(255,251,246,0.99), rgba(244,231,223,0.96) 60%, rgba(233,215,204,0.94))',
+                boxShadow: 'var(--sg-shadow-soft)',
+            }}
+        >
+            <div className="flex items-center justify-between border-b border-[color:var(--sg-outline-soft)] bg-white/60 p-4 text-[color:var(--sg-text-strong)] backdrop-blur-sm">
                 <div className="flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-emerald-300" />
+                    <div className="rounded-2xl bg-white/88 p-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <Bot className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                    </div>
                     <span className="font-medium">{copy.title}</span>
                 </div>
                 <button
                     type="button"
                     onClick={onClose}
                     aria-label={copy.title}
-                    className="rounded-full p-1 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    className="rounded-full p-1 transition-colors hover:bg-[color:var(--sg-surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
                 >
                     <X className="h-5 w-5" />
                 </button>
             </div>
 
-            <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-800">
+            <div className="border-b border-[color:var(--sg-outline-soft)] px-4 py-3 sg-tint-amber">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-accent-violet)]">
                     {copy.smartGrowTitle}
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-emerald-900">
+                <p className="mt-1 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
                     {smartGrowLoading
                         ? copy.smartGrowLoading
                         : smartGrowError
@@ -510,7 +528,8 @@ const ChatAssistant = ({
                                 key={prompt}
                                 type="button"
                                 onClick={() => setInput(prompt)}
-                                className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-medium text-emerald-800 transition-colors hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                                className="rounded-full bg-white/92 px-3 py-1 text-[11px] font-medium text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 {prompt}
                             </button>
@@ -521,14 +540,15 @@ const ChatAssistant = ({
                     <button
                         type="button"
                         onClick={() => onOpenKnowledgeSearch(knowledgeSearchRequest)}
-                        className="mt-3 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-emerald-800 transition-colors hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                        className="mt-3 rounded-full bg-white/92 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                     >
                         {copy.knowledgeSearch}
                     </button>
                 ) : null}
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4">
+            <div className="flex-1 space-y-4 overflow-y-auto bg-[color:var(--sg-surface)] p-4">
                 {messages.map((message, index) => (
                     <div
                         key={`${message.role}-${index}-${message.text.slice(0, 24)}`}
@@ -537,26 +557,27 @@ const ChatAssistant = ({
                         <div
                             className={`max-w-[84%] rounded-3xl p-3 text-sm ${
                                 message.role === 'user'
-                                    ? 'rounded-br-none bg-emerald-600 text-white'
-                                    : 'rounded-bl-none border border-slate-200 bg-white text-slate-700'
+                                    ? 'rounded-br-none bg-[color:var(--sg-accent-violet)] text-white'
+                                    : 'rounded-bl-none bg-white/94 text-[color:var(--sg-text)]'
                             }`}
+                            style={message.role === 'user' ? undefined : { boxShadow: 'var(--sg-shadow-card)' }}
                         >
                             {message.role === 'ai' ? (
                                 <>
                                     {message.display ? (
-                                        <StructuredReply display={message.display} copy={copy} />
+                                        <StructuredReply display={message.display} copy={copy} locale={locale} />
                                     ) : null}
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                         components={{
-                                            h2: ({ ...props }) => <h2 className="mb-1 mt-2 text-sm font-semibold text-slate-900" {...props} />,
-                                            h3: ({ ...props }) => <h3 className="mb-1 mt-2 text-xs font-semibold text-slate-900" {...props} />,
+                                            h2: ({ ...props }) => <h2 className="mb-1 mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
+                                            h3: ({ ...props }) => <h3 className="mb-1 mt-2 text-xs font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
                                             p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
                                             ul: ({ ...props }) => <ul className="mb-2 list-disc space-y-1 pl-5" {...props} />,
                                             ol: ({ ...props }) => <ol className="mb-2 list-decimal space-y-1 pl-5" {...props} />,
                                             li: ({ ...props }) => <li className="mb-0" {...props} />,
-                                            strong: ({ ...props }) => <strong className="font-semibold text-slate-900" {...props} />,
-                                            code: ({ ...props }) => <code className="rounded bg-slate-100 px-1 py-0.5 text-slate-900" {...props} />,
+                                            strong: ({ ...props }) => <strong className="font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
+                                            code: ({ ...props }) => <code className="rounded bg-[color:var(--sg-surface-muted)] px-1 py-0.5 text-[color:var(--sg-text-strong)]" {...props} />,
                                         }}
                                     >
                                         {message.text}
@@ -571,21 +592,21 @@ const ChatAssistant = ({
                 ))}
             </div>
 
-            <div className="flex gap-2 border-t border-slate-100 bg-white p-4">
+            <div className="flex gap-2 border-t border-[color:var(--sg-outline-soft)] bg-white/72 p-4">
                 <input
                     type="text"
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     onKeyDown={(event) => event.key === 'Enter' && !isSending && handleSend()}
                     placeholder={copy.placeholder}
-                    className="flex-1 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="flex-1 rounded-full bg-[color:var(--sg-surface-muted)] px-4 py-2 text-sm text-[color:var(--sg-text-strong)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-accent-violet)]"
                 />
                 <button
                     type="button"
                     onClick={handleSend}
                     disabled={isSending}
                     aria-label={copy.title}
-                    className="rounded-full bg-emerald-600 p-2 text-white transition-colors hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:opacity-50"
+                    className="rounded-full bg-[color:var(--sg-accent-violet)] p-2 text-white transition-colors hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)] disabled:opacity-50"
                 >
                     <Send className="h-4 w-4" />
                 </button>

@@ -4,6 +4,7 @@ import { TrendingUp, Zap, Scale, Leaf } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleTime, getIntlLocale } from '../i18n/locale';
+import { getReadinessDescriptor } from '../lib/design/readiness';
 import { UNIT_LABELS, getCropModelLabel, getDevelopmentStageLabel } from '../utils/displayCopy';
 import ChartFrame from './charts/ChartFrame';
 
@@ -27,7 +28,7 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
             stage: '단계',
             rate: '일일 생장량',
             harvestForecast: '수확 예측 (kg)',
-            confidence: '판단 안정도',
+            confidence: '반영 상태',
             harvestReady: '수확 가능 과실',
             electricalDemand: '전력 수요 (kW)',
             thermalLoad: '열부하 (kW)',
@@ -42,14 +43,14 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
         : {
             growthModel: 'Growth Model',
             yieldForecast: 'Yield Forecast',
-            aiInference: 'AI Inference',
+            aiInference: 'Model read',
             energyModel: 'Energy Model',
-            efficiencyCost: 'Efficiency & Cost',
+            efficiencyCost: 'Efficiency and cost',
             biomassLine: 'Biomass (g m⁻²)',
             stage: 'Stage',
             rate: 'Rate',
             harvestForecast: 'Harvest forecast (kg)',
-            confidence: 'Decision readiness',
+            confidence: 'Readiness',
             harvestReady: 'Harvest-ready fruits',
             electricalDemand: 'Electrical demand (kW)',
             thermalLoad: 'Thermal load (kW)',
@@ -68,6 +69,7 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
     const biomass = metrics.growth.biomass;
     const lai = metrics.growth.lai;
     const predictedWeekly = metrics.yield.predictedWeekly;
+    const readiness = getReadinessDescriptor(metrics.yield.confidence, locale);
     const energyEfficiency = metrics.energy.efficiency;
     const thermalLoadKw = metrics.energy.loadKw ?? metrics.energy.consumption;
     const costPerHour = metrics.energy.costPrediction;
@@ -189,7 +191,7 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                     )}
                 </ChartFrame>
                 <div className="mt-2 flex justify-between text-xs text-slate-500">
-                    <span>{copy.confidence}: <span className="font-medium text-orange-700">{metrics.yield.confidence}%</span></span>
+                    <span>{readiness.lead}: <span className="font-medium text-orange-700">{readiness.label}</span></span>
                     <span>{copy.harvestReady}: ~{metrics.yield.harvestableFruits.toFixed(0)}</span>
                 </div>
             </div>

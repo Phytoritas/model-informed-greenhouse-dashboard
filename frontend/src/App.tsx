@@ -77,6 +77,8 @@ const ConsultingReport = lazy(() => import('./components/ConsultingReport'));
 const SmartGrowSurfacePanel = lazy(() => import('./components/SmartGrowSurfacePanel'));
 const WeatherOutlookPanel = lazy(() => import('./components/WeatherOutlookPanel'));
 const ProducePricesPanel = lazy(() => import('./components/ProducePricesPanel'));
+const AlertsCommandCenter = lazy(() => import('./components/alerts/AlertsCommandCenter'));
+const ResourcesCommandCenter = lazy(() => import('./components/resources/ResourcesCommandCenter'));
 const RTROptimizerPanel = lazy(() => import('./components/RTROptimizerPanel'));
 
 const CHAT_ASSISTANT_FALLBACK_COPY = {
@@ -508,6 +510,7 @@ function App() {
   const activeWorkspace = activeSection.workspace as DashboardWorkspaceKey;
   const routeSectionTabId = activeSection.tabs.find((tab) => tab.id === location.hash.replace(/^#/, ''))?.id;
   const activeSectionTabId = routeSectionTabId ?? sectionTabSelections[activeSection.key] ?? activeSection.tabs[0]?.id;
+  const activePanelId = activeSectionTabId ?? activeSection.tabs[0]?.id ?? '';
   const hasTelemetryData = history.length > 0 || telemetry.lastMessageAt !== null;
   const unresolvedSensorValue = telemetry.status === 'offline'
     ? copy.sensorUnavailable
@@ -720,7 +723,7 @@ function App() {
         knowledgePrompt: '막히는 판단은 자료를 먼저 찾고, 바로 질문으로 이어가세요.',
         knowledgeAssistant: '질문하기',
         knowledgeRag: '자료 찾기',
-        confidenceLead: '판단 안정도',
+        confidenceLead: '반영 상태',
         freshnessLead: '센서 상태',
         workingModeLead: '현재 운영 모드',
         scenarioReady: '시나리오 비교 가능',
@@ -756,7 +759,7 @@ function App() {
         alertsDesc: 'Risks, blockers, and response flow',
         knowledgeDesc: 'Search materials and continue into questions',
         alertsWorkspaceTitle: 'Alerts and operator checks',
-        alertsWorkspaceDescription: 'Review telemetry state, runtime violations, and operating risks in one place.',
+        alertsWorkspaceDescription: 'Review telemetry state, control limits, and operating risks in one place.',
         resourcesTitle: 'Resources and economics',
         resourcesDescription: 'Connect weather, market, energy, and resource use to decisions.',
         knowledgeTitle: 'Materials & Ask',
@@ -764,7 +767,7 @@ function App() {
         knowledgePrompt: 'Search materials first, then move straight into the follow-up question.',
         knowledgeAssistant: 'Ask',
         knowledgeRag: 'Search',
-        confidenceLead: 'Decision readiness',
+        confidenceLead: 'Readiness',
         freshnessLead: 'Telemetry freshness',
         workingModeLead: 'Operating mode',
         scenarioReady: 'Scenario compare ready',
@@ -901,29 +904,11 @@ function App() {
     }
   }, [navigate, sections, setAdvisorOpenRequest, setIsAdvisorTabsOpen]);
 
-  const scrollToSectionAnchor = useCallback((tabId: string) => {
-    window.requestAnimationFrame(() => {
-      document.getElementById(tabId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }, []);
-
   const handleSectionTabSelect = useCallback((tabId: string) => {
     setSectionTabSelections((current) => ({ ...current, [activeSection.key]: tabId }));
 
     navigate({ pathname: activeSection.path, hash: `#${tabId}` }, { replace: true });
-    scrollToSectionAnchor(tabId);
-  }, [activeSection.key, activeSection.path, navigate, scrollToSectionAnchor]);
-
-  useEffect(() => {
-    const hashTabId = location.hash.replace(/^#/, '');
-    if (!hashTabId) {
-      return;
-    }
-    if (!activeSection.tabs.some((tab) => tab.id === hashTabId)) {
-      return;
-    }
-    scrollToSectionAnchor(hashTabId);
-  }, [activeSection.tabs, location.hash, scrollToSectionAnchor]);
+  }, [activeSection.key, activeSection.path, navigate]);
 
   useEffect(() => {
     if (telemetry.lastMessageAt === null) {
@@ -1124,7 +1109,7 @@ function App() {
   const cropSignal = `${locale === 'ko' ? 'LAI' : 'LAI'} ${modelMetrics.growth.lai.toFixed(1)} · ${locale === 'ko' ? '광합성' : 'Assim.'} ${currentData.photosynthesis.toFixed(1)}`;
   const alertSignal = leadAlert
     ? leadAlert.title
-    : (locale === 'ko' ? '현재 긴급 경보 없음' : 'No urgent alert');
+    : (locale === 'ko' ? '현재 바로 조치 없음' : 'No urgent alert');
 
   const renderWorkspaceOverview = () => {
     if (!activeWorkspaceItem || activeWorkspace === 'command') {
@@ -1183,7 +1168,7 @@ function App() {
             ]}
             supportCards={[
               { label: locale === 'ko' ? '텔레메트리 상태' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary, detail: locale === 'ko' ? '추천안 해석은 센서 freshness와 직접 연결됩니다.' : 'Read the recommendation together with sensor freshness.', toneClass: 'sg-tint-neutral' },
-              { label: locale === 'ko' ? '제어 제약' : 'Control blockers', value: `${runtimeViolationCount}`, detail: locale === 'ko' ? '현재 runtime 제약 또는 risk flag 수' : 'Current runtime violations or risk flags.', toneClass: 'sg-tint-amber' },
+              { label: locale === 'ko' ? '제어 제약' : 'Control blockers', value: `${runtimeViolationCount}`, detail: locale === 'ko' ? '현재 제어 제한 또는 위험 항목 수' : 'Current control limits or risk items.', toneClass: 'sg-tint-amber' },
               { label: locale === 'ko' ? '에너지 신호' : 'Energy signal', value: energySignal, detail: locale === 'ko' ? '냉난방 비용과 효율을 함께 봅니다.' : 'Keep heating/cooling cost and efficiency in view.', toneClass: 'sg-tint-green' },
             ]}
           />
@@ -1267,7 +1252,7 @@ function App() {
             ]}
             supportCards={[
               { label: locale === 'ko' ? '최상위 경보' : 'Lead alert', value: alertSignal, detail: locale === 'ko' ? '지금 가장 먼저 확인할 운영 이슈입니다.' : 'The first operating issue to review now.', toneClass: 'sg-tint-amber' },
-              { label: locale === 'ko' ? '리스크 개수' : 'Risk count', value: `${alertItems.length}`, detail: locale === 'ko' ? 'critical, warning, info, resolved를 합친 현재 카드 수' : 'Current cards across critical, warning, info, and resolved.', toneClass: 'sg-tint-neutral' },
+              { label: locale === 'ko' ? '주의 알림 수' : 'Alert count', value: `${alertItems.length}`, detail: locale === 'ko' ? '바로 조치, 주의 확인, 운영 메모를 합친 현재 카드 수' : 'Current cards across urgent actions, checks, and logged notes.', toneClass: 'sg-tint-neutral' },
               { label: locale === 'ko' ? '텔레메트리 상태' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary, detail: locale === 'ko' ? '알림 해석은 센서 freshness와 함께 봅니다.' : 'Read alerts together with sensor freshness.', toneClass: 'sg-tint-blue' },
             ]}
           />
@@ -1380,7 +1365,7 @@ function App() {
   const overviewSurface = activeWorkspace === 'command'
     ? (
         <div className="space-y-6">
-          <section id="overview-hero" className="scroll-mt-28">
+          {activePanelId === 'overview-hero' ? (
             <HeroControlCard
               operatingMode={runtimeRecommendedAction ?? selectedRtrProfile?.strategyLabel ?? heroCopy.scenarioReady}
               primaryNarrative={heroPrimaryNarrative}
@@ -1398,15 +1383,23 @@ function App() {
               onOpenAdvisor={() => handleOpenAdvisorTabs()}
               onOpenAssistant={handleChatToggle}
             />
-          </section>
-          <section id="overview-live" className="scroll-mt-28">
+          ) : null}
+          {activePanelId === 'overview-live' ? (
             <LiveMetricStrip
               statusSummary={kpiStatusSummary}
               telemetryStatus={telemetry.status}
               primaryTiles={primaryKpiTiles}
               secondaryTiles={secondaryKpiTiles}
             />
-          </section>
+          ) : null}
+          {activePanelId === 'overview-board' ? (
+            <TodayBoard
+              actionsNow={aiDisplay?.actions_now ?? []}
+              actionsToday={aiDisplay?.actions_today ?? []}
+              actionsWeek={aiDisplay?.actions_week ?? []}
+              monitor={aiDisplay?.monitor ?? []}
+            />
+          ) : null}
         </div>
       )
     : renderWorkspaceOverview();
@@ -1434,35 +1427,105 @@ function App() {
   const leftColumnSurface = activeWorkspace === 'advisor'
     ? (
         <div ref={advisorTabsAnchorRef} className="space-y-6">
-          <AdvisorTabs
-            key={`${selectedCrop}-${activeSection.key}-${advisorOpenRequest?.nonce ?? 0}`}
-            crop={selectedCrop}
-            summary={smartGrowSummary}
-            currentData={currentData}
-            metrics={deferredModelMetrics}
-            history={deferredHistory}
-            forecast={deferredForecast}
-            producePrices={producePrices}
-            weather={weather}
-            rtrProfile={selectedRtrProfile}
-            isOpen={isAdvisorTabsOpen}
-            initialTab={advisorOpenRequest?.tab ?? activeSection.advisorTab ?? 'environment'}
-            initialCorrectionToolOpen={Boolean(advisorOpenRequest?.showCorrectionTool)}
-            onClose={() => setIsAdvisorTabsOpen(false)}
-          />
-          {activeSection.key === 'growth' ? (
-            <CropDetails
-              crop={selectedCrop}
-              currentData={currentData}
-              metrics={modelMetrics}
-            />
-          ) : null}
+          {activeSection.key === 'growth' && activePanelId === 'growth-trend' ? (
+            <>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-slate-500" />
+                  <h2 className="text-lg font-semibold text-slate-800">{locale === 'ko' ? '?앹쑁 異붿꽭 遺꾩꽍' : 'Growth analytics'}: {selectedCropLabel}</h2>
+                </div>
+                <Suspense fallback={<LoadingSkeleton title={copy.advancedModelAnalytics} loadingMessage={copy.advancedModelAnalyticsLoading} minHeightClassName="min-h-[320px]" />}>
+                  <ModelAnalytics
+                    crop={selectedCrop}
+                    metrics={deferredModelMetrics}
+                    metricHistory={deferredMetricHistory}
+                    forecast={deferredForecast}
+                  />
+                </Suspense>
+              </div>
+              <Suspense fallback={<LoadingSkeleton title={copy.yieldForecast} loadingMessage={copy.yieldForecastLoading} minHeightClassName="min-h-[280px]" />}>
+                <ForecastPanel forecast={deferredForecast} crop={selectedCrop} />
+              </Suspense>
+            </>
+          ) : (
+            <>
+              <AdvisorTabs
+                key={`${selectedCrop}-${activeSection.key}-${activePanelId}-${advisorOpenRequest?.nonce ?? 0}`}
+                crop={selectedCrop}
+                summary={smartGrowSummary}
+                currentData={currentData}
+                metrics={deferredModelMetrics}
+                history={deferredHistory}
+                forecast={deferredForecast}
+                producePrices={producePrices}
+                weather={weather}
+                rtrProfile={selectedRtrProfile}
+                isOpen={isAdvisorTabsOpen}
+                initialTab={
+                  activeSection.key === 'growth'
+                    ? (activePanelId === 'growth-work' ? 'work' : 'physiology')
+                    : activeSection.key === 'nutrient'
+                      ? 'nutrient'
+                      : activeSection.key === 'protection'
+                        ? 'pesticide'
+                        : activeSection.key === 'harvest'
+                          ? 'harvest_market'
+                          : (advisorOpenRequest?.tab ?? activeSection.advisorTab ?? 'environment')
+                }
+                initialCorrectionToolOpen={
+                  activeSection.key === 'nutrient'
+                    ? activePanelId === 'nutrient-tool'
+                    : Boolean(advisorOpenRequest?.showCorrectionTool)
+                }
+                onClose={() => setIsAdvisorTabsOpen(false)}
+              />
+              {activeSection.key === 'growth' && activePanelId === 'growth-crop' ? (
+                <CropDetails
+                  crop={selectedCrop}
+                  currentData={currentData}
+                  metrics={modelMetrics}
+                />
+              ) : null}
+              {activeSection.key === 'nutrient' && activePanelId === 'nutrient-watch' ? (
+                <DecisionSnapshotGrid
+                  currentData={currentData}
+                  modelMetrics={modelMetrics}
+                  weather={weather}
+                  weatherLoading={isWeatherLoading}
+                  producePrices={producePrices}
+                  produceLoading={isProducePricesLoading}
+                />
+              ) : null}
+              {activeSection.key === 'protection' && activePanelId === 'protection-check' ? (
+                <AlertRail items={alertItems.length ? alertItems : [{
+                  id: 'ready',
+                  severity: 'resolved',
+                  title: locale === 'ko' ? '?꾩옱 諛붾줈 議곗튂 ?놁쓬' : 'No active critical alert',
+                  body: heroCopy.telemetryLive,
+                }]} />
+              ) : null}
+              {activeSection.key === 'harvest' && activePanelId === 'harvest-market' ? (
+                <Suspense fallback={<LoadingSkeleton title={copy.liveProducePrices} loadingMessage={copy.liveProducePricesLoading} minHeightClassName="min-h-[420px]" />}>
+                  <ProducePricesPanel
+                    prices={producePrices}
+                    loading={isProducePricesLoading}
+                    error={producePricesError}
+                  />
+                </Suspense>
+              ) : null}
+              {activeSection.key === 'harvest' && activePanelId === 'harvest-forecast' ? (
+                <Suspense fallback={<LoadingSkeleton title={copy.yieldForecast} loadingMessage={copy.yieldForecastLoading} minHeightClassName="min-h-[280px]" />}>
+                  <ForecastPanel forecast={deferredForecast} crop={selectedCrop} />
+                </Suspense>
+              ) : null}
+            </>
+          )}
         </div>
       )
     : activeWorkspace === 'rtr'
       ? (
           <>
-            <div id="control-rtr" className="scroll-mt-28">
+            {activePanelId === 'control-rtr' ? (
               <Suspense fallback={<LoadingSkeleton title={copy.rtrStrategy} loadingMessage={copy.rtrStrategyLoading} minHeightClassName="min-h-[320px]" />}>
                 <RTROptimizerPanel
                   crop={selectedCrop}
@@ -1481,9 +1544,8 @@ function App() {
                   onRefreshProfiles={refreshRtrProfiles}
                 />
               </Suspense>
-            </div>
-            <div id="control-effects" className="scroll-mt-28" />
-            <div id="control-compare" className="scroll-mt-28">
+            ) : null}
+            {activePanelId === 'control-compare' ? (
               <DecisionSnapshotGrid
                 currentData={currentData}
                 modelMetrics={modelMetrics}
@@ -1492,44 +1554,52 @@ function App() {
                 producePrices={producePrices}
                 produceLoading={isProducePricesLoading}
               />
-            </div>
+            ) : null}
+            {activePanelId === 'control-effects' ? (
+              <ControlPanel
+                status={controls}
+                onToggle={toggleControl}
+                onSettingsChange={setTempSettings}
+              />
+            ) : null}
           </>
         )
       : activeWorkspace === 'resources'
         ? (
-            <>
-              <Suspense fallback={<LoadingSkeleton title={copy.daeguLiveWeather} loadingMessage={copy.daeguLiveWeatherLoading} minHeightClassName="min-h-[220px]" />}>
-                <WeatherOutlookPanel
-                  weather={weather}
-                  loading={isWeatherLoading}
-                  error={weatherError}
-                />
-              </Suspense>
-              <Suspense fallback={<LoadingSkeleton title={copy.liveProducePrices} loadingMessage={copy.liveProducePricesLoading} minHeightClassName="min-h-[420px]" />}>
-                <ProducePricesPanel
-                  prices={producePrices}
-                  loading={isProducePricesLoading}
-                  error={producePricesError}
-                />
-              </Suspense>
-            </>
+            <Suspense fallback={<LoadingSkeleton title={locale === 'ko' ? '자원·비용 운영' : 'Resources and cost'} loadingMessage={copy.smartGrowSurfaceLoading} minHeightClassName="min-h-[520px]" />}>
+              <ResourcesCommandCenter
+                locale={locale}
+                cropLabel={selectedCropLabel}
+                currentData={currentData}
+                modelMetrics={modelMetrics}
+                weather={weather}
+                weatherLoading={isWeatherLoading}
+                weatherError={weatherError}
+                producePrices={producePrices}
+                produceLoading={isProducePricesLoading}
+                produceError={producePricesError}
+                activePanel={activePanelId as 'resources-energy' | 'resources-market' | 'resources-stock'}
+              />
+            </Suspense>
           )
         : activeWorkspace === 'alerts'
           ? (
-              <>
-                <AlertRail items={alertItems.length ? alertItems : [{
-                  id: 'ready',
-                  severity: 'resolved',
-                  title: locale === 'ko' ? '현재 긴급 경보 없음' : 'No active critical alert',
-                  body: heroCopy.telemetryLive,
-                }]} />
-                <LiveMetricStrip
-                  statusSummary={kpiStatusSummary}
+              <Suspense fallback={<LoadingSkeleton title={locale === 'ko' ? '바로 조치 센터' : 'Action center'} loadingMessage={copy.smartGrowSurfaceLoading} minHeightClassName="min-h-[520px]" />}>
+                <AlertsCommandCenter
+                  locale={locale}
+                  items={alertItems.length ? alertItems : [{
+                    id: 'ready',
+                    severity: 'resolved',
+                    title: locale === 'ko' ? '현재 바로 조치 없음' : 'No active critical alert',
+                    body: heroCopy.telemetryLive,
+                  }]}
                   telemetryStatus={telemetry.status}
+                  statusSummary={kpiStatusSummary}
                   primaryTiles={primaryKpiTiles}
                   secondaryTiles={secondaryKpiTiles}
+                  activePanel={activePanelId as 'alerts-priority' | 'alerts-stream' | 'alerts-history'}
                 />
-              </>
+              </Suspense>
             )
           : activeWorkspace === 'knowledge'
             ? (
@@ -1616,19 +1686,7 @@ function App() {
               );
 
   const rightSidebarSurface = activeWorkspace === 'resources'
-    ? (
-        <>
-          {baseAdvisorPanel}
-          <DecisionSnapshotGrid
-            currentData={currentData}
-            modelMetrics={modelMetrics}
-            weather={weather}
-            weatherLoading={isWeatherLoading}
-            producePrices={producePrices}
-            produceLoading={isProducePricesLoading}
-          />
-        </>
-      )
+    ? baseAdvisorPanel
     : activeWorkspace === 'alerts'
       ? (
           <>
@@ -1650,7 +1708,7 @@ function App() {
               <AlertRail items={alertItems.length ? alertItems : [{
                 id: 'ready',
                 severity: 'resolved',
-                title: locale === 'ko' ? '현재 긴급 경보 없음' : 'No active critical alert',
+                title: locale === 'ko' ? '현재 바로 조치 없음' : 'No active critical alert',
                 body: heroCopy.telemetryLive,
               }]} />
             ) : null}
@@ -1665,82 +1723,79 @@ function App() {
           </>
         );
 
-  const lowerFoldSurface = activeSection.key === 'overview' || activeSection.key === 'growth'
+  const cropStatusCard = (
+    <div className="rounded-[28px] bg-white/82 p-6" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h4 className="flex items-center gap-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
+          <Leaf className="h-4 w-4 text-[color:var(--sg-accent-forest)]" />
+          {copy.cropStatus}: {selectedCropLabel}
+        </h4>
+        <span className="rounded-full bg-[color:var(--sg-accent-forest-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--sg-accent-forest)]">
+          {getDevelopmentStageLabel(modelMetrics.growth.developmentStage, locale)}
+        </span>
+      </div>
+      <div className="mb-2 h-2.5 w-full rounded-full bg-[color:var(--sg-surface-deep)]">
+        <div className="h-2.5 rounded-full bg-[color:var(--sg-accent-violet)]" style={{ width: '75%' }} />
+      </div>
+      <p className="flex justify-between text-xs text-[color:var(--sg-text-faint)]">
+        <span>{copy.growthCycle}</span>
+        <span>
+          {growthDay ? (locale === 'ko' ? `${growthDay}일차` : `Day ${growthDay}`) : '-'}
+          {startDateLabel ? ` (${copy.since} ${startDateLabel})` : ''}
+        </span>
+      </p>
+      <p className="mt-2 text-xs text-[color:var(--sg-text-faint)]">{copy.simTime}: {currentDateLabel}</p>
+    </div>
+  );
+
+  const lowerFoldSurface = activeSection.key === 'overview'
     ? (
-        <>
-          {activeSection.key === 'overview' ? (
-            <>
-              <div className="mb-8">
-                <Suspense fallback={<LoadingSkeleton title={copy.smartGrowSurfaceTitle} loadingMessage={copy.smartGrowSurfaceLoading} minHeightClassName="min-h-[320px]" />}>
-                  <SmartGrowSurfacePanel
-                    crop={selectedCrop}
-                    summary={smartGrowSummary}
-                    loading={isSmartGrowLoading}
-                    error={smartGrowError}
-                    onOpenSurface={handleOpenSmartGrowSurface}
-                  />
-                </Suspense>
-              </div>
-              <div className="mb-8 grid gap-6 xl:grid-cols-2">
-                <section id="overview-board" className="scroll-mt-28">
-                  <TodayBoard
-                    actionsNow={aiDisplay?.actions_now ?? []}
-                    actionsToday={aiDisplay?.actions_today ?? []}
-                    actionsWeek={aiDisplay?.actions_week ?? []}
-                    monitor={aiDisplay?.monitor ?? []}
-                  />
-                </section>
-                <DecisionSnapshotGrid
-                  currentData={currentData}
-                  modelMetrics={modelMetrics}
-                  weather={weather}
-                  weatherLoading={isWeatherLoading}
-                  producePrices={producePrices}
-                  produceLoading={isProducePricesLoading}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="mb-8 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-              <div>
-                <div className="mb-4 flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-slate-500" />
-                  <h2 className="text-lg font-semibold text-slate-800">
-                    {locale === 'ko' ? '생육 추세 분석' : 'Growth analytics'}: {selectedCropLabel}
-                  </h2>
-                </div>
-                <Suspense fallback={<LoadingSkeleton title={copy.advancedModelAnalytics} loadingMessage={copy.advancedModelAnalyticsLoading} minHeightClassName="min-h-[320px]" />}>
-                  <ModelAnalytics
-                    crop={selectedCrop}
-                    metrics={deferredModelMetrics}
-                    metricHistory={deferredMetricHistory}
-                    forecast={deferredForecast}
-                  />
-                </Suspense>
-              </div>
-              <TodayBoard
-                actionsNow={aiDisplay?.actions_now ?? []}
-                actionsToday={aiDisplay?.actions_today ?? []}
-                actionsWeek={aiDisplay?.actions_week ?? []}
-                monitor={aiDisplay?.monitor ?? []}
-              />
-            </div>
-          )}
-          <div className="mb-8">
-            <Suspense fallback={<LoadingSkeleton title={copy.liveProducePrices} loadingMessage={copy.liveProducePricesLoading} minHeightClassName="min-h-[420px]" />}>
-              <ProducePricesPanel
-                prices={producePrices}
-                loading={isProducePricesLoading}
-                error={producePricesError}
+        activePanelId === 'overview-hero' ? (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)]">
+            <Suspense fallback={<LoadingSkeleton title={copy.smartGrowSurfaceTitle} loadingMessage={copy.smartGrowSurfaceLoading} minHeightClassName="min-h-[320px]" />}>
+              <SmartGrowSurfacePanel
+                crop={selectedCrop}
+                summary={smartGrowSummary}
+                loading={isSmartGrowLoading}
+                error={smartGrowError}
+                onOpenSurface={handleOpenSmartGrowSurface}
               />
             </Suspense>
+            <DecisionSnapshotGrid
+              currentData={currentData}
+              modelMetrics={modelMetrics}
+              weather={weather}
+              weatherLoading={isWeatherLoading}
+              producePrices={producePrices}
+              produceLoading={isProducePricesLoading}
+            />
           </div>
-          <div className="mb-8">
-            <Suspense fallback={<LoadingSkeleton title={copy.yieldForecast} loadingMessage={copy.yieldForecastLoading} minHeightClassName="min-h-[280px]" />}>
-              <ForecastPanel forecast={deferredForecast} crop={selectedCrop} />
-            </Suspense>
+        ) : activePanelId === 'overview-live' ? (
+          <Suspense fallback={<LoadingSkeleton title={copy.realTimeEnvironmentalAnalysis} loadingMessage={copy.realTimeEnvironmentalAnalysisLoading} minHeightClassName="min-h-[520px]" />}>
+            <Charts data={deferredHistory} />
+          </Suspense>
+        ) : (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
+            <TodayBoard
+              actionsNow={aiDisplay?.actions_now ?? []}
+              actionsToday={aiDisplay?.actions_today ?? []}
+              actionsWeek={aiDisplay?.actions_week ?? []}
+              monitor={aiDisplay?.monitor ?? []}
+            />
+            <DecisionSnapshotGrid
+              currentData={currentData}
+              modelMetrics={modelMetrics}
+              weather={weather}
+              weatherLoading={isWeatherLoading}
+              producePrices={producePrices}
+              produceLoading={isProducePricesLoading}
+            />
           </div>
-          <div className="mb-8">
+        )
+      )
+    : activeSection.key === 'growth'
+      ? (
+          activePanelId === 'growth-trend' ? (
             <Suspense fallback={<LoadingSkeleton title={copy.consultingReport} loadingMessage={copy.consultingReportLoading} minHeightClassName="min-h-[320px]" />}>
               <ConsultingReport
                 analysis={aiAnalysis}
@@ -1749,111 +1804,115 @@ function App() {
                 crop={selectedCrop}
               />
             </Suspense>
-          </div>
-        </>
-      )
-    : null;
+          ) : activePanelId === 'growth-work' ? (
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
+              <TodayBoard
+                actionsNow={aiDisplay?.actions_now ?? []}
+                actionsToday={aiDisplay?.actions_today ?? []}
+                actionsWeek={aiDisplay?.actions_week ?? []}
+                monitor={aiDisplay?.monitor ?? []}
+              />
+              <Suspense fallback={<LoadingSkeleton title={copy.consultingReport} loadingMessage={copy.consultingReportLoading} minHeightClassName="min-h-[320px]" />}>
+                <ConsultingReport
+                  analysis={aiAnalysis}
+                  metrics={deferredModelMetrics}
+                  currentData={currentData}
+                  crop={selectedCrop}
+                />
+              </Suspense>
+            </div>
+          ) : (
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]">
+              <Suspense fallback={<LoadingSkeleton title={copy.yieldForecast} loadingMessage={copy.yieldForecastLoading} minHeightClassName="min-h-[280px]" />}>
+                <ForecastPanel forecast={deferredForecast} crop={selectedCrop} />
+              </Suspense>
+              <DecisionSnapshotGrid
+                currentData={currentData}
+                modelMetrics={modelMetrics}
+                weather={weather}
+                weatherLoading={isWeatherLoading}
+                producePrices={producePrices}
+                produceLoading={isProducePricesLoading}
+              />
+            </div>
+          )
+        )
+      : null;
 
-  const bottomRowSurface = activeSection.key === 'overview' || activeSection.key === 'growth'
+  const bottomRowSurface = activeSection.key === 'overview'
     ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+        activePanelId === 'overview-live' ? (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
+            <Suspense fallback={<LoadingSkeleton title={copy.daeguLiveWeather} loadingMessage={copy.daeguLiveWeatherLoading} minHeightClassName="min-h-[320px]" />}>
+              <WeatherOutlookPanel
+                weather={weather}
+                loading={isWeatherLoading}
+                error={weatherError}
+              />
+            </Suspense>
+            <Suspense fallback={<LoadingSkeleton title={copy.liveProducePrices} loadingMessage={copy.liveProducePricesLoading} minHeightClassName="min-h-[420px]" />}>
+              <ProducePricesPanel
+                prices={producePrices}
+                loading={isProducePricesLoading}
+                error={producePricesError}
+              />
+            </Suspense>
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.22fr)_minmax(320px,0.78fr)]">
             <ControlPanel
               status={controls}
               onToggle={toggleControl}
               onSettingsChange={setTempSettings}
             />
+            {cropStatusCard}
           </div>
-          <div className="lg:col-span-1">
-            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-              <div className="mb-2 flex items-center justify-between">
-                <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  <Leaf className="h-4 w-4 text-green-600" />
-                  {copy.cropStatus}: {selectedCropLabel}
-                </h4>
-                <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                  {getDevelopmentStageLabel(modelMetrics.growth.developmentStage, locale)}
-                </span>
-              </div>
-              <div className="mb-1 h-2.5 w-full rounded-full bg-slate-100">
-                <div className="h-2.5 rounded-full bg-green-600" style={{ width: '75%' }} />
-              </div>
-              <p className="flex justify-between text-xs text-slate-500">
-                <span>{copy.growthCycle}</span>
-                <span>
-                  {growthDay ? (locale === 'ko' ? `${growthDay}일차` : `Day ${growthDay}`) : '-'}
-                  {startDateLabel ? ` (${copy.since} ${startDateLabel})` : ''}
-                </span>
-              </p>
-              <p className="mt-1 text-xs text-slate-500">{copy.simTime}: {currentDateLabel}</p>
-            </div>
-          </div>
-        </div>
+        )
       )
-    : null;
+    : activeSection.key === 'growth'
+      ? (
+          activePanelId === 'growth-trend' ? (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+              <Suspense fallback={<LoadingSkeleton title={copy.liveProducePrices} loadingMessage={copy.liveProducePricesLoading} minHeightClassName="min-h-[420px]" />}>
+                <ProducePricesPanel
+                  prices={producePrices}
+                  loading={isProducePricesLoading}
+                  error={producePricesError}
+                />
+              </Suspense>
+              {cropStatusCard}
+            </div>
+          ) : activePanelId === 'growth-work' ? (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
+              <ControlPanel
+                status={controls}
+                onToggle={toggleControl}
+                onSettingsChange={setTempSettings}
+              />
+              {cropStatusCard}
+            </div>
+          ) : cropStatusCard
+        )
+      : null;
 
   const askSurface = (
-    <div className="space-y-6">
-      <section id="ask-chat" className="scroll-mt-28">
-        <AskSearchPage
-          locale={locale}
-          cropLabel={selectedCropLabel}
-          summary={smartGrowSummary}
-          actionsNow={aiDisplay?.actions_now ?? []}
-          actionsToday={aiDisplay?.actions_today ?? []}
-          note={heroCopy.knowledgePrompt}
-          signals={[
-            { label: locale === 'ko' ? '센서 상태' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary },
-            { label: locale === 'ko' ? '시장 신호' : 'Market', value: priceSignal },
-            { label: locale === 'ko' ? '외기 흐름' : 'Weather', value: weatherSignal },
-          ]}
-          onOpenAsk={handleChatToggle}
-          onOpenSearch={() => handleOpenRagAssistant()}
-          onQuickSearch={(query) => handleOpenRagAssistant({
-            query,
-            autoRun: true,
-            source: 'dashboard',
-          })}
-        />
-      </section>
-      <section id="ask-search" className="scroll-mt-28">
-        <Suspense fallback={<LoadingSkeleton title={copy.smartGrowSurfaceTitle} loadingMessage={copy.smartGrowSurfaceLoading} minHeightClassName="min-h-[320px]" />}>
-          <SmartGrowSurfacePanel
-            crop={selectedCrop}
-            summary={smartGrowSummary}
-            loading={isSmartGrowLoading}
-            error={smartGrowError}
-            onOpenSurface={handleOpenSmartGrowSurface}
-          />
-        </Suspense>
-      </section>
-      <section id="ask-history" className="scroll-mt-28">
-        <DashboardCard
-          eyebrow={locale === 'ko' ? '자료 이어보기' : 'Continue from materials'}
-          title={locale === 'ko' ? '검색 뒤에 이어질 운영 판단' : 'The operating decisions that follow search'}
-          description={locale === 'ko'
-            ? '자료를 찾고 난 뒤 곧바로 이어질 양액, 방제, 환경 제어 도구를 한 곳에 묶었습니다.'
-            : 'Keep the nutrient, protection, and control tools that usually follow a search in one place.'}
-          variant="scenario"
-        >
-          <div className="grid gap-3 md:grid-cols-3">
-            {(smartGrowSummary?.surfaces ?? []).map((surface) => (
-              <div key={surface.key} className="sg-advisor-inset-soft">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
-                  {surface.key.replace(/_/g, ' ')}
-                </div>
-                <div className="mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
-                  {surface.status}
-                </div>
-                <p className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
-                  {surface.limitation ?? (locale === 'ko' ? '바로 이어서 열 수 있는 운영 화면입니다.' : 'Ready to continue as an operating screen.')}
-                </p>
-              </div>
-            ))}
-          </div>
-        </DashboardCard>
-      </section>
-    </div>
+    <AskSearchPage
+      locale={locale}
+      crop={selectedCrop}
+      cropLabel={selectedCropLabel}
+      summary={smartGrowSummary}
+      actionsNow={aiDisplay?.actions_now ?? []}
+      actionsToday={aiDisplay?.actions_today ?? []}
+      note={heroCopy.knowledgePrompt}
+      signals={[
+        { label: locale === 'ko' ? '센서 상태' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary },
+        { label: locale === 'ko' ? '시장 신호' : 'Market', value: priceSignal },
+        { label: locale === 'ko' ? '외기 흐름' : 'Weather', value: weatherSignal },
+      ]}
+      onOpenAsk={handleChatToggle}
+      onOpenSearch={() => handleOpenRagAssistant()}
+      activePanel={activePanelId as 'ask-chat' | 'ask-search' | 'ask-history'}
+    />
   );
 
   const routeFrameProps = {

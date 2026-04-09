@@ -1,36 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap");
+
 :root {
-  --sg-font-display: "Manrope", "Inter", "Pretendard Variable", "Pretendard", system-ui, sans-serif;
-  --sg-font-body: "Pretendard Variable", "Pretendard", "Inter", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  --sg-bg: #f8f9ff;
-  --sg-bg-deep: #e5eeff;
-  --sg-surface: rgba(248, 249, 255, 0.88);
-  --sg-surface-strong: rgba(255, 255, 255, 0.98);
-  --sg-surface-muted: rgba(239, 244, 255, 0.92);
-  --sg-surface-contrast: #154212;
-  --sg-glass: rgba(248, 249, 255, 0.8);
-  --sg-outline-soft: rgba(194, 201, 187, 0.2);
-  --sg-outline-strong: rgba(114, 121, 110, 0.18);
-  --sg-text-strong: #0b1c30;
-  --sg-text: #213145;
-  --sg-text-muted: #526171;
-  --sg-text-faint: #7a8593;
-  --sg-accent-forest: #154212;
-  --sg-accent-forest-soft: #dff2e7;
-  --sg-accent-blue: #006398;
-  --sg-accent-blue-soft: #dcecff;
-  --sg-accent-amber: #b56a22;
-  --sg-accent-amber-soft: #ffeddc;
-  --sg-accent-violet: #5c61b8;
-  --sg-accent-violet-soft: #e8e8fb;
-  --sg-accent-success: #28754c;
-  --sg-accent-danger: #ba1a1a;
-  --sg-tint-green: linear-gradient(180deg, rgba(223, 242, 231, 0.96), rgba(244, 250, 246, 0.95));
-  --sg-tint-blue: linear-gradient(180deg, rgba(220, 236, 255, 0.96), rgba(246, 250, 255, 0.95));
-  --sg-tint-amber: linear-gradient(180deg, rgba(255, 237, 220, 0.96), rgba(255, 249, 241, 0.95));
-  --sg-tint-violet: linear-gradient(180deg, rgba(232, 232, 251, 0.96), rgba(248, 248, 255, 0.95));
-  --sg-tint-neutral: linear-gradient(180deg, rgba(239, 244, 255, 0.94), rgba(255, 255, 255, 0.96));
-  --sg-shadow-soft: 0 24px 60px rgba(11, 28, 48, 0.08);
-  --sg-shadow-card: 0 14px 32px rgba(11, 28, 48, 0.06);
+  --sg-font-display: "Plus Jakarta Sans", "Manrope", "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+  --sg-font-body: "Pretendard Variable", "Pretendard", "Manrope", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --sg-bg: #f7f1eb;
+  --sg-bg-deep: #e6d8cb;
+  --sg-surface: rgba(247, 241, 235, 0.9);
+  --sg-surface-strong: rgba(255, 251, 246, 0.98);
+  --sg-surface-muted: rgba(242, 232, 221, 0.94);
+  --sg-surface-contrast: #2c694e;
+  --sg-glass: rgba(249, 243, 237, 0.8);
+  --sg-outline-soft: rgba(123, 93, 78, 0.14);
+  --sg-outline-strong: rgba(90, 64, 63, 0.2);
+  --sg-text-strong: #241b18;
+  --sg-text: #463934;
+  --sg-text-muted: #6f5d56;
+  --sg-text-faint: #927d72;
+  --sg-accent-forest: #2c694e;
+  --sg-accent-forest-soft: #dfece5;
+  --sg-accent-blue: #8a5c4d;
+  --sg-accent-blue-soft: #f1e2d8;
+  --sg-accent-amber: #c98337;
+  --sg-accent-amber-soft: #f9e6cf;
+  --sg-accent-violet: #b52330;
+  --sg-accent-violet-soft: #f7d7d8;
+  --sg-accent-success: #316e52;
+  --sg-accent-danger: #8e1e28;
+  --sg-tint-green: linear-gradient(180deg, rgba(223, 236, 229, 0.96), rgba(247, 250, 247, 0.95));
+  --sg-tint-blue: linear-gradient(180deg, rgba(241, 226, 216, 0.96), rgba(252, 246, 241, 0.95));
+  --sg-tint-amber: linear-gradient(180deg, rgba(249, 230, 207, 0.96), rgba(255, 247, 239, 0.95));
+  --sg-tint-violet: linear-gradient(180deg, rgba(247, 215, 216, 0.96), rgba(255, 245, 245, 0.95));
+  --sg-tint-neutral: linear-gradient(180deg, rgba(244, 236, 229, 0.96), rgba(255, 251, 246, 0.97));
+  --sg-shadow-soft: 0 18px 46px rgba(90, 64, 63, 0.1);
+  --sg-shadow-card: 0 12px 28px rgba(90, 64, 63, 0.08);
   color: var(--sg-text-strong);
   background-color: var(--sg-bg);
   font-family: var(--sg-font-body);
@@ -45,10 +47,10 @@
 html {
   min-height: 100%;
   background:
-    radial-gradient(circle at top right, rgba(0, 99, 152, 0.12), transparent 24%),
-    radial-gradient(circle at left top, rgba(21, 66, 18, 0.10), transparent 26%),
-    radial-gradient(circle at center right, rgba(92, 97, 184, 0.08), transparent 20%),
-    linear-gradient(180deg, rgba(248, 249, 255, 0.98), rgba(229, 238, 255, 0.88)),
+    radial-gradient(circle at top right, rgba(181, 35, 48, 0.12), transparent 22%),
+    radial-gradient(circle at left top, rgba(44, 105, 78, 0.12), transparent 26%),
+    radial-gradient(circle at center right, rgba(201, 131, 55, 0.08), transparent 20%),
+    linear-gradient(180deg, rgba(247, 241, 235, 0.99), rgba(230, 216, 203, 0.9)),
     var(--sg-bg);
   color: var(--sg-text-strong);
 }
@@ -63,10 +65,10 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--sg-accent-blue);
+  outline: 2px solid var(--sg-accent-violet);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: rgba(93, 132, 166, 0.24);
+  background: rgba(181, 35, 48, 0.18);
 }

@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { formatReadinessBadge, getReadinessDescriptor } from '../../lib/design/readiness';
 import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
@@ -17,6 +18,7 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
     const { locale } = useLocale();
     const analysis = props.result?.machine_payload.harvest_market_analysis;
     const modelRuntime = props.result?.machine_payload.model_runtime;
+    const readiness = getReadinessDescriptor(analysis?.confidence, locale);
     const copy = locale === 'ko'
         ? {
             title: '수확 / 가격',
@@ -28,7 +30,7 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
             timeWindows: '작업 창',
             checklist: '확인 체크리스트',
             urgency: '긴급도',
-            confidence: '판단 안정도',
+            confidence: '반영 상태',
             harvestOutlook: '수확 전망',
             marketOutlook: '시장 전망',
             tradeoffFocus: '운영 초점',
@@ -65,7 +67,7 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
             timeWindows: 'Timing windows',
             checklist: 'Monitoring checklist',
             urgency: 'Urgency',
-            confidence: 'Decision readiness',
+            confidence: 'Readiness',
             harvestOutlook: 'Harvest outlook',
             marketOutlook: 'Market outlook',
             tradeoffFocus: 'Tradeoff focus',
@@ -141,8 +143,8 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
                         <AdvisorConfidenceBadge
-                            label={`${copy.confidence}:${Math.round(analysis.confidence * 100)}%`}
-                            tone="info"
+                            label={formatReadinessBadge(analysis.confidence, locale, copy.confidence)}
+                            tone={readiness.tone}
                         />
                         {props.result?.machine_payload.missing_data.map((item) => (
                             <AdvisorConfidenceBadge

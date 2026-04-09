@@ -170,7 +170,7 @@ export default function DecisionSnapshotGrid({
         >
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.28fr)_minmax(0,0.92fr)]">
                 <article
-                    className="relative overflow-hidden rounded-[32px] px-6 py-6 sg-tint-blue"
+                    className="relative overflow-hidden rounded-[32px] px-6 py-6 sg-tint-amber"
                     style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                 >
                     <div className="absolute -right-10 -top-8 h-36 w-36 rounded-full bg-white/20 blur-3xl" />
@@ -181,7 +181,7 @@ export default function DecisionSnapshotGrid({
                                     className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
                                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                 >
-                                    <CloudSun className="h-6 w-6 text-[color:var(--sg-accent-blue)]" />
+                                    <CloudSun className="h-6 w-6 text-[color:var(--sg-accent-violet)]" />
                                 </div>
                                 <div>
                                     <div className="sg-eyebrow">{copy.weatherTitle}</div>
@@ -191,7 +191,7 @@ export default function DecisionSnapshotGrid({
                                 </div>
                             </div>
                             <div
-                                className="rounded-full bg-white/82 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-blue)]"
+                                className="rounded-full bg-white/82 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-violet)]"
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 {copy.weatherLead}

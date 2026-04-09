@@ -205,7 +205,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 description: 'See the current state and today’s direction first.',
                 icon: Sprout,
                 workspace: 'command',
-                heroTitle: 'Today at a glance',
+                heroTitle: 'Overview',
                 heroDescription: 'Start with status, actions, and watch items.',
                 tabs: [
                     { id: 'overview-hero', label: 'Priority' },
@@ -221,7 +221,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 description: 'Review climate control and the light-linked temperature lane.',
                 icon: CircleGauge,
                 workspace: 'rtr',
-                heroTitle: 'Climate control',
+                heroTitle: 'Control lane',
                 heroDescription: 'Compare HVAC, vent, screen, and cost effects in one lane.',
                 tabs: [
                     { id: 'control-rtr', label: 'Recommendation' },
@@ -238,7 +238,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 icon: Leaf,
                 workspace: 'advisor',
                 advisorTab: 'physiology',
-                heroTitle: 'Growth and work flow',
+                heroTitle: 'Growth and work',
                 heroDescription: 'Read crop momentum and labor pressure together.',
                 tabs: [
                     { id: 'growth-crop', label: 'Crop state' },
@@ -255,7 +255,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 icon: Droplets,
                 workspace: 'advisor',
                 advisorTab: 'nutrient',
-                heroTitle: 'Nutrient and irrigation',
+                heroTitle: 'Nutrient and irrigation lane',
                 heroDescription: 'Keep recipe, correction, and next-step steering together.',
                 tabs: [
                     { id: 'nutrient-advice', label: 'Current read' },
@@ -289,7 +289,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 icon: Truck,
                 workspace: 'advisor',
                 advisorTab: 'harvest_market',
-                heroTitle: 'Harvest and shipment',
+                heroTitle: 'Harvest and shipment lane',
                 heroDescription: 'Link harvest trend, market move, and shipment timing.',
                 tabs: [
                     { id: 'harvest-summary', label: 'Flow' },
@@ -321,7 +321,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 description: 'Collect the issues that need action now.',
                 icon: BadgeAlert,
                 workspace: 'alerts',
-                heroTitle: 'Alerts that need attention',
+                heroTitle: 'Alerts to review now',
                 heroDescription: 'Keep only the issues that require action or verification now.',
                 tabs: [
                     { id: 'alerts-priority', label: 'Priority' },
@@ -337,7 +337,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 description: 'Keep question flow and document lookup together.',
                 icon: MessageCircle,
                 workspace: 'knowledge',
-                heroTitle: 'Ask and search',
+                heroTitle: 'Ask and search lane',
                 heroDescription: 'Move from blocked questions into search and explanation.',
                 tabs: [
                     { id: 'ask-chat', label: 'Ask' },

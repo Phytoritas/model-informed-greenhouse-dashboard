@@ -27,7 +27,7 @@ function ActionSheet({
     const Icon = icon;
     const toneClass = {
         green: 'sg-tint-green',
-        blue: 'sg-tint-blue',
+        blue: 'sg-tint-amber',
         amber: 'sg-tint-amber',
         violet: 'sg-tint-violet',
     }[tone];
@@ -162,7 +162,7 @@ export default function TodayBoard({
     const leadMessage = actionsNow[0] ?? actionsToday[0] ?? actionsWeek[0] ?? monitor[0] ?? copy.leadFallback;
     const countTiles = [
         { key: 'now', label: copy.counts.now, value: actionsNow.length, tone: 'sg-tint-green' },
-        { key: 'today', label: copy.counts.today, value: actionsToday.length, tone: 'sg-tint-blue' },
+        { key: 'today', label: copy.counts.today, value: actionsToday.length, tone: 'sg-tint-amber' },
         { key: 'week', label: copy.counts.week, value: actionsWeek.length, tone: 'sg-tint-violet' },
         { key: 'monitor', label: copy.counts.monitor, value: monitor.length, tone: 'sg-tint-amber' },
     ] as const;
@@ -175,7 +175,7 @@ export default function TodayBoard({
         >
             <div className="space-y-4">
                 <div
-                    className="rounded-[34px] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(223,242,231,0.68)_55%,rgba(232,232,251,0.82))] px-5 py-5"
+                    className="rounded-[34px] bg-[linear-gradient(135deg,rgba(255,251,246,0.98),rgba(247,230,214,0.82)_55%,rgba(242,218,218,0.78))] px-5 py-5"
                     style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                 >
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">

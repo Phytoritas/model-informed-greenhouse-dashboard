@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { formatReadinessBadge, getReadinessDescriptor } from '../../lib/design/readiness';
 import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorActionTimeline from './AdvisorActionTimeline';
@@ -20,6 +21,7 @@ const WorkTab = (props: WorkTabProps) => {
     const advisorActions = props.result?.machine_payload.advisor_actions;
     const modelRuntime = props.result?.machine_payload.model_runtime;
     const workEventCompare = props.result?.machine_payload.work_event_compare;
+    const readiness = getReadinessDescriptor(analysis?.confidence, locale);
     const copy = locale === 'ko'
         ? {
             title: '재배작업',
@@ -62,7 +64,7 @@ const WorkTab = (props: WorkTabProps) => {
             checklist: '확인 체크리스트',
             context: '현재 문맥',
             urgency: '긴급도',
-            confidence: '판단 안정도',
+            confidence: '반영 상태',
             emptyActions: '현재 문맥에서 강한 작업 트리거가 아직 잡히지 않았습니다.',
             nextDayHarvest: '다음 수확량',
             nextDayEtc: '다음 ETc',
@@ -79,7 +81,7 @@ const WorkTab = (props: WorkTabProps) => {
         : {
             title: 'Work',
             summary: 'Work summary',
-            workEventCompare: 'Work-event compare',
+            workEventCompare: 'Work comparison',
             compareHistory: 'Recent work history',
             compareCurrentState: 'Baseline state',
             compareRecommended: 'Recommended action',
@@ -112,7 +114,7 @@ const WorkTab = (props: WorkTabProps) => {
             checklist: 'Monitoring checklist',
             context: 'Context snapshot',
             urgency: 'Urgency',
-            confidence: 'Decision readiness',
+            confidence: 'Readiness',
             emptyActions: 'No strong cultivation-work trigger was detected from the current context.',
             nextDayHarvest: 'Next-day harvest',
             nextDayEtc: 'Next-day ETc',
@@ -183,8 +185,8 @@ const WorkTab = (props: WorkTabProps) => {
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
                         <AdvisorConfidenceBadge
-                            label={`${copy.confidence}:${Math.round(analysis.confidence * 100)}%`}
-                            tone="info"
+                            label={formatReadinessBadge(analysis.confidence, locale, copy.confidence)}
+                            tone={readiness.tone}
                         />
                         <AdvisorConfidenceBadge
                             label={`${copy.operatingMode}:${getLocalizedTokenLabel(analysis.current_state.operating_mode, locale)}`}
@@ -235,7 +237,7 @@ const WorkTab = (props: WorkTabProps) => {
                             subtitle={workEventCompare.summary}
                             badges={[
                                 getLocalizedTokenLabel(workEventCompare.status, locale),
-                                `${copy.confidence}:${Math.round((workEventCompare.confidence ?? 0) * 100)}%`,
+                                formatReadinessBadge(workEventCompare.confidence ?? null, locale, copy.confidence),
                                 ...(workEventCompare.recommended_action
                                     ? [`${copy.compareRecommended}:${workEventCompare.recommended_action}`]
                                     : []),

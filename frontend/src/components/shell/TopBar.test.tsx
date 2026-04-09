@@ -57,7 +57,7 @@ describe('TopBar', () => {
         renderTopBar('en');
 
         expect(screen.getByRole('heading', { name: 'Overview' })).toBeTruthy();
-        expect(screen.getByLabelText('Search houses, work, or supplies')).toBeTruthy();
+        expect(screen.getByLabelText('Search work, materials, or houses')).toBeTruthy();
         expect(screen.getByRole('button', { name: 'Ask' })).toBeTruthy();
         expect(screen.getByRole('button', { name: 'Cucumber' })).toBeTruthy();
     });

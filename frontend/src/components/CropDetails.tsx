@@ -3,6 +3,7 @@ import { Settings, Sprout, Activity, Droplets, Leaf, CheckCircle } from 'lucide-
 import type { SensorData, AdvancedModelMetrics, CropType } from '../types';
 import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
+import { getReadinessDescriptor } from '../lib/design/readiness';
 import { UNIT_LABELS, getCropLabel, getCropStatusLabel } from '../utils/displayCopy';
 import { formatMetricValue } from '../utils/formatValue';
 
@@ -33,7 +34,7 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
             dailyBiomassGrowth: '일일 생장량',
             biomassTrend: '건물 생산량 추세',
             yieldPotential: '수확 잠재력',
-            confidence: '판단 안정도',
+            confidence: '반영 상태',
             transpiration: '증산',
             canopyActivity: '캐노피 활동',
             updateSuccess: '설정을 업데이트했습니다.',
@@ -59,7 +60,7 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
             dailyBiomassGrowth: 'Daily biomass growth',
             biomassTrend: 'Biomass accumulation trend',
             yieldPotential: 'Yield Potential',
-            confidence: 'Decision readiness',
+            confidence: 'Readiness',
             transpiration: 'Transpiration',
             canopyActivity: 'Canopy Activity',
             updateSuccess: 'Configuration updated successfully!',
@@ -76,6 +77,7 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
     const [pruningThreshold, setPruningThreshold] = useState(18);
     const [targetLeafCount, setTargetLeafCount] = useState(15);
     const [pruneLoading, setPruneLoading] = useState(false);
+    const readiness = getReadinessDescriptor(metrics.yield.confidence, locale);
     const growthStatusValue = crop === 'Tomato'
         ? metrics.growth.activeTrusses
         : metrics.growth.nodeCount;
@@ -268,7 +270,7 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
                     </div>
                     <div className="text-3xl font-bold text-emerald-700">{metrics.yield.predictedWeekly.toFixed(1)}</div>
                     <p className="text-xs text-slate-500 mt-1 leading-snug">{UNIT_LABELS.weeklyYield}</p>
-                    <p className="text-xs text-slate-400 mt-1">{copy.confidence}: {metrics.yield.confidence}%</p>
+                    <p className="text-xs text-slate-400 mt-1">{readiness.lead}: {readiness.label}</p>
                 </div>
 
                 <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">

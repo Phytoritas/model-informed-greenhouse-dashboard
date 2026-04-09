@@ -79,8 +79,8 @@ export default function HeroControlCard({
             nextActions: 'Next actions',
             noActions: 'Hold the current regime before making a new move.',
             openRtr: 'Compare scenarios',
-            openAdvisor: 'Open advisor',
-            openAssistant: 'Open assistant',
+            openAdvisor: 'Open grower support',
+            openAssistant: 'Open ask lane',
             sourceSink: 'Carbon margin',
             canopy: 'Net assimilation',
             lai: 'LAI',
@@ -103,18 +103,18 @@ export default function HeroControlCard({
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.22fr)_minmax(320px,0.78fr)]">
                 <div className="space-y-5">
                     <div
-                        className="overflow-hidden rounded-[34px] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(223,242,231,0.72)_55%,rgba(232,232,251,0.82))] p-6"
+                        className="overflow-hidden rounded-[34px] bg-[linear-gradient(135deg,rgba(255,250,245,0.98),rgba(248,227,215,0.84)_52%,rgba(237,216,206,0.88))] p-6"
                         style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                     >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div
-                                className="inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-[color:var(--sg-accent-violet)]"
+                                className="inline-flex items-center gap-2 rounded-full bg-white/84 px-4 py-2 text-sm font-semibold text-[color:var(--sg-accent-violet)]"
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 <Sparkles className="h-4 w-4" />
                                 {operatingMode}
                             </div>
-                            <div className="rounded-full bg-[color:var(--sg-accent-forest)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-white">
+                            <div className="rounded-full bg-[color:var(--sg-accent-violet)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-white">
                                 {copy.sourceSink}
                             </div>
                         </div>
