@@ -172,7 +172,7 @@ describe('useRtrCalibration', () => {
         });
 
         expect(fetchMock).toHaveBeenCalledWith(
-            expect.stringContaining('/rtr/calibration-state?crop=Cucumber&greenhouse_id=house-a'),
+            expect.stringContaining('/rtr/calibration-state?crop=cucumber&greenhouse_id=house-a'),
         );
     });
 
@@ -211,7 +211,7 @@ describe('useRtrCalibration', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    crop: 'Cucumber',
+                    crop: 'cucumber',
                     greenhouse_id: 'house-a',
                     selection_mode: 'windows-only',
                     windows: [WINDOW_FIXTURE],
@@ -233,7 +233,7 @@ describe('useRtrCalibration', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    crop: 'Cucumber',
+                    crop: 'cucumber',
                     greenhouse_id: 'house-a',
                     selection_mode: 'windows-only',
                     windows: [WINDOW_FIXTURE],

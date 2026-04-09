@@ -133,13 +133,13 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
     if (props.status !== 'error' && analysis) {
         return (
             <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.92fr)_minmax(0,1.08fr)]">
-                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                <div className="sg-advisor-shell sg-advisor-shell-blue space-y-4">
                     <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                             {copy.title}
                         </div>
-                        <h3 className="mt-2 text-lg font-semibold text-slate-900">{copy.summary}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{analysis.summary}</p>
+                        <h3 className="mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.summary}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">{analysis.summary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
@@ -176,25 +176,25 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                                 : [copy.focusAreas]
                         }
                     >
-                        <div className="space-y-3 text-sm text-slate-600">
+                        <div className="space-y-3 text-sm text-[color:var(--sg-text-muted)]">
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.diagnosis}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.diagnosis}: </span>
                                 {analysis.current_state.diagnosis}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.recoveryObjective}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.recoveryObjective}: </span>
                                 {analysis.current_state.recovery_objective}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.targetBand}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.targetBand}: </span>
                                 {targetBand}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.deviation}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.deviation}: </span>
                                 {analysis.current_state.deviation}
                             </div>
                             <div className="space-y-2">
-                                <div className="font-semibold text-slate-900">{copy.riskFlags}</div>
+                                <div className="font-semibold text-[color:var(--sg-text-strong)]">{copy.riskFlags}</div>
                                 <div className="flex flex-wrap gap-2">
                                     {analysis.current_state.risk_flags.map((item) => (
                                         <AdvisorConfidenceBadge
@@ -206,12 +206,12 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <div className="font-semibold text-slate-900">{copy.hypotheses}</div>
+                                <div className="font-semibold text-[color:var(--sg-text-strong)]">{copy.hypotheses}</div>
                                 <ul className="space-y-2">
                                     {analysis.current_state.cause_hypotheses.map((item) => (
                                         <li
                                             key={item}
-                                            className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                            className="sg-advisor-note"
                                         >
                                             {item}
                                         </li>
@@ -222,7 +222,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                     </AdvisorActionCard>
 
                     <AdvisorActionCard title={copy.context} subtitle={copy.title}>
-                        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                        <div className="grid gap-2 text-sm text-[color:var(--sg-text-muted)] sm:grid-cols-2">
                             <div>{copy.insideTemp}: {formatValue(analysis.context_snapshot.inside_temp_c, 1, ' °C')}</div>
                             <div>{copy.insideHumidity}: {formatValue(analysis.context_snapshot.inside_humidity_pct, 0, '%')}</div>
                             <div>{copy.insideVpd}: {formatValue(analysis.context_snapshot.inside_vpd_kpa, 2, ' kPa')}</div>
@@ -266,11 +266,11 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
                         <AdvisorActionCard title={copy.expectedEffects} subtitle={copy.title}>
-                            <ul className="space-y-2 text-sm text-slate-600">
+                            <ul className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                                 {analysis.expected_effects.map((item) => (
                                     <li
                                         key={item}
-                                        className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                        className="sg-advisor-note"
                                     >
                                         {item}
                                     </li>
@@ -283,13 +283,13 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                                 {analysis.three_day_plan.map((item) => (
                                     <div
                                         key={`${item.date}-${item.title}`}
-                                        className="rounded-2xl border border-slate-200 bg-white p-4"
+                                        className="sg-advisor-inset"
                                     >
-                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                             {item.date}
                                         </div>
-                                        <div className="mt-2 text-sm font-semibold text-slate-900">{item.title}</div>
-                                        <div className="mt-2 text-sm leading-relaxed text-slate-600">
+                                        <div className="mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">{item.title}</div>
+                                        <div className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                             {item.rationale}
                                         </div>
                                     </div>
@@ -299,11 +299,11 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
                     </div>
 
                     <AdvisorActionCard title={copy.checklist} subtitle={copy.title}>
-                        <ul className="space-y-2 text-sm text-slate-600">
+                        <ul className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {analysis.monitoring_checklist.map((item) => (
                                 <li
                                     key={item}
-                                    className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                    className="sg-advisor-note"
                                 >
                                     {item}
                                 </li>

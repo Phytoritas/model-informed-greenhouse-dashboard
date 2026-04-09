@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any, Mapping
 
-from scipy.optimize import minimize
+from model_informed_greenhouse_dashboard.numerics import bounded_coordinate_minimize
 
 from .control_effects import (
     build_actuator_availability,
@@ -109,6 +109,86 @@ def _coordination_grid(
     return best_candidate, best_eval
 
 
+def _prefer_minimum_sufficient(
+    trial_eval: Mapping[str, Any],
+    best_eval: Mapping[str, Any],
+) -> bool:
+    trial_objective = float(trial_eval["objective_value"])
+    best_objective = float(best_eval["objective_value"])
+    if trial_objective < best_objective - 1e-9:
+        return True
+
+    trial_mean = float(trial_eval["controls"]["mean_temp_C"])
+    best_mean = float(best_eval["controls"]["mean_temp_C"])
+    if trial_mean >= best_mean - 0.15:
+        return False
+
+    trial_breakdown = trial_eval["objective_breakdown"]
+    best_breakdown = best_eval["objective_breakdown"]
+    same_or_better_growth_pressure = (
+        float(trial_breakdown["node_target_penalty"])
+        <= float(best_breakdown["node_target_penalty"]) + 1e-6
+        and float(trial_breakdown["carbon_margin_penalty"])
+        <= float(best_breakdown["carbon_margin_penalty"]) + 1e-6
+        and float(trial_breakdown.get("disease_penalty", 0.0))
+        <= float(best_breakdown.get("disease_penalty", 0.0)) + 0.2
+    )
+    if not same_or_better_growth_pressure:
+        return False
+    return trial_objective <= best_objective * 1.15
+
+
+def _minimum_sufficient_refinement(
+    *,
+    context,
+    base_candidate: RtrControlCandidate,
+    best_eval: dict[str, Any],
+    optimization_inputs: RTROptimizationInputs,
+    weights: Mapping[str, float],
+    thermal_bounds: list[tuple[float, float]],
+) -> tuple[RtrControlCandidate, dict[str, Any]]:
+    best_candidate = base_candidate
+    refined_eval = best_eval
+    lower_steps = (0.2, 0.4, 0.6)
+    day_heat_bounds, night_heat_bounds, day_cool_bounds, night_cool_bounds = thermal_bounds
+
+    for delta in lower_steps:
+        day_heat = min(
+            max(best_candidate.day_heating_min_temp_C - delta, day_heat_bounds[0]),
+            day_heat_bounds[1],
+        )
+        night_heat = min(
+            max(best_candidate.night_heating_min_temp_C - delta, night_heat_bounds[0]),
+            night_heat_bounds[1],
+        )
+        day_cool = min(
+            max(best_candidate.day_cooling_target_C - delta, max(day_cool_bounds[0], day_heat + 0.8)),
+            day_cool_bounds[1],
+        )
+        night_cool = min(
+            max(best_candidate.night_cooling_target_C - delta, max(night_cool_bounds[0], night_heat + 0.8)),
+            night_cool_bounds[1],
+        )
+        trial_thermal = replace(
+            best_candidate,
+            day_heating_min_temp_C=day_heat,
+            night_heating_min_temp_C=night_heat,
+            day_cooling_target_C=day_cool,
+            night_cooling_target_C=night_cool,
+        )
+        trial_candidate, trial_eval = _coordination_grid(
+            context=context,
+            base_candidate=trial_thermal,
+            optimization_inputs=optimization_inputs,
+            weights=weights,
+        )
+        if _prefer_minimum_sufficient(trial_eval, refined_eval):
+            best_candidate = trial_candidate
+            refined_eval = trial_eval
+
+    return best_candidate, refined_eval
+
+
 def optimize_rtr_targets(
     *,
     context,
@@ -196,13 +276,12 @@ def optimize_rtr_targets(
         )
         return objective
 
-    stage1 = minimize(
+    stage1 = bounded_coordinate_minimize(
         _feasibility_objective,
         x0=start,
         bounds=bounds,
-        method="L-BFGS-B",
     )
-    feasible_seed = stage1.x.tolist() if stage1.success else list(start)
+    feasible_seed = list(stage1.x) if stage1.success else list(start)
 
     def _final_objective(vector):
         candidate = _evaluate_control_candidate(
@@ -217,13 +296,12 @@ def optimize_rtr_targets(
         )
         return float(candidate["objective_value"])
 
-    stage2 = minimize(
+    stage2 = bounded_coordinate_minimize(
         _final_objective,
         x0=feasible_seed,
         bounds=bounds,
-        method="L-BFGS-B",
     )
-    thermal_seed = stage2.x.tolist() if stage2.success else feasible_seed
+    thermal_seed = list(stage2.x) if stage2.success else feasible_seed
     thermal_candidate = _candidate_from_vector(
         vector=thermal_seed,
         context=context,
@@ -234,6 +312,14 @@ def optimize_rtr_targets(
         base_candidate=thermal_candidate,
         optimization_inputs=optimization_inputs,
         weights=final_weights,
+    )
+    coordinated_candidate, best_candidate = _minimum_sufficient_refinement(
+        context=context,
+        base_candidate=coordinated_candidate,
+        best_eval=best_candidate,
+        optimization_inputs=optimization_inputs,
+        weights=final_weights,
+        thermal_bounds=bounds,
     )
     best_candidate["baseline_targets"] = {
         "day_min_temp_C": round(baseline_candidate.day_heating_min_temp_C, 6),

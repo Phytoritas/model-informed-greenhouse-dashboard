@@ -1291,37 +1291,117 @@ const AdvisorTabs = ({
     const activeTabEntry =
         ADVISOR_TAB_REGISTRY.find((entry) => entry.key === activeTab) ?? ADVISOR_TAB_REGISTRY[0];
     const ActiveIcon = activeTabEntry.icon;
+    const activeExecutionState = executionState[activeTab];
+    const visibleExecutionStates = ADVISOR_TAB_REGISTRY.map((tab) => executionState[tab.key]);
+    const completedCount = visibleExecutionStates.filter((state) => state.status === 'success').length;
+    const loadingCount = visibleExecutionStates.filter((state) => state.status === 'loading').length;
+    const errorCount = visibleExecutionStates.filter((state) => state.status === 'error').length;
+    const activeStateLabel = activeExecutionState.status === 'loading'
+        ? copy.loadingState
+        : activeExecutionState.status === 'error'
+            ? copy.error
+            : (locale === 'ko' ? '준비됨' : 'Ready');
 
     return (
         <section
             ref={sectionRef}
-            className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm"
+            className="sg-advisor-shell sg-advisor-shell-neutral space-y-6"
         >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-600">
-                        {copy.title}
+            <div
+                className="rounded-[34px] bg-[linear-gradient(135deg,rgba(225,218,255,0.94),rgba(255,255,255,0.92))] px-5 py-5"
+                style={{ boxShadow: 'var(--sg-shadow-soft)' }}
+            >
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
+                    <div className="min-w-0 space-y-5">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-accent-violet)]">
+                            {copy.title}
+                        </div>
+                        <h2 className="flex items-center gap-3 text-[clamp(1.4rem,1rem+0.8vw,2.1rem)] font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+                            <span
+                                className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-white/88"
+                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                            >
+                                <ActiveIcon className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                            </span>
+                            {cropLabel}
+                        </h2>
+                        <p className="max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">{copy.subtitle}</p>
+
+                        <div className="flex flex-wrap gap-2">
+                            <span className="sg-advisor-pill">
+                                <ActiveIcon className="h-3.5 w-3.5 text-[color:var(--sg-accent-violet)]" />
+                                {tabLabels[activeTab]}
+                            </span>
+                            <span className="sg-advisor-pill">{activeStateLabel}</span>
+                            <span className="sg-advisor-pill">
+                                {completedCount}/{ADVISOR_TAB_REGISTRY.length}
+                            </span>
+                        </div>
                     </div>
-                    <h2 className="mt-2 flex items-center gap-2 text-xl font-semibold text-slate-900">
-                        <ActiveIcon className="h-5 w-5 text-indigo-600" />
-                        {cropLabel}
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-500">{copy.subtitle}</p>
+                    <div className="space-y-3">
+                        <div className="grid gap-3 md:grid-cols-[minmax(0,1.16fr)_minmax(0,0.84fr)]">
+                            <div
+                                className="sg-advisor-band sg-tint-violet"
+                                style={{ boxShadow: 'var(--sg-shadow-soft)' }}
+                            >
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+                                    {tabLabels[activeTab]}
+                                </div>
+                                <div className="mt-2 text-3xl font-semibold tracking-[-0.06em] text-[color:var(--sg-text-strong)]">
+                                    {completedCount}/{ADVISOR_TAB_REGISTRY.length}
+                                </div>
+                                <div className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
+                                    {activeStateLabel}
+                                </div>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1">
+                                <div
+                                    className="sg-advisor-band"
+                                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                >
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+                                        {copy.loadingState}
+                                    </div>
+                                    <div className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
+                                        {activeExecutionState.status === 'loading' ? loadingCount || 1 : loadingCount}
+                                    </div>
+                                </div>
+                                <div
+                                    className="sg-advisor-band"
+                                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                >
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+                                        {copy.error}
+                                    </div>
+                                    <div className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
+                                        {errorCount}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="sg-button-secondary"
+                            >
+                                {copy.close}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
-                >
-                    {copy.close}
-                </button>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {ADVISOR_TAB_REGISTRY.map((tab) => {
                     const Icon = tab.icon;
                     const state = executionState[tab.key];
                     const isActive = tab.key === activeTab;
+                    const stateLabel = state.status === 'loading'
+                        ? copy.loadingState
+                        : state.status === 'error'
+                            ? copy.error
+                            : (locale === 'ko' ? '준비됨' : 'Ready');
                     return (
                         <button
                             key={tab.key}
@@ -1332,53 +1412,60 @@ const AdvisorTabs = ({
                                     setShowCorrectionTool(false);
                                 }
                             }}
-                            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                            className={`rounded-[24px] px-4 py-4 text-left transition ${isActive ? 'bg-[linear-gradient(135deg,var(--sg-accent-violet),#6f73cc)] text-white' : 'bg-white/84 text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'}`}
+                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
                         >
-                            <span className="flex items-center gap-2">
-                                <Icon className="h-4 w-4" />
-                                {tabLabels[tab.key]}
-                                {state.status === 'loading' ? (
-                                    <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] uppercase">
-                                        {copy.loadingState}
-                                    </span>
-                                ) : null}
-                            </span>
+                            <div className="flex items-start justify-between gap-3">
+                                <span className="flex items-center gap-2 text-sm font-semibold">
+                                    <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <span>{tabLabels[tab.key]}</span>
+                                </span>
+                                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${isActive ? 'bg-white/16 text-white/84' : 'bg-[color:var(--sg-surface-muted)] text-[color:var(--sg-text-faint)]'}`}>
+                                    {stateLabel}
+                                </span>
+                            </div>
+                            <div className={`mt-3 text-xs leading-6 ${isActive ? 'text-white/72' : 'text-[color:var(--sg-text-faint)]'}`}>
+                                {isActive ? activeStateLabel : stateLabel}
+                            </div>
                         </button>
                     );
                 })}
             </div>
 
             {activeTabEntry.kind === 'pending' ? (
-                <div className="mt-6">
+                <div>
                     {renderPendingTab(activeTab as PlannedAdvisorTabKey)}
                 </div>
             ) : (
-                <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
+                    <div
+                        className="rounded-[32px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,248,255,0.95))] p-5"
+                        style={{ boxShadow: 'var(--sg-shadow-soft)' }}
+                    >
                         {activeTab === 'pesticide' ? (
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                    <label className="sg-field-label">
                                         {copy.target}
                                     </label>
                                     <input
                                         value={pesticideTarget}
                                         onChange={(event) => setPesticideTarget(event.target.value)}
-                                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-emerald-400"
+                                        className="sg-field-input"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                    <label className="sg-field-label">
                                         {copy.limit}
                                     </label>
                                     <input
                                         value={pesticideLimit}
                                         onChange={(event) => setPesticideLimit(event.target.value)}
-                                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-emerald-400"
+                                        className="sg-field-input"
                                     />
                                 </div>
                                 {pesticideSurface?.limitation ? (
-                                    <p className="text-sm leading-relaxed text-slate-500">
+                                    <p className="text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                         {pesticideSurface.limitation}
                                     </p>
                                 ) : null}
@@ -1386,7 +1473,7 @@ const AdvisorTabs = ({
                                     type="button"
                                     onClick={() => void handlePesticideRun()}
                                     disabled={executionState.pesticide.status === 'loading'}
-                                    className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+                                    className="sg-button-primary"
                                 >
                                     {executionState.pesticide.status === 'loading' ? copy.running : copy.run}
                                 </button>
@@ -1396,13 +1483,13 @@ const AdvisorTabs = ({
                         {activeTab === 'nutrient' ? (
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                    <label className="sg-field-label">
                                         {copy.stage}
                                     </label>
                                     <select
                                         value={effectiveNutrientStage}
                                         onChange={(event) => setNutrientStage(event.target.value)}
-                                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+                                        className="sg-field-input"
                                     >
                                         {(nutrientSurface?.stages ?? []).map((stage) => (
                                             <option key={stage} value={stage}>{formatStageLabel(stage)}</option>
@@ -1410,13 +1497,13 @@ const AdvisorTabs = ({
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                    <label className="sg-field-label">
                                         {copy.medium}
                                     </label>
                                     <select
                                         value={effectiveNutrientMedium}
                                         onChange={(event) => setNutrientMedium(event.target.value)}
-                                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-sky-400"
+                                        className="sg-field-input"
                                     >
                                         {(nutrientSurface?.mediums ?? []).map((medium) => (
                                             <option key={medium} value={medium}>{formatMediumLabel(medium)}</option>
@@ -1424,7 +1511,7 @@ const AdvisorTabs = ({
                                     </select>
                                 </div>
                                 {nutrientSurface?.limitation ? (
-                                    <p className="text-sm leading-relaxed text-slate-500">
+                                    <p className="text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                         {nutrientSurface.limitation}
                                     </p>
                                 ) : null}
@@ -1432,12 +1519,15 @@ const AdvisorTabs = ({
                                     type="button"
                                     onClick={() => void handleNutrientRun()}
                                     disabled={executionState.nutrient.status === 'loading'}
-                                    className="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-60"
+                                    className="sg-button-primary"
                                 >
                                     {executionState.nutrient.status === 'loading' ? copy.running : copy.run}
                                 </button>
 
-                                <div className="rounded-2xl border border-violet-100 bg-white p-4">
+                                <div
+                                    className="rounded-[28px] p-4 sg-tint-violet"
+                                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                >
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div>
                                             <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
@@ -1451,14 +1541,14 @@ const AdvisorTabs = ({
                                         <button
                                             type="button"
                                             onClick={() => setShowCorrectionTool((current) => !current)}
-                                            className="rounded-full border border-violet-200 px-3 py-1.5 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-50"
+                                            className="sg-button-secondary"
                                         >
                                             {showCorrectionTool ? copy.hideCorrectionTool : copy.showCorrectionTool}
                                         </button>
                                     </div>
 
                                     {showCorrectionTool ? (
-                                        <div className="mt-4 space-y-4 border-t border-violet-100 pt-4">
+                                        <div className="mt-4 space-y-4 border-t border-white/70 pt-4">
                                             <div className="grid gap-4 lg:grid-cols-2">
                                                 <div>
                                                     <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -1570,7 +1660,10 @@ const AdvisorTabs = ({
                         ) : null}
                     </div>
 
-                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                    <div
+                        className="sg-advisor-shell sg-advisor-shell-blue"
+                        style={{ padding: '1.25rem' }}
+                    >
                         {activeTab === 'pesticide' ? renderPesticideResult(pesticideResult) : null}
                         {activeTab === 'nutrient' ? (
                             <div className="space-y-6">

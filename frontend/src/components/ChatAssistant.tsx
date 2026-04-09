@@ -461,8 +461,11 @@ const ChatAssistant = ({
                 },
             ]);
         } catch (error) {
-            void error;
-            setMessages((prev) => [...prev, { role: 'ai', text: copy.aiUnavailable }]);
+            const message = error instanceof Error ? error.message : copy.unknownError;
+            setMessages((prev) => [
+                ...prev,
+                { role: 'ai', text: `${copy.aiUnavailable}: ${message}` },
+            ]);
         } finally {
             setIsSending(false);
         }
@@ -497,7 +500,7 @@ const ChatAssistant = ({
                     {smartGrowLoading
                         ? copy.smartGrowLoading
                         : smartGrowError
-                            ? copy.smartGrowUnavailable
+                            ? `${copy.smartGrowUnavailable}: ${smartGrowError}`
                             : copy.smartGrowHint}
                 </p>
                 {smartGrowPrompts.length > 0 ? (
