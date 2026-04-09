@@ -1,0 +1,28 @@
+{
+  "summary": [
+    "Issue #61 now canonicalizes `assistant` as the knowledge-section key/path in frontend/src/routes/phytosyncSections.ts while keeping /ask as a compatibility redirect into /assistant.",
+    "Section lookup and workspace default-path helpers now resolve the knowledge lane to /assistant, while the existing `ask-*` panel ids remain unchanged for bounded compatibility.",
+    "The full local validation ladder plus `rah.py doctor|status|resume` stayed green or warn-only after the assistant-alias canonicalization slice, with doctor warning only about uninstalled hooks and the missing optional deployment.json."
+  ],
+  "decisions": [
+    "Canonicalize assistant-first route semantics at the section-metadata layer before touching any `ask-*` panel/hash naming so the write set stays bounded.",
+    "Preserve `/ask` redirect and `ask-*` panel ids during the first assistant canonicalization pass to avoid unnecessary hash/back-compat churn before the first PR."
+  ],
+  "errors_resolved": [
+    "No new runtime regression surfaced in the assistant-alias canonicalization slice; focused section lookup, route-meta, App routing tests, lint, build, ruff, pytest, and `rah.py doctor|status|resume` all passed after the metadata change."
+  ],
+  "new_procedures": [
+    "When canonicalizing a route alias seam, change the section key/path and lookup normalization first, then leave older tab/hash ids in place until a later compatibility pass if they are already covered by redirect behavior.",
+    "Lock section-canonicalization changes with focused phytosyncSections, route-meta, and App routing tests before widening the write set into docs or broader shell polish."
+  ],
+  "open_questions": [
+    "Should issue #61 rename the remaining `ask-*` panel/hash ids before the first PR, or leave them as compatibility-only and bundle the current routed-shell work first?"
+  ],
+  "source_paths": [
+    "frontend\\src\\App.tsx",
+    "frontend\\src\\App.routing.test.tsx",
+    "frontend\\src\\routes\\phytosyncSections.ts",
+    ".rah\\plans\\current_loop.md"
+  ],
+  "note": "Fill this from observed work, then use it as the source for reflect()."
+}

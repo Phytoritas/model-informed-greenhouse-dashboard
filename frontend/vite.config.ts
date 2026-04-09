@@ -73,10 +73,6 @@ export default defineConfig({
             return 'icon-vendor'
           }
 
-          if (id.includes('node_modules/recharts/')) {
-            return 'charts-vendor'
-          }
-
           if (markdownChunkMarkers.some((marker) => id.includes(`node_modules${marker}`))) {
             return 'markdown-vendor'
           }

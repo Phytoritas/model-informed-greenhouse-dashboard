@@ -80,7 +80,7 @@ export default function HeroControlCard({
             noActions: 'Hold the current regime before making a new move.',
             openRtr: 'Compare scenarios',
             openAdvisor: 'Open grower support',
-            openAssistant: 'Open ask lane',
+            openAssistant: 'Open assistant',
             sourceSink: 'Carbon margin',
             canopy: 'Net assimilation',
             lai: 'LAI',

@@ -1,24 +1,66 @@
 {
-  "bootstrap_complete": true,
-  "mode": "hybrid",
-  "scaffold_root": "docs/architecture",
-  "runtime_root": ".rah",
-  "created_artifacts": [
-    "docs/architecture/Phytoritas.md",
-    "docs/architecture/00_workspace_audit.md",
-    "docs/architecture/01_system_brief.md",
-    "docs/architecture/gap_register.md",
-    "docs/architecture/implementation/implementation_gate_checklist.md",
-    "docs/architecture/architecture/adrs/ADR-000-adopt-recursive-architecture-workflow.md",
-    "docs/architecture/architecture/module_specs/module-000-architecture-pipeline.md",
-    ".rah/setup-scope.json",
-    ".rah/state/status.json",
-    ".rah/state/gates.json",
-    ".rah/state/bootstrap_summary.json",
-    ".rah/logs/activity_log.md",
-    ".rah/memory/decision_register.md",
-    ".rah/plans/current_loop.md",
-    ".rah/runtime/AGENTS.overlay.md"
+  "root": "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard",
+  "scaffold_root": "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture",
+  "profile": "python-service",
+  "mode": "auto-bootstrap",
+  "scope": "project",
+  "created_dirs": [],
+  "created_files": [
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\system\\current_architecture_map.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\memory\\wakeup.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\notebook\\source_inventory.csv",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\notebook\\query_log.csv",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\system\\dependency_matrix.csv",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\system\\interface_inventory.csv",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\system\\hotspot_register.csv",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\implementation\\change_set_log.csv",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\review\\revision_log.csv",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\state\\memento_status.json",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\memory\\memento_context.json",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\memory\\memento_recall.json",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\memory\\memento_feedback.json",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\memory\\memento_reflect_draft.json",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\memory\\case_map.json"
   ],
-  "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\대시보드-eng_1.1"
+  "skipped_existing": [
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\Phytoritas.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\00_workspace_audit.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\01_system_brief.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\gap_register.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\implementation\\implementation_gate_checklist.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\architecture\\adrs\\ADR-000-adopt-recursive-architecture-workflow.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture\\architecture\\module_specs\\module-000-architecture-pipeline.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\logs\\activity_log.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\plans\\current_loop.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\memory\\decision_register.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\runtime\\AGENTS.overlay.md",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\setup-scope.json",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\state\\status.json",
+    "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\.rah\\state\\gates.json"
+  ],
+  "warnings": [],
+  "generated_at_utc": "2026-04-09T12:49:39+00:00",
+  "markers": [
+    ".git",
+    "pyproject.toml"
+  ],
+  "has_repo_local_agents": true,
+  "restart_point": "Stage -2. AGENTS And Workflow Intake Gate",
+  "memento_workspace": "model-informed-greenhouse-dashboard",
+  "memento_topic": "architecture-refactor",
+  "memento_session_id": "model-informed-greenhouse-dashboard#61:hyp-61-rebuild-phytosync-into-coral-stay-routed-shell",
+  "memento_case_id": "case/model-informed-greenhouse-dashboard/61/hyp-61-rebuild-phytosync-into-coral-stay-routed-shell",
+  "memento_configured": true,
+  "memento_config_evidence": [
+    "C:\\Users\\yhmoo\\.codex\\config.toml"
+  ],
+  "memento_files": [
+    ".rah/state/memento_status.json",
+    ".rah/memory/memento_context.json",
+    ".rah/memory/memento_recall.json",
+    ".rah/memory/memento_feedback.json",
+    ".rah/memory/memento_reflect_draft.json",
+    ".rah/memory/wakeup.md",
+    ".rah/memory/case_map.json"
+  ]
 }

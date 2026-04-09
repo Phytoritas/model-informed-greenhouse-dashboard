@@ -1,0 +1,8 @@
+source_module,target_module,dependency_type,direction,strength,runtime_criticality,comments
+frontend/src/App.tsx,frontend/src/app/route-meta.ts,imports,one-way,high,runtime-critical,App chooses active primary-route metadata and sidebar state from route-meta
+frontend/src/App.tsx,frontend/src/pages/*-route-page.tsx,imports,one-way,high,runtime-critical,Direct routed pages are composed at the app root
+frontend/src/App.tsx,frontend/src/routes/phytosyncSections.ts,imports,one-way,high,runtime-critical,Active section lookup and advisor-lane intent derive from assistant-first section metadata while `/ask` hash compatibility stays bounded here
+frontend/src/pages/advisor-lane-route-page.tsx,frontend/src/components/advisor/AdvisorTabs.tsx,imports,one-way,high,runtime-critical,Advisor-lane pages wrap the tab workspace and preserve initialTab intent
+frontend/src/App.tsx,legacy /overview|/control|/resources|/alerts aliases,redirects,one-way,low,compatibility-only,Explicit redirects normalize old deep links to the canonical route pages
+frontend/src/App.routing.test.tsx,frontend/src/App.tsx,test harness,one-way,high,verification-critical,Locks direct route entry, sidebar navigation, advisor-lane intent, and /overview|/control|/resources|/alerts/legacy redirect behavior
+frontend/src/styles/theme.css,frontend/src/layout/AppShell.tsx,style contract,one-way,medium,ui-critical,Shell spacing and coral token rhythm flow through AppShell into all primary route pages

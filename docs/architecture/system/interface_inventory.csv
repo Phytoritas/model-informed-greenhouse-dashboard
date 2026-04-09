@@ -1,0 +1,9 @@
+interface_name,producer,consumer,contract_type,stability,migration_sensitivity,test_coverage,notes
+primary-route-meta,frontend/src/app/route-meta.ts,frontend/src/App.tsx; shell chrome,internal route metadata,medium,high,yes,Defines the canonical eight primary routes and sidebar highlight mapping
+assistant-alias-redirect,frontend/src/App.tsx Routes,/assistant route and assistant page,redirect plus hash intent,medium,medium,yes,/ask#... redirects to /assistant#... while preserving ask/search intent
+advisor-lane-intent,frontend/src/App.tsx handlers,frontend/src/pages/advisor-lane-route-page.tsx; AdvisorTabs,initialTab plus correction-tool intent,medium,high,yes,Preserves /growth /nutrient /protection /harvest lane intent from overview and assistant CTAs
+legacy-route-redirects,frontend/src/App.tsx Routes,canonical primary routes,redirect alias compatibility,medium,medium,yes,/overview|/control|/resources|/alerts/legacy now redirect explicitly to their canonical pages
+overview-route-composition,frontend/src/pages/overview-route-page.tsx,frontend/src/pages/overview-page.tsx and overview cards,internal composition,high,low,yes,Modern direct route entry for today-operations surfaces
+control-route-composition,frontend/src/pages/control-route-page.tsx,frontend/src/pages/control-page.tsx and control/weather cards,internal composition,high,low,yes,Modern direct route entry for environment control
+resources-alerts-command-centers,frontend/src/pages/resources-route-page.tsx; frontend/src/pages/alerts-route-page.tsx,ResourcesCommandCenter; AlertsCommandCenter,internal prop contract,high,low,yes,Separated from the giant overview stack and rendered as dedicated pages
+theme-shell-contract,frontend/src/styles/theme.css; frontend/src/layout/AppShell.tsx,all routed pages,design token plus layout contract,medium,medium,partial,Coral Stay direction is active but older accent semantics still exist in some tokens
