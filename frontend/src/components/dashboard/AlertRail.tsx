@@ -45,7 +45,7 @@ export default function AlertRail({ items }: AlertRailProps) {
             eyebrow: '경보',
             title: '주의 · 경고 · 운영 확인',
             description: '읽는 알림이 아니라, 지금 조치하거나 확인해야 하는 운영 이슈만 남겼습니다.',
-            empty: '즉시 대응해야 할 알람은 없지만, RTR와 Advisor 권장안은 계속 확인해 주세요.',
+            empty: '즉시 대응해야 할 알람은 없지만, 환경 제어와 재배 도움 권장안은 계속 확인해 주세요.',
             severity: {
                 critical: '긴급 경보',
                 warning: '주의',

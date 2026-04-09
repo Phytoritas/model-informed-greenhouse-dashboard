@@ -128,19 +128,19 @@ const AiAdvisor = ({
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            title: '권장 도우미',
+            title: '재배 도움',
             loading: '실시간 데이터와 모델 상태를 분석하는 중입니다...',
             empty: '데이터가 더 쌓이면 실행 가능한 조치를 먼저 보여드립니다.',
-            advisoryTitle: '스마트 제어 모드',
-            advisoryLoading: '스마트 제어 모드를 불러오는 중...',
-            advisoryUnavailable: '스마트 제어 모드를 아직 불러오지 못했습니다.',
-            advisoryHint: '연결된 도구와 세부 탭을 바로 열 수 있습니다.',
+            advisoryTitle: '바로 열 수 있는 도구',
+            advisoryLoading: '바로 쓸 수 있는 도구 상태를 불러오는 중...',
+            advisoryUnavailable: '도구 상태를 아직 불러오지 못했습니다.',
+            advisoryHint: '연결된 화면과 세부 탭을 여기서 바로 열 수 있습니다.',
             pesticideReady: '농약 후보',
             nutrientReady: '양액 레시피',
             correctionReady: '양액 보정 초안',
-            parserPending: '일부 참고 문서는 아직 정리 중입니다.',
+            parserPending: '일부 자료는 아직 정리 중입니다.',
             openDetails: '세부 탭 보기',
-            openKnowledgeSearch: '지식 검색',
+            openKnowledgeSearch: '자료 찾기',
             runtimeTitle: '예측 모델 분석',
             runtimeReady: '예측 반영',
             runtimeFallback: '상태 해석 우선',
@@ -167,19 +167,19 @@ const AiAdvisor = ({
             analysisUnavailable: '분석 응답을 불러오지 못했습니다.',
         }
         : {
-            title: 'AI Advisor',
+            title: 'Grower support',
             loading: 'Analyzing live data and model state...',
             empty: 'Actionable guidance will appear once enough data accumulates.',
-            advisoryTitle: 'SmartGrow deterministic status',
-            advisoryLoading: 'Loading deterministic status...',
-            advisoryUnavailable: 'Deterministic status is unavailable.',
-            advisoryHint: 'Open the connected tools or the detailed tabs from here.',
+            advisoryTitle: 'Ready-to-open tools',
+            advisoryLoading: 'Loading the ready-to-open tool state...',
+            advisoryUnavailable: 'Tool status is unavailable.',
+            advisoryHint: 'Open connected screens or detailed tabs from here.',
             pesticideReady: 'Pesticide lookup',
             nutrientReady: 'Nutrient recipe',
             correctionReady: 'Correction draft',
-            parserPending: 'PDF parsing is still pending.',
+            parserPending: 'Some documents are still being prepared.',
             openDetails: 'Open detail tabs',
-            openKnowledgeSearch: 'Open knowledge search',
+            openKnowledgeSearch: 'Find materials',
             runtimeTitle: 'Model runtime',
             runtimeReady: 'Scenario linked',
             runtimeFallback: 'Monitoring first',
@@ -219,7 +219,7 @@ const AiAdvisor = ({
     }> = [];
     if (onOpenKnowledgeSearch && smartGrowSummary?.pesticideReady) {
         knowledgeSearchActions.push({
-            label: locale === 'ko' ? '병해충 근거' : 'Pest evidence',
+            label: locale === 'ko' ? '병해충 자료' : 'Pest notes',
             request: {
                 preset: 'pesticide',
                 autoRun: true,
@@ -229,7 +229,7 @@ const AiAdvisor = ({
     }
     if (onOpenKnowledgeSearch && smartGrowSummary?.nutrientReady) {
         knowledgeSearchActions.push({
-            label: locale === 'ko' ? '양액 기준' : 'Nutrient guidance',
+            label: locale === 'ko' ? '양액 자료' : 'Nutrient notes',
             request: {
                 preset: 'nutrient',
                 autoRun: true,
@@ -239,7 +239,7 @@ const AiAdvisor = ({
     }
     if (onOpenKnowledgeSearch && smartGrowSummary?.nutrientCorrectionReady) {
         knowledgeSearchActions.push({
-            label: locale === 'ko' ? '양액 보정 경계' : 'Correction guardrails',
+            label: locale === 'ko' ? '양액 점검 자료' : 'Correction checks',
             request: {
                 preset: 'nutrient',
                 query:

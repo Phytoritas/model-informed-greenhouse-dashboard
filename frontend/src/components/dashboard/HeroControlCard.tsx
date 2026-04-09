@@ -55,7 +55,7 @@ export default function HeroControlCard({
 
     const copy = locale === 'ko'
         ? {
-            eyebrow: 'Command Center',
+            eyebrow: '오늘 한눈에',
             title: '오늘 운영 방향',
             issue: '지금 가장 중요한 문제',
             modelRuntime: '모델 해석',
@@ -63,8 +63,8 @@ export default function HeroControlCard({
             nextActions: '다음 조치',
             noActions: '지금은 급한 조정보다 상태 유지와 추세 확인이 우선입니다.',
             openRtr: '시나리오 비교',
-            openAdvisor: 'Advisor 열기',
-            openAssistant: 'Assistant 열기',
+            openAdvisor: '생육·작업 보기',
+            openAssistant: '질문하기',
             sourceSink: '탄소 여유',
             canopy: '순광합성',
             lai: 'LAI',
