@@ -1,5 +1,5 @@
 import { Suspense, lazy, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   Thermometer,
   Droplets,
@@ -17,6 +17,7 @@ import DecisionSnapshotGrid from './components/dashboard/DecisionSnapshotGrid';
 import HeroControlCard from './components/dashboard/HeroControlCard';
 import LiveMetricStrip from './components/dashboard/LiveMetricStrip';
 import TodayBoard from './components/dashboard/TodayBoard';
+import AskSearchPage from './components/phyto/AskSearchPage';
 import PageSectionTabs from './components/phyto/PageSectionTabs';
 import TopBar from './components/shell/TopBar';
 import WorkspaceNav, { type DashboardWorkspaceKey, type WorkspaceNavItem } from './components/shell/WorkspaceNav';
@@ -33,16 +34,24 @@ import { useRtrProfiles } from './hooks/useRtrProfiles';
 import { useSmartGrowKnowledge } from './hooks/useSmartGrowKnowledge';
 import { useWeatherOutlook } from './hooks/useWeatherOutlook';
 import AppShell from './layout/AppShell';
-import MainDashboard from './layout/MainDashboard';
 import type { CropType, SensorData, SensorFieldAvailability, SensorFieldKey, SensorFieldState, TelemetryStatus } from './types';
 import type { AppLocale } from './i18n/locale';
 import { useLocale } from './i18n/LocaleProvider';
 import { formatLocaleTime } from './i18n/locale';
+import AlertsRoute from './routes/alerts';
+import AskRoute from './routes/ask';
+import ControlRoute from './routes/control';
+import GrowthRoute from './routes/growth';
+import HarvestRoute from './routes/harvest';
+import NutrientRoute from './routes/nutrient';
+import OverviewRoute from './routes/overview';
+import ProtectionRoute from './routes/protection';
 import {
   buildPhytoSections,
   findPhytoSection,
   getSectionPathForAdvisorTab,
 } from './routes/phytosyncSections';
+import ResourcesRoute from './routes/resources';
 import {
   getCropLabel,
   getDashboardSensorCopy,
@@ -711,7 +720,7 @@ function App() {
         knowledgePrompt: '막히는 판단은 자료를 먼저 찾고, 바로 질문으로 이어가세요.',
         knowledgeAssistant: '질문하기',
         knowledgeRag: '자료 찾기',
-        confidenceLead: '확인 상태',
+        confidenceLead: '판단 안정도',
         freshnessLead: '센서 상태',
         workingModeLead: '현재 운영 모드',
         scenarioReady: '시나리오 비교 가능',
@@ -729,7 +738,7 @@ function App() {
         commandTrayDescription: 'Jump directly into the workspace that matters most for the next decision.',
         jumpAdvisor: 'Open growth lane',
         jumpRtr: 'Open control lane',
-        jumpKnowledge: 'Search references',
+        jumpKnowledge: 'Search materials',
         jumpAlerts: 'Review alerts',
         jumpWeather: 'Weather and resources',
         commandCenter: 'Overview',
@@ -738,24 +747,24 @@ function App() {
         crop: 'Crop & Work',
         resources: 'Resources',
         alerts: 'Alerts',
-        knowledge: 'Search & Ask',
+        knowledge: 'Materials & Ask',
         commandDesc: 'Today status, actions, and key controls',
         advisorDesc: 'Growth, work, nutrient, and protection decisions',
         rtrDesc: 'HVAC, vent, screen, and compare lanes',
         cropDesc: 'Growth, work pressure, and harvest trend',
         resourcesDesc: 'Energy, water, prices, and operating cost',
         alertsDesc: 'Risks, blockers, and response flow',
-        knowledgeDesc: 'Search notes and ask questions',
+        knowledgeDesc: 'Search materials and continue into questions',
         alertsWorkspaceTitle: 'Alerts and operator checks',
         alertsWorkspaceDescription: 'Review telemetry state, runtime violations, and operating risks in one place.',
         resourcesTitle: 'Resources and economics',
         resourcesDescription: 'Connect weather, market, energy, and resource use to decisions.',
-        knowledgeTitle: 'Search & Ask',
-        knowledgeDescription: 'Keep reference lookup and questions in one place.',
-        knowledgePrompt: 'Search references first, then move straight into the follow-up question.',
+        knowledgeTitle: 'Materials & Ask',
+        knowledgeDescription: 'Keep material search and follow-up questions in one place.',
+        knowledgePrompt: 'Search materials first, then move straight into the follow-up question.',
         knowledgeAssistant: 'Ask',
         knowledgeRag: 'Search',
-        confidenceLead: 'Review state',
+        confidenceLead: 'Decision readiness',
         freshnessLead: 'Telemetry freshness',
         workingModeLead: 'Operating mode',
         scenarioReady: 'Scenario compare ready',
@@ -901,26 +910,9 @@ function App() {
   const handleSectionTabSelect = useCallback((tabId: string) => {
     setSectionTabSelections((current) => ({ ...current, [activeSection.key]: tabId }));
 
-    if (activeSection.key === 'ask') {
-      if (tabId === 'ask-chat') {
-        handleChatToggle();
-        return;
-      }
-      if (tabId === 'ask-search') {
-        handleOpenRagAssistant();
-        return;
-      }
-    }
-
     navigate({ pathname: activeSection.path, hash: `#${tabId}` }, { replace: true });
     scrollToSectionAnchor(tabId);
-  }, [activeSection.key, activeSection.path, handleChatToggle, handleOpenRagAssistant, navigate, scrollToSectionAnchor]);
-
-  useEffect(() => {
-    if (location.pathname === '/') {
-      navigate('/overview', { replace: true });
-    }
-  }, [location.pathname, navigate]);
+  }, [activeSection.key, activeSection.path, navigate, scrollToSectionAnchor]);
 
   useEffect(() => {
     const hashTabId = location.hash.replace(/^#/, '');
@@ -1800,6 +1792,78 @@ function App() {
       )
     : null;
 
+  const askSurface = (
+    <div className="space-y-6">
+      <section id="ask-chat" className="scroll-mt-28">
+        <AskSearchPage
+          locale={locale}
+          cropLabel={selectedCropLabel}
+          summary={smartGrowSummary}
+          actionsNow={aiDisplay?.actions_now ?? []}
+          actionsToday={aiDisplay?.actions_today ?? []}
+          note={heroCopy.knowledgePrompt}
+          signals={[
+            { label: locale === 'ko' ? '센서 상태' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary },
+            { label: locale === 'ko' ? '시장 신호' : 'Market', value: priceSignal },
+            { label: locale === 'ko' ? '외기 흐름' : 'Weather', value: weatherSignal },
+          ]}
+          onOpenAsk={handleChatToggle}
+          onOpenSearch={() => handleOpenRagAssistant()}
+          onQuickSearch={(query) => handleOpenRagAssistant({
+            query,
+            autoRun: true,
+            source: 'dashboard',
+          })}
+        />
+      </section>
+      <section id="ask-search" className="scroll-mt-28">
+        <Suspense fallback={<LoadingSkeleton title={copy.smartGrowSurfaceTitle} loadingMessage={copy.smartGrowSurfaceLoading} minHeightClassName="min-h-[320px]" />}>
+          <SmartGrowSurfacePanel
+            crop={selectedCrop}
+            summary={smartGrowSummary}
+            loading={isSmartGrowLoading}
+            error={smartGrowError}
+            onOpenSurface={handleOpenSmartGrowSurface}
+          />
+        </Suspense>
+      </section>
+      <section id="ask-history" className="scroll-mt-28">
+        <DashboardCard
+          eyebrow={locale === 'ko' ? '자료 이어보기' : 'Continue from materials'}
+          title={locale === 'ko' ? '검색 뒤에 이어질 운영 판단' : 'The operating decisions that follow search'}
+          description={locale === 'ko'
+            ? '자료를 찾고 난 뒤 곧바로 이어질 양액, 방제, 환경 제어 도구를 한 곳에 묶었습니다.'
+            : 'Keep the nutrient, protection, and control tools that usually follow a search in one place.'}
+          variant="scenario"
+        >
+          <div className="grid gap-3 md:grid-cols-3">
+            {(smartGrowSummary?.surfaces ?? []).map((surface) => (
+              <div key={surface.key} className="sg-advisor-inset-soft">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                  {surface.key.replace(/_/g, ' ')}
+                </div>
+                <div className="mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                  {surface.status}
+                </div>
+                <p className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
+                  {surface.limitation ?? (locale === 'ko' ? '바로 이어서 열 수 있는 운영 화면입니다.' : 'Ready to continue as an operating screen.')}
+                </p>
+              </div>
+            ))}
+          </div>
+        </DashboardCard>
+      </section>
+    </div>
+  );
+
+  const routeFrameProps = {
+    overview: overviewSurface,
+    leftColumn: leftColumnSurface,
+    rightSidebar: rightSidebarSurface,
+    lowerFold: lowerFoldSurface,
+    bottomRow: bottomRowSurface,
+  };
+
   return (
     <AppShell
       header={(
@@ -1826,13 +1890,28 @@ function App() {
       )}
       commandTray={commandTray}
     >
-      <MainDashboard
-        overview={overviewSurface}
-        leftColumn={leftColumnSurface}
-        rightSidebar={rightSidebarSurface}
-        lowerFold={lowerFoldSurface}
-        bottomRow={bottomRowSurface}
-      />
+      <Routes>
+        <Route path="/" element={<Navigate to="/overview" replace />} />
+        <Route path="/overview" element={<OverviewRoute {...routeFrameProps} />} />
+        <Route path="/control" element={<ControlRoute {...routeFrameProps} />} />
+        <Route path="/growth" element={<GrowthRoute {...routeFrameProps} />} />
+        <Route path="/nutrient" element={<NutrientRoute {...routeFrameProps} />} />
+        <Route path="/protection" element={<ProtectionRoute {...routeFrameProps} />} />
+        <Route path="/harvest" element={<HarvestRoute {...routeFrameProps} />} />
+        <Route path="/resources" element={<ResourcesRoute {...routeFrameProps} />} />
+        <Route path="/alerts" element={<AlertsRoute {...routeFrameProps} />} />
+        <Route
+          path="/ask"
+          element={(
+            <AskRoute
+              overview={overviewSurface}
+              askSurface={askSurface}
+              rightSidebar={rightSidebarSurface}
+            />
+          )}
+        />
+        <Route path="*" element={<Navigate to="/overview" replace />} />
+      </Routes>
 
       {shouldRenderChat ? (
         <Suspense

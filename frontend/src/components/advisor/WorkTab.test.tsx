@@ -118,7 +118,7 @@ describe('WorkTab', () => {
         screen.getByText('Work-event compare');
         screen.getByText('Compared persisted work-event scenarios.');
         screen.getByText('Recommended action:Thin 1 fruit');
-        screen.getByText(/Review state:79%/i);
+        screen.getByText(/Decision readiness:79%/i);
         screen.getByText('Sink overload');
         screen.getByText('Fruit pressure');
         screen.getByText('Thin 1 fruit');

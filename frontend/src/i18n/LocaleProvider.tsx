@@ -38,6 +38,7 @@ export const LocaleProvider = ({ children }: { children: ReactNode }) => {
 
         if (typeof document !== 'undefined') {
             document.documentElement.lang = locale;
+            document.documentElement.dataset.locale = locale;
         }
     }, [locale]);
 
