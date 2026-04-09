@@ -24,6 +24,22 @@ const markdownChunkMarkers = [
   '/comma-separated-tokens/',
 ]
 
+const reactChunkMarkers = [
+  'node_modules/react/',
+  'node_modules/react-dom/',
+  'node_modules/scheduler/',
+]
+
+const routerChunkMarkers = [
+  'node_modules/react-router/',
+  'node_modules/react-router-dom/',
+  'node_modules/@remix-run/',
+]
+
+const iconChunkMarkers = [
+  'node_modules/lucide-react/',
+]
+
 // https://vite.dev/config/
 //
 // NOTE (Windows/OneDrive):
@@ -43,6 +59,18 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) {
             return undefined
+          }
+
+          if (reactChunkMarkers.some((marker) => id.includes(marker))) {
+            return 'react-vendor'
+          }
+
+          if (routerChunkMarkers.some((marker) => id.includes(marker))) {
+            return 'router-vendor'
+          }
+
+          if (iconChunkMarkers.some((marker) => id.includes(marker))) {
+            return 'icon-vendor'
           }
 
           if (id.includes('node_modules/recharts/')) {
