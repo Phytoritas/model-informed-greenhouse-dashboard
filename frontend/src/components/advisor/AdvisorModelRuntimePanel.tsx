@@ -114,8 +114,8 @@ const AdvisorModelRuntimePanel = ({
 
     if (!runtime) {
         return (
-            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="text-sm text-slate-600">{copy.noRuntime}</div>
+            <section className="sg-warm-panel p-5">
+                <div className="text-sm text-[color:var(--sg-text-muted)]">{copy.noRuntime}</div>
             </section>
         );
     }
@@ -133,26 +133,26 @@ const AdvisorModelRuntimePanel = ({
     const violations = runtime.constraint_checks?.violated_constraints ?? [];
     const observedSignalScore = Number(state.observed_signal_score ?? 0);
     const layerActivity = [
-        { key: 'upper', value: Number(state.upper_leaf_activity ?? 0), tone: 'from-emerald-300 to-emerald-500' },
-        { key: 'middle', value: Number(state.middle_leaf_activity ?? 0), tone: 'from-sky-300 to-sky-500' },
+        { key: 'upper', value: Number(state.upper_leaf_activity ?? 0), tone: 'from-[#cf8a62] to-[#a14a35]' },
+        { key: 'middle', value: Number(state.middle_leaf_activity ?? 0), tone: 'from-[#d7a06e] to-[#b46d4f]' },
         { key: 'bottom', value: Number(state.bottom_leaf_activity ?? 0), tone: 'from-amber-300 to-amber-500' },
     ] as const;
 
     return (
-        <section className="rounded-[30px] border border-slate-900/5 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-5 text-white shadow-[0_20px_60px_rgba(15,23,42,0.28)]">
+        <section className="rounded-[30px] border border-[rgba(122,67,52,0.16)] bg-gradient-to-br from-[#4c291f] via-[#6a382b] to-[#8a4f3b] p-5 text-white shadow-[0_24px_64px_rgba(92,48,36,0.28)]">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="max-w-2xl">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-200/80">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[rgba(255,232,214,0.82)]">
                         {copy.title}
                     </div>
                     <h3 className="mt-2 text-xl font-semibold">
                         {runtime.status === 'ready' ? copy.subtitleReady : copy.subtitleFallback}
                     </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-200">
+                    <p className="mt-2 text-sm leading-relaxed text-[rgba(255,239,228,0.84)]">
                         {runtime.summary}
                     </p>
                     {runtime.status !== 'ready' ? (
-                        <p className="mt-2 text-xs leading-relaxed text-emerald-100/80">
+                        <p className="mt-2 text-xs leading-relaxed text-[rgba(255,235,220,0.82)]">
                             {copy.fallbackHint}
                         </p>
                     ) : null}
@@ -180,50 +180,50 @@ const AdvisorModelRuntimePanel = ({
 
             <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
                 <div className="space-y-4">
-                    <div className="rounded-[24px] border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+                    <div className="rounded-[24px] border border-[rgba(255,237,225,0.14)] bg-[rgba(255,244,237,0.10)] p-4 backdrop-blur-sm">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                             {copy.stateTitle}
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-3">
-                            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
-                                <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                            <div className="rounded-2xl border border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.24)] p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                     {copy.lai}
                                 </div>
                                 <div className="mt-2 text-lg font-semibold">{formatNumber(state.lai, 2)}</div>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
-                                <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                            <div className="rounded-2xl border border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.24)] p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                     {copy.balance}
                                 </div>
                                 <div className="mt-2 text-lg font-semibold">
                                     {formatNumber(state.source_sink_balance, 2)}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
-                                <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                            <div className="rounded-2xl border border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.24)] p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                     {copy.canopyA}
                                 </div>
                                 <div className="mt-2 text-lg font-semibold">
                                     {formatNumber(state.canopy_net_assimilation_umol_m2_s, 1, ' µmol')}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
-                                <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                            <div className="rounded-2xl border border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.24)] p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                     {copy.limiting}
                                 </div>
-                                <div className="mt-2 text-sm font-semibold uppercase tracking-[0.12em] text-emerald-100">
+                                <div className="mt-2 text-sm font-semibold uppercase tracking-[0.12em] text-[rgba(255,232,214,0.92)]">
                                     {getLocalizedTokenLabel(state.limiting_factor ?? '-', locale)}
                                 </div>
                             </div>
                         </div>
                         <div className="mt-4">
-                            <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                            <div className="text-[11px] uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                 {copy.leafLayers}
                             </div>
                             <div className="mt-3 space-y-2">
                                 {layerActivity.map((item) => (
                                     <div key={item.key}>
-                                        <div className="mb-1 flex items-center justify-between text-xs text-slate-200">
+                                        <div className="mb-1 flex items-center justify-between text-xs text-[rgba(255,239,228,0.84)]">
                                             <span className="uppercase tracking-[0.14em]">
                                                 {LEAF_LAYER_LABELS[item.key][locale]}
                                             </span>
@@ -242,11 +242,11 @@ const AdvisorModelRuntimePanel = ({
                     </div>
 
                     {state.dashboard_missing_fields?.length || state.inferred_fields?.length ? (
-                        <div className="rounded-[24px] border border-white/10 bg-black/15 p-4">
+                        <div className="rounded-[24px] border border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.24)] p-4">
                             <div className="flex flex-wrap gap-4">
                                 {state.dashboard_missing_fields?.length ? (
                                     <div className="space-y-2">
-                                        <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                        <div className="text-[11px] uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                             {copy.missing}
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -258,7 +258,7 @@ const AdvisorModelRuntimePanel = ({
                                 ) : null}
                                 {state.inferred_fields?.length ? (
                                     <div className="space-y-2">
-                                        <div className="text-[11px] uppercase tracking-[0.14em] text-slate-300">
+                                        <div className="text-[11px] uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                             {copy.inferred}
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -275,13 +275,13 @@ const AdvisorModelRuntimePanel = ({
 
                 <div className="space-y-4">
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-                        <div className="rounded-[24px] border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
-                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+                        <div className="rounded-[24px] border border-[rgba(255,237,225,0.14)] bg-[rgba(255,244,237,0.10)] p-4 backdrop-blur-sm">
+                            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                 {copy.sensitivityTitle}
                             </div>
                             <div className="mt-3 space-y-3">
                                 {topLevers.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-white/15 bg-black/10 px-3 py-3 text-sm text-slate-300">
+                                    <div className="rounded-2xl border border-dashed border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.18)] px-3 py-3 text-sm text-[rgba(255,235,220,0.72)]">
                                         {copy.compareEmpty}
                                     </div>
                                 ) : topLevers.map((lever) => {
@@ -291,7 +291,7 @@ const AdvisorModelRuntimePanel = ({
                                     return (
                                         <div
                                             key={`${controlKey}-${lever.direction}`}
-                                            className="rounded-2xl border border-white/10 bg-black/15 p-4"
+                                            className="rounded-2xl border border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.24)] p-4"
                                         >
                                             <div className="flex items-center justify-between gap-3">
                                                 <div>
@@ -300,7 +300,7 @@ const AdvisorModelRuntimePanel = ({
                                                             ? localizedControl[locale]
                                                             : controlKey}
                                                     </div>
-                                                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-300">
+                                                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                                         {copy.elasticity}
                                                     </div>
                                                 </div>
@@ -313,11 +313,11 @@ const AdvisorModelRuntimePanel = ({
                                             </div>
                                             <div className="mt-3 h-2 rounded-full bg-white/10">
                                                 <div
-                                                    className="h-2 rounded-full bg-gradient-to-r from-sky-300 to-emerald-400"
+                                                    className="h-2 rounded-full bg-gradient-to-r from-[#d7a06e] to-[#a14a35]"
                                                     style={{ width: `${width}%` }}
                                                 />
                                             </div>
-                                            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-200">
+                                            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[rgba(255,239,228,0.84)]">
                                                 <span>{formatNumber(lever.elasticity, 2)}</span>
                                                 <span>
                                                     {copy.trust}:{' '}
@@ -335,9 +335,9 @@ const AdvisorModelRuntimePanel = ({
                             </div>
                         </div>
 
-                        <div className="rounded-[24px] border border-white/10 bg-white/8 p-4 backdrop-blur-sm">
+                        <div className="rounded-[24px] border border-[rgba(255,237,225,0.14)] bg-[rgba(255,244,237,0.10)] p-4 backdrop-blur-sm">
                             <div className="flex items-center justify-between gap-3">
-                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                     {copy.compareTitle}
                                 </div>
                                 {recommendedAction ? (
@@ -346,7 +346,7 @@ const AdvisorModelRuntimePanel = ({
                             </div>
                             <div className="mt-3 space-y-3">
                                 {compareOptions.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-white/15 bg-black/10 px-3 py-3 text-sm text-slate-300">
+                                    <div className="rounded-2xl border border-dashed border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.18)] px-3 py-3 text-sm text-[rgba(255,235,220,0.72)]">
                                         {copy.compareEmpty}
                                     </div>
                                 ) : compareOptions.slice(0, 3).map((option) => {
@@ -361,8 +361,8 @@ const AdvisorModelRuntimePanel = ({
                                             key={`${option.action}-${option.control}`}
                                             className={`rounded-2xl border p-4 ${
                                                 isRecommended
-                                                    ? 'border-emerald-300/70 bg-emerald-400/10'
-                                                    : 'border-white/10 bg-black/15'
+                                                    ? 'border-[rgba(240,198,172,0.52)] bg-[rgba(255,240,230,0.12)]'
+                                                    : 'border-[rgba(255,237,225,0.14)] bg-[rgba(58,29,22,0.24)]'
                                             }`}
                                         >
                                             <div className="flex items-start justify-between gap-3">
@@ -370,7 +370,7 @@ const AdvisorModelRuntimePanel = ({
                                                     <div className="text-sm font-semibold text-white">
                                                         {option.action}
                                                     </div>
-                                                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-300">
+                                                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-[rgba(255,235,220,0.72)]">
                                                         {timeWindowLabel}
                                                     </div>
                                                 </div>
@@ -381,7 +381,7 @@ const AdvisorModelRuntimePanel = ({
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="mt-3 grid gap-2 text-sm text-slate-200 sm:grid-cols-2">
+                                            <div className="mt-3 grid gap-2 text-sm text-[rgba(255,239,228,0.84)] sm:grid-cols-2">
                                                 <div>{copy.yield7d}: {formatNumber(option.expected_yield_delta_7d, 2, ' kg')}</div>
                                                 <div>{copy.yield14d}: {formatNumber(option.expected_yield_delta_14d, 2, ' kg')}</div>
                                                 <div>{copy.energy}: {formatNumber(option.expected_energy_delta, 2, ' kWh')}</div>

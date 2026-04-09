@@ -29,12 +29,12 @@ function severityMeta(severity: AlertRailItem['severity']) {
     if (severity === 'resolved') {
         return {
             icon: CheckCircle2,
-            className: 'bg-emerald-50 text-emerald-900',
+            className: 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]',
         };
     }
     return {
         icon: Clock3,
-        className: 'bg-slate-100 text-slate-800',
+        className: 'bg-[color:var(--sg-surface-warm)] text-[color:var(--sg-text-strong)]',
     };
 }
 
@@ -130,7 +130,7 @@ export default function AlertRail({ items }: AlertRailProps) {
                 </div>
                 {leadItem ? (
                     <div
-                        className={`rounded-[30px] px-5 py-5 ${leadMeta?.className ?? 'bg-slate-100 text-slate-800'}`}
+                        className={`rounded-[30px] px-5 py-5 ${leadMeta?.className ?? 'bg-[color:var(--sg-surface-warm)] text-[color:var(--sg-text-strong)]'}`}
                         style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                     >
                         <div className="flex items-start gap-4">

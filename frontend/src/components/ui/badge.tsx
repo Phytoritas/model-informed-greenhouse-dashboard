@@ -7,12 +7,12 @@ const badgeVariants = cva(
     {
         variants: {
             variant: {
-                default: 'bg-white/90 text-[color:var(--sg-text-strong)]',
+                default: 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-strong)]',
                 forest: 'bg-[color:var(--sg-accent-forest-soft)] text-[color:var(--sg-accent-forest)]',
-                blue: 'bg-[color:var(--sg-accent-blue-soft)] text-[color:var(--sg-accent-blue)]',
+                blue: 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]',
                 amber: 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]',
-                violet: 'bg-[color:var(--sg-accent-violet-soft)] text-[color:var(--sg-accent-violet)]',
-                danger: 'bg-[#fff1ec] text-[#9d4125]',
+                violet: 'bg-[color:var(--sg-accent-rose-soft)] text-[color:var(--sg-accent-rose)]',
+                danger: 'bg-[color:var(--sg-accent-rose-soft)] text-[color:var(--sg-accent-rose)]',
                 muted: 'bg-[color:var(--sg-surface-muted)] text-[color:var(--sg-text-muted)]',
             },
         },

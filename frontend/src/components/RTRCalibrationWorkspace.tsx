@@ -170,26 +170,26 @@ const RTRCalibrationWorkspace = ({
 
     if (loadingState && stateResponse === null) {
         return (
-            <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-600">{copy.loading}</p>
+            <section className="sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4">
+                <p className="text-sm text-[color:var(--sg-text)]">{copy.loading}</p>
             </section>
         );
     }
 
     return (
-        <section className="rounded-xl border border-slate-200 p-4">
+        <section className="sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4">
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                    <div className="flex items-center gap-2 text-slate-900">
-                        <BookOpenCheck className="h-4 w-4 text-emerald-600" />
+                    <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
+                        <BookOpenCheck className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
                         <h4 className="text-sm font-semibold">{copy.title}</h4>
                     </div>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">{copy.subtitle}</p>
+                    <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.subtitle}</p>
                 </div>
                 <button
                     type="button"
                     onClick={() => void refreshState()}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="rounded-full border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-earth)] hover:bg-[color:var(--sg-surface-muted)]"
                 >
                     {locale === 'ko' ? '상태 새로고침' : 'Refresh state'}
                 </button>
@@ -202,39 +202,39 @@ const RTRCalibrationWorkspace = ({
             ) : null}
 
             <div className="grid gap-3 lg:grid-cols-2">
-                <div className="rounded-lg bg-slate-50 p-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{copy.rangeTitle}</div>
+                <div className="sg-warm-subpanel p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--sg-text-muted)]">{copy.rangeTitle}</div>
                     {environmentSummary?.has_environment_history ? (
                         <>
-                            <p className="mt-2 text-sm font-medium text-slate-900">
+                            <p className="mt-2 text-sm font-medium text-[color:var(--sg-text-strong)]">
                                 {environmentSummary.start_date} ~ {environmentSummary.end_date}
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-[color:var(--sg-text-muted)]">
                                 {locale === 'ko'
                                     ? `전체 ${environmentSummary.total_days}일 / ${environmentSummary.total_rows}행`
                                     : `${environmentSummary.total_days} days / ${environmentSummary.total_rows} rows`}
                             </p>
-                            <p className="mt-2 text-xs leading-5 text-slate-500">{copy.rangeReady}</p>
+                            <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.rangeReady}</p>
                         </>
                     ) : (
-                        <p className="mt-2 text-xs leading-5 text-slate-500">{copy.rangeMissing}</p>
+                        <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.rangeMissing}</p>
                     )}
                 </div>
 
-                <div className="rounded-lg bg-slate-50 p-3">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{copy.currentTitle}</div>
+                <div className="sg-warm-subpanel p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--sg-text-muted)]">{copy.currentTitle}</div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         <div>
-                            <div className="text-[11px] text-slate-500">{copy.currentMode}</div>
-                            <div className="text-sm font-semibold text-slate-900">{stateResponse?.current_profile.calibration.mode ?? '-'}</div>
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.currentMode}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{stateResponse?.current_profile.calibration.mode ?? '-'}</div>
                         </div>
                         <div>
-                            <div className="text-[11px] text-slate-500">{copy.currentSamples}</div>
-                            <div className="text-sm font-semibold text-slate-900">{stateResponse?.current_profile.calibration.sampleDays ?? 0}</div>
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.currentSamples}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{stateResponse?.current_profile.calibration.sampleDays ?? 0}</div>
                         </div>
                         <div className="sm:col-span-2">
-                            <div className="text-[11px] text-slate-500">{copy.currentFit}</div>
-                            <div className="text-sm font-semibold text-slate-900">
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.currentFit}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                 R² {stateResponse?.current_profile.calibration.rSquared?.toFixed(2) ?? '-'} / MAE {stateResponse?.current_profile.calibration.meanAbsoluteErrorC?.toFixed(2) ?? '-'}°C
                             </div>
                         </div>
@@ -243,10 +243,10 @@ const RTRCalibrationWorkspace = ({
             </div>
 
             <div className="mt-4 flex flex-wrap items-end gap-3">
-                <label className="text-xs font-medium text-slate-600">
+                <label className="text-xs font-medium text-[color:var(--sg-text)]">
                     <span>{copy.selectionMode}</span>
                     <select
-                        className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                        className="sg-field-input mt-2"
                         value={selectionMode}
                         onChange={(event) => setDraftSelectionMode(event.target.value as RtrCalibrationSelectionMode)}
                     >
@@ -258,7 +258,7 @@ const RTRCalibrationWorkspace = ({
                 <button
                     type="button"
                     onClick={() => setDraftWindowsState((current) => [...(current ?? savedWindows), buildEmptyWindow()])}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="rounded-full border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-earth)] hover:bg-[color:var(--sg-surface-muted)]"
                 >
                     <span className="inline-flex items-center gap-1">
                         <Plus className="h-3.5 w-3.5" />
@@ -271,7 +271,7 @@ const RTRCalibrationWorkspace = ({
                         setDraftSelectionMode(null);
                         setDraftWindowsState(null);
                     }}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="rounded-full border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-earth)] hover:bg-[color:var(--sg-surface-muted)]"
                 >
                     {copy.resetDraft}
                 </button>
@@ -279,9 +279,9 @@ const RTRCalibrationWorkspace = ({
 
             <div className="mt-4 space-y-3">
                 {draftWindows.map((window, index) => (
-                    <div key={`${window.label ?? 'window'}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div key={`${window.label ?? 'window'}-${index}`} className="sg-warm-subpanel border border-[color:var(--sg-outline-soft)] p-3">
                         <div className="mb-3 flex items-center justify-between gap-3">
-                            <div className="text-xs font-semibold text-slate-700">
+                            <div className="text-xs font-semibold text-[color:var(--sg-text)]">
                                 {copy.houseWindow} {index + 1}
                             </div>
                             <button
@@ -292,7 +292,7 @@ const RTRCalibrationWorkspace = ({
                                     )
                                 }
                                 disabled={draftWindows.length === 1}
-                                className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-lg border border-[color:var(--sg-outline-soft)] px-2 py-1 text-[11px] font-medium text-[color:var(--sg-text)] transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 <span className="inline-flex items-center gap-1">
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -302,36 +302,36 @@ const RTRCalibrationWorkspace = ({
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.label}</span>
                                 <input
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={window.label ?? ''}
                                     onChange={(event) => updateWindow(index, { label: event.target.value })}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.startDate}</span>
                                 <input
                                     type="date"
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={window.startDate}
                                     onChange={(event) => updateWindow(index, { startDate: event.target.value })}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.endDate}</span>
                                 <input
                                     type="date"
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={window.endDate}
                                     onChange={(event) => updateWindow(index, { endDate: event.target.value })}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.approvalStatus}</span>
                                 <select
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={window.approvalStatus}
                                     onChange={(event) => updateWindow(index, { approvalStatus: event.target.value as RtrCalibrationWindow['approvalStatus'] })}
                                 >
@@ -342,15 +342,15 @@ const RTRCalibrationWorkspace = ({
                                     <option value="heuristic-demo">{copy.heuristicDemo}</option>
                                 </select>
                             </label>
-                            <label className="text-xs font-medium text-slate-600">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.approvalSource}</span>
                                 <input
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={window.approvalSource ?? ''}
                                     onChange={(event) => updateWindow(index, { approvalSource: event.target.value })}
                                 />
                             </label>
-                            <label className="flex items-center gap-2 pt-7 text-xs font-medium text-slate-600">
+                            <label className="flex items-center gap-2 pt-7 text-xs font-medium text-[color:var(--sg-text)]">
                                 <input
                                     type="checkbox"
                                     checked={window.enabled}
@@ -358,26 +358,26 @@ const RTRCalibrationWorkspace = ({
                                 />
                                 {copy.enabled}
                             </label>
-                            <label className="text-xs font-medium text-slate-600 md:col-span-2 xl:col-span-3">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)] md:col-span-2 xl:col-span-3">
                                 <span>{copy.approvalReason}</span>
                                 <input
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={window.approvalReason ?? ''}
                                     onChange={(event) => updateWindow(index, { approvalReason: event.target.value })}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600 md:col-span-2 xl:col-span-3">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)] md:col-span-2 xl:col-span-3">
                                 <span>{copy.evidenceNotes}</span>
                                 <input
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={window.evidenceNotes ?? ''}
                                     onChange={(event) => updateWindow(index, { evidenceNotes: event.target.value })}
                                 />
                             </label>
-                            <label className="text-xs font-medium text-slate-600 md:col-span-2 xl:col-span-3">
+                            <label className="text-xs font-medium text-[color:var(--sg-text)] md:col-span-2 xl:col-span-3">
                                 <span>{copy.notes}</span>
                                 <input
-                                    className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                                    className="sg-field-input mt-2"
                                     value={window.notes ?? ''}
                                     onChange={(event) => updateWindow(index, { notes: event.target.value })}
                                 />
@@ -392,7 +392,7 @@ const RTRCalibrationWorkspace = ({
                     type="button"
                     onClick={() => void previewCalibration({ windows: draftWindows, selectionMode })}
                     disabled={!canPreview || loadingPreview || saving}
-                    className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                    className="rounded-full bg-[color:var(--sg-accent-violet)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
                 >
                     <span className="inline-flex items-center gap-1">
                         <Search className="h-3.5 w-3.5" />
@@ -408,48 +408,48 @@ const RTRCalibrationWorkspace = ({
                         await onSaved?.();
                     }}
                     disabled={!canPreview || saving}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-violet)] hover:bg-[color:var(--sg-status-live-bg)] hover:text-[color:var(--sg-accent-violet)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <span className="inline-flex items-center gap-1">
                         <Save className="h-3.5 w-3.5" />
                         {copy.save}
                     </span>
                 </button>
-                <span className="self-center text-[11px] text-slate-500">{copy.saveDone}</span>
+                <span className="self-center text-[11px] text-[color:var(--sg-text-muted)]">{copy.saveDone}</span>
             </div>
 
             {previewProfile ? (
-                <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                    <div className="mb-3 text-sm font-semibold text-slate-900">{copy.previewTitle}</div>
+                <div className="mt-4 rounded-xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-status-live-bg)] p-4">
+                    <div className="mb-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.previewTitle}</div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <div>
-                            <div className="text-[11px] text-slate-500">{copy.previewMode}</div>
-                            <div className="text-sm font-semibold text-slate-900">{previewProfile.calibration.mode}</div>
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.previewMode}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{previewProfile.calibration.mode}</div>
                         </div>
                         <div>
-                            <div className="text-[11px] text-slate-500">{copy.previewBase}</div>
-                            <div className="text-sm font-semibold text-slate-900">{previewProfile.baseTempC.toFixed(3)}°C</div>
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.previewBase}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{previewProfile.baseTempC.toFixed(3)}°C</div>
                         </div>
                         <div>
-                            <div className="text-[11px] text-slate-500">{copy.previewSlope}</div>
-                            <div className="text-sm font-semibold text-slate-900">{previewProfile.slopeCPerMjM2.toFixed(4)}</div>
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.previewSlope}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{previewProfile.slopeCPerMjM2.toFixed(4)}</div>
                         </div>
                         <div>
-                            <div className="text-[11px] text-slate-500">{copy.previewSource}</div>
-                            <div className="text-sm font-semibold text-slate-900">{selectionSummary?.selection_source ?? '-'}</div>
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.previewSource}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{selectionSummary?.selection_source ?? '-'}</div>
                         </div>
                         <div>
-                            <div className="text-[11px] text-slate-500">{copy.previewFiltered}</div>
-                            <div className="text-sm font-semibold text-slate-900">{selectionSummary?.filtered_days ?? 0}</div>
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.previewFiltered}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{selectionSummary?.filtered_days ?? 0}</div>
                         </div>
                         <div>
-                            <div className="text-[11px] text-slate-500">{copy.previewFit}</div>
-                            <div className="text-sm font-semibold text-slate-900">
+                            <div className="text-[11px] text-[color:var(--sg-text-muted)]">{copy.previewFit}</div>
+                            <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                 R² {previewProfile.calibration.rSquared?.toFixed(2) ?? '-'} / MAE {previewProfile.calibration.meanAbsoluteErrorC?.toFixed(2) ?? '-'}°C
                             </div>
                         </div>
                     </div>
-                    <p className="mt-3 text-xs leading-5 text-slate-600">{previewProfile.sourceNote}</p>
+                    <p className="mt-3 text-xs leading-5 text-[color:var(--sg-text)]">{previewProfile.sourceNote}</p>
                 </div>
             ) : null}
         </section>
