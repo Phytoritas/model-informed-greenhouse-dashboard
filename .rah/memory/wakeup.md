@@ -3,17 +3,17 @@
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
 - topic: `architecture-refactor`
-- sessionId: `model-informed-greenhouse-dashboard#61:hyp-61-rebuild-phytosync-into-coral-stay-routed-shell`
-- caseId: `case/model-informed-greenhouse-dashboard/61/hyp-61-rebuild-phytosync-into-coral-stay-routed-shell`
-- issue: `61`
-- branch: `hyp/61-rebuild-phytosync-into-coral-stay-routed-shell`
+- sessionId: `model-informed-greenhouse-dashboard#main:post-issue61-merged-baseline`
+- caseId: `case/model-informed-greenhouse-dashboard/main/post-issue61-merged-baseline`
+- issue: `none`
+- branch: `main`
 
 ## Current State
-- current_stage: `issue61-assistant-alias-canonicalized`
-- implementation_gate: `open-for-bounded-phases`
+- current_stage: `post-issue61-merged-baseline`
+- implementation_gate: `ready-for-next-issue`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `assistant-alias-canonicalized`
-- latest_validation: `full local ladder + rah.py doctor|status|resume rerun on 2026-04-10; doctor is warn-only for missing hooks and optional deployment.json`
+- latest_route_slice: `issue61-merged-on-main`
+- latest_validation: `PR #62 merged after green local ladder plus green Backend/Frontend Validation; rah.py doctor stays warn-only for missing hooks and optional deployment.json`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -24,15 +24,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#61:hyp-61-rebuild-phytosync-into-coral-stay-routed-shell")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#main:post-issue61-merged-baseline")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "architecture-refactor", "hyp/61-rebuild-phytosync-into-coral-stay-routed-shell", "issue-61"],
+    keywords=["model-informed-greenhouse-dashboard", "architecture-refactor", "main", "post-issue61-merged-baseline"],
     topic="architecture-refactor",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#61:hyp-61-rebuild-phytosync-into-coral-stay-routed-shell",
+    sessionId="model-informed-greenhouse-dashboard#main:post-issue61-merged-baseline",
     caseMode=True,
     depth="standard",
-    contextText="bootstrap -> recon -> architecture intake"
+    contextText="post-merge baseline intake before the next issue-driven loop"
 )
 ```
 
@@ -40,5 +40,5 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Keep `ask-*` panel/hash normalization as inbound compatibility until after the first issue `#61` PR, and use the existing `/ask#...` plus `assistant#ask-*` regressions as the guardrail against accidental removal.
-- The next bounded step is PR bundling and shell polish, not alias retirement.
+- Treat `main` as the merged routed-shell baseline and start the next non-trivial change from a fresh issue/branch.
+- Keep `ask-*` deep-link compatibility as historical baseline behavior until a future issue explicitly retires it.
