@@ -7,6 +7,8 @@ import type {
 import { API_URL } from '../config';
 
 export const PRODUCE_PRICE_REFRESH_MS = 15 * 60 * 1000;
+const PRODUCE_PRICE_RECOVERY_REFRESH_MS = 5000;
+const PRODUCE_PRICE_REQUEST_TIMEOUT_MS = 6000;
 
 const inferMarketKey = (marketLabel: string | undefined): ProduceMarketKey =>
     marketLabel === '도매' || marketLabel?.toLowerCase() === 'wholesale'
@@ -47,13 +49,22 @@ export const useProducePrices = () => {
     const [prices, setPrices] = useState<ProducePricesPayload | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const hasPrices = prices !== null;
+    const refreshMs = hasPrices ? PRODUCE_PRICE_REFRESH_MS : PRODUCE_PRICE_RECOVERY_REFRESH_MS;
 
     useEffect(() => {
         let cancelled = false;
 
         const fetchProducePrices = async () => {
+            if (!hasPrices && !cancelled) {
+                setLoading(true);
+            }
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), PRODUCE_PRICE_REQUEST_TIMEOUT_MS);
             try {
-                const res = await fetch(`${API_URL}/market/produce`);
+                const res = await fetch(`${API_URL}/market/produce`, {
+                    signal: controller.signal,
+                });
                 const data = await res.json();
                 if (!res.ok) {
                     throw new Error(data?.detail ?? `HTTP ${res.status}`);
@@ -63,10 +74,20 @@ export const useProducePrices = () => {
                     setError(null);
                 }
             } catch (err) {
+                if (cancelled && err instanceof DOMException && err.name === 'AbortError') {
+                    return;
+                }
                 if (!cancelled) {
-                    setError(err instanceof Error ? err.message : 'Failed to load produce prices.');
+                    const message =
+                        err instanceof DOMException && err.name === 'AbortError'
+                            ? 'Produce price request timed out.'
+                            : err instanceof Error
+                                ? err.message
+                                : 'Failed to load produce prices.';
+                    setError(message);
                 }
             } finally {
+                window.clearTimeout(timeoutId);
                 if (!cancelled) {
                     setLoading(false);
                 }
@@ -76,13 +97,13 @@ export const useProducePrices = () => {
         void fetchProducePrices();
         const interval = window.setInterval(() => {
             void fetchProducePrices();
-        }, PRODUCE_PRICE_REFRESH_MS);
+        }, refreshMs);
 
         return () => {
             cancelled = true;
             window.clearInterval(interval);
         };
-    }, []);
+    }, [hasPrices, refreshMs]);
 
     return { prices, loading, error };
 };

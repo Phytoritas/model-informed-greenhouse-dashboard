@@ -55,22 +55,22 @@ const AdvisorLandedTabStatePanel = ({
 
     return (
         <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <div className="sg-advisor-shell sg-advisor-shell-violet">
                 <div className="space-y-4">
                     <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                             {copy.landedAdvisor}
                         </div>
-                        <h3 className="mt-2 text-lg font-semibold text-slate-900">{title}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{subtitle}</p>
+                        <h3 className="mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">{title}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">{subtitle}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={copy.landed} tone="success" />
                         <AdvisorConfidenceBadge label={copy.deterministic} tone="info" />
                     </div>
-                    <ul className="space-y-2 text-sm text-slate-600">
+                    <ul className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                         {notes.map((note) => (
-                            <li key={note} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            <li key={note} className="sg-advisor-note">
                                 {note}
                             </li>
                         ))}
@@ -79,16 +79,20 @@ const AdvisorLandedTabStatePanel = ({
                         type="button"
                         onClick={onRun}
                         disabled={status === 'loading'}
-                        className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+                        className="w-full rounded-full bg-[color:var(--sg-accent-violet)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-92 disabled:opacity-60"
+                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                     >
                         {status === 'loading' ? copy.runLoading : copy.run}
                     </button>
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <div className="sg-advisor-shell sg-advisor-shell-neutral">
                 {status === 'error' ? (
-                    <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-6 text-sm text-rose-700">
+                    <div
+                        className="rounded-[24px] bg-rose-50 px-4 py-6 text-sm text-rose-700"
+                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                    >
                         {copy.executionFailed}: {error}
                     </div>
                 ) : (
@@ -97,7 +101,7 @@ const AdvisorLandedTabStatePanel = ({
                         subtitle={stateDescription}
                         badges={status === 'loading' ? [copy.refreshing] : [copy.ready]}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             <div>{copy.rerunHint}</div>
                         </div>
                     </AdvisorActionCard>

@@ -36,7 +36,10 @@ from .services.knowledge_catalog import (
     rebuild_knowledge_catalog,
 )
 from .services.knowledge_database import query_knowledge_database
-from .services.produce_prices import fetch_featured_produce_prices
+from .services.produce_prices import (
+    build_featured_produce_prices_fallback_payload,
+    fetch_featured_produce_prices,
+)
 from .services.rtr_profiles import (
     aggregate_daily_rtr_metrics,
     filter_rtr_good_windows_for_house,
@@ -676,6 +679,144 @@ def _resolve_rtr_area_meta(
         user_actual_area_m2=None if resolved_area_m2 is None else float(resolved_area_m2),
         user_actual_area_pyeong=None if resolved_area_pyeong is None else float(resolved_area_pyeong),
     )
+
+
+def _build_rtr_provisional_state_response(crop: str, greenhouse_id: Optional[str] = None) -> Dict[str, Any]:
+    from .services.rtr.control_effects import build_actuator_availability
+
+    resolved_greenhouse_id = _resolve_greenhouse_id(crop, greenhouse_id)
+    area_meta = _resolve_rtr_area_meta(crop, resolved_greenhouse_id)
+    profile_key = "Cucumber" if crop == "cucumber" else "Tomato"
+    profile_payload = (load_rtr_profiles().get("profiles") or {}).get(profile_key) or {}
+    baseline_payload = profile_payload.get("baseline") or {}
+    optimizer_payload = profile_payload.get("optimizer") or {}
+    baseline_target_c = float(
+        baseline_payload.get(
+            "baseTempC",
+            greenhouse_config["operations"].get("heating_set_C", 18.0),
+        )
+    )
+    greenhouse_area_m2 = float(greenhouse_config["greenhouse"]["area_m2"])
+    actual_area_m2 = float(area_meta["actual_area_m2"] or greenhouse_area_m2)
+    actual_area_pyeong = float(area_meta["actual_area_pyeong"] or 0.0)
+    zero_units_projection = {
+        "greenhouse_area_m2": greenhouse_area_m2,
+        "actual_area_m2": actual_area_m2,
+        "actual_area_pyeong": actual_area_pyeong,
+        "yield_proxy_kg_m2_day": 0.0,
+        "yield_proxy_kg_m2_week": 0.0,
+        "energy_kwh_m2_day": 0.0,
+        "energy_krw_m2_day": 0.0,
+        "heating_energy_kwh_m2_day": 0.0,
+        "cooling_energy_kwh_m2_day": 0.0,
+        "labor_index_m2_day": 0.0,
+        "labor_hours_m2_day": 0.0,
+        "labor_cost_krw_m2_day": 0.0,
+        "node_development_day": 0.0,
+        "gross_margin_proxy_krw_m2_day": 0.0,
+    }
+    actual_area_projection = {
+        "actual_area_m2": actual_area_m2,
+        "actual_area_pyeong": actual_area_pyeong,
+        "yield_kg_day": 0.0,
+        "yield_kg_week": 0.0,
+        "energy_kwh_day": 0.0,
+        "energy_krw_day": 0.0,
+        "heating_energy_kwh_day": 0.0,
+        "cooling_energy_kwh_day": 0.0,
+        "labor_index_day": 0.0,
+        "labor_hours_day": 0.0,
+        "labor_cost_krw_day": 0.0,
+        "margin_krw_day": 0.0,
+    }
+    canonical_state = {
+        "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "crop": crop,
+        "greenhouse_id": resolved_greenhouse_id,
+        "env": {
+            "T_air_C": 0.0,
+            "T_canopy_C": 0.0,
+            "RH_pct": 0.0,
+            "VPD_kPa": 0.0,
+            "CO2_ppm": 0.0,
+            "PAR_umol_m2_s": 0.0,
+            "outside_T_C": 0.0,
+        },
+        "flux": {
+            "gross_assim_umol_m2_s": 0.0,
+            "net_assim_umol_m2_s": 0.0,
+            "respiration_proxy_umol_m2_s": 0.0,
+            "transpiration_g_m2_s": 0.0,
+            "latent_heat_W_m2": 0.0,
+            "sensible_heat_W_m2": 0.0,
+            "stomatal_conductance_m_s": 0.0,
+        },
+        "growth": {
+            "LAI": 0.0,
+            "node_count": 0.0,
+            "predicted_node_rate_day": 0.0,
+            "fruit_load": 0.0,
+            "sink_demand": 0.0,
+            "source_capacity": 0.0,
+            "vegetative_dry_matter_g_m2": 0.0,
+            "fruit_dry_matter_g_m2": 0.0,
+            "harvested_fruit_dry_matter_g_m2": 0.0,
+        },
+        "crop_specific": {
+            "cucumber": {
+                "leaf_area_by_rank": [],
+                "upper_leaf_activity": 0.0,
+                "middle_leaf_activity": 0.0,
+                "bottom_leaf_activity": 0.0,
+                "remaining_leaves": 0.0,
+            },
+            "tomato": {
+                "truss_cohorts": [],
+                "active_trusses": 0.0,
+                "fruit_partition_ratio": 0.0,
+            },
+        },
+        "energy": {
+            "Q_load_kW": 0.0,
+            "P_elec_kW": 0.0,
+            "COP_current": 0.0,
+            "daily_kWh": 0.0,
+        },
+        "events": {
+            "recent_leaf_removal": [],
+            "recent_fruit_thinning": [],
+            "recent_harvest": [],
+            "recent_setpoint_changes": [],
+        },
+        "baseline_rtr": {
+            "baseTempC": float(baseline_payload.get("baseTempC", baseline_target_c)),
+            "slopeCPerMjM2": float(baseline_payload.get("slopeCPerMjM2", 0.0)),
+            "baseline_target_C": baseline_target_c,
+        },
+        "optimizer": optimizer_payload,
+    }
+    return {
+        "status": "provisional",
+        "crop": crop,
+        "greenhouse_id": resolved_greenhouse_id,
+        "snapshot_id": "runtime-inactive",
+        "canonical_state": canonical_state,
+        "baseline_rtr": canonical_state["baseline_rtr"],
+        "optimizer_enabled": bool(optimizer_payload.get("enabled", False)),
+        "area_unit_meta": area_meta,
+        "actuator_availability": build_actuator_availability(_get_ops_config(crop)).as_dict(),
+        "optimizer_defaults": optimizer_payload,
+        "current_per_m_projections": zero_units_projection,
+        "current_actual_area_projection": actual_area_projection,
+        "current_control_effect_trace": {},
+        "current_risk_flags": [
+            {
+                "kind": "runtime_inactive",
+                "severity": "info",
+                "message": "Model runtime is inactive. Start the simulator to unlock live RTR state.",
+            }
+        ],
+    }
 
 
 def _get_crop_cost_per_kwh(crop: str) -> float:
@@ -1497,7 +1638,10 @@ async def _run_simulation_task(crop: str):
             while simulator.paused:
                 await asyncio.sleep(0.1)
 
-            payload = simulator.step_from_index(i)
+            # Crop model stepping is CPU-heavy enough to starve the event loop if
+            # we run it inline here. Offload it so API and WebSocket handshakes
+            # remain responsive while the simulation is advancing.
+            payload = await asyncio.to_thread(simulator.step_from_index, i)
 
             # Store last values for recommendations
             crop_state["last_irrigation"] = payload.get("irrigation", {})
@@ -1506,12 +1650,14 @@ async def _run_simulation_task(crop: str):
             # Real-time recommendations
             if crop_state.get("decision"):
                 try:
-                    recs = crop_state["decision"].get_recommendations(
-                        payload["kpi"], payload["state"], 
-                        crop_state["last_irrigation"], 
-                        crop_state["last_energy"], 
+                    recs = await asyncio.to_thread(
+                        crop_state["decision"].get_recommendations,
+                        payload["kpi"],
+                        payload["state"],
+                        crop_state["last_irrigation"],
+                        crop_state["last_energy"],
                         payload["env"],
-                        crop_state.get("latest_forecast")
+                        crop_state.get("latest_forecast"),
                     )
                     payload["recommendations"] = recs
                 except Exception as e:
@@ -2381,17 +2527,13 @@ async def get_featured_produce_market_prices():
         payload = await fetch_featured_produce_prices()
         return {"status": "success", **payload}
     except httpx.HTTPError as exc:
-        logger.warning("KAMIS produce price fetch failed: %s", exc)
-        raise HTTPException(
-            status_code=502,
-            detail="Failed to fetch live produce prices from KAMIS.",
-        ) from exc
+        logger.warning("KAMIS produce price fetch failed: %r", exc)
+        payload = build_featured_produce_prices_fallback_payload(reason=str(exc))
+        return {"status": "success", **payload}
     except ValueError as exc:
-        logger.warning("KAMIS produce price payload was invalid: %s", exc)
-        raise HTTPException(
-            status_code=502,
-            detail=str(exc),
-        ) from exc
+        logger.warning("KAMIS produce price payload was invalid: %r", exc)
+        payload = build_featured_produce_prices_fallback_payload(reason=str(exc))
+        return {"status": "success", **payload}
 
 
 @app.get("/api/rtr/profiles")
@@ -2426,13 +2568,22 @@ async def get_rtr_state(crop: str, greenhouse_id: Optional[str] = None, snapshot
 
     normalized_crop = _validate_crop(crop)
     store = ModelStateStore()
-    resolved_greenhouse_id, snapshot_record = _resolve_runtime_snapshot_record(
-        store=store,
-        crop=normalized_crop,
-        greenhouse_id=greenhouse_id,
-        snapshot_id=snapshot_id,
-        source="rtr_state_baseline",
-    )
+    try:
+        resolved_greenhouse_id, snapshot_record = _resolve_runtime_snapshot_record(
+            store=store,
+            crop=normalized_crop,
+            greenhouse_id=greenhouse_id,
+            snapshot_id=snapshot_id,
+            source="rtr_state_baseline",
+        )
+    except HTTPException as exc:
+        if (
+            exc.status_code == 400
+            and snapshot_id is None
+            and "Model runtime is inactive" in str(exc.detail)
+        ):
+            return _build_rtr_provisional_state_response(normalized_crop, greenhouse_id)
+        raise
     area_meta = _resolve_rtr_area_meta(normalized_crop, resolved_greenhouse_id)
     context = build_internal_model_context(
         snapshot_record=snapshot_record,

@@ -108,14 +108,16 @@ export const useRtrOptimizer = ({
     }, [defaultMode]);
 
     const telemetryOptimizationBlocked = telemetryStatus === 'stale' || telemetryStatus === 'offline';
+    const cropKey = useMemo(() => crop.toLowerCase(), [crop]);
+    const stateRefreshMs = stateResponse?.status === 'success' ? 60000 : 5000;
 
     const stateQuery = useMemo(() => {
-        const params = new URLSearchParams({ crop });
+        const params = new URLSearchParams({ crop: cropKey });
         if (greenhouseId) {
             params.set('greenhouse_id', greenhouseId);
         }
         return params.toString();
-    }, [crop, greenhouseId]);
+    }, [cropKey, greenhouseId]);
 
     const refreshState = useCallback(async () => {
         const requestId = stateRequestIdRef.current + 1;
@@ -143,7 +145,11 @@ export const useRtrOptimizer = ({
 
     useEffect(() => {
         void refreshState();
-    }, [refreshState]);
+        const interval = window.setInterval(() => {
+            void refreshState();
+        }, stateRefreshMs);
+        return () => window.clearInterval(interval);
+    }, [refreshState, stateRefreshMs]);
 
     useEffect(() => {
         if (hasManualTargetRef.current) {
@@ -167,7 +173,7 @@ export const useRtrOptimizer = ({
         }
 
         return {
-            crop,
+            crop: cropKey,
             greenhouse_id: greenhouseId,
             target_node_development_per_day: targetNodeDevelopmentPerDay,
             optimization_mode: optimizationModeState,
@@ -181,7 +187,7 @@ export const useRtrOptimizer = ({
     }, [
         actualAreaM2,
         actualAreaPyeong,
-        crop,
+        cropKey,
         greenhouseId,
         includeEnergyCost,
         includeCoolingCost,

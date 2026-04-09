@@ -1,10 +1,11 @@
 import { memo } from 'react';
 import type { AdvancedModelMetrics, CropType, ForecastData, MetricHistoryPoint } from '../types';
 import { TrendingUp, Zap, Scale, Leaf } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleTime, getIntlLocale } from '../i18n/locale';
 import { UNIT_LABELS, getCropModelLabel, getDevelopmentStageLabel } from '../utils/displayCopy';
+import ChartFrame from './charts/ChartFrame';
 
 interface ModelAnalyticsProps {
     crop: CropType;
@@ -128,9 +129,9 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                     </div>
                 </div>
 
-                <div className="h-40 w-full">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={160}>
-                        <LineChart data={growthData}>
+                <ChartFrame className="h-40 w-full" minHeight={160}>
+                    {({ width, height }) => (
+                        <LineChart width={Math.max(width, 1)} height={Math.max(height, 160)} data={growthData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -141,8 +142,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                             />
                             <Line type="monotone" dataKey="biomass" stroke="#16a34a" strokeWidth={2} dot={false} name={copy.biomassLine} />
                         </LineChart>
-                    </ResponsiveContainer>
-                </div>
+                    )}
+                </ChartFrame>
                 <div className="mt-2 flex justify-between text-xs text-slate-500">
                     <span>{copy.stage}: <span className="font-medium text-green-700">{getDevelopmentStageLabel(metrics.growth.developmentStage, locale)}</span></span>
                     <span>{copy.rate}: +{metrics.growth.growthRate.toFixed(1)} g m⁻² d⁻¹</span>
@@ -167,9 +168,9 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                     </div>
                 </div>
 
-                <div className="h-40 w-full">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={160}>
-                        <BarChart data={yieldData} barSize={20}>
+                <ChartFrame className="h-40 w-full" minHeight={160}>
+                    {({ width, height }) => (
+                        <BarChart width={Math.max(width, 1)} height={Math.max(height, 160)} data={yieldData} barSize={20}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -185,8 +186,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                                 ))}
                             </Bar>
                         </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                    )}
+                </ChartFrame>
                 <div className="mt-2 flex justify-between text-xs text-slate-500">
                     <span>{copy.confidence}: <span className="font-medium text-orange-700">{metrics.yield.confidence}%</span></span>
                     <span>{copy.harvestReady}: ~{metrics.yield.harvestableFruits.toFixed(0)}</span>
@@ -213,9 +214,9 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                     </div>
                 </div>
 
-                <div className="h-40 w-full">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={160}>
-                        <LineChart data={energyData}>
+                <ChartFrame className="h-40 w-full" minHeight={160}>
+                    {({ width, height }) => (
+                        <LineChart width={Math.max(width, 1)} height={Math.max(height, 160)} data={energyData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -227,8 +228,8 @@ const ModelAnalytics = ({ crop, metrics, metricHistory, forecast }: ModelAnalyti
                             <Line type="monotone" dataKey="powerKw" stroke="#2563eb" strokeWidth={2} dot={false} name={copy.electricalDemand} />
                             <Line type="monotone" dataKey="loadKw" stroke="#60a5fa" strokeWidth={2} dot={false} name={copy.thermalLoad} />
                         </LineChart>
-                    </ResponsiveContainer>
-                </div>
+                    )}
+                </ChartFrame>
                 <div className="mt-2 flex justify-between text-xs text-slate-500">
                     <span>{copy.load}: <span className="font-medium text-slate-700">{thermalLoadKw.toFixed(1)} kW</span></span>
                     <span>{copy.estimatedCost}: <span className="font-medium text-slate-700">{costLabel}</span></span>

@@ -130,13 +130,13 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
     if (props.status !== 'error' && analysis) {
         return (
             <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
-                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                <div className="sg-advisor-shell sg-advisor-shell-violet space-y-4">
                     <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                             {copy.title}
                         </div>
-                        <h3 className="mt-2 text-lg font-semibold text-slate-900">{copy.summary}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{analysis.summary}</p>
+                        <h3 className="mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.summary}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">{analysis.summary}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
@@ -154,28 +154,28 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                     </div>
 
                     <AdvisorActionCard title={copy.currentState} subtitle={copy.title}>
-                        <div className="space-y-3 text-sm text-slate-600">
+                        <div className="space-y-3 text-sm text-[color:var(--sg-text-muted)]">
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.harvestOutlook}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.harvestOutlook}: </span>
                                 {analysis.current_state.harvest_outlook}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.marketOutlook}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.marketOutlook}: </span>
                                 {analysis.current_state.market_outlook}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.tradeoffFocus}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.tradeoffFocus}: </span>
                                 {analysis.current_state.tradeoff_focus}
                             </div>
                             <div>
-                                <span className="font-semibold text-slate-900">{copy.cropSpecific}: </span>
+                                <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.cropSpecific}: </span>
                                 {analysis.current_state.crop_specific_context}
                             </div>
                         </div>
                     </AdvisorActionCard>
 
                     <AdvisorActionCard title={copy.context} subtitle={copy.title}>
-                        <div className="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                        <div className="grid gap-2 text-sm text-[color:var(--sg-text-muted)] sm:grid-cols-2">
                             <div>{copy.nextDayHarvest}: {formatValue(analysis.context_snapshot.next_day_harvest_kg, 2, ' kg')}</div>
                             <div>{copy.totalHarvest}: {formatValue(analysis.context_snapshot.total_harvest_kg, 2, ' kg')}</div>
                             <div>{copy.predictedWeeklyYield}: {formatValue(analysis.context_snapshot.predicted_weekly_yield_kg, 2, ' kg')}</div>
@@ -206,24 +206,24 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                         <AdvisorActionCard title={copy.actionPriority} subtitle={copy.title}>
                             <div className="space-y-3">
                                 {analysis.priority_actions.length === 0 ? (
-                                    <div className="text-sm text-slate-500">{copy.noActions}</div>
+                                    <div className="text-sm text-[color:var(--sg-text-faint)]">{copy.noActions}</div>
                                 ) : analysis.priority_actions.map((action) => (
                                     <div
                                         key={`${action.time_window}-${action.title}`}
-                                        className="rounded-2xl border border-slate-200 bg-white p-4"
+                                        className="sg-advisor-inset"
                                     >
                                         <div className="flex flex-wrap gap-2">
                                             <AdvisorConfidenceBadge label={getLocalizedTokenLabel(action.priority, locale)} tone="warning" />
                                             <AdvisorConfidenceBadge label={getLocalizedTokenLabel(action.time_window, locale)} tone="info" />
                                         </div>
-                                        <div className="mt-3 text-sm font-semibold text-slate-900">
+                                        <div className="mt-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                             {action.title}
                                         </div>
-                                        <div className="mt-2 text-sm leading-relaxed text-slate-600">
+                                        <div className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                             {action.rationale}
                                         </div>
-                                        <div className="mt-2 text-sm text-slate-600">{action.operator}</div>
-                                        <div className="mt-2 text-sm text-slate-500">{action.expected_effect}</div>
+                                        <div className="mt-2 text-sm text-[color:var(--sg-text-muted)]">{action.operator}</div>
+                                        <div className="mt-2 text-sm text-[color:var(--sg-text-faint)]">{action.expected_effect}</div>
                                     </div>
                                 ))}
                             </div>
@@ -232,11 +232,11 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                         <AdvisorActionCard title={copy.marketWatchlist} subtitle={copy.title}>
                             <div className="space-y-3">
                                 {analysis.market_watchlist.length === 0 ? (
-                                    <div className="text-sm text-slate-500">{copy.noWatchlist}</div>
+                                    <div className="text-sm text-[color:var(--sg-text-faint)]">{copy.noWatchlist}</div>
                                 ) : analysis.market_watchlist.map((item) => (
                                     <div
                                         key={`${item.market_label}-${item.display_name}`}
-                                        className="rounded-2xl border border-slate-200 bg-white p-4"
+                                        className="sg-advisor-inset"
                                     >
                                         <div className="flex flex-wrap gap-2">
                                             <AdvisorConfidenceBadge
@@ -248,16 +248,16 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                                                 <AdvisorConfidenceBadge label={getLocalizedTokenLabel(item.seasonal_bias, locale)} tone="info" />
                                             ) : null}
                                         </div>
-                                        <div className="mt-3 text-sm font-semibold text-slate-900">
+                                        <div className="mt-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                             {item.display_name}
                                         </div>
-                                        <div className="mt-2 text-sm text-slate-600">
+                                        <div className="mt-2 text-sm text-[color:var(--sg-text-muted)]">
                                             {formatPrice(item.current_price_krw)}
                                             {item.day_over_day_pct !== null && item.day_over_day_pct !== undefined
                                                 ? ` (${item.day_over_day_pct.toFixed(1)}%)`
                                                 : ''}
                                         </div>
-                                        <div className="mt-2 text-sm leading-relaxed text-slate-600">
+                                        <div className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                             {item.interpretation}
                                         </div>
                                     </div>
@@ -272,15 +272,15 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                                 {analysis.timing_windows.map((window) => (
                                     <div
                                         key={window.window}
-                                        className="rounded-2xl border border-slate-200 bg-white p-4"
+                                        className="sg-advisor-inset"
                                     >
-                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                             {window.window}
                                         </div>
-                                        <div className="mt-2 text-sm font-semibold text-slate-900">
+                                        <div className="mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                             {window.focus}
                                         </div>
-                                        <div className="mt-2 text-sm leading-relaxed text-slate-600">
+                                        <div className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                             {window.rationale}
                                         </div>
                                     </div>
@@ -289,11 +289,11 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
                         </AdvisorActionCard>
 
                         <AdvisorActionCard title={copy.checklist} subtitle={copy.title}>
-                            <ul className="space-y-2 text-sm text-slate-600">
+                            <ul className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                                 {analysis.monitoring_checklist.map((item) => (
                                     <li
                                         key={item}
-                                        className="rounded-xl border border-slate-200 bg-white px-3 py-2"
+                                        className="sg-advisor-note"
                                     >
                                         {item}
                                     </li>

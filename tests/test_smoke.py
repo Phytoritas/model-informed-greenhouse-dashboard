@@ -36,6 +36,9 @@ def _knowledge_catalog_service():
 @pytest.fixture(autouse=True)
 def reset_runtime_state() -> None:
     backend_main = _backend_main()
+    from model_informed_greenhouse_dashboard.backend.app.services import (
+        produce_prices as produce_prices_service,
+    )
 
     for crop in ("tomato", "cucumber"):
         crop_state = backend_main.app_state[crop]
@@ -53,6 +56,9 @@ def reset_runtime_state() -> None:
         crop_state["ops_config"] = None
         crop_state["crop_config"] = None
         crop_state["pending_prune_reset"] = False
+
+    produce_prices_service._produce_price_cache["payload"] = None
+    produce_prices_service._produce_price_cache["expires_at"] = 0.0
 
 
 def test_backend_root_endpoint_smoke() -> None:
@@ -635,6 +641,29 @@ def test_live_produce_prices_endpoint_returns_shape(
     assert payload["trend"]["series"][0]["points"][1]["actual_price_krw"] == 4932
     assert payload["trend"]["series"][0]["points"][2]["normal_10y_price_krw"] == 5900
     assert payload["trend"]["unavailable_series"] == []
+
+
+def test_live_produce_prices_endpoint_returns_fallback_payload_on_fetch_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend_main = _backend_main()
+
+    async def failing_fetch() -> dict:
+        raise httpx.ReadTimeout("KAMIS request timed out")
+
+    monkeypatch.setattr(backend_main, "fetch_featured_produce_prices", failing_fetch)
+    client = TestClient(get_app())
+
+    response = client.get("/api/market/produce")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["source"]["provider"] == "KAMIS"
+    assert payload["source"]["status"] == "fallback-unavailable"
+    assert payload["items"] == []
+    assert payload["trend"]["series"] == []
+    assert payload["trend"]["unavailable_series"][0]["display_name"] == "Tomato"
 
 
 def test_rtr_profiles_endpoint_returns_payload_shape(
