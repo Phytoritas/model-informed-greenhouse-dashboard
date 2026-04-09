@@ -164,7 +164,7 @@ function getScenarioLabel(label: string, locale: 'en' | 'ko'): string {
         return locale === 'ko' ? '냉난방 연동' : 'Coordinated HVAC';
     }
     if (label === 'optimizer_chosen') {
-        return locale === 'ko' ? '최종 권장안' : 'Optimizer chosen';
+        return locale === 'ko' ? '권장 제어안' : 'Recommended control';
     }
 
     return knownModes.has(label) ? getModeLabel(label, locale) : label;
@@ -277,13 +277,13 @@ function getScenarioGroupLabel(group: string, locale: 'en' | 'ko'): string {
         baseline: '기준선 비교',
         hvac: '냉난방 비교',
         'vent-screen': '환기·스크린 비교',
-        optimizer: '최종 권장안',
+        optimizer: '권장 제어안',
     };
     const enMap: Record<string, string> = {
         baseline: 'Baseline rows',
         hvac: 'HVAC rows',
         'vent-screen': 'Vent/screen rows',
-        optimizer: 'Optimizer chosen',
+        optimizer: 'Recommended control',
     };
     return (locale === 'ko' ? koMap[group] : enMap[group]) ?? group;
 }
@@ -343,8 +343,8 @@ function getRiskFlagMessage(
 function getTelemetryWarningCopy(status: TelemetryStatus, locale: 'en' | 'ko'): string | null {
     if (status === 'stale') {
         return locale === 'ko'
-            ? '센서 수신이 오래되어 RTR 최적화 신뢰도가 낮아졌습니다. 최신 측정이 들어오면 다시 계산하세요.'
-            : 'Sensor telemetry is stale, so RTR optimization confidence is reduced until a fresh snapshot arrives.';
+            ? '센서 수신이 오래되어 새 계산은 보수적으로 봐야 합니다. 최신 측정이 들어오면 다시 계산하세요.'
+            : 'Sensor telemetry is stale, so treat new calculations conservatively until a fresh snapshot arrives.';
     }
     if (status === 'delayed') {
         return locale === 'ko'
@@ -560,14 +560,14 @@ const RTROptimizerPanel = ({
 
     const copy = locale === 'ko'
         ? {
-            title: 'RTR 최적화',
-            subtitle: `${getCropLabel(crop, locale)} 목표 마디 전개를 위한 최소 충분 온도`,
+            title: '빛 맞춤 온도',
+            subtitle: `${getCropLabel(crop, locale)} 오늘 제어안과 목표 마디 전개를 함께 봅니다`,
             targetNode: '목표 마디 전개',
             predictedNode: '현재 예측 전개',
             recommendedMeanTemp: '추천 최소 평균온도',
             deltaTemp: '기준선 대비 ΔT',
             rtrEquivalent: '최적 RTR 환산값',
-            confidence: '신뢰도',
+            confidence: '확인 상태',
             gainLoss: '이득/손실 균형',
             cropInsight: '작물별 해석',
             setpoints: '추천 제어값',
@@ -612,7 +612,7 @@ const RTROptimizerPanel = ({
             no: '보류',
             sensitivity: '제어 민감도',
             noScenario: '시나리오 계산 결과가 아직 없습니다.',
-            computing: 'RTR 최적화를 계산하는 중...',
+            computing: '빛 맞춤 온도를 계산하는 중...',
             modeHeader: '시나리오',
             meanHeader: '평균온도',
             nodeHeader: '마디/일',
@@ -621,31 +621,31 @@ const RTROptimizerPanel = ({
             energyHeader: '냉난방 비용',
             yieldHeader: '수량 추세',
             laborHeader: '노동',
-            telemetryBlockedTitle: '실시간 수신이 오래돼 RTR 최적화를 잠시 제한합니다.',
-            telemetryBlockedBody: '센서가 stale/offline 상태이면 마지막 스냅샷으로 새 최적화를 밀지 않고, 기준선 비교 카드만 유지합니다.',
-            disabledTitle: 'RTR 기준선 모니터',
-            disabledBody: '이 프로파일은 아직 optimizer를 켜지 않아 기준선 모니터만 제공합니다.',
-            profileLoadingTitle: 'RTR 프로파일 준비 중',
-            profileLoadingBody: '프로파일 설정을 확인한 뒤 RTR 최적화 컨트롤을 열어 드립니다.',
-            profileFallbackBody: 'RTR 프로파일을 아직 불러오지 못해 기준선 비교 카드만 먼저 제공합니다.',
+            telemetryBlockedTitle: '실시간 수신이 오래돼 새 계산을 잠시 멈췄습니다.',
+            telemetryBlockedBody: '센서가 오래되었거나 끊기면 마지막 유효 스냅샷 기준 비교만 유지합니다.',
+            disabledTitle: '기준선 온도 비교',
+            disabledBody: '이 프로파일은 아직 자동 맞춤 계산을 켜지 않아 기준선 비교만 보여줍니다.',
+            profileLoadingTitle: '빛 맞춤 설정 준비 중',
+            profileLoadingBody: '프로파일 설정을 확인한 뒤 맞춤 제어 화면을 엽니다.',
+            profileFallbackBody: '프로파일을 아직 불러오지 못해 기준선 비교 카드만 먼저 보여줍니다.',
             energyUnit: 'kWh/m²/일',
-            waitingTarget: '현재 RTR 상태에서 예측 마디 전개를 아직 계산하지 못했습니다. 목표 마디 전개를 직접 입력하면 다시 계산합니다.',
+            waitingTarget: '현재 상태에서 예측 마디 전개를 아직 계산하지 못했습니다. 목표 마디 전개를 직접 입력하면 다시 계산합니다.',
         }
         : {
-            title: 'RTR optimizer',
-            subtitle: `Minimum sufficient temperature for ${getCropLabel(crop, locale)} node progression`,
+            title: 'Light-linked temperature',
+            subtitle: `Review today’s control lane and target node progression for ${getCropLabel(crop, locale)}`,
             targetNode: 'Target node rate',
             predictedNode: 'Predicted node rate',
             recommendedMeanTemp: 'Recommended minimum mean temp',
             deltaTemp: 'ΔT vs baseline',
             rtrEquivalent: 'Optimized RTR equivalent',
-            confidence: 'Confidence',
+            confidence: 'Review state',
             gainLoss: 'Gain/loss trade-off',
             cropInsight: 'Crop-specific insight',
             setpoints: 'Control result',
             scenarios: 'Scenario compare',
             customScenarioTitle: 'Custom compare scenario',
-            customScenarioBody: 'Add your own heating, cooling, vent, screen, fan, and CO2 row to compare it against the baseline and optimizer recommendation.',
+            customScenarioBody: 'Add your own heating, cooling, vent, screen, fan, and CO2 row to compare it against the baseline and recommended control.',
             customLabel: 'Scenario label',
             customApply: 'Apply compare row',
             customReset: 'Reset',
@@ -684,7 +684,7 @@ const RTROptimizerPanel = ({
             no: 'Guarded',
             sensitivity: 'Control sensitivity',
             noScenario: 'Scenario results are not available yet.',
-            computing: 'Computing RTR optimizer...',
+            computing: 'Computing light-linked temperature...',
             modeHeader: 'Scenario',
             meanHeader: 'Tmean',
             nodeHeader: 'Node/day',
@@ -693,15 +693,15 @@ const RTROptimizerPanel = ({
             energyHeader: 'HVAC cost',
             yieldHeader: 'Yield trend',
             laborHeader: 'Labor',
-            telemetryBlockedTitle: 'RTR optimization is temporarily gated by stale telemetry.',
-            telemetryBlockedBody: 'When sensors are stale or offline, the panel keeps the baseline comparison card visible instead of pushing a fresh optimizer run.',
-            disabledTitle: 'Baseline RTR monitor',
-            disabledBody: 'This profile keeps the optimizer disabled, so only the baseline RTR monitor is shown.',
-            profileLoadingTitle: 'RTR profile loading',
-            profileLoadingBody: 'RTR optimization controls will open after the profile contract is confirmed.',
-            profileFallbackBody: 'RTR profile data is unavailable, so the panel is staying on the baseline comparison card.',
+            telemetryBlockedTitle: 'Fresh calculation is temporarily gated by stale telemetry.',
+            telemetryBlockedBody: 'When sensors are stale or offline, the panel keeps the baseline comparison card visible instead of pushing a fresh calculation.',
+            disabledTitle: 'Baseline temperature compare',
+            disabledBody: 'This profile keeps the automatic control calculation disabled, so only the baseline comparison is shown.',
+            profileLoadingTitle: 'Light-linked profile loading',
+            profileLoadingBody: 'The control panel will open after the profile contract is confirmed.',
+            profileFallbackBody: 'Profile data is unavailable, so the panel is staying on the baseline comparison card.',
             energyUnit: 'kWh/m²/day',
-            waitingTarget: 'Predicted node progression is not available yet. Enter the target node rate manually to run the optimizer.',
+            waitingTarget: 'Predicted node progression is not available yet. Enter the target node rate manually to run the control comparison.',
         };
 
     const explanationCopy = useMemo(() => {
@@ -728,7 +728,7 @@ const RTROptimizerPanel = ({
 
         return {
             ...payload,
-            summary: `The optimizer ${direction} mean temperature by ${roundedDelta}°C to protect the node target near ${formatNumber(payload.target_node_development_per_day, 2, locale)} node/day.`,
+            summary: `The recommended control ${direction} mean temperature by ${roundedDelta}°C to protect the node target near ${formatNumber(payload.target_node_development_per_day, 2, locale)} node/day.`,
             crop_summary: cropSummary,
             missing_work_event_warning: payload.missing_work_event_warning
                 ? insight?.crop === 'cucumber'
@@ -929,8 +929,8 @@ const RTROptimizerPanel = ({
                 {lowConfidence ? (
                     <div className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700">
                         {locale === 'ko'
-                            ? `현재 RTR 추천 신뢰도가 ${formatNumber(confidence * 100, 0, locale)}%로 낮아 작업 이벤트와 최신 센서를 다시 확인하는 것이 좋습니다.`
-                            : `RTR confidence is currently ${formatNumber(confidence * 100, 0, locale)}%, so refresh work events and telemetry before applying aggressive changes.`}
+                            ? `현재 추천안은 추가 확인이 필요합니다. 작업 이벤트와 최신 센서를 다시 확인한 뒤 적용하는 것이 좋습니다.`
+                            : `This recommendation needs extra review, so refresh work events and telemetry before applying aggressive changes.`}
                     </div>
                 ) : null}
 
