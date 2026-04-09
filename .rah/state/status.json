@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue41-actuator-first-rtr-validating-on-pr42",
-  "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-internal-model-rtr-optimizer-target",
-  "active_issue": 41,
-  "active_branch": "feat/41-introduce-actuator-first-post-control-rtr-seam",
+  "current_stage": "issue47-phytosync-shadcn-gap-closure-validating-on-pr48",
+  "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-phytosync-route-shell",
+  "active_issue": 47,
+  "active_branch": "feat/47-close-remaining-phytosync-shadcn-redesign-prompt-gaps",
   "implementation_blocked": false,
-  "next_action": "Watch PR #42 (`[Model Change] Introduce actuator-first post-control RTR seam`) on `feat/41-introduce-actuator-first-post-control-rtr-seam`. The latest head includes blocker fixes for ventilation-energy double counting, optimize-vs-scenario baseline mismatch, active-objective sensitivity weighting, and explicit zero-valued circulation-fan overrides. If GitHub Actions pass, merge and resync `main`; if they fail, fix only the failing surface. Issue #3 remains the optional grower-window calibration follow-up after this actuator-first control seam lands.",
+  "next_action": "Watch PR #48 (`[Doc] Close remaining PhytoSync shadcn redesign prompt gaps`) on `feat/47-close-remaining-phytosync-shadcn-redesign-prompt-gaps`. The branch now lands the route-driven PhytoSync workspace shell, design tokens and style layers, the ask/search workspace, Korean copy cleanup, and accessibility/test hardening. If GitHub Actions pass, merge and resync `main`; if they fail, fix only the failing surface on the same branch.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "Issue #41 actuator-first HVAC RTR directive with post-control microclimate, first-class actuator search, and actual-area projection retention"
+  "directive_file": "codex_phytosync_shadcn_redesign_prompt.md gap-closure follow-up over the merged issue #45 UI baseline"
 }
