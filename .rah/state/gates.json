@@ -5,7 +5,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #57 is active on branch `fix/57-reduce-frontend-entry-chunk-size-with-route-level-code-splitting` for the bounded frontend code-splitting follow-up over clean `main`."
+    "note": "There is no active repo-level product branch in the root worktree now that issue #57 is merged. The root repository is normalized onto clean `main`, while issue #3 still remains only as the optional grower-window calibration follow-up."
   },
   "harness_setup": {
     "status": "pass",
@@ -241,14 +241,14 @@
   },
   "issue57_frontend_chunk_split": {
     "status": "pass",
-    "note": "The frontend build now splits React, router, and lucide vendor groups in `frontend/vite.config.ts`, reducing the production `index` chunk from `513.46 kB` to `284.08 kB` and removing the Vite >500 kB warning without changing runtime surfaces."
+    "note": "Issue #57 landed the bounded frontend chunk split in `frontend/vite.config.ts`, separating React/router/lucide vendor groups so the production `index` chunk dropped from `513.46 kB` to `284.08 kB` without changing runtime behavior."
   },
   "issue57_local_validation": {
     "status": "pass",
-    "note": "Issue #57 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, and `npm --prefix frontend run build` after the vendor chunk split landed."
+    "note": "Issue #57 stayed locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, and `npm --prefix frontend run build` after the chunk split landed."
   },
   "issue57_pr_validation": {
-    "status": "pending",
-    "note": "PR #58 is open for issue #57 and the project item has been moved to `Validating`; wait for GitHub Actions Backend/Frontend validation on the latest head before merge."
+    "status": "pass",
+    "note": "PR #58 merged issue #57 into `main` at `1d0c24ff432aec8403b9a9e2e1673bc5752c8889` after GitHub Actions Backend/Frontend validation both passed on runs `24188663087` and `24188664697`."
   }
 }
