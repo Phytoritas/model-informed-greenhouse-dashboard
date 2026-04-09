@@ -1,0 +1,129 @@
+import { Suspense, lazy } from 'react';
+import PageSectionTabs from '../components/phyto/PageSectionTabs';
+import AskSearchPage from '../components/phyto/AskSearchPage';
+import LoadingSkeleton from '../features/common/LoadingSkeleton';
+import type { SmartGrowAdvisorySurfaceSummary, SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
+import type { AppLocale } from '../i18n/locale';
+import type {
+  AdvancedModelMetrics,
+  CropType,
+  ForecastData,
+  ProducePricesPayload,
+  RtrProfile,
+  SensorData,
+  WeatherOutlook,
+} from '../types';
+import type { RagAssistantOpenRequest } from '../components/chat/ragAssistantTypes';
+import type { PhytoSectionTab } from '../routes/phytosyncSections';
+import AssistantPage from './assistant-page';
+
+const SmartGrowSurfacePanel = lazy(() => import('../components/SmartGrowSurfacePanel'));
+
+interface AssistantRoutePageProps {
+  locale: AppLocale;
+  crop: CropType;
+  cropLabel: string;
+  panelTabs: PhytoSectionTab[];
+  onSelectPanel: (panelId: string) => void;
+  summary: SmartGrowKnowledgeSummary | null;
+  actionsNow: string[];
+  actionsToday: string[];
+  note: string;
+  signals: Array<{ label: string; value: string }>;
+  activePanel?: 'assistant-chat' | 'assistant-search' | 'assistant-history';
+  searchRequest?: RagAssistantOpenRequest | null;
+  currentData: SensorData;
+  metrics: AdvancedModelMetrics;
+  forecast?: ForecastData | null;
+  history?: SensorData[];
+  producePrices?: ProducePricesPayload | null;
+  weather?: WeatherOutlook | null;
+  rtrProfile?: RtrProfile | null;
+  smartGrowLoading?: boolean;
+  smartGrowError?: string | null;
+  onOpenSearch: (request?: Omit<RagAssistantOpenRequest, 'nonce'>) => void;
+  onOpenSurface?: (surfaceKey: SmartGrowAdvisorySurfaceSummary['key']) => void;
+}
+
+export default function AssistantRoutePage({
+  locale,
+  crop,
+  cropLabel,
+  panelTabs,
+  onSelectPanel,
+  summary,
+  actionsNow,
+  actionsToday,
+  note,
+  signals,
+  activePanel = 'assistant-chat',
+  searchRequest = null,
+  currentData,
+  metrics,
+  forecast = null,
+  history = [],
+  producePrices = null,
+  weather = null,
+  rtrProfile = null,
+  smartGrowLoading = false,
+  smartGrowError = null,
+  onOpenSearch,
+  onOpenSurface,
+}: AssistantRoutePageProps) {
+  return (
+    <AssistantPage
+      locale={locale}
+      surface={(
+        <div className="space-y-6">
+          <PageSectionTabs
+            tabs={panelTabs}
+            activeId={activePanel}
+            onSelect={onSelectPanel}
+          />
+          <AskSearchPage
+            locale={locale}
+            crop={crop}
+            cropLabel={cropLabel}
+            summary={summary}
+            actionsNow={actionsNow}
+            actionsToday={actionsToday}
+            note={note}
+            signals={signals}
+            activePanel={activePanel}
+            searchRequest={searchRequest}
+            currentData={currentData}
+            metrics={metrics}
+            forecast={forecast}
+            history={history}
+            producePrices={producePrices}
+            weather={weather}
+            rtrProfile={rtrProfile}
+            smartGrowLoading={smartGrowLoading}
+            smartGrowError={smartGrowError}
+            onOpenSearch={onOpenSearch}
+          />
+        </div>
+      )}
+      summaryRail={(
+        <Suspense
+          fallback={(
+            <LoadingSkeleton
+              title={locale === 'ko' ? '바로 실행 도구' : 'Quick operating tools'}
+              loadingMessage={locale === 'ko' ? '운영 도구를 불러오는 중입니다...' : 'Loading quick operating tools...'}
+              minHeightClassName="min-h-[320px]"
+            />
+          )}
+        >
+          <SmartGrowSurfacePanel
+            crop={crop}
+            summary={summary}
+            loading={smartGrowLoading}
+            error={smartGrowError}
+            onOpenSurface={onOpenSurface}
+            layoutMode="compact"
+          />
+        </Suspense>
+      )}
+    />
+  );
+}

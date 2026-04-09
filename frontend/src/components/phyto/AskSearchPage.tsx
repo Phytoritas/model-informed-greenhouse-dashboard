@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import type { SmartGrowKnowledgeSummary } from '../../hooks/useSmartGrowKnowledge';
-import type { CropType } from '../../types';
+import type {
+  AdvancedModelMetrics,
+  CropType,
+  ForecastData,
+  ProducePricesPayload,
+  RtrProfile,
+  SensorData,
+  WeatherOutlook,
+} from '../../types';
+import type { RagAssistantOpenRequest } from '../chat/ragAssistantTypes';
+import ChatAssistant from '../ChatAssistant';
 import AskKnowledgeBoard from './AskKnowledgeBoard';
-import AskQuestionComposer from './AskQuestionComposer';
 import AskRecentFlow from './AskRecentFlow';
 import AskResultSummary from './AskResultSummary';
 
@@ -15,9 +24,18 @@ interface AskSearchPageProps {
   actionsToday: string[];
   note: string;
   signals: Array<{ label: string; value: string }>;
-  onOpenAsk: () => void;
-  onOpenSearch: () => void;
-  activePanel?: 'ask-chat' | 'ask-search' | 'ask-history';
+  activePanel?: 'assistant-chat' | 'assistant-search' | 'assistant-history';
+  searchRequest?: RagAssistantOpenRequest | null;
+  currentData: SensorData;
+  metrics: AdvancedModelMetrics;
+  forecast?: ForecastData | null;
+  history?: SensorData[];
+  producePrices?: ProducePricesPayload | null;
+  weather?: WeatherOutlook | null;
+  rtrProfile?: RtrProfile | null;
+  smartGrowLoading?: boolean;
+  smartGrowError?: string | null;
+  onOpenSearch: (request?: Omit<RagAssistantOpenRequest, 'nonce'>) => void;
 }
 
 export default function AskSearchPage({
@@ -29,51 +47,65 @@ export default function AskSearchPage({
   actionsToday,
   note,
   signals,
-  onOpenAsk,
+  activePanel = 'assistant-chat',
+  searchRequest = null,
+  currentData,
+  metrics,
+  forecast = null,
+  history = [],
+  producePrices = null,
+  weather = null,
+  rtrProfile = null,
+  smartGrowLoading = false,
+  smartGrowError = null,
   onOpenSearch,
-  activePanel = 'ask-chat',
 }: AskSearchPageProps) {
-  const [searchDraft, setSearchDraft] = useState('');
-  const [searchRequest, setSearchRequest] = useState<{ query: string; nonce: number } | null>(null);
-  const quickSearches = locale === 'ko'
-    ? [
-        `${cropLabel} 환경 제어 기준`,
-        `${cropLabel} 양액 경계 조건`,
-        `${cropLabel} 방제 교호 전략`,
-      ]
-    : [
-        `${cropLabel} environment control guidance`,
-        `${cropLabel} nutrient guardrails`,
-        `${cropLabel} protection rotation`,
-      ];
+  const [draftState, setDraftState] = useState<{ value: string; seedNonce: number | null }>({
+    value: '',
+    seedNonce: null,
+  });
+  const searchDraft = searchRequest?.query?.trim() && draftState.seedNonce !== searchRequest.nonce
+    ? searchRequest.query
+    : draftState.value;
+
+  const handleSearchDraftChange = (query: string) => {
+    setDraftState((current) => ({
+      value: query,
+      seedNonce: searchRequest?.nonce ?? current.seedNonce,
+    }));
+  };
 
   return (
     <div className="space-y-6">
-      {activePanel === 'ask-chat' ? (
-        <AskQuestionComposer
-          locale={locale}
-          cropLabel={cropLabel}
-          onOpenAsk={onOpenAsk}
-          onOpenSearch={onOpenSearch}
-          quickSearches={quickSearches}
-          onQuickSearch={(query) => {
-            setSearchDraft(query);
-            setSearchRequest({ query, nonce: Date.now() });
-          }}
+      {activePanel === 'assistant-chat' ? (
+        <ChatAssistant
+          isOpen
+          layoutMode="inline"
+          currentData={currentData}
+          metrics={metrics}
+          crop={crop}
+          forecast={forecast}
+          history={history}
+          producePrices={producePrices}
+          weather={weather}
+          rtrProfile={rtrProfile}
+          smartGrowSummary={summary}
+          smartGrowLoading={smartGrowLoading}
+          smartGrowError={smartGrowError}
+          onOpenKnowledgeSearch={onOpenSearch}
         />
       ) : null}
-      {activePanel === 'ask-search' ? (
+      {activePanel === 'assistant-search' ? (
         <AskKnowledgeBoard
           locale={locale}
           crop={crop}
           cropLabel={cropLabel}
           query={searchDraft}
-          onQueryChange={setSearchDraft}
+          onQueryChange={handleSearchDraftChange}
           searchRequest={searchRequest}
-          onOpenSearch={onOpenSearch}
         />
       ) : null}
-      {activePanel === 'ask-history' ? (
+      {activePanel === 'assistant-history' ? (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
           <AskRecentFlow
             locale={locale}

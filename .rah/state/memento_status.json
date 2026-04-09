@@ -1,0 +1,33 @@
+{
+  "schema_version": 3,
+  "enabled": true,
+  "configured": true,
+  "reachable": true,
+  "connectivity": "runtime-hydrated",
+  "workspace": "model-informed-greenhouse-dashboard",
+  "topic": "architecture-refactor",
+  "session_id": "model-informed-greenhouse-dashboard#61:hyp-61-rebuild-phytosync-into-coral-stay-routed-shell",
+  "case_id": "case/model-informed-greenhouse-dashboard/61/hyp-61-rebuild-phytosync-into-coral-stay-routed-shell",
+  "branch_name": "hyp/61-rebuild-phytosync-into-coral-stay-routed-shell",
+  "issue_number": 61,
+  "last_context_at": "2026-04-10T01:10:08.1958908+09:00",
+  "last_recall_at": "2026-04-10T01:10:08.1958908+09:00",
+  "last_reflect_at": "2026-04-10T01:16:58+09:00",
+  "last_search_event_id": "1415",
+  "stale_results": false,
+  "no_results_recently": true,
+  "pending_feedback_count": 0,
+  "active_errors": [],
+  "config_evidence": [
+    "C:\\Users\\yhmoo\\.codex\\config.toml"
+  ],
+  "config_scope": null,
+  "config_path": null,
+  "server_name": null,
+  "mcp_url": null,
+  "health_url": null,
+  "health_checked_at": null,
+  "health_http_status": null,
+  "health_payload": null,
+  "status_note": "Runtime successfully rehydrated context() and recall() for the issue #61 case during the assistant-alias follow-up, recorded recall feedback for search events 1407 and 1415, and reflected the bounded phase outcome into Memento."
+}

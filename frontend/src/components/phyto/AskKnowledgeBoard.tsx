@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BookOpenText, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import type { CropType } from '../../types';
 import { useRagAssistant } from '../../hooks/useRagAssistant';
 import DashboardCard from '../common/DashboardCard';
@@ -13,8 +13,7 @@ interface AskKnowledgeBoardProps {
     cropLabel: string;
     query: string;
     onQueryChange: (query: string) => void;
-    searchRequest: { query: string; nonce: number } | null;
-    onOpenSearch: () => void;
+    searchRequest: { query?: string; nonce: number } | null;
 }
 
 function formatScopeLabel(scope: string | null, locale: 'ko' | 'en', cropLabel: string) {
@@ -37,19 +36,17 @@ export default function AskKnowledgeBoard({
     query,
     onQueryChange,
     searchRequest,
-    onOpenSearch,
 }: AskKnowledgeBoardProps) {
     const copy = locale === 'ko'
         ? {
-            eyebrow: '페이지 안 자료 찾기',
+            eyebrow: '페이지 안에서 자료 찾기',
             title: '질문 흐름 안에서 바로 자료를 찾습니다',
-            description: '질문하기를 열지 않아도, 이 화면 안에서 바로 검색하고 연결된 문서를 읽을 수 있습니다.',
-            placeholder: `${cropLabel} 자료를 찾거나 질문형 검색어를 입력하세요`,
-            search: '이 화면에서 찾기',
-            openDrawer: '전체 자료 찾기 열기',
-            idle: '검색어를 넣거나 위의 빠른 찾기 칩을 눌러 자료를 불러오세요.',
+            description: '별도 패널을 열지 않고 이 화면에서 바로 검색하고 관련 문서를 읽을 수 있습니다.',
+            placeholder: `${cropLabel} 자료를 찾거나 질문 형태로 검색어를 입력하세요`,
+            search: '자료 찾기',
+            idle: '검색어를 입력하면 이 화면 아래에 바로 관련 자료가 나타납니다.',
             loading: '자료를 찾는 중입니다.',
-            noResults: '일치 항목이 없습니다. 검색어를 더 구체적으로 바꿔 보세요.',
+            noResults: '일치하는 자료가 없습니다. 검색어를 더 구체적으로 바꿔보세요.',
             results: '찾은 자료',
             query: '검색어',
             scope: '적용 범위',
@@ -58,12 +55,11 @@ export default function AskKnowledgeBoard({
         }
         : {
             eyebrow: 'Search inside this page',
-            title: 'Find source material without leaving the ask lane',
-            description: 'Search and read the linked material directly in this page before opening the full search drawer.',
+            title: 'Find source material inside the assistant page',
+            description: 'Search and read the linked material directly here without opening a separate panel.',
             placeholder: `Search ${cropLabel} materials or type a question-shaped query`,
-            search: 'Search in this page',
-            openDrawer: 'Open full materials lane',
-            idle: 'Enter a query or use the quick-find chips above to load source material.',
+            search: 'Find materials',
+            idle: 'Enter a query and the related material will appear below in this page.',
             loading: 'Searching materials...',
             noResults: 'No matching material was found. Try a more specific query.',
             results: 'Materials found',
@@ -83,7 +79,7 @@ export default function AskKnowledgeBoard({
     } = useRagAssistant();
 
     useEffect(() => {
-        if (!searchRequest?.query) {
+        if (!searchRequest?.query?.trim()) {
             return;
         }
         void runSearch({
@@ -91,7 +87,7 @@ export default function AskKnowledgeBoard({
             query: searchRequest.query,
             limit: 4,
         });
-    }, [crop, runSearch, searchRequest]);
+    }, [crop, runSearch, searchRequest?.nonce, searchRequest?.query]);
 
     async function handleSearch() {
         const normalizedQuery = query.trim();
@@ -118,10 +114,6 @@ export default function AskKnowledgeBoard({
                     <Button variant="secondary" onClick={handleSearch}>
                         <Search className="h-4 w-4" />
                         {copy.search}
-                    </Button>
-                    <Button variant="tonal" onClick={onOpenSearch}>
-                        <BookOpenText className="h-4 w-4" />
-                        {copy.openDrawer}
                     </Button>
                 </div>
             )}
@@ -158,7 +150,7 @@ export default function AskKnowledgeBoard({
                 ) : results.length > 0 ? (
                     <div className="space-y-3">
                         <div className="sg-eyebrow">{copy.results}</div>
-                        <div className="grid gap-3 xl:grid-cols-2">
+                        <div className="grid gap-3">
                             {results.map((item) => (
                                 <article
                                     key={`${item.document.relative_path}-${item.score}`}

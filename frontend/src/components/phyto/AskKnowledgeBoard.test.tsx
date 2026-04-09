@@ -34,7 +34,6 @@ describe('AskKnowledgeBoard', () => {
             }),
         });
         vi.stubGlobal('fetch', fetchMock);
-        const onOpenSearch = vi.fn();
 
         function Harness() {
             const [query, setQuery] = useState('');
@@ -46,7 +45,6 @@ describe('AskKnowledgeBoard', () => {
                     query={query}
                     onQueryChange={setQuery}
                     searchRequest={null}
-                    onOpenSearch={onOpenSearch}
                 />
             );
         }
@@ -57,13 +55,11 @@ describe('AskKnowledgeBoard', () => {
             screen.getByLabelText('Search Cucumber materials or type a question-shaped query'),
             { target: { value: 'powdery mildew rotation' } },
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Search in this page' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Find materials' }));
 
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
         expect(await screen.findByText('Powdery mildew notes')).toBeTruthy();
         expect(screen.getByText(/Source location:/)).toBeTruthy();
-
-        fireEvent.click(screen.getByRole('button', { name: 'Open full materials lane' }));
-        expect(onOpenSearch).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole('button', { name: 'Open full materials lane' })).toBeNull();
     });
 });

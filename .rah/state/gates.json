@@ -1,15 +1,44 @@
 {
+  "earliest_restart_point": "Continue from the issue #61 control-plane-synced routed-shell loop; after re-reading the wakeup packet and current loop, decide whether the remaining `ask-*` panel/hash compatibility should stay until after the first PR.",
+  "agents_and_workflow_gate": {
+    "status": "pass",
+    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the active issue #61 branch linkage are all satisfied for the Coral Stay routed-shell loop."
+  },
+  "memento_recall_gate": {
+    "status": "pass",
+    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and case `case/model-informed-greenhouse-dashboard/61/hyp-61-rebuild-phytosync-into-coral-stay-routed-shell`."
+  },
+  "memento_feedback_gate": {
+    "status": "pass",
+    "note": "Recall feedback was recorded for search events `1373`, `1381`, `1389`, `1407`, and `1415`, marking the retrieval as insufficient for the current issue61 routed-shell loop until repo-local fragments covering legacy retirement, assistant canonicalization, and the remaining `ask-*` compatibility decision exist."
+  },
+  "legacy_compatibility_retirement": {
+    "status": "pass",
+    "note": "The `/overview|/control|/resources|/alerts/legacy` paths now redirect explicitly to their canonical pages, `frontend/src/routes/LegacyCompatibilityFrame.tsx` is removed, and the dead `SectionRouteFrame` / `MainDashboard` wrapper chain is retired from the frontend runtime."
+  },
+  "assistant_alias_canonicalization": {
+    "status": "pass",
+    "note": "`frontend/src/routes/phytosyncSections.ts` now uses `assistant` as the canonical knowledge-section key/path and normalizes `/ask` into `/assistant`, while preserving the `/ask` redirect plus `ask-*` panel ids as bounded compatibility semantics until after the first PR."
+  },
+  "assistant_hash_compatibility_decision": {
+    "status": "pass",
+    "note": "The remaining `ask-chat|ask-search|ask-history` aliases are explicitly retained as inbound compatibility for old `/ask#...` or `/assistant#ask-*` deep links, and route regressions now lock that behavior so the first issue #61 PR does not silently break bookmarks."
+  },
   "agents_intake": {
     "status": "pass",
     "note": "Repo-local AGENTS workflow, issue-first rule, blueprint-first rule, and validation ladder were incorporated before non-trivial writes."
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "There is no active repo-level product branch in the root worktree now that issue #57 is merged. The root repository is normalized onto clean `main`, while issue #3 still remains only as the optional grower-window calibration follow-up."
+    "note": "Issue `#61` is active on branch `hyp/61-rebuild-phytosync-into-coral-stay-routed-shell`, and the current `.rah` control plane is bound to that live routed-shell redesign loop."
   },
   "harness_setup": {
     "status": "pass",
     "note": "docs/architecture and .rah remain initialized and reusable."
+  },
+  "issue61_recon_alignment": {
+    "status": "pass",
+    "note": "Root blueprint, architecture mirror, workspace audit, system brief, implementation gate, and system recon artifacts are now realigned around the issue #61 routed-shell redesign instead of the older RTR-era loop."
   },
   "preserved_issue18_baseline": {
     "status": "pass",

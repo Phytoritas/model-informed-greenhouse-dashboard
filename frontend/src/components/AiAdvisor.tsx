@@ -7,7 +7,7 @@ import type {
     AdvisorDisplayPayload,
     ModelRuntimePayload,
 } from '../hooks/useSmartGrowAdvisor';
-import type { RagAssistantOpenRequest } from './chat/RagAssistantDrawer';
+import type { RagAssistantOpenRequest } from './chat/ragAssistantTypes';
 import AdvisorConfidenceBadge from './advisor/AdvisorConfidenceBadge';
 
 interface AiAdvisorProps {

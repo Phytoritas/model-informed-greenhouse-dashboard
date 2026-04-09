@@ -1,0 +1,10 @@
+{
+  "workspace": "model-informed-greenhouse-dashboard",
+  "topic": "architecture-refactor",
+  "sessionId": "model-informed-greenhouse-dashboard#61:hyp-61-rebuild-phytosync-into-coral-stay-routed-shell",
+  "caseId": "case/model-informed-greenhouse-dashboard/61/hyp-61-rebuild-phytosync-into-coral-stay-routed-shell",
+  "phase": "implementation",
+  "issue_number": 61,
+  "branch": "hyp/61-rebuild-phytosync-into-coral-stay-routed-shell",
+  "profile": "python-service"
+}
