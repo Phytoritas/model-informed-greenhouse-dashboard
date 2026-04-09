@@ -1,30 +1,27 @@
 # Current Loop
 
 ## Active State
-- Issue `#57` remains active on branch `fix/57-reduce-frontend-entry-chunk-size-with-route-level-code-splitting`.
-- PR `#58` (`[Bug] Reduce frontend entry chunk size warning`) is open and the project item is now `Validating`.
-- The bounded change set still only touches `frontend/vite.config.ts` plus the matching `.rah` runtime-state sync.
-- Issue `#3` remains intentionally `Blocked` as the optional real grower-window calibration follow-up.
+- No repo-level delivery issue is currently active in the root control-plane state.
+- Root branch is normalized to clean `main` at `1d0c24ff432aec8403b9a9e2e1673bc5752c8889`.
+- The frontend Vite chunk-size warning is now resolved in the merged baseline.
+- Issue `#3` still remains intentionally `Blocked`, but only as the optional real grower-window calibration follow-up.
 
-## Latest In-Flight Slice
-- Issue `#57` removes the remaining frontend Vite chunk-size warning without changing product behavior.
-- `frontend/vite.config.ts` now splits `react`, `react-dom`, `scheduler`, `react-router*`, `@remix-run/*`, and `lucide-react` into dedicated vendor chunks while preserving `charts-vendor` and `markdown-vendor`.
-- Local production build result after the change:
-  - previous `index` chunk: `513.46 kB`
-  - current `index` chunk: `284.08 kB`
-  - Vite `>500 kB` warning: cleared
+## Latest Delivered Baseline
+- `main` includes the merged issue `#57` frontend performance follow-up:
+  - dedicated `react-vendor`, `router-vendor`, and `icon-vendor` chunk groups in `frontend/vite.config.ts`
+  - preserved `charts-vendor` and `markdown-vendor` boundaries
+  - production `index` chunk reduced from `513.46 kB` to `284.08 kB`
+  - Vite `>500 kB` warning removed without changing runtime/API/UI behavior
+- Earlier merged UI/runtime baselines from issues `#41`, `#47`, `#49`, and `#53` remain intact on top of this performance closure.
 
 ## Latest Validation
-- Local ladder for issue `#57` is green:
+- The issue `#57` lane stayed green locally with:
   - `npm --prefix frontend run lint`
   - `npm --prefix frontend run test -- --pool=threads`
   - `npm --prefix frontend run build`
-- Remote validation lane:
-  - PR `#58`
-  - GitHub Project status: `Validating`
-  - GitHub Actions Backend/Frontend validation: pending on the latest head
+- PR `#58` merged after GitHub Actions `Backend Validation` and `Frontend Validation` both passed on runs `24188663087` and `24188664697`.
+- Root `main` is now fast-forwarded to merge commit `1d0c24ff432aec8403b9a9e2e1673bc5752c8889`.
 
 ## Exact Next Step
-1. Check GitHub Actions for PR `#58`.
-2. If Backend Validation and Frontend Validation both pass, merge PR `#58`.
-3. Sync root `.rah` back to merged truth after the branch is closed.
+1. If more frontend performance or bundle-shaping work is needed, open a fresh issue/branch on top of the current clean `main` baseline.
+2. Otherwise return to issue `#3` only when real grower-approved tomato/cucumber good-production windows are ready for calibration intake.
