@@ -33,8 +33,8 @@ export default function DashboardHeader({
     onAssistantToggle,
     getCropLabel,
 }: DashboardHeaderProps) {
-    const brandName = locale === 'ko' ? '스마트그로우' : 'SmartGrow';
-    const brandSuffix = locale === 'ko' ? '도우미' : 'AI';
+    const brandName = 'PhytoSync';
+    const brandSuffix = locale === 'ko' ? '재배 도움' : 'Grower help';
 
     return (
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm">

@@ -2,12 +2,17 @@ import { Bell, Globe2, MessageCircle, Search, Sprout } from 'lucide-react';
 import type { AppLocale } from '../../i18n/locale';
 import type { CropType } from '../../types';
 import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 
 interface TopBarProps {
     locale: AppLocale;
     selectedCrop: CropType;
     telemetryStatus: 'loading' | 'live' | 'delayed' | 'stale' | 'offline' | 'blocked' | 'provisional';
     telemetryDetail?: string | null;
+    pageTitle?: string;
+    pageDescription?: string;
     onLocaleChange: (locale: AppLocale) => void;
     onCropChange: (crop: CropType) => void;
     onAssistantToggle: () => void;
@@ -20,6 +25,8 @@ export default function TopBar({
     selectedCrop,
     telemetryStatus,
     telemetryDetail,
+    pageTitle,
+    pageDescription,
     onLocaleChange,
     onCropChange,
     onAssistantToggle,
@@ -28,21 +35,26 @@ export default function TopBar({
 }: TopBarProps) {
     const copy = locale === 'ko'
         ? {
-            brand: 'SmartGrow Command Center',
-            tagline: '생육 모델, RTR 제어, 자원 의사결정을 한 화면에 연결합니다.',
+            brand: 'PhytoSync',
+            tagline: '오늘 운영 판단, 환경 제어, 생육 흐름을 한 화면에서 잇습니다.',
             language: '언어',
-            assistant: '어시스턴트',
-            search: '바로 찾기',
-            alerts: '알림',
+            assistant: '질문하기',
+            search: '동, 작업, 자재를 바로 찾기',
+            alerts: '주의 알림',
+            pageTitle: '오늘 온실 운영',
         }
         : {
-            brand: 'SmartGrow Command Center',
-            tagline: 'Link crop physiology, RTR control, and operating decisions in one cockpit.',
+            brand: 'PhytoSync',
+            tagline: 'Connect today’s operations, climate control, and crop momentum in one place.',
             language: 'Language',
-            assistant: 'Assistant',
-            search: 'Quick search',
+            assistant: 'Ask',
+            search: 'Search houses, work, or supplies',
             alerts: 'Alerts',
+            pageTitle: 'Greenhouse operations today',
         };
+
+    const resolvedPageTitle = pageTitle ?? copy.pageTitle;
+    const resolvedPageDescription = pageDescription ?? copy.tagline;
 
     return (
         <header className="sticky top-0 z-50 px-4 pt-4 sm:px-6 lg:px-8">
@@ -54,19 +66,26 @@ export default function TopBar({
                     <div className="min-w-0">
                         <div className="sg-eyebrow text-[color:var(--sg-accent-forest)]">{copy.brand}</div>
                         <h1 className="mt-1 font-[family-name:var(--sg-font-display)] text-[clamp(1.3rem,1rem+1vw,2rem)] font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
-                            {locale === 'ko' ? '오늘의 온실 운영 판단' : 'Today-first greenhouse control'}
+                            {resolvedPageTitle}
                         </h1>
-                        <p className="mt-1 max-w-2xl text-sm text-[color:var(--sg-text-muted)]">{copy.tagline}</p>
+                        <p className="mt-1 max-w-2xl text-sm text-[color:var(--sg-text-muted)]">{resolvedPageDescription}</p>
                     </div>
                 </div>
 
                 <div className="flex flex-col gap-3 lg:items-end">
                     <div className="flex flex-wrap items-center gap-2">
                         <TelemetryFreshnessChip status={telemetryStatus} detail={telemetryDetail} />
-                        <div className="hidden items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-xs font-medium text-[color:var(--sg-text-muted)] md:inline-flex" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <Search className="h-4 w-4" />
-                            {copy.search}
+                        <div className="hidden w-[20rem] md:block">
+                            <Input
+                                aria-label={copy.search}
+                                placeholder={copy.search}
+                                className="h-11 rounded-full bg-white/78"
+                            />
                         </div>
+                        <Badge variant="muted" className="hidden items-center gap-2 md:inline-flex">
+                            <Search className="h-4 w-4" />
+                            {locale === 'ko' ? '빠른 찾기' : 'Quick search'}
+                        </Badge>
                         <button
                             type="button"
                             className="relative inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/75 text-[color:var(--sg-text-strong)] transition hover:bg-white"
@@ -76,18 +95,14 @@ export default function TopBar({
                             <Bell className="h-5 w-5" />
                             <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[color:var(--sg-accent-danger)]" />
                         </button>
-                        <button
-                            type="button"
+                        <Button
                             onClick={onAssistantToggle}
-                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-                                assistantOpen
-                                    ? 'bg-[color:var(--sg-accent-violet)] text-white'
-                                    : 'bg-[color:var(--sg-text-strong)] text-white hover:bg-[color:var(--sg-accent-forest)]'
-                            }`}
+                            variant={assistantOpen ? 'tonal' : 'default'}
+                            className={assistantOpen ? 'text-white bg-[color:var(--sg-accent-violet)] hover:bg-[#4f54a8]' : 'rounded-full'}
                         >
                             <MessageCircle className="h-4 w-4" />
                             {copy.assistant}
-                        </button>
+                        </Button>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">

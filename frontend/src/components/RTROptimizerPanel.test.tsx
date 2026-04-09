@@ -597,7 +597,7 @@ describe('RTROptimizerPanel', () => {
     it('renders optimizer summary, projections, scenario compare, and reason badges in Korean', async () => {
         renderPanel();
 
-        expect(await screen.findByText('RTR 최적화')).toBeTruthy();
+        expect(await screen.findByText('빛 맞춤 온도')).toBeTruthy();
         expect(screen.getByText('실평수 환산')).toBeTruthy();
         expect(screen.getByText('총 수확량 / 일')).toBeTruthy();
         expect(screen.getByText('총 수확량 / 주')).toBeTruthy();
@@ -694,8 +694,8 @@ describe('RTROptimizerPanel', () => {
     it('renders English explanation and placeholders without leaking Korean narrative', async () => {
         renderPanel({ locale: 'en' });
 
-        expect(await screen.findByText('RTR optimizer')).toBeTruthy();
-        expect(screen.getByText(/The optimizer raised mean temperature by 0\.40°C/)).toBeTruthy();
+        expect(await screen.findByText('Light-linked temperature')).toBeTruthy();
+        expect(screen.getByText(/The recommended control raised mean temperature by 0\.40°C/)).toBeTruthy();
         expect(screen.queryByText('목표 마디 전개를 맞추기 위해 기준선보다 소폭 높은 평균 온도가 필요합니다.')).toBeNull();
         expect(screen.getByPlaceholderText('e.g. 850')).toBeTruthy();
         expect(screen.getByPlaceholderText('e.g. 2809.9')).toBeTruthy();
@@ -704,10 +704,10 @@ describe('RTROptimizerPanel', () => {
     it('falls back to the baseline monitor when the optimizer is disabled', async () => {
         renderPanel({ locale: 'en', optimizerEnabled: false });
 
-        expect(await screen.findByText('Baseline RTR monitor')).toBeTruthy();
-        expect(screen.getByText('This profile keeps the optimizer disabled, so only the baseline RTR monitor is shown.')).toBeTruthy();
+        expect(await screen.findByText('Baseline temperature compare')).toBeTruthy();
+        expect(screen.getByText('This profile keeps the automatic control calculation disabled, so only the baseline comparison is shown.')).toBeTruthy();
         expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
-        expect(screen.queryByText('RTR optimizer')).toBeNull();
+        expect(screen.queryByText('Light-linked temperature')).toBeNull();
     });
 
     it('holds a loading shell until the RTR profile contract is ready', async () => {
@@ -730,8 +730,8 @@ describe('RTROptimizerPanel', () => {
             </LocaleProvider>,
         );
 
-        expect(await screen.findByText('RTR 프로파일 준비 중')).toBeTruthy();
-        expect(screen.getByText('프로파일 설정을 확인한 뒤 RTR 최적화 컨트롤을 열어 드립니다.')).toBeTruthy();
+        expect(await screen.findByText('빛 맞춤 설정 준비 중')).toBeTruthy();
+        expect(screen.getByText('프로파일 설정을 확인한 뒤 맞춤 제어 화면을 엽니다.')).toBeTruthy();
         expect(screen.queryByText('목표 마디 전개')).toBeNull();
     });
 
@@ -835,7 +835,7 @@ describe('RTROptimizerPanel', () => {
 
         renderPanel({ locale: 'en', telemetryStatus: 'stale' });
 
-        expect(await screen.findByText('RTR optimizer')).toBeTruthy();
+        expect(await screen.findByText('Light-linked temperature')).toBeTruthy();
         expect(screen.getByText(/Sensor telemetry is stale/)).toBeTruthy();
         expect(screen.getByText('Constraint and risk warnings')).toBeTruthy();
         expect(screen.getByText('Disease-risk humidity')).toBeTruthy();
@@ -876,7 +876,7 @@ describe('RTROptimizerPanel', () => {
 
         renderPanel({ telemetryStatus: 'offline' });
 
-        expect(await screen.findByText('실시간 수신이 오래돼 RTR 최적화를 잠시 제한합니다.')).toBeTruthy();
+        expect(await screen.findByText('실시간 수신이 오래돼 새 계산을 잠시 멈췄습니다.')).toBeTruthy();
         expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
         expect(screen.queryByText('목표 마디 전개')).toBeNull();
     });

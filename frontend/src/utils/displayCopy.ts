@@ -307,7 +307,7 @@ const COMMON_TOKEN_LABELS: Record<string, { en: string; ko: string }> = {
     'vegetative leaning': { en: 'Vegetative leaning', ko: '웃자람 주의' },
     'generative leaning': { en: 'Generative leaning', ko: '생식생장 치우침' },
     'stress watch': { en: 'Stress watch', ko: '스트레스 주의' },
-    agronomy: { en: 'Agronomy', ko: '재배 근거' },
+    agronomy: { en: 'Grower notes', ko: '재배 메모' },
     '14d fruit dm': { en: '14d fruit DM', ko: '14일 과실 건물중' },
     '14d lai': { en: '14d LAI', ko: '14일 LAI' },
     score: { en: 'Score', ko: '점수' },
