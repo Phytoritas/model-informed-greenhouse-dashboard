@@ -29,7 +29,7 @@ export default function ConfidenceBadge({ value, className }: ConfidenceBadgePro
 
     return (
         <span className={cn('inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.01em]', toneClassName, className)}>
-            {locale === 'ko' ? '확인 상태' : 'Review state'} · {label}
+            {locale === 'ko' ? '판단 안정도' : 'Decision readiness'} · {label}
         </span>
     );
 }

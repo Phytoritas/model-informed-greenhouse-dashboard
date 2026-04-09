@@ -23,11 +23,14 @@ describe('PageSectionTabs', () => {
             />,
         );
 
-        const heroTab = screen.getByRole('button', { name: '핵심 판단' });
-        const liveTab = screen.getByRole('button', { name: '실시간 상태' });
+        const heroTab = screen.getByRole('tab', { name: '핵심 판단' });
+        const liveTab = screen.getByRole('tab', { name: '실시간 상태' });
 
         expect(heroTab.getAttribute('data-active')).not.toBe('true');
         expect(liveTab.getAttribute('data-active')).toBe('true');
+        expect(heroTab.getAttribute('aria-selected')).toBe('false');
+        expect(liveTab.getAttribute('aria-selected')).toBe('true');
+        expect(liveTab.getAttribute('aria-current')).toBe('page');
 
         fireEvent.click(heroTab);
 
