@@ -23,7 +23,7 @@ export type PhytoSectionKey =
     | 'harvest'
     | 'resources'
     | 'alerts'
-    | 'ask';
+    | 'assistant';
 
 export interface PhytoSectionTab {
     id: string;
@@ -180,19 +180,19 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 ],
             },
             {
-                key: 'ask',
-                path: '/ask',
-                label: '질문하기',
-                shortLabel: '질문',
+                key: 'assistant',
+                path: '/assistant',
+                label: 'AI 도우미',
+                shortLabel: '도우미',
                 description: '자료 찾기와 질문 흐름을 한곳에 모읍니다.',
                 icon: MessageCircle,
                 workspace: 'knowledge',
                 heroTitle: '질문과 자료 찾기',
                 heroDescription: '막히는 판단은 자료를 찾고 바로 질문으로 이어갑니다.',
                 tabs: [
-                    { id: 'ask-chat', label: '질문' },
-                    { id: 'ask-search', label: '자료 찾기' },
-                    { id: 'ask-history', label: '최근 흐름' },
+                    { id: 'assistant-chat', label: '질문' },
+                    { id: 'assistant-search', label: '자료 찾기' },
+                    { id: 'assistant-history', label: '최근 흐름' },
                 ],
             },
         ]
@@ -330,19 +330,19 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
                 ],
             },
             {
-                key: 'ask',
-                path: '/ask',
-                label: 'Ask',
-                shortLabel: 'Ask',
+                key: 'assistant',
+                path: '/assistant',
+                label: 'Assistant',
+                shortLabel: 'Assist',
                 description: 'Keep question flow and document lookup together.',
                 icon: MessageCircle,
                 workspace: 'knowledge',
                 heroTitle: 'Ask and search lane',
                 heroDescription: 'Move from blocked questions into search and explanation.',
                 tabs: [
-                    { id: 'ask-chat', label: 'Ask' },
-                    { id: 'ask-search', label: 'Search' },
-                    { id: 'ask-history', label: 'Recent flow' },
+                    { id: 'assistant-chat', label: 'Ask' },
+                    { id: 'assistant-search', label: 'Search' },
+                    { id: 'assistant-history', label: 'Recent flow' },
                 ],
             },
         ];
@@ -352,7 +352,15 @@ export function findPhytoSection(
     sections: PhytoSectionDefinition[],
     pathname: string,
 ): PhytoSectionDefinition {
-    return sections.find((section) => pathname === section.path || pathname.startsWith(`${section.path}/`))
+    const normalizedPath = pathname.startsWith('/rtr')
+        ? '/control'
+        : pathname.startsWith('/crop-work')
+            ? '/growth'
+            : pathname.startsWith('/assistant') || pathname.startsWith('/ask')
+                ? '/assistant'
+                : pathname;
+
+    return sections.find((section) => normalizedPath === section.path || normalizedPath.startsWith(`${section.path}/`))
         ?? sections[0];
 }
 
@@ -371,7 +379,7 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
         case 'alerts':
             return '/alerts';
         case 'knowledge':
-            return '/ask';
+            return '/assistant';
         default:
             return '/overview';
     }

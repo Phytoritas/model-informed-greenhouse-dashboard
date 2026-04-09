@@ -21,11 +21,12 @@ import type {
     AdvisorDisplayPayload,
     ModelRuntimePayload,
 } from '../hooks/useSmartGrowAdvisor';
-import type { RagAssistantOpenRequest } from './chat/RagAssistantDrawer';
+import type { RagAssistantOpenRequest } from './chat/ragAssistantTypes';
 
 interface ChatAssistantProps {
-    isOpen: boolean;
-    onClose: () => void;
+    isOpen?: boolean;
+    onClose?: () => void;
+    layoutMode?: 'drawer' | 'inline';
     onOpenKnowledgeSearch?: (
         request?: Omit<RagAssistantOpenRequest, 'nonce'>,
     ) => void;
@@ -184,8 +185,9 @@ function StructuredReply({
 }
 
 const ChatAssistant = ({
-    isOpen,
+    isOpen = true,
     onClose,
+    layoutMode = 'drawer',
     onOpenKnowledgeSearch,
     currentData,
     metrics,
@@ -199,6 +201,7 @@ const ChatAssistant = ({
     smartGrowLoading = false,
     smartGrowError = null,
 }: ChatAssistantProps) => {
+    const isInline = layoutMode === 'inline';
     const { locale } = useLocale();
     const cropLabel = getCropLabel(crop, locale);
     const copy = locale === 'ko'
@@ -481,13 +484,17 @@ const ChatAssistant = ({
         }
     };
 
-    if (!isOpen) {
+    if (!isInline && !isOpen) {
         return null;
     }
 
     return (
         <div
-            className="fixed bottom-6 right-6 z-50 flex h-[560px] w-[28rem] flex-col overflow-hidden rounded-[32px]"
+            className={
+                isInline
+                    ? 'flex min-h-[680px] w-full flex-col overflow-hidden rounded-[32px]'
+                    : 'fixed bottom-6 right-6 z-50 flex h-[560px] w-[28rem] flex-col overflow-hidden rounded-[32px]'
+            }
             style={{
                 background: 'linear-gradient(160deg, rgba(255,251,246,0.99), rgba(244,231,223,0.96) 60%, rgba(233,215,204,0.94))',
                 boxShadow: 'var(--sg-shadow-soft)',
@@ -500,14 +507,16 @@ const ChatAssistant = ({
                     </div>
                     <span className="font-medium">{copy.title}</span>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    aria-label={copy.title}
-                    className="rounded-full p-1 transition-colors hover:bg-[color:var(--sg-surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
-                >
-                    <X className="h-5 w-5" />
-                </button>
+                {!isInline && onClose ? (
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label={copy.title}
+                        className="rounded-full p-1 transition-colors hover:bg-[color:var(--sg-surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                ) : null}
             </div>
 
             <div className="border-b border-[color:var(--sg-outline-soft)] px-4 py-3 sg-tint-amber">
@@ -548,7 +557,13 @@ const ChatAssistant = ({
                 ) : null}
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto bg-[color:var(--sg-surface)] p-4">
+            <div
+                className={
+                    isInline
+                        ? 'flex-1 space-y-4 bg-[color:var(--sg-surface)] p-4 sm:p-5'
+                        : 'flex-1 space-y-4 overflow-y-auto bg-[color:var(--sg-surface)] p-4'
+                }
+            >
                 {messages.map((message, index) => (
                     <div
                         key={`${message.role}-${index}-${message.text.slice(0, 24)}`}

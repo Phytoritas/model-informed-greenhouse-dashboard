@@ -5,127 +5,115 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `none`
-- Active branch: `main`
-- Preserved merged baselines: issues `#19`, `#23`, `#25`, `#27`
+- Active issue: `#61`
+- Active branch: `hyp/61-rebuild-phytosync-into-coral-stay-routed-shell`
+- Preserved merged baselines: issues `#19`, `#23`, `#25`, `#27`, `#47`, `#49`, `#57`
 
-## Identity
-This repository now carries four simultaneous truths:
-- the validated dashboard runtime, WebSocket telemetry flow, weather/RTR/market panels, crop switching, and current AI consult/chat experience
-- the merged model-first SmartGrow runtime from issue `#19`, including crop models, model-runtime persistence, scenarios, sensitivities, and model-aware advisor shells
-- the merged frontend stabilization and grower-facing copy baseline from issues `#23` and `#25`
-- the merged issue `#27` RTR baseline that demotes the old radiation-line RTR into a baseline prior and replaces the main RTR recommendation path with an internal-model-only optimizer
+## Active Lane
+Issue `#61` rebuilds the PhytoSync frontend into a Coral Stay-inspired routed shell.
+The mainline target is no longer a giant dashboard page with embedded section composition. The shell must now behave like a real product with explicit routes, bounded page layouts, and a warm coral-first visual rhythm.
 
-The latest merged control baseline is:
-- internal-model-only RTR optimization
-- minimum sufficient temperature first
-- RTR ratio as a derived summary, not a primary control target
-- canonical m² computation with actual-area projection as a deterministic display layer
-
-## Existing Baseline To Preserve
-- Keep the current dashboard runtime, WebSocket rendering, weather/RTR/market panels, crop switching, and AI consult/chat flows stable
-- Keep the landed model-first SmartGrow services and `/api/models/*` plus `/api/advisor/*` surfaces as the donor computation stack for RTR
-- Keep `configs/rtr_profiles.json` and `/api/rtr/profiles` backward compatible for baseline lines and old profile consumers
-- Keep the legacy `RTROutlookPanel` available only as a baseline/fallback comparison card rather than the primary RTR recommendation surface
+## Preserved Baseline
+- Keep the current backend runtime, WebSocket telemetry flow, weather/RTR/market panels, crop switching, and AI consult/chat behavior stable.
+- Keep the merged model-first SmartGrow runtime from issue `#19`, including `/api/models/*`, `/api/advisor/*`, and the internal-model RTR baseline from issue `#27`.
+- Keep `configs/rtr_profiles.json`, `/api/rtr/*`, advisor contracts, area-unit projection, and routed advisor lanes backward compatible.
+- Keep the extracted issue `#61` route pages as the primary navigation surface: `/overview`, `/control`, `/rtr`, `/crop-work`, `/resources`, `/alerts`, `/assistant`, `/settings`.
 
 ## Directive Summary
-Issue `#27` must overhaul RTR so that:
-- the code uses only repository-internal crop, canopy, gas-exchange, growth, and energy services for RTR setpoint recommendations
-- the user enters a target node-development rate per day
-- the system finds the minimum feasible day/night temperature targets that satisfy node progression without violating carbon margin, sink balance, risk, and optional energy/labor penalties
-- the optimizer output is then converted into a narrow RTR-equivalent summary for comparison only
-- all canonical outputs remain in m² units, while grower-entered actual area is used only for parallel projection
+Issue `#61` must:
+- make route-based navigation the primary interaction model
+- keep each page focused on one operating story instead of stacking all analytical surfaces into one screen
+- move the shell toward a warm Coral Stay editorial system without breaking current runtime behavior
+- preserve direct advisor-lane entry for `/growth`, `/nutrient`, `/protection`, and `/harvest`
+- keep `/ask#...` as a compatibility redirect into `/assistant#...`
+- retire the remaining legacy-only `MainDashboard` compatibility composition before the first PR
 
 ## Source Of Truth
 1. `Phytoritas.md`
-2. GitHub issue `#27`
-3. `README.md`
-4. `docs/architecture/Phytoritas.md`
-5. `docs/architecture/implementation/implementation_gate_checklist.md`
-6. `docs/architecture/implementation/rtr_internal_optimizer_architecture.md`
-7. `docs/architecture/gap_register.md`
-8. `.rah/state/status.json`
-9. `.rah/state/gates.json`
-10. Repo code and tests
+2. GitHub issue `#61`
+3. `.rah/state/status.json`
+4. `.rah/state/gates.json`
+5. `.rah/memory/wakeup.md`
+6. `.rah/plans/current_loop.md`
+7. `docs/architecture/Phytoritas.md`
+8. `docs/architecture/00_workspace_audit.md`
+9. `docs/architecture/01_system_brief.md`
+10. `docs/architecture/implementation/implementation_gate_checklist.md`
+11. `docs/architecture/system/current_architecture_map.md`
+12. Repo code and tests
 
 ## Non-Negotiables
-- Do not let RTR setpoints depend on external literature or RAG heuristics in the control path
-- Do not break the current dashboard, weather panel, market panel, AI consult/chat, or crop switching
-- Do not remove `/api/rtr/profiles` compatibility
-- Do not treat RTR ratio as the optimization decision variable
-- Do not mix canonical m² calculations with actual-area totals in the core model path
-- Do not let AI invent setpoints that differ from the structured backend optimizer payload
+- Do not break `/api/rtr/*`, `/api/models/*`, `/api/advisor/*`, weather, market, or area-unit contracts.
+- Do not revert to a fake tabbed single-page structure.
+- Do not regress direct route entry, sidebar navigation, or advisor-lane intent preservation.
+- Do not change `/overview/legacy`, `/control/legacy`, `/resources/legacy`, or `/alerts/legacy` behavior without explicit canonical redirects and test updates.
+- Do not let the routed shell drift away from the issue `#61` coral-first visual direction.
 
-## Target Architecture
-### Backend RTR services
-- `backend/app/services/rtr/internal_model_bridge.py`
-- `backend/app/services/rtr/node_target_engine.py`
-- `backend/app/services/rtr/objective_terms.py`
-- `backend/app/services/rtr/lagrangian_optimizer.py`
-- `backend/app/services/rtr/scenario_runner.py`
-- `backend/app/services/rtr/rtr_deriver.py`
-- `backend/app/services/rtr/unit_projection.py`
-- `backend/app/services/rtr/controller_contract.py`
+## Current Architecture Target
+### Shell and Navigation
+- `frontend/src/main.tsx`: `BrowserRouter` entry
+- `frontend/src/App.tsx`: root route registration, cross-route state wiring, and explicit compatibility redirects
+- `frontend/src/layout/AppShell.tsx`: shared shell canvas
+- `frontend/src/components/shell/TopBar.tsx`: page-level title and crop/locale controls
+- `frontend/src/components/shell/WorkspaceNav.tsx`: primary route navigation
+- `frontend/src/app/route-meta.ts`: canonical primary-route metadata
 
-### Frontend RTR surfaces
-- `frontend/src/context/AreaUnitContext.tsx`
-- `frontend/src/components/AreaUnitPanel.tsx`
-- `frontend/src/hooks/useRtrOptimizer.ts`
-- `frontend/src/components/RTROptimizerPanel.tsx`
-- existing `RTROutlookPanel.tsx` preserved as baseline/fallback compare
+### Route-Level Pages
+- `frontend/src/pages/overview-route-page.tsx`
+- `frontend/src/pages/control-route-page.tsx`
+- `frontend/src/pages/rtr-route-page.tsx`
+- `frontend/src/pages/crop-work-route-page.tsx`
+- `frontend/src/pages/resources-route-page.tsx`
+- `frontend/src/pages/alerts-route-page.tsx`
+- `frontend/src/pages/assistant-route-page.tsx`
+- `frontend/src/pages/settings-route-page.tsx`
+- `frontend/src/pages/advisor-lane-route-page.tsx`
 
-### API targets
-- `GET /api/rtr/profiles`
-- `GET /api/rtr/state`
-- `POST /api/rtr/optimize`
-- `POST /api/rtr/scenario`
-- `POST /api/rtr/sensitivity`
-- `POST /api/rtr/area-settings`
+### Residual Compatibility Follow-Ups
+- `/overview/legacy`, `/control/legacy`, `/resources/legacy`, and `/alerts/legacy` now redirect explicitly to their canonical routes
+- the old `SectionRouteFrame` / `MainDashboard` wrapper chain is retired from the frontend runtime
+- `frontend/src/routes/phytosyncSections.ts` now treats `assistant` as the canonical knowledge section while preserving `/ask` redirect and `ask-*` panel compatibility
 
 ## Phased Delivery
-### Phase 0. Intake and baseline lock
-- bind issue `#27` and issue-based branch
-- preserve `/api/rtr/profiles` compatibility and current dashboard runtime
-- keep issue `#19` model runtime as the computation donor layer
+### Phase 0. Baseline preservation
+- bind issue `#61` and the issue-based branch
+- preserve backend/API/runtime behavior while changing only shell IA and presentation
 
-### Phase 1. Backend optimizer lane
-- add the internal-model bridge, node target engine, objective terms, optimizer, scenario runner, RTR derivation, and area projection
-- normalize additive `/api/rtr/*` contracts without breaking older profile consumers
+### Phase 1. Primary route extraction
+- extract `/overview`, `/control`, `/rtr`, `/crop-work`, `/resources`, `/alerts`, `/assistant`, and `/settings` into dedicated route-level page composition
+- keep advisor lanes route-driven
 
-### Phase 2. Frontend optimizer lane
-- replace the old RTR primary panel with an optimizer-driven surface
-- add area-unit context and actual-area projection
-- demote the legacy RTR panel to baseline/fallback compare
+### Phase 2. Control-plane sync and recon
+- realign `Phytoritas.md`, `docs/architecture/`, and `.rah/` around issue `#61`
+- record the current route-shell seams, interfaces, and hotspots from observed code
 
-### Phase 3. Validation and calibration lane
-- lock backend/frontend tests and smoke coverage
-- tune weights and bounds against house data
-- replace demo windows with grower-approved good-production windows
+### Phase 3. Legacy compatibility retirement
+- replace the remaining `/overview|/control|/resources|/alerts` legacy frame composition with explicit canonical redirects
+- remove the dead `SectionRouteFrame` / `MainDashboard` wrapper chain after the redirects land
+
+### Phase 4. First PR bundle
+- capture screenshots and route-validation evidence
+- open the first PR once the legacy-only seam is isolated and the frontend ladder stays green
 
 ## Decision Gates
-### Gate A. Compatibility lock
-- `/api/rtr/profiles` and `configs/rtr_profiles.json` remain backward compatible
+### Gate A. Runtime preservation
+- backend/runtime contracts remain unchanged while the routed shell evolves
 
-### Gate B. Internal-model lock
-- optimization uses only repo-internal crop/runtime/energy services for control calculations
+### Gate B. Route-shell primacy
+- the eight primary pages render directly through route-level containers
 
-### Gate C. Area-unit lock
-- m² remains canonical and actual-area totals stay projection-only
+### Gate C. Legacy compatibility retirement
+- `/overview|/control|/resources|/alerts/legacy` behave only as explicit canonical redirects and no live `MainDashboard` frame chain remains
 
-### Gate D. Optimizer-output lock
-- the UI and AI describe structured optimizer outputs instead of recomputing setpoints from prose
+### Gate D. Coral shell consistency
+- shared shell spacing, page headers, and theme tokens reinforce the issue `#61` visual direction
 
 ### Gate E. Validation lock
-- backend and frontend ladders plus RTR-targeted tests must pass before PR/merge
-
-## Validation Loop
-- `npm --prefix frontend run test`
 - `npm --prefix frontend run lint`
+- `npm --prefix frontend run test -- --pool=threads`
 - `npm --prefix frontend run build`
-- `poetry run ruff check .`
-- `poetry run pytest`
 
 ## Immediate Next Action
-- Open a fresh issue and issue-based branch if RTR post-merge work should continue
-- The most natural next bounded loop is calibration follow-up: grower-approved RTR windows, optimizer weight tuning, and deeper house-specific constraint alignment
-- If the next work is outside RTR, treat `main` plus merged issue `#27` as the new clean architecture baseline
+- keep the issue `#61` control plane synced to the routed-shell truth
+- decide whether the remaining `ask-*` panel/hash naming should stay as compatibility-only or be renamed after the first PR
+- extend routing tests only as needed to protect `/assistant`, `/ask#...`, and `/overview|/control|/resources|/alerts/legacy` redirect behavior before the first PR

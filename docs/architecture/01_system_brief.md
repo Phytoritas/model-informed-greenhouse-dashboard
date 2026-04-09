@@ -1,85 +1,71 @@
 # System Brief
 
 ## Problem
-The repository already contains a validated dashboard runtime and a landed issue `#18` SmartGrow baseline centered on knowledge ingestion, workbook-backed advisory seams, routed retrieval, and bounded advisor shells.
-The new problem is different: the active mainline must move to model-actuated advisory, where crop physiology state, coupled gas exchange, bounded scenario simulation, local sensitivity, and constraint-aware logic drive recommendations while the existing knowledge layer becomes a supporting explanation surface.
+The repository already has a functional backend, a validated model-first SmartGrow runtime, routed advisor lanes, and a partially modernized frontend shell.
+The active problem is now frontend architecture: the app still carries too much giant-page and legacy compatibility composition inside `frontend/src/App.tsx`, even though the product intent is a true routed shell with discrete pages and a Coral Stay-inspired editorial system.
 
 ## Goal
-Extend the existing dashboard so that:
-- cucumber and tomato recommendations are backed by explicit crop-model state and event transitions
-- gas exchange, canopy integration, scenario, sensitivity, and constraint outputs become first-class backend surfaces
-- environment, physiology, work-tradeoff, harvest, and assistant flows consume model outputs instead of knowledge-first heuristics
-- the current dashboard and issue `#18` knowledge/RAG/advisor baseline remain stable throughout the migration
+Reshape the frontend so that:
+- the shell behaves like a product with clear primary pages
+- each page holds one operating story instead of inheriting the full dashboard stack
+- the routed shell stays aligned with the preserved backend/model/advisor contracts
+- the remaining compatibility aliases stay explicit, bounded, and removable without reviving the old dashboard frame
 
 ## Primary Actors
-- greenhouse operator who needs actionable now/today/this-week recommendations
-- model runtime that owns crop state, work events, scenarios, sensitivities, and constraints
-- advisor layer that translates model outputs into actions and natural-language explanations
-- retrieval layer that supplies bounded evidence and internal provenance without owning the primary recommendation
-- frontend workspace that renders current tabs, action cards, and counterfactual comparisons without exposing raw provenance
+- greenhouse operator who needs direct page navigation and clear operating lanes
+- routed shell that owns page-level IA, navigation, and presentation rhythm
+- preserved backend/model runtime that continues to supply weather, RTR, market, advisor, and assistant data
+- compatibility alias layer that keeps legacy URLs pointed at canonical pages while the modern shell finishes landing
 
 ## Source-To-Target Mapping
 | Source surface | Target direction | Notes |
 |---|---|---|
-| `src/model_informed_greenhouse_dashboard/models/legacy/CucumberModel.py` | reusable cucumber crop-model service | donor logic for thermal time, LAI, canopy physiology, and defoliation effects; must be wrapped behind explicit state/event interfaces |
-| `src/model_informed_greenhouse_dashboard/models/legacy/TomatoModel.py` | reusable tomato crop-model service | donor logic for truss development, source-sink behavior, canopy physiology, and fruit load; must be wrapped behind explicit cohort/event interfaces |
-| `src/model_informed_greenhouse_dashboard/backend/app/services/advisory*.py` | preserved compatibility baseline | issue `#18` deterministic seams remain intact while the new advisor layer grows beside them |
-| `src/model_informed_greenhouse_dashboard/backend/app/services/knowledge_*.py` | explanation and provenance sidecar | keep the landed knowledge DB, query routing, and context builders, but demote them from mainline recommendation ownership |
-| `frontend/src/components/advisor/**` | model-aware advisor workspace shell | keep the existing tab shell, but replace pending and heuristic internals with model-backed payloads in later phases |
-| `frontend/src/components/chat/RagAssistantDrawer.tsx` and `frontend/src/components/ChatAssistant.tsx` | model-aware assistant split | keep the current chat shell, but route explanation through model snapshots and scenario/sensitivity results |
+| `frontend/src/App.tsx` giant-page composition | route registration plus minimal shared state wiring | direct page composition is extracted; the remaining root-level debt is shared state concentration plus explicit compatibility redirects |
+| `/overview|/control|/resources|/alerts/legacy` redirects in `frontend/src/App.tsx` | compatibility-only alias layer | keeps old deep links alive without reviving the old dashboard frame |
+| `frontend/src/app/route-meta.ts` | canonical route metadata | owns the eight primary routes and sidebar highlight logic |
+| `frontend/src/pages/*-route-page.tsx` | direct route containers | already hold the new route-level page stories |
+| `frontend/src/routes/phytosyncSections.ts` | bounded compatibility/intent bridge | now canonicalizes the assistant section while keeping `/ask` redirect/hash compatibility bounded |
 
 ## Target Module Boundary
-- `crop_models`: cucumber and tomato model services plus reusable thermal-time, dry-matter, gas-exchange, stomatal, and canopy-integration helpers
-- `model_runtime`: model-state store, event application, snapshot/replay, scenario runner, sensitivity engine, optimizer, and constraint engine
-- `advisory`: physiology, environment, work-tradeoff, harvest, and explanation-builder services over model runtime outputs
-- `rag`: bounded retriever/context-builder/router that augments explanation and provenance
-- `frontend_model_surfaces`: environment, physiology, work-tradeoff, harvest, and assistant views fed by model-backed APIs
+- `route_shell`: `App.tsx`, `AppShell.tsx`, `TopBar.tsx`, `WorkspaceNav.tsx`, `route-meta.ts`
+- `route_pages`: `overview-route-page.tsx`, `control-route-page.tsx`, `rtr-route-page.tsx`, `crop-work-route-page.tsx`, `resources-route-page.tsx`, `alerts-route-page.tsx`, `assistant-route-page.tsx`, `settings-route-page.tsx`
+- `advisor_lane_pages`: `advisor-lane-route-page.tsx` plus `/growth|/nutrient|/protection|/harvest`
+- `legacy_compatibility`: `/legacy` redirects plus `/ask` alias handling
 
-## Persistence And Contract Targets
-### Tables
-- `crop_model_states`
-- `crop_model_snapshots`
-- `crop_work_events`
-- `gas_exchange_observations`
-- `scenario_runs`
-- `scenario_outputs`
-- `sensitivity_outputs`
-- `advisor_recommendations`
-- `advisor_provenance`
-- `assistant_sessions`
+## Contract Targets
+### Primary routes
+- `/overview`
+- `/control`
+- `/rtr`
+- `/crop-work`
+- `/resources`
+- `/alerts`
+- `/assistant`
+- `/settings`
 
-### APIs
-- `POST /api/models/snapshot`
-- `POST /api/models/replay`
-- `POST /api/models/scenario`
-- `POST /api/models/sensitivity`
-- `POST /api/advisor/physiology`
-- `POST /api/advisor/environment`
-- `POST /api/advisor/work-tradeoff`
-- `POST /api/advisor/harvest`
-- `POST /api/advisor/chat`
+### Compatibility routes
+- `/growth`
+- `/nutrient`
+- `/protection`
+- `/harvest`
+- `/ask#... -> /assistant#...`
+- `/overview/legacy -> /overview`
+- `/control/legacy -> /control`
+- `/resources/legacy -> /resources`
+- `/alerts/legacy -> /alerts`
 
 ## Major Risks
-1. The current harness truth previously pointed to nutrient and retrieval follow-up work, so the architecture can drift unless the new issue `#19` state remains explicit.
-2. Legacy crop-model code exists, but it is not yet exposed through the service boundaries, state schemas, or API contracts required by the new directive.
-3. The existing frontend advisor tabs are useful shells, but they still reflect issue `#18` semantics and must not be mislabeled as model-backed until the runtime is real.
-4. Recommendations that skip scenario agreement, local sensitivity, or constraint checks would violate the new directive even if the UI looks polished.
+1. `frontend/src/App.tsx` still mixes modern route registration with legacy-only surface builders, which makes the next refactor easy to overreach.
+2. `frontend/src/routes/phytosyncSections.ts` now canonicalizes `/assistant`, but the remaining `ask-*` panel/hash compatibility can still drift if it is renamed carelessly.
+3. The control plane had drifted to old issue `#19/#27` truths, so restart packets were no longer trustworthy until the current issue `#61` sync landed.
+4. If the explicit `/legacy` redirects are removed or changed carelessly, old deep links can still collapse to the wrong canonical page or the wildcard fallback.
 
-## First Bounded Delivery Slice For Issue #19
-- keep issue `#18` knowledge/RAG/advisor seams as the preserved baseline
-- add explicit `crop_models/` and `model_runtime/` package boundaries without rewriting the rest of the backend
-- define canonical state payloads for cucumber and tomato, including `leaf_removal` and `fruit_thinning` event schemas
-- add a bounded `model_state_store` contract plus a frozen choice for the phase-1 persistence adapter
-- expose `/api/models/snapshot` and `/api/models/replay` contracts before scenario/sensitivity or UI expansion
-- add targeted tests for state transitions and snapshot compatibility
-
-## Phase-1 Landing Status
-- The phase-1 persistence adapter is now frozen as a dedicated SQLite sidecar at `artifacts/models/model_runtime.sqlite3`.
-- Raw adapter `dump_state()` payloads remain the authoritative migration seam, and versioned normalized snapshots are now stored beside them for replay and later advisor/runtime promotion.
-- `POST /api/models/snapshot` and `POST /api/models/replay` are live additive contracts and are covered by targeted cucumber/tomato replay tests.
+## Current Bounded Delivery Slice
+- keep the direct routed pages untouched
+- sync the control plane and architecture docs to issue `#61`
+- retire the live `/legacy` frame chain with explicit redirects and dead-wrapper cleanup
 
 ## Deferred Until Later Phases
-- full scenario optimization and ranking across all control axes
-- full UI counterfactual compare, sensitivity charts, and trust-region mini-graphs
-- final Postgres/pgvector/Redis promotion
-- broader nutrient/pesticide calculator expansion beyond the preserved issue `#18` baseline
+- deciding whether the remaining `ask-*` panel/hash compatibility should stay as-is until after the first PR
+- deeper theme-token cleanup beyond the current coral-first route shell
+- canonical removal of the old `ask` section model once `/assistant` is the only remaining knowledge-route truth
