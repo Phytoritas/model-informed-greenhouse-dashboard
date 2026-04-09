@@ -10,7 +10,7 @@ export function Dialog({ open = false, children }: DialogProps) {
     if (!open) {
         return null;
     }
-    return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/28 p-4">{children}</div>;
+    return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:rgba(74,40,31,0.26)] p-4">{children}</div>;
 }
 
 export function DialogContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

@@ -11,14 +11,14 @@ interface TelemetryFreshnessChipProps {
 }
 
 const CHIP_CLASSNAME: Record<TelemetryChipState, string> = {
-    loading: 'bg-slate-900 text-white',
-    live: 'bg-emerald-600 text-white',
-    delayed: 'bg-amber-500 text-slate-950',
-    stale: 'bg-orange-500 text-white',
-    offline: 'bg-rose-600 text-white',
-    unavailable: 'bg-slate-200 text-slate-700',
-    blocked: 'bg-violet-600 text-white',
-    provisional: 'bg-sky-600 text-white',
+    loading: 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]',
+    live: 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
+    delayed: 'bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]',
+    stale: 'bg-[color:var(--sg-status-stale-bg)] text-[color:var(--sg-status-stale-text)]',
+    offline: 'bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]',
+    unavailable: 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]',
+    blocked: 'bg-[color:var(--sg-status-blocked-bg)] text-[color:var(--sg-status-blocked-text)]',
+    provisional: 'bg-[color:var(--sg-status-provisional-bg)] text-[color:var(--sg-status-provisional-text)]',
 };
 
 const LABELS: Record<TelemetryChipState, Record<'ko' | 'en', string>> = {

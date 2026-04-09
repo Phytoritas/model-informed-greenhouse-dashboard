@@ -749,7 +749,7 @@ const AdvisorTabs = ({
             );
         }
         if (!result) {
-            return <div className="text-sm text-slate-500">{copy.empty}</div>;
+            return <div className="text-sm text-[color:var(--sg-text-muted)]">{copy.empty}</div>;
         }
 
         const hasRecommendations = result.product_recommendations.length > 0;
@@ -760,13 +760,13 @@ const AdvisorTabs = ({
         return (
             <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+                    <span className="rounded-full bg-[color:var(--sg-accent-earth-soft)] px-3 py-1 text-xs font-medium text-[color:var(--sg-accent-earth)]">
                         {hasRecommendations ? copy.recommendationAvailable : copy.noSafeRecommendation}
                     </span>
                     {result.matched_targets.map((target) => (
                         <span
                             key={target}
-                            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600"
+                            className="rounded-full border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] px-3 py-1 text-xs font-medium text-[color:var(--sg-text-muted)]"
                         >
                             {target}
                         </span>
@@ -784,7 +784,7 @@ const AdvisorTabs = ({
                             : []),
                     ]}
                 >
-                    <div className="grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                    <div className="grid gap-2 text-sm text-[color:var(--sg-text-muted)] lg:grid-cols-2">
                         <div>{copy.selectionPolicy}: {guidance.policyLabel}</div>
                         <div>{copy.matchedTargets}: {result.matched_targets.join(', ') || '-'}</div>
                     </div>
@@ -805,7 +805,7 @@ const AdvisorTabs = ({
                                 ...(rotationSlotLabel ? [rotationSlotLabel] : []),
                             ]}
                         >
-                            <div className="grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                            <div className="grid gap-2 text-sm text-[color:var(--sg-text-muted)] lg:grid-cols-2">
                                 <div>{copy.matchedTargets}: {uniqueStrings(product.matched_targets ?? []).join(', ') || '-'}</div>
                                 <div>{copy.cycle}: {product.cycle_solution ?? product.cycle_recommendation ?? '-'}</div>
                                 <div>{copy.dilution}: {product.dilution ?? '-'}</div>
@@ -832,20 +832,20 @@ const AdvisorTabs = ({
                                 return (
                                     <div
                                         key={`${row.rotation_step_index ?? index + 1}-${row.product_name}`}
-                                        className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3"
+                                        className="rounded-2xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] px-4 py-3"
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                            <span className="rounded-full bg-[color:var(--sg-accent-earth-soft)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--sg-accent-earth)]">
                                                 {stepLabel}
                                             </span>
-                                            <span className="text-sm font-semibold text-slate-900">
+                                            <span className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                                 {rowNameView.primaryName}
                                             </span>
-                                            <span className="text-xs text-slate-500">
+                                            <span className="text-xs text-[color:var(--sg-text-muted)]">
                                                 {row.active_ingredient}
                                             </span>
                                         </div>
-                                        <div className="mt-2 grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                                        <div className="mt-2 grid gap-2 text-sm text-[color:var(--sg-text-muted)] lg:grid-cols-2">
                                             <div>{copy.applicationPoint}: {row.application_point ?? row.rotation_slot ?? '-'}</div>
                                             <div>{copy.cycle}: {row.cycle_solution ?? row.cycle_recommendation ?? '-'}</div>
                                             <div>{copy.matchedTargets}: {uniqueStrings([...(row.matched_targets ?? []), row.target_name]).join(', ') || '-'}</div>
@@ -880,17 +880,17 @@ const AdvisorTabs = ({
                                         className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3"
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-semibold text-slate-900">
+                                            <span className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                                 {rowNameView.primaryName}
                                             </span>
-                                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                                            <span className="rounded-full bg-[color:var(--sg-surface-raised)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-text-muted)]">
                                                 {row.moa_code_group ?? copy.moaMissing}
                                             </span>
-                                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                                            <span className="rounded-full bg-[color:var(--sg-surface-raised)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-text-muted)]">
                                                 {getLocalizedTokenLabel(row.registration_status ?? 'label-check-required', locale)}
                                             </span>
                                         </div>
-                                        <div className="mt-2 grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                                        <div className="mt-2 grid gap-2 text-sm text-[color:var(--sg-text-muted)] lg:grid-cols-2">
                                             <div>{copy.applicationPoint}: {row.application_point ?? row.rotation_slot ?? '-'}</div>
                                             <div>{copy.cycle}: {row.cycle_solution ?? row.cycle_recommendation ?? '-'}</div>
                                             <div className="lg:col-span-2">{copy.alternativeReason}: {buildAlternativeReason(row, locale)}</div>
@@ -903,7 +903,7 @@ const AdvisorTabs = ({
                     </AdvisorActionCard>
                 ) : null}
                 {localizedLimitations.length > 0 ? (
-                    <p className="text-sm leading-relaxed text-slate-500">
+                    <p className="text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                         {localizedLimitations.join(' ')}
                     </p>
                 ) : null}
@@ -921,19 +921,19 @@ const AdvisorTabs = ({
             );
         }
         if (!result) {
-            return <div className="text-sm text-slate-500">{copy.empty}</div>;
+            return <div className="text-sm text-[color:var(--sg-text-muted)]">{copy.empty}</div>;
         }
 
         return (
             <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-700">
+                    <span className="rounded-full bg-[color:var(--sg-accent-harvest-soft)] px-3 py-1 text-xs font-medium text-[color:var(--sg-accent-harvest)]">
                         {copy.calculationAvailable}
                     </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                    <span className="rounded-full border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] px-3 py-1 text-xs font-medium text-[color:var(--sg-text-muted)]">
                         {formatStageLabel(result.resolved.stage)}
                     </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                    <span className="rounded-full border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] px-3 py-1 text-xs font-medium text-[color:var(--sg-text-muted)]">
                         {formatMediumLabel(result.resolved.medium)}
                     </span>
                 </div>
@@ -941,7 +941,7 @@ const AdvisorTabs = ({
                     title={copy.recipe}
                     subtitle={`${formatCropName(result.recipe.crop)} · ${formatStageLabel(result.recipe.stage)} · ${formatMediumLabel(result.recipe.medium)}`}
                 >
-                    <div className="grid gap-2 text-sm text-slate-600 lg:grid-cols-2">
+                    <div className="grid gap-2 text-sm text-[color:var(--sg-text-muted)] lg:grid-cols-2">
                         <div>{copy.ecTarget}: {formatNumber(result.recipe.ec_target)}</div>
                         <div>
                             {copy.guardrails}: Cl {formatNumber(result.recipe.guardrails.cl_max)},
@@ -953,7 +953,7 @@ const AdvisorTabs = ({
                         {Object.entries(result.recipe.nutrient_targets).map(([key, value]) => (
                             <span
                                 key={key}
-                                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                                className="rounded-full bg-[color:var(--sg-surface-warm)] px-3 py-1 text-xs font-medium text-[color:var(--sg-text-strong)]"
                             >
                                 {compactLabel(key)} {formatNumber(value)}
                             </span>
@@ -964,7 +964,7 @@ const AdvisorTabs = ({
                     title={copy.baselines}
                     badges={result.fertilizer_catalog.slice(0, 4).map((row) => row.fertilizer_name)}
                 >
-                    <div className="grid gap-3 text-sm text-slate-600 lg:grid-cols-2">
+                    <div className="grid gap-3 text-sm text-[color:var(--sg-text-muted)] lg:grid-cols-2">
                         <div>
                             {copy.sourceWater}: {result.source_water_baseline.slice(0, 6).map((row) => `${row.analyte} ${formatNumber(row.mmol_l)}`).join(', ') || '-'}
                         </div>
@@ -987,7 +987,7 @@ const AdvisorTabs = ({
             );
         }
         if (!result) {
-            return <div className="text-sm text-slate-500">{copy.empty}</div>;
+            return <div className="text-sm text-[color:var(--sg-text-muted)]">{copy.empty}</div>;
         }
 
         const missingData = result.correction_outputs.required_manual_inputs;
@@ -1008,7 +1008,7 @@ const AdvisorTabs = ({
         return (
             <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-700">
+                    <span className="rounded-full bg-[color:var(--sg-accent-earth-soft)] px-3 py-1 text-xs font-medium text-[color:var(--sg-accent-earth)]">
                         {copy.calculationAvailable}
                     </span>
                     {missingData.length > 0 ? (
@@ -1022,7 +1022,7 @@ const AdvisorTabs = ({
                         title={copy.findings}
                         badges={result.correction_outputs.priority_findings.map((row) => row.status)}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {result.correction_outputs.priority_findings.map((finding) => (
                                 <div key={`${finding.analysis_kind}-${finding.analyte ?? finding.nutrient}`}>
                                     {finding.analyte ?? finding.nutrient}: {getLocalizedTokenLabel(finding.status, locale)} ({formatNumber(finding.observed_mmol_l ?? finding.submitted_mmol_l)} / {copy.baselineReference} {formatNumber(finding.baseline_mmol_l)})
@@ -1046,7 +1046,7 @@ const AdvisorTabs = ({
                         `${copy.targetMode} ${getLocalizedTokenLabel(result.correction_context.drain_feedback_policy.mode, locale)}`,
                         ]}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             <div>
                             {copy.workbookDrainStage}: {result.correction_context.drain_feedback_defaults.selected_stage ? formatStageLabel(String(result.correction_context.drain_feedback_defaults.selected_stage)) : '-'}
                         </div>
@@ -1070,7 +1070,7 @@ const AdvisorTabs = ({
                         title={copy.sourceWaterReview}
                         badges={sourceReview.map((row) => getLocalizedTokenLabel(row.status, locale))}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {sourceReview.map((row) => (
                                 <div key={`source-${row.analyte}`}>
                                     {row.analyte}: {getLocalizedTokenLabel(row.status, locale)} ({formatNumber(row.observed_mmol_l)} / {copy.baselineReference} {formatNumber(row.baseline_mmol_l)})
@@ -1084,7 +1084,7 @@ const AdvisorTabs = ({
                         title={copy.drainWaterReview}
                         badges={drainReview.map((row) => getLocalizedTokenLabel(row.status, locale))}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {drainReview.map((row) => (
                                 <div key={`drain-${row.analyte}`}>
                                     {row.analyte}: {getLocalizedTokenLabel(row.status, locale)} ({formatNumber(row.observed_mmol_l)} / {copy.baselineReference} {formatNumber(row.baseline_mmol_l)})
@@ -1102,13 +1102,13 @@ const AdvisorTabs = ({
                             `${drainPlan.manual_review_analytes.length} ${copy.manualReviewCount}`,
                         ]}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {drainPlan.adjustments.map((row) => (
                                 <div
                                     key={`drain-plan-${row.canonical_key}`}
-                                    className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
+                                    className="rounded-xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] px-3 py-3"
                                 >
-                                    <div className="font-medium text-slate-900">
+                                    <div className="font-medium text-[color:var(--sg-text-strong)]">
                                         {row.analyte}: {getLocalizedTokenLabel(row.status, locale)}
                                     </div>
                                     <div className="mt-1">
@@ -1136,9 +1136,9 @@ const AdvisorTabs = ({
                         {correctionCandidateCards.map((candidate) => (
                             <div
                                 key={candidate.key}
-                                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm text-slate-600"
+                                className="rounded-xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] px-3 py-3 text-sm text-[color:var(--sg-text-muted)]"
                             >
-                                <div className="font-medium text-slate-900">{candidate.title}</div>
+                                <div className="font-medium text-[color:var(--sg-text-strong)]">{candidate.title}</div>
                                 <div className="mt-1">{candidate.subtitle ?? '-'}</div>
                                 <div className="mt-1">{candidate.badges.join(' | ')}</div>
                                 <div className="mt-1">
@@ -1153,7 +1153,7 @@ const AdvisorTabs = ({
                         title={copy.macroBundle}
                         badges={[`${copy.rankLabel} ${bundle.rank}`, getLocalizedTokenLabel(bundle.mode, locale), getLocalizedTokenLabel(bundle.status, locale)]}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {bundle.selected_fertilizers.map((row) => (
                                 <div key={`${row.lane_analyte}-${row.fertilizer_name}`}>
                                     {row.lane_analyte}: {row.fertilizer_name} ({formatNumber(row.estimated_batch_mass.fertilizer_grams, 4)} g)
@@ -1169,16 +1169,16 @@ const AdvisorTabs = ({
                         `${copy.rankLabel} ${bundleExecution.selected_bundle_rank ?? copy.operationalStatusUnknown}`,
                     ]}
                 >
-                        <div className="space-y-3 text-sm text-slate-600">
+                        <div className="space-y-3 text-sm text-[color:var(--sg-text-muted)]">
                             <div>
                                 {copy.stockConcentration} {copy.perTank}: {formatNumber(bundleExecution.stock_solution_volume_l_per_tank, 4)} L
                             </div>
                         {bundleExecution.tank_plan.map((tank) => (
                             <div
                                 key={tank.tank_assignment}
-                                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
+                                className="rounded-xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] px-3 py-3"
                             >
-                                <div className="font-medium text-slate-900">{copy.tankLabel} {tank.tank_assignment}</div>
+                                <div className="font-medium text-[color:var(--sg-text-strong)]">{copy.tankLabel} {tank.tank_assignment}</div>
                                 <div className="mt-1">
                                     {copy.totalBatch}: {formatNumber(tank.total_batch_mass_g, 4)} g
                                 </div>
@@ -1205,15 +1205,15 @@ const AdvisorTabs = ({
                         `${copy.selectedRank} ${residualAlternative.selected_bundle_rank ?? copy.operationalStatusUnknown}`,
                     ]}
                 >
-                    <div className="space-y-3 text-sm text-slate-600">
+                    <div className="space-y-3 text-sm text-[color:var(--sg-text-muted)]">
                         {residualAlternative.selected_bundle_over_target_analytes.length > 0 ? (
                             <div>
                                 {copy.selectedBundleAboveTarget}: {residualAlternative.selected_bundle_over_target_analytes.join(', ')}
                             </div>
                         ) : null}
                         {residualAlternative.recommended_bundle ? (
-                            <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
-                                <div className="font-medium text-slate-900">
+                            <div className="rounded-xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] px-3 py-3">
+                                <div className="font-medium text-[color:var(--sg-text-strong)]">
                                     {copy.rankLabel} {residualAlternative.recommended_bundle.rank} | {getLocalizedTokenLabel(residualAlternative.recommended_bundle.status, locale)}
                                 </div>
                                 <div className="mt-1">
@@ -1250,7 +1250,7 @@ const AdvisorTabs = ({
                         title={copy.unsupported}
                         badges={result.correction_outputs.stock_tank_prep.unsupported_analytes.map((row) => row.nutrient)}
                     >
-                        <div className="space-y-2 text-sm text-slate-600">
+                        <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                             {result.correction_outputs.stock_tank_prep.unsupported_analytes.map((row) => (
                                 <div key={row.nutrient}>{buildUnsupportedAnalyteReason(row.reason, locale)}</div>
                             ))}
@@ -1525,16 +1525,16 @@ const AdvisorTabs = ({
                                 </button>
 
                                 <div
-                                    className="rounded-[28px] p-4 sg-tint-violet"
+                                    className="rounded-[28px] p-4 sg-tint-amber"
                                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                 >
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div>
-                                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                                                <TestTubeDiagonal className="h-4 w-4 text-violet-600" />
+                                            <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                                                <TestTubeDiagonal className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />
                                                 {copy.correctionTool}
                                             </div>
-                                            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                                            <p className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                                 {copy.correctionHint}
                                             </p>
                                         </div>
@@ -1551,13 +1551,13 @@ const AdvisorTabs = ({
                                         <div className="mt-4 space-y-4 border-t border-white/70 pt-4">
                                             <div className="grid gap-4 lg:grid-cols-2">
                                                 <div>
-                                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-muted)]">
                                                         {copy.stage}
                                                     </label>
                                                     <select
                                                         value={effectiveCorrectionStage}
                                                         onChange={(event) => setCorrectionStage(event.target.value)}
-                                                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-violet-400"
+                                                        className="sg-field-input mt-2 w-full"
                                                     >
                                                         {(correctionSurface?.stages ?? []).map((stage) => (
                                                             <option key={stage} value={stage}>{formatStageLabel(stage)}</option>
@@ -1565,13 +1565,13 @@ const AdvisorTabs = ({
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-muted)]">
                                                         {copy.medium}
                                                     </label>
                                                     <select
                                                         value={effectiveCorrectionMedium}
                                                         onChange={(event) => setCorrectionMedium(event.target.value)}
-                                                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-violet-400"
+                                                        className="sg-field-input mt-2 w-full"
                                                     >
                                                         {(correctionSurface?.mediums ?? []).map((medium) => (
                                                             <option key={medium} value={medium}>{formatMediumLabel(medium)}</option>
@@ -1581,67 +1581,67 @@ const AdvisorTabs = ({
                                             </div>
                                             <div className="grid gap-4 lg:grid-cols-2">
                                                 <div>
-                                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-muted)]">
                                                         {copy.workingSolution}
                                                     </label>
                                                     <input
                                                         value={workingSolutionVolumeL}
                                                         onChange={(event) => setWorkingSolutionVolumeL(event.target.value)}
-                                                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-violet-400"
+                                                        className="sg-field-input mt-2 w-full"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                    <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-muted)]">
                                                         {copy.stockRatio}
                                                     </label>
                                                     <input
                                                         value={stockRatio}
                                                         onChange={(event) => setStockRatio(event.target.value)}
-                                                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition-colors focus:border-violet-400"
+                                                        className="sg-field-input mt-2 w-full"
                                                     />
                                                 </div>
                                             </div>
                                             <div>
-                                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-muted)]">
                                                     <AlertTriangle className="h-4 w-4" />
                                                     {copy.sourceWater}
                                                 </div>
                                                 <div className="mt-2 grid gap-2 lg:grid-cols-3">
                                                     {sourceAnalytes.map((analyte) => (
-                                                        <label key={analyte} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                                                            <div className="font-medium text-slate-700">{analyte}</div>
+                                                        <label key={analyte} className="rounded-xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] px-3 py-2 text-xs text-[color:var(--sg-text-muted)]">
+                                                            <div className="font-medium text-[color:var(--sg-text-strong)]">{analyte}</div>
                                                             <input
                                                                 value={sourceWaterValues[analyte] ?? ''}
                                                                 onChange={(event) =>
                                                                     setAnalyteValue(setSourceWaterValues, analyte, event.target.value)
                                                                 }
-                                                                className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-700 outline-none"
+                                                                className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-[color:var(--sg-text-strong)] outline-none"
                                                             />
                                                         </label>
                                                     ))}
                                                 </div>
                                             </div>
                                             <div>
-                                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-muted)]">
                                                     {copy.drainWater}
                                                 </div>
                                                 <div className="mt-2 grid gap-2 lg:grid-cols-3">
                                                     {drainAnalytes.map((analyte) => (
-                                                        <label key={analyte} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                                                            <div className="font-medium text-slate-700">{analyte}</div>
+                                                        <label key={analyte} className="rounded-xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] px-3 py-2 text-xs text-[color:var(--sg-text-muted)]">
+                                                            <div className="font-medium text-[color:var(--sg-text-strong)]">{analyte}</div>
                                                             <input
                                                                 value={drainWaterValues[analyte] ?? ''}
                                                                 onChange={(event) =>
                                                                     setAnalyteValue(setDrainWaterValues, analyte, event.target.value)
                                                                 }
-                                                                className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-slate-700 outline-none"
+                                                                className="mt-2 w-full border-0 bg-transparent p-0 text-sm text-[color:var(--sg-text-strong)] outline-none"
                                                             />
                                                         </label>
                                                     ))}
                                                 </div>
                                             </div>
                                             {correctionSurface?.limitation ? (
-                                                <p className="text-sm leading-relaxed text-slate-500">
+                                                <p className="text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                                                     {correctionSurface.limitation}
                                                 </p>
                                             ) : null}
@@ -1649,7 +1649,7 @@ const AdvisorTabs = ({
                                                 type="button"
                                                 onClick={() => void handleCorrectionRun()}
                                                 disabled={executionState.correction.status === 'loading'}
-                                                className="w-full rounded-2xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-700 disabled:opacity-60"
+                                                className="w-full rounded-2xl bg-[linear-gradient(135deg,var(--sg-accent-earth),#c45d47)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--sg-shadow-card)] transition-[filter] hover:brightness-[1.04] disabled:opacity-60"
                                             >
                                                 {executionState.correction.status === 'loading' ? copy.running : copy.run}
                                             </button>

@@ -56,22 +56,22 @@ const AdvisorPendingTabPanel = ({
 
     return (
         <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <div className="rounded-2xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] p-5">
                 <div className="space-y-4">
                     <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-muted)]">
                             {copy.plannedDomain}
                         </div>
-                        <h3 className="mt-2 text-lg font-semibold text-slate-900">{title}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{subtitle}</p>
+                        <h3 className="mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">{title}</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">{subtitle}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={copy.promptLevelTab} tone="info" />
                         <AdvisorConfidenceBadge label={copy.enginePending} tone="warning" />
                     </div>
-                    <ul className="space-y-2 text-sm text-slate-600">
+                    <ul className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                         {notes.map((note) => (
-                            <li key={note} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            <li key={note} className="rounded-xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] px-3 py-2">
                                 {note}
                             </li>
                         ))}
@@ -80,21 +80,21 @@ const AdvisorPendingTabPanel = ({
                         type="button"
                         onClick={onRun}
                         disabled={status === 'loading'}
-                        className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+                        className="w-full rounded-2xl bg-[linear-gradient(135deg,var(--sg-accent-earth),#c45d47)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--sg-shadow-card)] transition-[filter] hover:brightness-[1.04] disabled:opacity-60"
                     >
                         {status === 'loading' ? copy.checking : copy.run}
                     </button>
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+            <div className="rounded-2xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] p-5">
                 {status === 'error' ? (
                     <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-6 text-sm text-rose-700">
                         {copy.failed}: {error}
                     </div>
                 ) : null}
                 {status !== 'error' && !result ? (
-                    <div className="text-sm leading-relaxed text-slate-500">
+                    <div className="text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
                         {copy.idleDescription}
                     </div>
                 ) : null}
@@ -121,7 +121,7 @@ const AdvisorPendingTabPanel = ({
                             title={copy.currentBoundary}
                             subtitle={result.message}
                         >
-                            <div className="space-y-2 text-sm text-slate-600">
+                            <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
                                 <div>{copy.tabKey}: {result.tab_name}</div>
                                 <div>
                                     {copy.existingTabs}: {result.available_tabs.join(', ') || '-'}
