@@ -1,11 +1,11 @@
 {
   "mode": "hybrid",
-  "current_stage": "issue57-pr58-validating",
+  "current_stage": "issue57-frontend-chunk-splitting-pr58-merged",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-phytosync-route-shell",
-  "active_issue": 57,
-  "active_branch": "fix/57-reduce-frontend-entry-chunk-size-with-route-level-code-splitting",
+  "active_issue": null,
+  "active_branch": null,
   "implementation_blocked": false,
-  "next_action": "PR #58 now carries issue #57 (`[Bug] Reduce frontend entry chunk size warning`) on branch `fix/57-reduce-frontend-entry-chunk-size-with-route-level-code-splitting`. Local validation is green and the project item is in `Validating`; next wait for GitHub Actions Backend/Frontend validation, then merge if both lanes pass.",
+  "next_action": "Issue #57 is merged through PR #58 at merge commit `1d0c24ff432aec8403b9a9e2e1673bc5752c8889`. The frontend Vite entry warning is closed on `main`, the root repository is back on clean `main`, and the next work should be either a fresh performance/UI issue or the optional issue #3 grower-window calibration follow-up.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
-  "directive_file": "frontend chunk-size warning code-splitting follow-up over the merged issue53/55 baseline"
+  "directive_file": "frontend chunk-size warning follow-up merged through issue57/pr58"
 }
