@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { AdvancedModelMetrics, CropType, SensorData } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
+import { getReadinessDescriptor } from '../lib/design/readiness';
 import { getCropLabel } from '../utils/displayCopy';
 import DashboardCard from './common/DashboardCard';
 
@@ -69,6 +70,7 @@ function MemoSignal({
 const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingReportProps) => {
     const { locale } = useLocale();
     const cropLabel = getCropLabel(crop, locale);
+    const readiness = getReadinessDescriptor(metrics.yield.confidence, locale);
     const copy = locale === 'ko'
         ? {
             title: '운영 리포트',
@@ -81,7 +83,7 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
             stable: '안정',
             yieldOutlook: '수량 전망',
             energyUsage: '에너지 사용',
-            confidence: '판단 안정도',
+            confidence: '반영 상태',
             biomass: '건물중',
             cop: '에너지 효율',
             photosynthesis: '광합성',
@@ -105,13 +107,13 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
             stable: 'stable',
             yieldOutlook: 'Yield outlook',
             energyUsage: 'Energy use',
-            confidence: 'Decision readiness',
+            confidence: 'Readiness',
             biomass: 'Biomass',
             cop: 'Energy efficiency',
             photosynthesis: 'Assimilation',
             vpd: 'VPD',
             liveHint: 'Automatically refreshed from the live runtime state.',
-            currentDirection: 'Current vigor',
+            currentDirection: 'Current crop posture',
             climateSignal: 'Climate signal',
             energySignal: 'Energy signal',
             operatorLead: 'Put the memo you should read first ahead of the full narrative.',
@@ -181,7 +183,7 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
                             <div className="grid gap-3 md:grid-cols-3">
                                 <ReportMetricTile
                                     label={copy.confidence}
-                                    value={`${metrics.yield.confidence}%`}
+                                    value={readiness.label}
                                     detail={copy.weekly}
                                     tone="neutral"
                                 />

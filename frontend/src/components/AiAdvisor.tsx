@@ -93,20 +93,20 @@ function ActionColumn({
     emptyLabel: string;
 }) {
     return (
-        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-100">
+        <div className="rounded-[24px] bg-white/78 p-3" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                 {title}
             </div>
             {items.length > 0 ? (
-                <ul className="mt-2 space-y-2 text-sm leading-relaxed text-white">
+                <ul className="mt-2 space-y-2 text-sm leading-relaxed text-[color:var(--sg-text-strong)]">
                     {items.map((item) => (
-                        <li key={item} className="rounded-xl bg-slate-950/20 px-3 py-2">
+                        <li key={item} className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2">
                             {item}
                         </li>
                     ))}
                 </ul>
             ) : (
-                <p className="mt-2 text-xs text-indigo-100">{emptyLabel}</p>
+                <p className="mt-2 text-xs text-[color:var(--sg-text-faint)]">{emptyLabel}</p>
             )}
         </div>
     );
@@ -181,7 +181,7 @@ const AiAdvisor = ({
             openDetails: 'Open detail tabs',
             openKnowledgeSearch: 'Find materials',
             runtimeTitle: 'Model runtime',
-            runtimeReady: 'Scenario linked',
+            runtimeReady: 'Recommendation linked',
             runtimeFallback: 'Monitoring first',
             runtimeUnavailable: 'Runtime unavailable',
             runtimeObserved: 'Observed signal',
@@ -284,15 +284,21 @@ const AiAdvisor = ({
     const monitorItems = display?.monitor ?? [];
 
     return (
-        <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-indigo-200/60 bg-gradient-to-br from-[#5361b7] via-[#4f56a7] to-[#42477d] p-6 text-white shadow-xl shadow-indigo-900/20">
+        <div
+            className="flex h-full flex-col overflow-hidden rounded-[28px] p-6 text-[color:var(--sg-text-strong)]"
+            style={{
+                background: 'linear-gradient(145deg, rgba(255,248,243,0.98), rgba(243,228,220,0.92) 55%, rgba(231,214,204,0.88))',
+                boxShadow: 'var(--sg-shadow-soft)',
+            }}
+        >
             <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    <div className="rounded-2xl bg-white/10 p-2.5">
-                        <Sparkles className="h-5 w-5 text-amber-200" />
+                    <div className="rounded-2xl bg-white/84 p-2.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <Sparkles className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
                     </div>
                     <div>
                         <h3 className="text-base font-semibold">{copy.title}</h3>
-                        <p className="text-xs text-indigo-100">{copy.advisoryTitle}</p>
+                        <p className="text-xs text-[color:var(--sg-text-faint)]">{copy.advisoryTitle}</p>
                     </div>
                 </div>
                 <button
@@ -300,17 +306,21 @@ const AiAdvisor = ({
                     onClick={onRefresh}
                     disabled={isLoading}
                     aria-label={copy.title}
-                    className={`rounded-2xl border border-white/15 bg-white/10 p-2 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${isLoading ? 'animate-spin' : ''}`}
+                    className={`rounded-2xl bg-white/84 p-2 text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)] ${isLoading ? 'animate-spin' : ''}`}
+                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                     <RefreshCw className="h-4 w-4" />
                 </button>
             </div>
 
-            <section className="mb-4 rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+            <section
+                className="mb-4 rounded-[28px] bg-white/78 p-4"
+                style={{ boxShadow: 'var(--sg-shadow-card)' }}
+            >
                 {smartGrowLoading ? (
-                    <p className="text-xs text-indigo-50">{copy.advisoryLoading}</p>
+                    <p className="text-xs text-[color:var(--sg-text-faint)]">{copy.advisoryLoading}</p>
                 ) : smartGrowError ? (
-                    <p className="text-xs text-rose-100">{copy.advisoryUnavailable}: {smartGrowError}</p>
+                    <p className="text-xs text-[color:var(--sg-accent-danger)]">{copy.advisoryUnavailable}: {smartGrowError}</p>
                 ) : smartGrowSummary ? (
                     <>
                         {advisoryBadges.length > 0 ? (
@@ -318,16 +328,17 @@ const AiAdvisor = ({
                                 {advisoryBadges.map((badge) => (
                                     <span
                                         key={badge}
-                                        className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white"
+                                        className="rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-accent-violet)]"
+                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
                                         {badge}
                                     </span>
                                 ))}
                             </div>
                         ) : null}
-                        <p className="mt-3 text-xs leading-relaxed text-indigo-50">{copy.advisoryHint}</p>
+                        <p className="mt-3 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">{copy.advisoryHint}</p>
                         {smartGrowSummary.pendingParsers.includes('pdf') ? (
-                            <p className="mt-2 text-[11px] text-indigo-200">{copy.parserPending}</p>
+                            <p className="mt-2 text-[11px] text-[color:var(--sg-text-faint)]">{copy.parserPending}</p>
                         ) : null}
                         {(onOpenDetails || onOpenKnowledgeSearch) ? (
                             <div className="mt-3 flex flex-wrap gap-2">
@@ -335,7 +346,8 @@ const AiAdvisor = ({
                                     <button
                                         type="button"
                                         onClick={onOpenDetails}
-                                        className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                                        className="rounded-full bg-white/92 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
                                         {copy.openDetails}
                                     </button>
@@ -344,7 +356,8 @@ const AiAdvisor = ({
                                     <button
                                         type="button"
                                         onClick={() => onOpenKnowledgeSearch({ source: 'advisor' })}
-                                        className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                                        className="rounded-full bg-white/92 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
                                         {copy.openKnowledgeSearch}
                                     </button>
@@ -358,7 +371,8 @@ const AiAdvisor = ({
                                         key={action.label}
                                         type="button"
                                         onClick={() => onOpenKnowledgeSearch?.(action.request)}
-                                        className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                                        className="rounded-full bg-white/92 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
                                         {action.label}
                                     </button>
@@ -369,19 +383,22 @@ const AiAdvisor = ({
                 ) : null}
 
                 {error ? (
-                    <p className="mt-3 text-xs text-rose-100">
+                    <p className="mt-3 text-xs text-[color:var(--sg-accent-danger)]">
                         {copy.analysisUnavailable}: {error}
                     </p>
                 ) : null}
 
                 {modelRuntime ? (
-                    <section className="mt-4 rounded-3xl border border-white/15 bg-slate-950/20 p-4">
+                    <section
+                        className="mt-4 rounded-[28px] bg-[color:var(--sg-surface-muted)] p-4"
+                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                    >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-100">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                                     {copy.runtimeTitle}
                                 </div>
-                                <p className="mt-2 text-xs leading-relaxed text-indigo-50">
+                                <p className="mt-2 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
                                     {modelRuntime.summary}
                                 </p>
                             </div>
@@ -398,27 +415,27 @@ const AiAdvisor = ({
                             </div>
                         </div>
                         <div className="mt-3 grid grid-cols-2 gap-2">
-                            <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
-                                <div className="text-[11px] uppercase tracking-[0.14em] text-indigo-100">{copy.runtimeLai}</div>
-                                <div className="mt-1 text-sm font-semibold text-white">
+                            <div className="rounded-[20px] bg-white/88 px-3 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{copy.runtimeLai}</div>
+                                <div className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                     {formatRuntimeValue(runtimeState.lai, 2)}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
-                                <div className="text-[11px] uppercase tracking-[0.14em] text-indigo-100">{copy.runtimeBalance}</div>
-                                <div className="mt-1 text-sm font-semibold text-white">
+                            <div className="rounded-[20px] bg-white/88 px-3 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{copy.runtimeBalance}</div>
+                                <div className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                     {formatRuntimeValue(runtimeState.source_sink_balance, 2)}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
-                                <div className="text-[11px] uppercase tracking-[0.14em] text-indigo-100">{copy.runtimeCanopyA}</div>
-                                <div className="mt-1 text-sm font-semibold text-white">
+                            <div className="rounded-[20px] bg-white/88 px-3 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{copy.runtimeCanopyA}</div>
+                                <div className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                     {formatRuntimeValue(runtimeState.canopy_net_assimilation_umol_m2_s, 1, ' µmol')}
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
-                                <div className="text-[11px] uppercase tracking-[0.14em] text-indigo-100">{copy.runtimeLimiting}</div>
-                                <div className="mt-1 text-sm font-semibold text-white">
+                            <div className="rounded-[20px] bg-white/88 px-3 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{copy.runtimeLimiting}</div>
+                                <div className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                     {runtimeState.limiting_factor ?? '-'}
                                 </div>
                             </div>
@@ -427,15 +444,15 @@ const AiAdvisor = ({
                             <div className="mt-3 space-y-2">
                                 {runtimeRecommended ? (
                                     <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-100">
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                             {copy.runtimeRecommended}
                                         </div>
-                                        <div className="mt-1 text-sm font-medium text-white">{runtimeRecommended}</div>
+                                        <div className="mt-1 text-sm font-medium text-[color:var(--sg-text-strong)]">{runtimeRecommended}</div>
                                     </div>
                                 ) : null}
                                 {runtimeTopLevers.length > 0 ? (
                                     <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-100">
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                             {copy.runtimeLevers}
                                         </div>
                                         <div className="mt-2 flex flex-wrap gap-2">
@@ -446,7 +463,8 @@ const AiAdvisor = ({
                                                 return (
                                                     <span
                                                         key={`${controlKey}-${lever.direction}`}
-                                                        className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white"
+                                                        className="rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-text-strong)]"
+                                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                                     >
                                                         {localizedControl ? localizedControl[locale] : controlKey || '-'}
                                                         {' · '}
@@ -465,17 +483,20 @@ const AiAdvisor = ({
 
             <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                 {isLoading ? (
-                    <div className="flex h-full items-center justify-center rounded-3xl border border-white/10 bg-white/10 px-6 text-sm text-indigo-100">
+                    <div
+                        className="flex h-full items-center justify-center rounded-[28px] bg-white/78 px-6 text-sm text-[color:var(--sg-text-faint)]"
+                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                    >
                         {copy.loading}
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {summaryText ? (
-                            <section className="rounded-3xl border border-white/10 bg-white/10 p-4">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-100">
+                            <section className="rounded-[28px] bg-white/78 p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                                     {copy.summaryTitle}
                                 </div>
-                                <p className="mt-2 text-sm leading-relaxed text-white">{summaryText}</p>
+                                <p className="mt-2 text-sm leading-relaxed text-[color:var(--sg-text-strong)]">{summaryText}</p>
                             </section>
                         ) : null}
 
@@ -498,65 +519,65 @@ const AiAdvisor = ({
                         </div>
 
                         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                            <section className="rounded-3xl border border-white/10 bg-white/10 p-4">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-100">
+                            <section className="rounded-[28px] bg-white/78 p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                                     {copy.risksTitle}
                                 </div>
                                 {risks.length > 0 ? (
-                                    <ul className="mt-2 space-y-2 text-sm text-white">
+                                    <ul className="mt-2 space-y-2 text-sm text-[color:var(--sg-text-strong)]">
                                         {risks.map((item) => (
-                                            <li key={item} className="rounded-2xl bg-slate-950/20 px-3 py-2">
+                                            <li key={item} className="rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-2">
                                                 {item}
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
-                                    <p className="mt-2 text-xs text-indigo-100">{copy.noRisks}</p>
+                                    <p className="mt-2 text-xs text-[color:var(--sg-text-faint)]">{copy.noRisks}</p>
                                 )}
                             </section>
-                            <section className="rounded-3xl border border-white/10 bg-white/10 p-4">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-100">
+                            <section className="rounded-[28px] bg-white/78 p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                                     {copy.monitorTitle}
                                 </div>
                                 {monitorItems.length > 0 ? (
-                                    <ul className="mt-2 space-y-2 text-sm text-white">
+                                    <ul className="mt-2 space-y-2 text-sm text-[color:var(--sg-text-strong)]">
                                         {monitorItems.map((item) => (
-                                            <li key={item} className="rounded-2xl bg-slate-950/20 px-3 py-2">
+                                            <li key={item} className="rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-2">
                                                 {item}
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
-                                    <p className="mt-2 text-xs text-indigo-100">{copy.noMonitor}</p>
+                                    <p className="mt-2 text-xs text-[color:var(--sg-text-faint)]">{copy.noMonitor}</p>
                                 )}
                             </section>
                         </div>
 
                         {!display && fallbackSections.length > 0 ? (
-                            <section className="rounded-3xl border border-white/10 bg-white/10 p-4">
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-indigo-100">
+                            <section className="rounded-[28px] bg-white/78 p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                                     {copy.fallbackTitle}
                                 </div>
                                 <div className="mt-3 space-y-3">
                                     {fallbackSections.map((section) => (
                                         <section
                                             key={`${section.title}-${section.body.slice(0, 24)}`}
-                                            className="rounded-2xl border border-white/10 bg-slate-950/20 p-3"
+                                            className="rounded-[22px] bg-[color:var(--sg-surface-muted)] p-3"
                                         >
-                                            <h4 className="mb-2 text-xs font-semibold tracking-[0.12em] text-indigo-100">
+                                            <h4 className="mb-2 text-xs font-semibold tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                                                 {section.title}
                                             </h4>
                                             <ReactMarkdown
                                                 remarkPlugins={[remarkGfm]}
                                                 components={{
-                                                    h2: ({ ...props }) => <h2 className="mb-1 mt-2 text-sm font-semibold text-white" {...props} />,
-                                                    h3: ({ ...props }) => <h3 className="mb-1 mt-2 text-xs font-semibold text-white/90" {...props} />,
-                                                    p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                                                    h2: ({ ...props }) => <h2 className="mb-1 mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
+                                                    h3: ({ ...props }) => <h3 className="mb-1 mt-2 text-xs font-semibold text-[color:var(--sg-text-muted)]" {...props} />,
+                                                    p: ({ ...props }) => <p className="mb-2 last:mb-0 text-[color:var(--sg-text-muted)]" {...props} />,
                                                     ul: ({ ...props }) => <ul className="mb-2 list-disc space-y-1 pl-5" {...props} />,
                                                     ol: ({ ...props }) => <ol className="mb-2 list-decimal space-y-1 pl-5" {...props} />,
                                                     li: ({ ...props }) => <li className="mb-0" {...props} />,
-                                                    strong: ({ ...props }) => <strong className="font-semibold text-white" {...props} />,
-                                                    code: ({ ...props }) => <code className="rounded bg-white/10 px-1 py-0.5 text-white" {...props} />,
+                                                    strong: ({ ...props }) => <strong className="font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
+                                                    code: ({ ...props }) => <code className="rounded bg-white/84 px-1 py-0.5 text-[color:var(--sg-text-strong)]" {...props} />,
                                                 }}
                                             >
                                                 {section.body}
@@ -568,7 +589,7 @@ const AiAdvisor = ({
                         ) : null}
 
                         {!display && fallbackSections.length === 0 ? (
-                            <div className="rounded-3xl border border-white/10 bg-white/10 p-4 text-sm text-indigo-100">
+                            <div className="rounded-[28px] bg-white/78 p-4 text-sm text-[color:var(--sg-text-faint)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                                 {copy.empty}
                             </div>
                         ) : null}

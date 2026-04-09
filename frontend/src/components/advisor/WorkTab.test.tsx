@@ -115,10 +115,10 @@ describe('WorkTab', () => {
     it('renders work-event compare agronomy details for the active option', () => {
         renderWorkTab(buildWorkPayload());
 
-        screen.getByText('Work-event compare');
+        screen.getByText('Work comparison');
         screen.getByText('Compared persisted work-event scenarios.');
         screen.getByText('Recommended action:Thin 1 fruit');
-        screen.getByText(/Decision readiness:79%/i);
+        screen.getByText(/Readiness:Guarded apply/i);
         screen.getByText('Sink overload');
         screen.getByText('Fruit pressure');
         screen.getByText('Thin 1 fruit');

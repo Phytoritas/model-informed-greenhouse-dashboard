@@ -1,5 +1,6 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { formatReadinessBadge, getReadinessDescriptor } from '../../lib/design/readiness';
 import { getDevelopmentStageLabel, getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
@@ -17,6 +18,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
     const { locale } = useLocale();
     const analysis = props.result?.machine_payload.physiology_analysis;
     const modelRuntime = props.result?.machine_payload.model_runtime;
+    const readiness = getReadinessDescriptor(analysis?.confidence, locale);
     const copy = locale === 'ko'
         ? {
             title: '재배생리',
@@ -27,7 +29,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             checklist: '확인 체크리스트',
             context: '현재 문맥',
             urgency: '긴급도',
-            confidence: '판단 안정도',
+            confidence: '반영 상태',
             diagnosis: '진단',
             balanceState: '균형 상태',
             deviation: '편차 / 설명',
@@ -66,7 +68,7 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
             checklist: 'Monitoring checklist',
             context: 'Context snapshot',
             urgency: 'Urgency',
-            confidence: 'Decision readiness',
+            confidence: 'Readiness',
             diagnosis: 'Diagnosis',
             balanceState: 'Balance state',
             deviation: 'Deviation / explanation',
@@ -122,8 +124,8 @@ const PhysiologyTab = (props: PhysiologyTabProps) => {
                     <div className="flex flex-wrap gap-2">
                         <AdvisorConfidenceBadge label={`${copy.urgency}:${getLocalizedTokenLabel(analysis.urgency, locale)}`} tone="warning" />
                         <AdvisorConfidenceBadge
-                            label={`${copy.confidence}:${Math.round(analysis.confidence * 100)}%`}
-                            tone="info"
+                            label={formatReadinessBadge(analysis.confidence, locale, copy.confidence)}
+                            tone={readiness.tone}
                         />
                         {props.result?.machine_payload.missing_data.map((item) => (
                             <AdvisorConfidenceBadge
