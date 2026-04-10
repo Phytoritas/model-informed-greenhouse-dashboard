@@ -1,35 +1,23 @@
 # Current Loop
 
 ## Active State
-- Issue `#61` is closed and merged through PR `#62`, and local `main` is fast-forwarded to merge commit `895e52c`.
-- The routed shell, assistant single-surface flow, legacy route retirement, and mobile navigation follow-up now live on the repository baseline instead of an active feature branch.
-- No implementation branch is currently active in `.rah`; the next non-trivial change should begin from a fresh issue/branch and a fresh Memento session/case identity.
+- Issue `#65` is active on branch `hyp/65-simplify-phytosync-ui-into-a-compact-coral-tile-shell`.
+- The issue61 routed shell on `main` is the preserved baseline, not the end state.
+- The active target is now mostly landed: five-page compact coral tile shell, hidden assistant/settings routes, `/rtr` absorbed into control, bounded `1320px` content canvas, and assistant drawer entry points are all in place.
 
-## Latest Delivered Baseline
-- `main` now includes the merged issue `#61` routed-shell bundle:
-  - dedicated route-level pages for `/overview`, `/control`, `/rtr`, `/crop-work`, `/resources`, `/alerts`, `/assistant`, and `/settings`
-  - explicit redirects for `/overview|/control|/resources|/alerts/legacy`
-  - advisor-lane route containers for `/growth`, `/nutrient`, `/protection`, and `/harvest`
-  - canonical `assistant` section metadata with `/ask` preserved as an inbound compatibility alias
-  - assistant chat/search/history consolidated onto `/assistant` instead of App-level overlay drawers
-- The mobile shell follow-up is also merged:
-  - `WorkspaceNav` stays mounted below `lg`
-  - `AppShell.test.tsx` locks the mobile nav slot regression
-  - `.gitignore` now ignores session-only Memento snapshot JSON files for future branches
-- Historical issue `#61` facts remain in logs, docs, and merged code, but restart packets should now treat `main` as the source baseline rather than the retired feature branch.
+## Baseline To Preserve
+- `main` already includes the merged issue `#61` routed-shell extraction and the post-merge `.rah` sync from issue `#63`.
+- The baseline still exposes eight primary routes in `route-meta.ts`, a separate `/rtr` peer page, inline `/assistant`, and page wrappers with mixed width caps and stacked vertical cards.
+- Those baseline facts should be treated as the donor structure for issue `#65`, not as a target to preserve visually.
 
-## Latest Validation
-- PR `#62` merged after GitHub Actions `Backend Validation` and `Frontend Validation` both returned `SUCCESS`.
-- The final local ladder for the merged issue61 bundle stayed green with:
-  - `npm --prefix frontend run lint`
-  - `npm --prefix frontend run test -- --pool=threads`
-  - `npm --prefix frontend run build`
-  - `poetry run ruff check .`
-  - `poetry run pytest`
-- The final frontend result for the merged bundle was `19 files, 69 passed`, and the repo Python ladder was `149 passed, 34 warnings`.
-- `rah.py doctor` remains warn-only for the still-uninstalled optional hooks and missing optional `deployment.json`.
+## What Landed
+1. The visible shell is reduced to `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts`.
+2. `/assistant` and `/settings` are hidden from the sidebar and entered through the header/FAB/profile flow.
+3. `/rtr` now behaves as a compatibility redirect into `/control#control-strategy`.
+4. `PageCanvas`-based wrappers now cap routed pages at `1320px`, and overview/crop-work use the compact tile grid directly.
+5. Resources, alerts, and hidden assistant/settings surfaces received additional Korean-first copy and coral-neutral tone cleanup in the latest follow-up slice.
 
 ## Exact Next Step
-1. Start the next non-trivial repo change from a fresh GitHub issue/branch instead of reusing the retired issue61 identifiers.
-2. Treat `main` as the routed-shell baseline and keep `ask-*` deep-link compatibility untouched unless a future issue explicitly retires it.
-3. If `.rah` runtime snapshots are regenerated locally, keep them untracked and only commit durable control-plane/docs artifacts.
+1. Keep PR `#66` in `Validating` and use review feedback to judge whether issue `#65` can close on the current branch.
+2. If a follow-up is needed, isolate the remaining legacy `RTROptimizerPanel`-heavy control strategy surface into a smaller tile-native control summary issue instead of reopening the whole shell refactor.
+3. Keep `.rah` runtime snapshots untracked and only commit durable blueprint/control-plane artifacts.

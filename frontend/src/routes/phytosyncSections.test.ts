@@ -11,15 +11,12 @@ describe('phytosyncSections', () => {
         const koSections = buildPhytoSections('ko');
         const enSections = buildPhytoSections('en');
 
-        expect(koSections).toHaveLength(9);
-        expect(enSections).toHaveLength(9);
+        expect(koSections).toHaveLength(6);
+        expect(enSections).toHaveLength(6);
         expect(koSections.map((section) => section.key)).toEqual([
             'overview',
             'control',
-            'growth',
-            'nutrient',
-            'protection',
-            'harvest',
+            'crop-work',
             'resources',
             'alerts',
             'assistant',
@@ -30,21 +27,26 @@ describe('phytosyncSections', () => {
     it('keeps key farmer-facing route metadata aligned', () => {
         const sections = buildPhytoSections('ko');
         const overview = sections.find((section) => section.key === 'overview');
-        const harvest = sections.find((section) => section.key === 'harvest');
+        const cropWork = sections.find((section) => section.key === 'crop-work');
+        const resources = sections.find((section) => section.key === 'resources');
+        const alerts = sections.find((section) => section.key === 'alerts');
         const assistant = sections.find((section) => section.key === 'assistant');
-        const growth = sections.find((section) => section.key === 'growth');
 
         expect(overview?.path).toBe('/overview');
         expect(overview?.workspace).toBe('command');
-        expect(overview?.tabs.map((tab) => tab.label)).toEqual(['핵심 판단', '실시간 상태', '오늘 조치']);
+        expect(overview?.tabs.map((tab) => tab.label)).toEqual(['핵심', '오늘 할 일', '주의']);
 
-        expect(growth?.path).toBe('/growth');
-        expect(growth?.workspace).toBe('advisor');
-        expect(growth?.advisorTab).toBe('physiology');
+        expect(cropWork?.path).toBe('/crop-work');
+        expect(cropWork?.workspace).toBe('crop');
+        expect(cropWork?.advisorTab).toBe('physiology');
 
-        expect(harvest?.path).toBe('/harvest');
-        expect(harvest?.workspace).toBe('advisor');
-        expect(harvest?.advisorTab).toBe('harvest_market');
+        expect(resources?.path).toBe('/resources');
+        expect(resources?.workspace).toBe('resources');
+        expect(resources?.advisorTab).toBe('nutrient');
+
+        expect(alerts?.path).toBe('/alerts');
+        expect(alerts?.workspace).toBe('alerts');
+        expect(alerts?.advisorTab).toBe('pesticide');
 
         expect(assistant?.path).toBe('/assistant');
         expect(assistant?.workspace).toBe('knowledge');
@@ -55,7 +57,8 @@ describe('phytosyncSections', () => {
     it('matches nested paths, keeps /ask as an alias, and falls back to overview on unknown paths', () => {
         const sections = buildPhytoSections('en');
 
-        expect(findPhytoSection(sections, '/harvest/week').key).toBe('harvest');
+        expect(findPhytoSection(sections, '/rtr').key).toBe('control');
+        expect(findPhytoSection(sections, '/harvest/week').key).toBe('crop-work');
         expect(findPhytoSection(sections, '/resources/energy').key).toBe('resources');
         expect(findPhytoSection(sections, '/assistant').key).toBe('assistant');
         expect(findPhytoSection(sections, '/ask').key).toBe('assistant');
@@ -65,17 +68,17 @@ describe('phytosyncSections', () => {
     it('returns stable default section paths for workspace and advisor tab routing', () => {
         expect(getDefaultSectionPathForWorkspace('command')).toBe('/overview');
         expect(getDefaultSectionPathForWorkspace('rtr')).toBe('/control');
-        expect(getDefaultSectionPathForWorkspace('crop')).toBe('/growth');
-        expect(getDefaultSectionPathForWorkspace('advisor')).toBe('/growth');
+        expect(getDefaultSectionPathForWorkspace('crop')).toBe('/crop-work');
+        expect(getDefaultSectionPathForWorkspace('advisor')).toBe('/crop-work');
         expect(getDefaultSectionPathForWorkspace('resources')).toBe('/resources');
         expect(getDefaultSectionPathForWorkspace('alerts')).toBe('/alerts');
         expect(getDefaultSectionPathForWorkspace('knowledge')).toBe('/assistant');
 
-        expect(getSectionPathForAdvisorTab('environment')).toBe('/growth');
-        expect(getSectionPathForAdvisorTab('physiology')).toBe('/growth');
-        expect(getSectionPathForAdvisorTab('work')).toBe('/growth');
-        expect(getSectionPathForAdvisorTab('nutrient')).toBe('/nutrient');
-        expect(getSectionPathForAdvisorTab('pesticide')).toBe('/protection');
-        expect(getSectionPathForAdvisorTab('harvest_market')).toBe('/harvest');
+        expect(getSectionPathForAdvisorTab('environment')).toBe('/control#control-strategy');
+        expect(getSectionPathForAdvisorTab('physiology')).toBe('/crop-work#crop-work-growth');
+        expect(getSectionPathForAdvisorTab('work')).toBe('/crop-work#crop-work-work');
+        expect(getSectionPathForAdvisorTab('nutrient')).toBe('/resources#resources-nutrient');
+        expect(getSectionPathForAdvisorTab('pesticide')).toBe('/alerts#alerts-warning');
+        expect(getSectionPathForAdvisorTab('harvest_market')).toBe('/crop-work#crop-work-harvest');
     });
 });

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import PageHeader from '../components/common/PageHeader';
+import PageCanvas from '../components/layout/PageCanvas';
 
 interface CropWorkPageProps {
   locale: 'ko' | 'en';
@@ -7,6 +7,9 @@ interface CropWorkPageProps {
   workBoard: ReactNode;
   forecastSurface: ReactNode;
   recentWorkSurface: ReactNode;
+  tabs?: Array<{ id: string; label: string }>;
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function CropWorkPage({
@@ -15,11 +18,14 @@ export default function CropWorkPage({
   workBoard,
   forecastSurface,
   recentWorkSurface,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: CropWorkPageProps) {
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Crop & Work',
-        title: '생육/작업',
+        eyebrow: 'PhytoSync',
+        title: '생육작업',
         description: '세력, 마디 전개, 착과 부담과 오늘 작업 우선순위를 함께 봅니다.',
       }
     : {
@@ -29,16 +35,20 @@ export default function CropWorkPage({
       };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8">
-      <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
-      <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.55fr)]">
-        <div className="min-w-0">{cropSummary}</div>
-        <div className="min-w-0">{workBoard}</div>
+    <PageCanvas
+      eyebrow={copy.eyebrow}
+      title={copy.title}
+      description={copy.description}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
+    >
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-8 xl:auto-rows-[88px] xl:grid-cols-12">
+        <div className="min-h-0 xl:col-span-8 xl:row-span-2 [&>*]:h-full">{cropSummary}</div>
+        <div className="min-h-0 xl:col-span-4 xl:row-span-2 [&>*]:h-full">{workBoard}</div>
+        <div className="min-h-0 xl:col-span-6 xl:row-span-3 [&>*]:h-full">{forecastSurface}</div>
+        <div className="min-h-0 xl:col-span-6 xl:row-span-3 [&>*]:h-full">{recentWorkSurface}</div>
       </div>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
-        <div className="min-w-0">{forecastSurface}</div>
-        <div className="min-w-0">{recentWorkSurface}</div>
-      </div>
-    </div>
+    </PageCanvas>
   );
 }

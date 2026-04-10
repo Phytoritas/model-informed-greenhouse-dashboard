@@ -17,6 +17,8 @@ interface AlertsRoutePageProps {
   primaryTiles: KpiTileData[];
   secondaryTiles: KpiTileData[];
   activePanel?: 'alerts-priority' | 'alerts-stream' | 'alerts-history';
+  tabs: Array<{ id: string; label: string }>;
+  onSelectTab: (tabId: string) => void;
 }
 
 export default function AlertsRoutePage({
@@ -28,6 +30,8 @@ export default function AlertsRoutePage({
   primaryTiles,
   secondaryTiles,
   activePanel = 'alerts-priority',
+  tabs,
+  onSelectTab,
 }: AlertsRoutePageProps) {
   const fallbackItems = items.length
     ? items
@@ -41,6 +45,9 @@ export default function AlertsRoutePage({
   return (
     <AlertsPage
       locale={locale}
+      tabs={tabs}
+      activeTabId={activePanel === 'alerts-priority' ? 'alerts-urgent' : activePanel === 'alerts-stream' ? 'alerts-warning' : 'alerts-history'}
+      onSelectTab={onSelectTab}
       surface={(
         <Suspense
           fallback={(

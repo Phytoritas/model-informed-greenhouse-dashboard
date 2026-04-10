@@ -22,14 +22,14 @@ const CHIP_CLASSNAME: Record<TelemetryChipState, string> = {
 };
 
 const LABELS: Record<TelemetryChipState, Record<'ko' | 'en', string>> = {
-    loading: { ko: '로딩', en: 'Loading' },
-    live: { ko: '실시간', en: 'Live' },
-    delayed: { ko: '지연', en: 'Delayed' },
-    stale: { ko: '오래됨', en: 'Stale' },
-    offline: { ko: '오프라인', en: 'Offline' },
-    unavailable: { ko: '사용 불가', en: 'Unavailable' },
-    blocked: { ko: '제어 제한', en: 'Blocked' },
-    provisional: { ko: '잠정 계산', en: 'Provisional' },
+    loading: { ko: '불러오는 중', en: 'Loading' },
+    live: { ko: '정상', en: 'Live' },
+    delayed: { ko: '갱신 지연', en: 'Delayed' },
+    stale: { ko: '오래된 값', en: 'Stale' },
+    offline: { ko: '연결 끊김', en: 'Offline' },
+    unavailable: { ko: '값 없음', en: 'Unavailable' },
+    blocked: { ko: '수동 확인', en: 'Blocked' },
+    provisional: { ko: '임시 계산', en: 'Provisional' },
 };
 
 export default function TelemetryFreshnessChip({

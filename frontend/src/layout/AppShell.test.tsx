@@ -17,6 +17,6 @@ describe('AppShell', () => {
 
         expect(screen.getByTestId('sidebar-probe')).toBeTruthy();
         expect(sidebarSlot.className).not.toContain('hidden');
-        expect(sidebarSlot.className).toContain('lg:w-[240px]');
+        expect(sidebarSlot.className).toContain('lg:w-[248px]');
     });
 });
