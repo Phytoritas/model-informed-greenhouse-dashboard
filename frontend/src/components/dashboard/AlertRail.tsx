@@ -11,6 +11,7 @@ export interface AlertRailItem {
 
 interface AlertRailProps {
     items: AlertRailItem[];
+    compact?: boolean;
 }
 
 function severityMeta(severity: AlertRailItem['severity']) {
@@ -38,7 +39,7 @@ function severityMeta(severity: AlertRailItem['severity']) {
     };
 }
 
-export default function AlertRail({ items }: AlertRailProps) {
+export default function AlertRail({ items, compact = false }: AlertRailProps) {
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
@@ -96,7 +97,7 @@ export default function AlertRail({ items }: AlertRailProps) {
             description={copy.description}
         >
             <div className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+                <div className={`grid gap-3 ${compact ? 'sm:grid-cols-1' : 'sm:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]'}`}>
                     <div
                         className="rounded-[28px] px-4 py-4 sg-tint-amber"
                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
@@ -111,7 +112,7 @@ export default function AlertRail({ items }: AlertRailProps) {
                             {leadItem ? leadItem.body : copy.empty}
                         </p>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className={`grid gap-3 ${compact ? 'grid-cols-2' : 'sm:grid-cols-2'}`}>
                         {(['critical', 'warning', 'info', 'resolved'] as const).map((severity) => (
                             <div
                                 key={severity}
@@ -170,7 +171,7 @@ export default function AlertRail({ items }: AlertRailProps) {
                     </div>
                 ) : null}
                 {remainingItems.length > 0 ? (
-                    <div className="grid gap-3 lg:grid-cols-3">
+                    <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'lg:grid-cols-3'}`}>
                         {remainingItems.map((item) => {
                             const meta = severityMeta(item.severity);
                             const Icon = meta.icon;
