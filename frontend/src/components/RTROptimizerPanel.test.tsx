@@ -663,16 +663,21 @@ describe('RTROptimizerPanel', () => {
         });
     });
 
-    it('renders a compact summary/table surface without the legacy scenario editor', async () => {
-        renderPanel({ compact: true });
+    it('renders a compact summary/table surface with warnings and fallback values', async () => {
+        renderPanel({ compact: true, locale: 'en' });
 
-        expect(await screen.findByText('추천 제어안')).toBeTruthy();
-        expect(screen.getByText('기준선 대비')).toBeTruthy();
-        expect(screen.getByText('판단 근거')).toBeTruthy();
-        expect(screen.getByText('난방 시작(주간)')).toBeTruthy();
-        expect(screen.getByText('이산화탄소 목표')).toBeTruthy();
-        expect(screen.queryByText('시나리오 비교')).toBeNull();
-        expect(screen.queryByText('사용자 비교 시나리오')).toBeNull();
+        expect(await screen.findByText('Recommended control')).toBeTruthy();
+        expect(screen.getByText('Baseline vs recommended')).toBeTruthy();
+        expect(screen.getByText('Why this plan')).toBeTruthy();
+        expect(screen.getByText('Day heating')).toBeTruthy();
+        expect(screen.getByText('CO2 target')).toBeTruthy();
+        expect(screen.getByText('Risk bound active')).toBeTruthy();
+        expect(screen.getByText('Large RTR deviation')).toBeTruthy();
+        expect(screen.getByLabelText('Target node rate')).toBeTruthy();
+        expect(screen.getByText('348 KRW')).toBeTruthy();
+        expect(screen.getAllByText('0.570').length).toBeGreaterThanOrEqual(1);
+        expect(screen.queryByText('Scenario review')).toBeNull();
+        expect(screen.queryByText('Custom review row')).toBeNull();
         expect(screen.queryByText('RTR calibration workspace stub')).toBeNull();
     });
 
