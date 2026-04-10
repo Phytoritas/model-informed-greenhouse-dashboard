@@ -3,17 +3,17 @@
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
 - topic: `architecture-refactor`
-- sessionId: `model-informed-greenhouse-dashboard#69:fix-69-clean-remaining-control-copy-residue-after-compact-shell`
-- caseId: `case/model-informed-greenhouse-dashboard/69/fix-69-clean-remaining-control-copy-residue-after-compact-shell`
-- issue: `#69`
-- branch: `fix/69-clean-remaining-control-copy-residue-after-compact-shell`
+- sessionId: `model-informed-greenhouse-dashboard#main:post-issue69-merged-baseline`
+- caseId: `case/model-informed-greenhouse-dashboard/main/post-issue69-merged-baseline`
+- issue: `none`
+- branch: `main`
 
 ## Current State
-- current_stage: `issue69-control-copy-cleanup`
-- implementation_gate: `issue69-copy-polish-phase`
+- current_stage: `post-issue69-merged-baseline`
+- implementation_gate: `ready-for-next-issue`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `issue65 merged compact shell -> issue67 compact control summary -> issue69 control copy polish`
-- latest_validation: `The issue69 copy-only `/control` polish stayed green locally with frontend lint/test/build, repo ruff/pytest, and a fresh `/control` screenshot at artifacts/screenshots/issue69-control-copy-cleanup-final.png.`
+- latest_route_slice: `issue65 compact shell -> issue67 compact control summary -> issue69 control copy cleanup merged on main`
+- latest_validation: `PR #70 merged after green local ladder plus green Backend/Frontend Validation; the refreshed /control screenshot remains at artifacts/screenshots/issue69-control-copy-cleanup-final.png`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -24,15 +24,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#69:fix-69-clean-remaining-control-copy-residue-after-compact-shell")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#main:post-issue69-merged-baseline")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "architecture-refactor", "issue69", "control-copy", "weather-copy", "route-meta"],
+    keywords=["model-informed-greenhouse-dashboard", "architecture-refactor", "main", "post-issue69-merged-baseline"],
     topic="architecture-refactor",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#69:fix-69-clean-remaining-control-copy-residue-after-compact-shell",
+    sessionId="model-informed-greenhouse-dashboard#main:post-issue69-merged-baseline",
     caseMode=True,
     depth="standard",
-    contextText="issue69 control copy cleanup follow-up after issue67 merged"
+    contextText="post-merge baseline intake before the next issue-driven loop"
 )
 ```
 
@@ -40,5 +40,5 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Treat the merged issue67 compact summary as the donor baseline and keep issue69 scoped to the `/control` copy-only residue.
-- Commit and push the copy-cleanup slice, then open the issue69 PR with `artifacts/screenshots/issue69-control-copy-cleanup-final.png` and the latest local validation results.
+- Treat `main` as the merged compact-control baseline and start the next non-trivial change from a fresh issue/branch.
+- Keep the current route ids, `/rtr` compatibility, and optimizer contracts untouched unless a future issue explicitly reopens them.
