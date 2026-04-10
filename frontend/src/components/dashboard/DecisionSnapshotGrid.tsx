@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { CloudSun, Coins, Gauge, Zap } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import type { AdvancedModelMetrics, ProducePricesPayload, SensorData, WeatherOutlook } from '../../types';
+import { getWeatherLabel } from '../../utils/displayCopy';
 import DashboardCard from '../common/DashboardCard';
 
 interface DecisionSnapshotGridProps {
@@ -98,7 +99,12 @@ export default function DecisionSnapshotGrid({
     const priceLocale = locale === 'ko' ? 'ko-KR' : 'en-US';
     const weatherHeadline = weatherLoading || !weather
         ? copy.weatherLoading
-        : `${weather.current.temperature_c.toFixed(1)}°C · ${weather.current.weather_label}`;
+        : `${weather.current.temperature_c.toFixed(1)}°C · ${getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)}`;
+    const localizedWeatherBody = weather
+        ? locale === 'ko'
+            ? `오늘은 ${getWeatherLabel(weather.daily[0]?.weather_code, weather.daily[0]?.weather_label, locale)} 흐름이며 강수 가능성 ${(weather.daily[0]?.precipitation_probability_max_pct ?? 0).toFixed(0)}%, 최대 풍속 ${(weather.daily[0]?.wind_speed_max_kmh ?? 0).toFixed(1)} km/h입니다.`
+            : weather.summary
+        : copy.leadWeather;
     const marketHeadline = produceLoading || !leadMarketItem
         ? copy.marketLoading
         : `${leadMarketItem.display_name} ${leadMarketItem.current_price_krw.toLocaleString(priceLocale)}${copy.won}`;
@@ -119,7 +125,7 @@ export default function DecisionSnapshotGrid({
                     icon={CloudSun}
                     title={copy.weatherTitle}
                     headline={weatherHeadline}
-                    body={weather?.summary ?? copy.leadWeather}
+                    body={localizedWeatherBody}
                     tone="sg-tint-amber"
                 />
                 <SnapshotTile

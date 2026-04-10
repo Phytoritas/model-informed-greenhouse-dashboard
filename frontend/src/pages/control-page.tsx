@@ -31,9 +31,9 @@ export default function ControlPage({
         description: '지금 조치, 온도 전략, 장치 상태를 한 화면에 모았습니다.',
       }
     : {
-        eyebrow: 'Control',
-        title: 'Environment control',
-        description: 'Keep HVAC, vent, and humidity moves in one dedicated lane.',
+        eyebrow: 'PhytoSync',
+        title: 'Environment Control',
+        description: 'Review live moves, strategy, and device status in one lane.',
       };
 
   return (
