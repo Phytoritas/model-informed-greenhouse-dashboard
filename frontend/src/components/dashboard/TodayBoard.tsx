@@ -8,6 +8,7 @@ interface TodayBoardProps {
     actionsToday: string[];
     actionsWeek: string[];
     monitor: string[];
+    compact?: boolean;
 }
 
 const clampTwoStyle: CSSProperties = {
@@ -17,20 +18,30 @@ const clampTwoStyle: CSSProperties = {
     WebkitLineClamp: 2,
 };
 
+const clampThreeStyle: CSSProperties = {
+    display: '-webkit-box',
+    overflow: 'hidden',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: 3,
+};
+
 function CompactListTile({
     title,
     items,
     emptyLabel,
     icon: Icon,
     tone,
+    compact = false,
 }: {
     title: string;
     items: string[];
     emptyLabel: string;
     icon: typeof Activity;
     tone: string;
+    compact?: boolean;
 }) {
-    const visibleItems = items.slice(0, 2);
+    const visibleItems = items.slice(0, compact ? 1 : 2);
+    const itemClampStyle = compact ? clampThreeStyle : clampTwoStyle;
 
     return (
         <article className={`rounded-[22px] px-4 py-4 ${tone}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
@@ -50,12 +61,12 @@ function CompactListTile({
                 {visibleItems.length > 0 ? (
                     visibleItems.map((item) => (
                         <div key={item} className="rounded-[18px] bg-white/76 px-3 py-2.5 text-sm leading-6 text-[color:var(--sg-text-strong)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <div style={clampTwoStyle}>{item}</div>
+                            <div style={itemClampStyle}>{item}</div>
                         </div>
                     ))
                 ) : (
                     <div className="rounded-[18px] bg-white/70 px-3 py-2.5 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <div style={clampTwoStyle}>{emptyLabel}</div>
+                        <div style={itemClampStyle}>{emptyLabel}</div>
                     </div>
                 )}
             </div>
@@ -68,6 +79,7 @@ export default function TodayBoard({
     actionsToday,
     actionsWeek,
     monitor,
+    compact = false,
 }: TodayBoardProps) {
     const { locale } = useLocale();
     const copy = locale === 'ko'
@@ -117,18 +129,18 @@ export default function TodayBoard({
             eyebrow={copy.eyebrow}
             title={copy.title}
             description={copy.description}
-            contentClassName="flex h-full flex-col gap-4"
-            className="h-full overflow-hidden"
+            contentClassName="flex flex-col gap-4"
+            className={compact ? undefined : 'h-full overflow-hidden'}
         >
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]">
+            <div className={`grid gap-4 ${compact ? 'xl:grid-cols-1' : 'xl:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]'}`}>
                 <div className="rounded-[26px] bg-[linear-gradient(135deg,rgba(255,251,246,0.98),rgba(248,231,223,0.9))] px-5 py-5" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                         {copy.leadLabel}
                     </div>
-                    <div className="mt-3 text-[clamp(1.35rem,1.05rem+0.6vw,1.9rem)] font-semibold leading-tight tracking-[-0.05em] text-[color:var(--sg-text-strong)]" style={clampTwoStyle}>
+                    <div className="mt-3 text-[clamp(1.35rem,1.05rem+0.6vw,1.9rem)] font-semibold leading-tight tracking-[-0.05em] text-[color:var(--sg-text-strong)]" style={compact ? clampThreeStyle : clampTwoStyle}>
                         {leadMessage}
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={clampTwoStyle}>
+                    <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={compact ? clampThreeStyle : clampTwoStyle}>
                         {copy.leadSupport}
                     </p>
                 </div>
@@ -151,11 +163,11 @@ export default function TodayBoard({
                 </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <CompactListTile title={copy.now} items={actionsNow} emptyLabel={copy.emptyNow} icon={TimerReset} tone="sg-tint-green" />
-                <CompactListTile title={copy.today} items={actionsToday} emptyLabel={copy.emptyToday} icon={CalendarDays} tone="sg-tint-amber" />
-                <CompactListTile title={copy.week} items={actionsWeek} emptyLabel={copy.emptyWeek} icon={Activity} tone="sg-tint-violet" />
-                <CompactListTile title={copy.monitor} items={monitor} emptyLabel={copy.emptyMonitor} icon={Radar} tone="sg-tint-neutral" />
+            <div className={`grid gap-3 ${compact ? 'md:grid-cols-1 xl:grid-cols-1' : 'md:grid-cols-2 xl:grid-cols-4'}`}>
+                <CompactListTile title={copy.now} items={actionsNow} emptyLabel={copy.emptyNow} icon={TimerReset} tone="sg-tint-green" compact={compact} />
+                <CompactListTile title={copy.today} items={actionsToday} emptyLabel={copy.emptyToday} icon={CalendarDays} tone="sg-tint-amber" compact={compact} />
+                <CompactListTile title={copy.week} items={actionsWeek} emptyLabel={copy.emptyWeek} icon={Activity} tone="sg-tint-violet" compact={compact} />
+                <CompactListTile title={copy.monitor} items={monitor} emptyLabel={copy.emptyMonitor} icon={Radar} tone="sg-tint-neutral" compact={compact} />
             </div>
         </DashboardCard>
     );
