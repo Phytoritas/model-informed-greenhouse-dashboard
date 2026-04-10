@@ -8,9 +8,10 @@ import TimeSeriesChart from './TimeSeriesChart';
 
 interface ChartsProps {
     data: SensorData[];
+    variant?: 'default' | 'overview';
 }
 
-const Charts = ({ data }: ChartsProps) => {
+const Charts = ({ data, variant = 'default' }: ChartsProps) => {
     const { locale } = useLocale();
     const onRender = useDashboardPerfMetrics('chart-section');
     const copy = useMemo(() => (
@@ -103,6 +104,13 @@ const Charts = ({ data }: ChartsProps) => {
             icon: <Zap className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />,
         },
     ], [copy]);
+    const visibleChartCards = variant === 'overview'
+        ? chartCards.slice(0, 2)
+        : chartCards;
+    const chartHeight = variant === 'overview' ? 176 : 200;
+    const gridClassName = variant === 'overview'
+        ? 'grid grid-cols-1 gap-5 md:grid-cols-2'
+        : 'grid grid-cols-1 gap-6 md:grid-cols-2';
 
     return (
         <Profiler id="chart-section" onRender={onRender}>
@@ -116,15 +124,15 @@ const Charts = ({ data }: ChartsProps) => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    {chartCards.map((card) => (
+                <div className={gridClassName}>
+                    {visibleChartCards.map((card) => (
                         <TimeSeriesChart
                             key={card.key}
                             title={card.title}
                             data={data}
                             dataKeys={card.dataKeys}
                             icon={card.icon}
-                            height={200}
+                            height={chartHeight}
                         />
                     ))}
                 </div>

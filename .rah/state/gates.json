@@ -96,9 +96,21 @@
     "status": "pass",
     "note": "Repo-local AGENTS workflow, issue-first rule, blueprint-first rule, and validation ladder were incorporated before non-trivial writes."
   },
+  "issue80_prompt_intake": {
+    "status": "pass",
+    "note": "The layout-overlap cleanup is isolated into issue #80 and branch `fix/80-realign-overlapping-layout-tiles-and-panels` before non-trivial frontend writes resumed."
+  },
+  "issue80_layout_overlap_slice": {
+    "status": "pass",
+    "note": "Issue #80 removes the fragile `xl:auto-rows-[88px]` / `row-span-*` coupling from `overview-page.tsx` and `crop-work-page.tsx`, and adds an `overview` chart variant so large cards no longer spill into later rows."
+  },
+  "issue80_local_validation": {
+    "status": "pass",
+    "note": "Issue #80 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, and `git diff --check`; fresh screenshots were captured at `artifacts/screenshots/issue80-overview-after.png` and `artifacts/screenshots/issue80-crop-work-after.png`."
+  },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "No implementation branch is currently active in `.rah`; issue #74 merged through PR #75 and future non-trivial changes should start from a fresh issue/branch instead of reusing retired identifiers."
+    "note": "Issue #80 is the active implementation branch in `.rah`, and older merged issue identifiers remain retired history rather than active work lanes."
   },
   "issue61_merge_complete": {
     "status": "pass",
