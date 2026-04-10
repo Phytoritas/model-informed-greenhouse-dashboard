@@ -108,9 +108,33 @@
     "status": "pass",
     "note": "Issue #80 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, and `git diff --check`; fresh screenshots were captured at `artifacts/screenshots/issue80-overview-after.png` and `artifacts/screenshots/issue80-crop-work-after.png`."
   },
+  "issue84_prompt_intake": {
+    "status": "pass",
+    "note": "The control realtime recovery stayed bounded to issue #84 and branch `fix/84-fix-control-realtime-failures-and-user-facing-fetch-errors` before non-trivial frontend/runtime writes resumed."
+  },
+  "issue84_realtime_recovery_slice": {
+    "status": "pass",
+    "note": "Issue #84 restored the standard-local control recovery path by preferring `127.0.0.1:8000`, clearing stale frontend backend-origin overrides, localizing grower-facing request-error copy, hardening the launcher cleanup against stale `uvicorn --port 8000` chains, and publishing `/rtr/optimize` results before slower scenario/sensitivity calls finish."
+  },
+  "issue84_local_validation": {
+    "status": "pass",
+    "note": "Issue #84 stayed locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, and `git diff --check`; the frontend ladder is now `22 files, 86 passed`, pytest remains `149 passed, 34 warnings`, and the `/control` evidence lives at `artifacts/screenshots/issue84-control-realtime-recovered.png`, `artifacts/screenshots/issue84-control-live-no-fallback-final.png`, and `artifacts/screenshots/issue84-control-early-hydration.png`."
+  },
+  "issue84_pr_validation": {
+    "status": "pass",
+    "note": "PR #85 merged issue #84 into `main` at `64400a8` after GitHub Actions Backend/Frontend validation both returned success; issue #84 is closed and the project item has advanced out of the implementation lane."
+  },
+  "issue86_prompt_intake": {
+    "status": "pass",
+    "note": "The post-merge `.rah` cleanup was split into issue #86 on branch `docs/86-sync-issue84-merged-harness-state-on-main` instead of reopening the merged issue #84 delivery branch."
+  },
+  "issue86_harness_sync": {
+    "status": "pass",
+    "note": "Issue #86 realigns `status.json`, `gates.json`, `current_loop.md`, `wakeup.md`, `memento_status.json`, `memento_feedback.json`, and the activity log so the harness resumes from the post-issue84 merged `main` baseline instead of the retired issue84 branch."
+  },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue #80 is the active implementation branch in `.rah`, and older merged issue identifiers remain retired history rather than active work lanes."
+    "note": "No product implementation branch is active in `.rah`; `main` is the truthful post-issue84 merged baseline, while issue #86 is only the documentation-only harness-sync slice that restores that truth."
   },
   "issue61_merge_complete": {
     "status": "pass",
