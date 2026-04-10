@@ -42,6 +42,7 @@ import SettingsRoutePage from './pages/settings-route-page';
 import {
   getCropLabel,
   getDashboardSensorCopy,
+  getWeatherLabel,
   NUMERIC_IDEAL_RANGES,
 } from './utils/displayCopy';
 import type { KpiTileData } from './components/KpiStrip';
@@ -947,7 +948,7 @@ function App() {
   ];
   const leadMarketItem = producePrices?.items?.[0] ?? null;
   const weatherSignal = weather
-    ? `${weather.current.temperature_c.toFixed(1)}°C · ${weather.current.weather_label}`
+    ? `${weather.current.temperature_c.toFixed(1)}°C · ${getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)}`
     : (locale === 'ko' ? '예보 연결 대기' : 'Forecast pending');
   const priceSignal = leadMarketItem
     ? `${leadMarketItem.display_name} ${leadMarketItem.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${locale === 'ko' ? '원' : ' KRW'}`

@@ -1,12 +1,12 @@
 {
-  "earliest_restart_point": "Continue issue #67 from the merged issue65 compact-shell baseline after re-reading the wakeup packet and current loop, then finish the compact control summary/table slice before any broader copy cleanup.",
+  "earliest_restart_point": "Continue issue #69 from the merged issue67 compact-control baseline after re-reading the wakeup packet and current loop, then finish the bounded `/control` copy-only cleanup before considering any broader section-label or manual-control sweep.",
   "agents_and_workflow_gate": {
     "status": "pass",
-    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the active issue #65 branch linkage are satisfied for the compact coral tile shell loop."
+    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the active issue #69 branch linkage are satisfied for the bounded control copy-cleanup loop."
   },
   "memento_recall_gate": {
     "status": "pass",
-    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the active issue65 shell-refactor loop. The initial recall for the new UI direction returned no useful fragments, so repo facts and the new blueprint remain the current authority."
+    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the active issue69 control copy-cleanup loop. Fresh recall confirmed the merged compact-control baseline and the decision to keep this slice copy-only without route or API changes."
   },
   "memento_feedback_gate": {
     "status": "warn",
@@ -34,19 +34,31 @@
   },
   "issue65_copy_tone_polish": {
     "status": "in_progress",
-    "note": "Visible resources/alerts surfaces and hidden assistant/settings routes were tightened toward Korean-first coral-neutral copy, but deeper legacy panels still contain mixed English or machine-facing donor strings that may need a separate cleanup slice."
+    "note": "Visible resources/alerts surfaces and hidden assistant/settings routes were tightened toward Korean-first coral-neutral copy, and the remaining `/control` wording residue is now isolated into issue #69 instead of reopening the broader shell refactor."
   },
   "issue67_prompt_intake": {
     "status": "pass",
     "note": "The remaining control-surface legacy debt is now bound to issue #67 and its issue-based branch before new frontend writes resumed."
   },
   "issue67_compact_control_summary": {
-    "status": "in_progress",
-    "note": "The active slice replaces the RTR-heavy `/control` strategy block with a shorter compact summary/table surface inside `RTROptimizerPanel` while preserving the current optimizer hook and route wiring."
+    "status": "pass",
+    "note": "Issue #67 replaced the RTR-heavy `/control` strategy block with a shorter compact summary/table surface inside `RTROptimizerPanel` while preserving the existing optimizer hook and route wiring, and that baseline is now merged on `main` via PR #68."
   },
   "issue67_copy_cleanup_boundary": {
-    "status": "warn",
-    "note": "The compact summary surface is landed locally, but route-meta wording and some weather/RTR fallback copy still leak English or machine-facing donor terms and may require a follow-up decision."
+    "status": "pass",
+    "note": "The residual route-meta and weather/RTR donor wording was split into issue #69 as a bounded copy-only follow-up instead of expanding issue #67 after the compact summary baseline merged."
+  },
+  "issue69_prompt_intake": {
+    "status": "pass",
+    "note": "The remaining `/control` copy residue is now bound to issue #69 and its issue-based branch before any non-trivial frontend writes resumed."
+  },
+  "issue69_copy_cleanup_slice": {
+    "status": "pass",
+    "note": "The active slice stays copy-only across `route-meta.ts`, `control-page.tsx`, `control-route-page.tsx`, `RTROutlookPanel.tsx`, `WeatherOutlookPanel.tsx`, plus the weather-label spillover in `App.tsx` and `DecisionSnapshotGrid.tsx`, preserving route ids, hashes, and API contracts while localizing route/outlook wording for the compact control experience."
+  },
+  "issue69_local_validation": {
+    "status": "pass",
+    "note": "Issue #69 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, `npm --prefix frontend run build`, `poetry run ruff check .`, and `poetry run pytest`, and a fresh `/control` screenshot was captured at `artifacts/screenshots/issue69-control-copy-cleanup-final.png`."
   },
   "legacy_compatibility_retirement": {
     "status": "pass",
