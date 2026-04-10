@@ -127,7 +127,7 @@ export default function ControlRoutePage({
           onSettingsChange={onSettingsChange}
         />
       )}
-      controlActions={<AlertRail items={fallbackAlerts} />}
+      controlActions={<AlertRail items={fallbackAlerts} compact />}
       climateChart={(
         <Suspense
           fallback={(

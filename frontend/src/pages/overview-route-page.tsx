@@ -127,7 +127,7 @@ export default function OverviewRoutePage({
           onOpenAssistant={onOpenAssistant}
         />
       )}
-      priorityRail={<AlertRail items={fallbackAlerts} />}
+      priorityRail={<AlertRail items={fallbackAlerts} compact />}
       leadAnalytics={(
         <Suspense
           fallback={(
