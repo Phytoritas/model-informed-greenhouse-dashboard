@@ -25,12 +25,17 @@ describe('phytosyncSections', () => {
     });
 
     it('keeps key farmer-facing route metadata aligned', () => {
-        const sections = buildPhytoSections('ko');
-        const overview = sections.find((section) => section.key === 'overview');
-        const cropWork = sections.find((section) => section.key === 'crop-work');
-        const resources = sections.find((section) => section.key === 'resources');
-        const alerts = sections.find((section) => section.key === 'alerts');
-        const assistant = sections.find((section) => section.key === 'assistant');
+        const koSections = buildPhytoSections('ko');
+        const enSections = buildPhytoSections('en');
+        const overview = koSections.find((section) => section.key === 'overview');
+        const cropWork = koSections.find((section) => section.key === 'crop-work');
+        const resources = koSections.find((section) => section.key === 'resources');
+        const alerts = koSections.find((section) => section.key === 'alerts');
+        const assistant = koSections.find((section) => section.key === 'assistant');
+        const enOverview = enSections.find((section) => section.key === 'overview');
+        const enControl = enSections.find((section) => section.key === 'control');
+        const enResources = enSections.find((section) => section.key === 'resources');
+        const enAssistant = enSections.find((section) => section.key === 'assistant');
 
         expect(overview?.path).toBe('/overview');
         expect(overview?.workspace).toBe('command');
@@ -51,6 +56,10 @@ describe('phytosyncSections', () => {
         expect(assistant?.path).toBe('/assistant');
         expect(assistant?.workspace).toBe('knowledge');
         expect(assistant?.tabs.map((tab) => tab.id)).toEqual(['assistant-chat', 'assistant-search', 'assistant-history']);
+        expect(enOverview?.tabs.map((tab) => tab.label)).toEqual(['Summary', 'Today', 'Watch']);
+        expect(enControl?.tabs.map((tab) => tab.label)).toEqual(['Now', 'Temp plan', 'Devices']);
+        expect(enResources?.tabs.map((tab) => tab.label)).toEqual(['Nutrients', 'Energy', 'Market']);
+        expect(enAssistant?.tabs.map((tab) => tab.label)).toEqual(['Ask', 'Materials', 'Recent']);
         expect(assistant?.tabs.map((tab) => tab.label)).toEqual(['질문', '자료 찾기', '최근 흐름']);
     });
 
