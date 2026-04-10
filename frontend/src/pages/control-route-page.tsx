@@ -82,7 +82,7 @@ export default function ControlRoutePage({
     : [{
         id: 'control-ready',
         severity: 'resolved' as const,
-        title: locale === 'ko' ? '제어 차단 항목 없음' : 'No immediate warning',
+        title: locale === 'ko' ? '제어 차단 항목 없음' : 'No urgent warning',
         body: fallbackAlertBody,
       }];
 
@@ -96,8 +96,8 @@ export default function ControlRoutePage({
         <Suspense
           fallback={(
             <LoadingSkeleton
-              title={locale === 'ko' ? '추천 제어안' : 'Control plan'}
-              loadingMessage={locale === 'ko' ? '추천 제어안을 불러오는 중입니다...' : 'Loading control plan...'}
+              title={locale === 'ko' ? '추천 제어안' : 'Recommended control'}
+              loadingMessage={locale === 'ko' ? '추천 제어안을 불러오는 중입니다...' : 'Loading recommended control...'}
               minHeightClassName="min-h-[304px]"
             />
           )}
@@ -132,8 +132,8 @@ export default function ControlRoutePage({
         <Suspense
           fallback={(
             <LoadingSkeleton
-              title={locale === 'ko' ? '실내 환경 추이' : 'Indoor climate trend'}
-              loadingMessage={locale === 'ko' ? '실내 환경 흐름을 불러오는 중...' : 'Loading indoor climate trend...'}
+              title={locale === 'ko' ? '실내 환경 추이' : 'Indoor climate'}
+              loadingMessage={locale === 'ko' ? '실내 환경 흐름을 불러오는 중...' : 'Loading indoor climate...'}
               minHeightClassName="min-h-[304px]"
             />
           )}
@@ -146,8 +146,8 @@ export default function ControlRoutePage({
           <Suspense
             fallback={(
             <LoadingSkeleton
-                title={locale === 'ko' ? '외기와 예보' : 'Outside signal'}
-                loadingMessage={locale === 'ko' ? '외기와 예보 흐름을 불러오는 중...' : 'Loading outside signal...'}
+                title={locale === 'ko' ? '외기와 예보' : 'Outside outlook'}
+                loadingMessage={locale === 'ko' ? '외기와 예보 흐름을 불러오는 중...' : 'Loading outside outlook...'}
                 minHeightClassName="min-h-[320px]"
               />
             )}
