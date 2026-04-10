@@ -535,6 +535,7 @@ function renderPanel(options?: {
     profileLoading?: boolean;
     telemetryStatus?: TelemetryStatus;
     onRefreshProfiles?: () => void | Promise<void>;
+    compact?: boolean;
 }) {
     if (options?.locale) {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, options.locale);
@@ -557,6 +558,7 @@ function renderPanel(options?: {
                     profileError={null}
                     optimizerEnabled={optimizerEnabled}
                     onRefreshProfiles={options?.onRefreshProfiles}
+                    compact={options?.compact ?? false}
                 />
             </AreaUnitProvider>
         </LocaleProvider>,
@@ -659,6 +661,24 @@ describe('RTROptimizerPanel', () => {
             expect(refreshState).toHaveBeenCalledTimes(1);
             expect(refreshOptimization).toHaveBeenCalledTimes(1);
         });
+    });
+
+    it('renders a compact summary/table surface with warnings and fallback values', async () => {
+        renderPanel({ compact: true, locale: 'en' });
+
+        expect(await screen.findByText('Recommended control')).toBeTruthy();
+        expect(screen.getByText('Baseline vs recommended')).toBeTruthy();
+        expect(screen.getByText('Why this plan')).toBeTruthy();
+        expect(screen.getByText('Day heating')).toBeTruthy();
+        expect(screen.getByText('CO2 target')).toBeTruthy();
+        expect(screen.getByText('Risk bound active')).toBeTruthy();
+        expect(screen.getByText('Large RTR deviation')).toBeTruthy();
+        expect(screen.getByLabelText('Target node rate')).toBeTruthy();
+        expect(screen.getByText('348 KRW')).toBeTruthy();
+        expect(screen.getAllByText('0.570').length).toBeGreaterThanOrEqual(1);
+        expect(screen.queryByText('Scenario review')).toBeNull();
+        expect(screen.queryByText('Custom review row')).toBeNull();
+        expect(screen.queryByText('RTR calibration workspace stub')).toBeNull();
     });
 
     it('syncs server area meta into context and reruns the optimizer with user area overrides', async () => {
