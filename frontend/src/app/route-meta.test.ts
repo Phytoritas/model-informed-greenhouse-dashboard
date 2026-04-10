@@ -13,12 +13,9 @@ describe('route-meta', () => {
     expect(koRoutes.map((route) => route.key)).toEqual([
       'overview',
       'control',
-      'rtr',
       'crop-work',
       'resources',
       'alerts',
-      'assistant',
-      'settings',
     ]);
     expect(enRoutes.map((route) => route.key)).toEqual(koRoutes.map((route) => route.key));
   });
@@ -26,20 +23,21 @@ describe('route-meta', () => {
   it('maps direct and legacy paths to the new top-level route keys', () => {
     expect(getPrimaryRouteKey('/overview')).toBe('overview');
     expect(getPrimaryRouteKey('/control')).toBe('control');
-    expect(getPrimaryRouteKey('/rtr')).toBe('rtr');
+    expect(getPrimaryRouteKey('/rtr')).toBe('control');
     expect(getPrimaryRouteKey('/crop-work')).toBe('crop-work');
-    expect(getPrimaryRouteKey('/assistant')).toBe('assistant');
+    expect(getPrimaryRouteKey('/assistant')).toBe('overview');
+    expect(getPrimaryRouteKey('/settings')).toBe('overview');
 
     expect(getPrimaryRouteKey('/growth')).toBe('crop-work');
     expect(getPrimaryRouteKey('/nutrient')).toBe('resources');
     expect(getPrimaryRouteKey('/protection')).toBe('alerts');
-    expect(getPrimaryRouteKey('/harvest')).toBe('resources');
-    expect(getPrimaryRouteKey('/ask')).toBe('assistant');
+    expect(getPrimaryRouteKey('/harvest')).toBe('crop-work');
+    expect(getPrimaryRouteKey('/ask')).toBe('overview');
   });
 
   it('returns localized metadata for the active route', () => {
     expect(getPrimaryRouteMeta('/overview', 'ko').title).toBe('오늘 운영');
-    expect(getPrimaryRouteMeta('/assistant', 'ko').label).toBe('AI 도우미');
-    expect(getPrimaryRouteMeta('/rtr', 'en').title).toBe('RTR Optimization');
+    expect(getPrimaryRouteMeta('/assistant', 'ko').label).toBe('질문 도우미');
+    expect(getPrimaryRouteMeta('/rtr', 'en').title).toBe('Temperature Strategy');
   });
 });

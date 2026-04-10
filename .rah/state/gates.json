@@ -1,16 +1,36 @@
 {
-  "earliest_restart_point": "Use `main` as the merged issue61 routed-shell baseline after re-reading the wakeup packet and current loop, then create a fresh issue/branch before the next non-trivial change.",
+  "earliest_restart_point": "Continue issue #65 from the five-page shell contract after re-reading the wakeup packet and current loop, then relayout overview/control before the remaining pages.",
   "agents_and_workflow_gate": {
     "status": "pass",
-    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the active issue #61 branch linkage are all satisfied for the Coral Stay routed-shell loop."
+    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the active issue #65 branch linkage are satisfied for the compact coral tile shell loop."
   },
   "memento_recall_gate": {
     "status": "pass",
-    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and case `case/model-informed-greenhouse-dashboard/61/hyp-61-rebuild-phytosync-into-coral-stay-routed-shell`."
+    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the active issue65 shell-refactor loop. The initial recall for the new UI direction returned no useful fragments, so repo facts and the new blueprint remain the current authority."
   },
   "memento_feedback_gate": {
+    "status": "warn",
+    "note": "Historical recall feedback from the issue61 loop exists, but the new issue65 shell simplification recall is still sparse and should receive fresh tool feedback after the first meaningful implementation slice."
+  },
+  "issue65_prompt_intake": {
     "status": "pass",
-    "note": "Recall feedback was recorded for search events `1373`, `1381`, `1389`, `1407`, and `1415`, marking the retrieval as insufficient for the current issue61 routed-shell loop until repo-local fragments covering legacy retirement, assistant canonicalization, and the remaining `ask-*` compatibility decision exist."
+    "note": "The PhytoSync compact-coral tile simplification directive is bound to issue #65 and its issue-based branch before non-trivial frontend writes resumed."
+  },
+  "issue65_blueprint_alignment": {
+    "status": "pass",
+    "note": "Root blueprint and architecture mirror now point to the five-page shell, hidden assistant/settings routes, control absorption of `/rtr`, bounded 1320px canvas, and the 88px tile-grid contract."
+  },
+  "issue65_shell_contract": {
+    "status": "in_progress",
+    "note": "The new primary-shell contract is to keep only `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts` visible in navigation while treating `/assistant`, `/settings`, and `/rtr` as hidden compatibility routes."
+  },
+  "issue65_tile_layout_contract": {
+    "status": "pending",
+    "note": "Overview, control, crop-work, resources, and alerts still need to be rebuilt onto the compact tile grid with 88px row multiples and the 1320px page canvas."
+  },
+  "issue65_assistant_drawer_contract": {
+    "status": "pending",
+    "note": "The grower-facing assistant entry still needs to move from the inline routed surface into a FAB/header-triggered right drawer while preserving `/assistant` as a hidden route."
   },
   "legacy_compatibility_retirement": {
     "status": "pass",
@@ -30,7 +50,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue `#61` is closed and merged via PR #62, so `main` is now the routed-shell baseline and the next non-trivial loop must start from a fresh issue/branch linkage."
+    "note": "Issue `#65` is now the active implementation loop on branch `hyp/65-simplify-phytosync-ui-into-a-compact-coral-tile-shell`, created after the issue61 routed-shell baseline was merged onto `main`."
   },
   "issue61_merge_complete": {
     "status": "pass",

@@ -1,15 +1,24 @@
 import type { ReactNode } from 'react';
-import PageHeader from '../components/common/PageHeader';
+import PageCanvas from '../components/layout/PageCanvas';
 
 interface AlertsPageProps {
   locale: 'ko' | 'en';
   surface: ReactNode;
+  tabs?: Array<{ id: string; label: string }>;
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
-export default function AlertsPage({ locale, surface }: AlertsPageProps) {
+export default function AlertsPage({
+  locale,
+  surface,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
+}: AlertsPageProps) {
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Alerts',
+        eyebrow: 'PhytoSync',
         title: '경보',
         description: '즉시 확인, 오늘 확인, 추적 중을 한 화면에서 모읍니다.',
       }
@@ -20,9 +29,15 @@ export default function AlertsPage({ locale, surface }: AlertsPageProps) {
       };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8">
-      <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+    <PageCanvas
+      eyebrow={copy.eyebrow}
+      title={copy.title}
+      description={copy.description}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
+    >
       <div className="min-w-0">{surface}</div>
-    </div>
+    </PageCanvas>
   );
 }

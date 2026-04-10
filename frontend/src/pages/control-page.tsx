@@ -1,24 +1,32 @@
 import type { ReactNode } from 'react';
-import PageHeader from '../components/common/PageHeader';
+import PageCanvas from '../components/layout/PageCanvas';
 
 interface ControlPageProps {
   locale: 'ko' | 'en';
-  controlSummary: ReactNode;
+  strategySurface: ReactNode;
   controlActions: ReactNode;
+  controlSummary: ReactNode;
   climateChart: ReactNode;
   watchList: ReactNode;
+  tabs?: Array<{ id: string; label: string }>;
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function ControlPage({
   locale,
-  controlSummary,
+  strategySurface,
   controlActions,
+  controlSummary,
   climateChart,
   watchList,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: ControlPageProps) {
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Control',
+        eyebrow: 'PhytoSync',
         title: '환경 제어',
         description: '환기, 난방, 냉방, 습도 조치를 따로 정리합니다.',
       }
@@ -29,14 +37,25 @@ export default function ControlPage({
       };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8">
-      <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_320px]">
-        <div className="min-w-0">{controlSummary}</div>
-        <div className="min-w-0">{controlActions}</div>
+    <PageCanvas
+      eyebrow={copy.eyebrow}
+      title={copy.title}
+      description={copy.description}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
+    >
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
+        <div className="space-y-5">
+          <div className="min-h-0 [&>*]:h-full">{strategySurface}</div>
+          <div className="min-h-0 [&>*]:h-full">{climateChart}</div>
+        </div>
+        <div className="space-y-5">
+          <div className="min-h-0 [&>*]:h-full">{controlActions}</div>
+          <div className="min-h-0 [&>*]:h-full">{controlSummary}</div>
+          <div className="min-h-0 [&>*]:h-full">{watchList}</div>
+        </div>
       </div>
-      <div className="min-w-0">{climateChart}</div>
-      <div className="min-w-0">{watchList}</div>
-    </div>
+    </PageCanvas>
   );
 }

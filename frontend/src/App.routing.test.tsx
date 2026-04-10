@@ -212,11 +212,10 @@ vi.mock('./hooks/useSmartGrowKnowledge', () => ({
 }))
 
 vi.mock('./layout/AppShell', () => ({
-  default: ({ header, sidebar, commandTray, children }: { header: ReactNode; sidebar: ReactNode; commandTray: ReactNode; children: ReactNode }) => (
+  default: ({ header, sidebar, children }: { header: ReactNode; sidebar: ReactNode; children: ReactNode }) => (
     <div>
       <div data-testid="app-topbar">{header}</div>
       <div data-testid="app-sidebar">{sidebar}</div>
-      {commandTray ? <div data-testid="app-command-tray">{commandTray}</div> : null}
       <main>{children}</main>
     </div>
   ),
@@ -351,9 +350,39 @@ vi.mock('./components/SmartGrowSurfacePanel', () => ({
 }))
 vi.mock('./components/WeatherOutlookPanel', () => ({ default: () => <div>WeatherOutlookPanel</div> }))
 vi.mock('./components/ProducePricesPanel', () => ({ default: () => <div>ProducePricesPanel</div> }))
-vi.mock('./components/alerts/AlertsCommandCenter', () => ({ default: () => <div>AlertsCommandCenter</div> }))
-vi.mock('./components/resources/ResourcesCommandCenter', () => ({ default: () => <div>ResourcesCommandCenter</div> }))
+vi.mock('./components/alerts/AlertsCommandCenter', () => ({
+  default: ({ activePanel }: { activePanel?: string }) => <div>{`AlertsCommandCenter:${activePanel ?? 'missing'}`}</div>,
+}))
+vi.mock('./components/resources/ResourcesCommandCenter', () => ({
+  default: ({ activePanel }: { activePanel?: string }) => <div>{`ResourcesCommandCenter:${activePanel ?? 'missing'}`}</div>,
+}))
 vi.mock('./components/RTROptimizerPanel', () => ({ default: () => <div>RTROptimizerPanel</div> }))
+vi.mock('./features/assistant/AssistantDrawer', () => ({
+  default: ({
+    open,
+    activePanel,
+    onSelectPanel,
+    onOpenSearch,
+  }: {
+    open: boolean
+    activePanel?: string
+    onSelectPanel?: (panelId: string) => void
+    onOpenSearch?: (request?: { query?: string }) => void
+  }) => (
+    open ? (
+      <div>
+        <div>{`AssistantDrawer:${activePanel ?? 'missing'}`}</div>
+        <button type="button" onClick={() => onSelectPanel?.('assistant-history')}>Drawer history</button>
+        <button type="button" onClick={() => onOpenSearch?.({ query: 'powdery mildew rotation' })}>Drawer search</button>
+      </div>
+    ) : null
+  ),
+}))
+vi.mock('./features/assistant/AssistantFab', () => ({
+  default: ({ onClick }: { onClick?: () => void }) => (
+    <button type="button" onClick={onClick}>Open assistant fab</button>
+  ),
+}))
 
 import App from './App'
 
@@ -380,55 +409,69 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByRole('button', { name: 'Open assistant fab' })).toBeNull()
   })
 
   it('navigates between routed pages from the sidebar', async () => {
     renderApp('/overview')
 
     expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
-    expect(screen.getByTestId('app-command-tray')).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
+    expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Control' }))
 
-    expect(await screen.findByRole('heading', { name: 'Environment control' })).toBeTruthy()
-    expect(screen.queryByTestId('app-command-tray')).toBeNull()
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Environment Control')
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('routes the topbar assistant action into the assistant page instead of opening an overlay', async () => {
+  it('opens the assistant drawer from the topbar without leaving the current page', async () => {
     renderApp('/overview')
 
     expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
 
-    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
-    expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
+    expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('opens the assistant drawer from the floating button on non-assistant routes', async () => {
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Environment Control')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open assistant fab' }))
+
+    expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Environment Control')
   })
 
   it('keeps resources and alerts as dedicated pages instead of overview fallbacks', async () => {
     renderApp('/resources')
 
-    expect(await screen.findByRole('heading', { name: 'Resources' })).toBeTruthy()
-    expect(await screen.findByText('ResourcesCommandCenter')).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
+    expect(await screen.findByText('ResourcesCommandCenter:resources-stock')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Alerts' }))
 
-    expect(await screen.findByRole('heading', { name: 'Alerts' })).toBeTruthy()
-    expect(await screen.findByText('AlertsCommandCenter')).toBeTruthy()
+    expect(await screen.findByText('AlertsCommandCenter:alerts-priority')).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
     expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('keeps crop-work as a dedicated page instead of assembling it inline in App', async () => {
     renderApp('/crop-work')
 
-    expect(await screen.findByRole('heading', { name: 'Crop and work' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
     expect(await screen.findByText('CropDetails')).toBeTruthy()
     expect(await screen.findByText('TodayBoard')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Crop & Work' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
   })
 
   it.each([
@@ -442,62 +485,61 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(await screen.findByText(expectedPanel)).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
   })
 
   it.each([
-    ['/overview/legacy', 'Today operations'],
-    ['/control/legacy', 'Environment control'],
+    ['/overview/legacy', 'Today Operations'],
+    ['/control/legacy', 'Environment Control'],
+    ['/rtr', 'Environment Control'],
     ['/resources/legacy', 'Resources'],
     ['/alerts/legacy', 'Alerts'],
   ])('redirects %s to the canonical routed page', async (path, heading) => {
     renderApp(path)
 
-    expect(await screen.findByRole('heading', { name: heading })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe(heading)
   })
 
-  it('renders nutrient as a routed advisor lane instead of the legacy dashboard frame', async () => {
+  it('redirects nutrient into the resources page with the nutrient segment selected', async () => {
     renderApp('/nutrient#nutrient-tool')
 
-    expect(await screen.findByRole('heading', { name: 'Nutrient and irrigation lane' })).toBeTruthy()
-    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
-    expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
-    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
-    expect(screen.getByTestId('advisor-correction-open').textContent).toBe('true')
+    expect(await screen.findByRole('heading', { name: 'Resources' })).toBeTruthy()
+    expect(await screen.findByText('ResourcesCommandCenter:resources-stock')).toBeTruthy()
+    expect(screen.getByTestId('page-section-active').textContent).toBe('resources-nutrient')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('renders harvest as a routed advisor lane and keeps the primary route highlight on resources', async () => {
+  it('redirects harvest into the crop-work page and keeps the harvest segment selected', async () => {
     renderApp('/harvest#harvest-market')
 
-    expect(await screen.findByRole('heading', { name: 'Harvest and shipment lane' })).toBeTruthy()
-    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
-    expect(await screen.findByText('ProducePricesPanel')).toBeTruthy()
-    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('harvest_market')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
+    expect(await screen.findByText('TodayBoard')).toBeTruthy()
+    expect(screen.getByTestId('page-section-active').textContent).toBe('crop-work-harvest')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('renders protection as a routed advisor lane with the pesticide tab selected', async () => {
+  it('redirects protection into the alerts page with the warning segment selected', async () => {
     renderApp('/protection#protection-check')
 
-    expect(await screen.findByRole('heading', { name: 'Protection decisions' })).toBeTruthy()
-    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
-    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('pesticide')
+    expect(await screen.findByRole('heading', { name: 'Alerts' })).toBeTruthy()
+    expect(await screen.findByText('AlertsCommandCenter:alerts-stream')).toBeTruthy()
+    expect(screen.getByTestId('page-section-active').textContent).toBe('alerts-warning')
     expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('keeps the environment advisor request when overview opens the growth lane', async () => {
+  it('opens the control strategy segment when overview requests the environment lane', async () => {
     renderApp('/overview')
 
     expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open advisor lane' }))
 
-    expect(await screen.findByRole('heading', { name: 'Growth and work' })).toBeTruthy()
-    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('environment')
-    expect(screen.getByRole('button', { name: 'Crop & Work' }).getAttribute('aria-current')).toBe('page')
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Environment Control')
+    expect(screen.getByTestId('page-section-active').textContent).toBe('control-strategy')
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('keeps nutrient correction tool intent when assistant opens the nutrient surface', async () => {
@@ -507,9 +549,9 @@ describe('App routed shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open nutrient correction' }))
 
-    expect(await screen.findByRole('heading', { name: 'Nutrient and irrigation lane' })).toBeTruthy()
-    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
-    expect(screen.getByTestId('advisor-correction-open').textContent).toBe('true')
+    expect(await screen.findByRole('heading', { name: 'Resources' })).toBeTruthy()
+    expect(await screen.findByText('ResourcesCommandCenter:resources-stock')).toBeTruthy()
+    expect(screen.getByTestId('page-section-active').textContent).toBe('resources-nutrient')
     expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
   })
 
@@ -520,12 +562,23 @@ describe('App routed shell', () => {
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-chat')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Find materials inline' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tab:assistant-search' }))
     expect(await screen.findByText('AskSearchPage:assistant-search')).toBeTruthy()
     expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-search')
 
     fireEvent.click(screen.getByRole('button', { name: 'Tab:assistant-history' }))
     expect(await screen.findByText('AskSearchPage:assistant-history')).toBeTruthy()
     expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-history')
+  })
+
+  it('can seed the assistant drawer search even from the hidden assistant route', async () => {
+    renderApp('/assistant')
+
+    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Find materials inline' }))
+
+    expect(await screen.findByText('AssistantDrawer:assistant-search')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Assistant' })).toBeTruthy()
   })
 })

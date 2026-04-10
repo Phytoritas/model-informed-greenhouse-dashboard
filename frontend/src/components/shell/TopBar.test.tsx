@@ -8,6 +8,7 @@ function renderTopBar(locale: 'ko' | 'en' = 'ko') {
     const onLocaleChange = vi.fn();
     const onCropChange = vi.fn();
     const onAssistantToggle = vi.fn();
+    const onOpenSettings = vi.fn();
 
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
 
@@ -23,13 +24,14 @@ function renderTopBar(locale: 'ko' | 'en' = 'ko') {
                 onLocaleChange={onLocaleChange}
                 onCropChange={onCropChange}
                 onAssistantToggle={onAssistantToggle}
+                onOpenSettings={onOpenSettings}
                 assistantOpen={false}
                 getCropLabel={(crop, currentLocale) => (currentLocale === 'ko' ? (crop === 'Cucumber' ? '오이' : '토마토') : crop)}
             />
         </LocaleProvider>,
     );
 
-    return { onLocaleChange, onCropChange, onAssistantToggle };
+    return { onLocaleChange, onCropChange, onAssistantToggle, onOpenSettings };
 }
 
 describe('TopBar', () => {
@@ -41,10 +43,10 @@ describe('TopBar', () => {
         const { onAssistantToggle, onLocaleChange, onCropChange } = renderTopBar('ko');
 
         expect(screen.getByRole('heading', { name: '오늘 한눈에' })).toBeTruthy();
-        expect(screen.getByLabelText('동, 작업, 자재를 바로 찾기')).toBeTruthy();
-        expect(screen.getByPlaceholderText('동, 작업, 자재를 바로 찾기')).toBeTruthy();
+        expect(screen.getByLabelText('동, 작업, 자재를 찾기')).toBeTruthy();
+        expect(screen.getByPlaceholderText('동, 작업, 자재를 찾기')).toBeTruthy();
 
-        fireEvent.click(screen.getByRole('button', { name: '질문하기' }));
+        fireEvent.click(screen.getByRole('button', { name: '질문 도우미' }));
         fireEvent.click(screen.getByRole('button', { name: 'EN' }));
         fireEvent.click(screen.getByRole('button', { name: '오이' }));
 
@@ -58,7 +60,7 @@ describe('TopBar', () => {
 
         expect(screen.getByRole('heading', { name: 'Overview' })).toBeTruthy();
         expect(screen.getByLabelText('Search work, materials, or houses')).toBeTruthy();
-        expect(screen.getByRole('button', { name: 'Ask' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'Assistant' })).toBeTruthy();
         expect(screen.getByRole('button', { name: 'Cucumber' })).toBeTruthy();
     });
 });

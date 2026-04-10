@@ -1,402 +1,305 @@
 import {
-    BadgeAlert,
-    CircleGauge,
-    Droplets,
-    FlaskConical,
-    Leaf,
-    MessageCircle,
-    ShieldAlert,
-    Sprout,
-    Truck,
+  Bell,
+  CircleGauge,
+  Droplets,
+  LayoutDashboard,
+  MessageCircle,
+  Sprout,
+  type LucideIcon,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import type { AppLocale } from '../i18n/locale';
 import type { DashboardWorkspaceKey } from '../components/shell/WorkspaceNav';
 import type { PromptAdvisorTabKey } from '../components/advisor/advisorTabRegistry';
 
 export type PhytoSectionKey =
-    | 'overview'
-    | 'control'
-    | 'growth'
-    | 'nutrient'
-    | 'protection'
-    | 'harvest'
-    | 'resources'
-    | 'alerts'
-    | 'assistant';
+  | 'overview'
+  | 'control'
+  | 'crop-work'
+  | 'resources'
+  | 'alerts'
+  | 'assistant';
 
 export interface PhytoSectionTab {
-    id: string;
-    label: string;
+  id: string;
+  label: string;
 }
 
 export interface PhytoSectionDefinition {
-    key: PhytoSectionKey;
-    path: string;
-    label: string;
-    shortLabel: string;
-    description: string;
-    icon: LucideIcon;
-    workspace: DashboardWorkspaceKey;
-    advisorTab?: PromptAdvisorTabKey;
-    heroTitle: string;
-    heroDescription: string;
-    tabs: PhytoSectionTab[];
+  key: PhytoSectionKey;
+  path: string;
+  label: string;
+  shortLabel: string;
+  description: string;
+  icon: LucideIcon;
+  workspace: DashboardWorkspaceKey;
+  advisorTab?: PromptAdvisorTabKey;
+  heroTitle: string;
+  heroDescription: string;
+  tabs: PhytoSectionTab[];
 }
 
 export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] {
-    return locale === 'ko'
-        ? [
-            {
-                key: 'overview',
-                path: '/overview',
-                label: '오늘 한눈에',
-                shortLabel: '한눈에',
-                description: '지금 상태와 오늘 운영 방향을 먼저 봅니다.',
-                icon: Sprout,
-                workspace: 'command',
-                heroTitle: '오늘 운영 흐름',
-                heroDescription: '상태, 오늘 할 일, 주의할 점을 먼저 정리합니다.',
-                tabs: [
-                    { id: 'overview-hero', label: '핵심 판단' },
-                    { id: 'overview-live', label: '실시간 상태' },
-                    { id: 'overview-board', label: '오늘 조치' },
-                ],
-            },
-            {
-                key: 'control',
-                path: '/control',
-                label: '환경 제어',
-                shortLabel: '환경',
-                description: '온도, 습도, 환기, 빛 맞춤 온도를 같이 봅니다.',
-                icon: CircleGauge,
-                workspace: 'rtr',
-                heroTitle: '환경 제어와 조건별 비교',
-                heroDescription: '냉난방, 환기, 스크린, 비용 영향을 함께 비교합니다.',
-                tabs: [
-                    { id: 'control-rtr', label: '추천값' },
-                    { id: 'control-compare', label: '조건별 비교' },
-                    { id: 'control-effects', label: '영향 보기' },
-                ],
-            },
-            {
-                key: 'growth',
-                path: '/growth',
-                label: '생육·작업',
-                shortLabel: '생육',
-                description: '세력, 마디, 과부하, 작업 흐름을 확인합니다.',
-                icon: Leaf,
-                workspace: 'advisor',
-                advisorTab: 'physiology',
-                heroTitle: '생육과 작업 흐름',
-                heroDescription: '세력과 작업 부담을 한 화면에서 읽습니다.',
-                tabs: [
-                    { id: 'growth-crop', label: '생육 상태' },
-                    { id: 'growth-work', label: '작업 비교' },
-                    { id: 'growth-trend', label: '추세' },
-                ],
-            },
-            {
-                key: 'nutrient',
-                path: '/nutrient',
-                label: '양액·관수',
-                shortLabel: '양액',
-                description: '양액 조정과 관수 판단을 바로 엽니다.',
-                icon: Droplets,
-                workspace: 'advisor',
-                advisorTab: 'nutrient',
-                heroTitle: '양액과 관수 판단',
-                heroDescription: '현재 레시피, 보정 필요, 다음 조정안을 바로 확인합니다.',
-                tabs: [
-                    { id: 'nutrient-advice', label: '현재 판단' },
-                    { id: 'nutrient-tool', label: '보정 도구' },
-                    { id: 'nutrient-watch', label: '주의 항목' },
-                ],
-            },
-            {
-                key: 'protection',
-                path: '/protection',
-                label: '병해충·방제',
-                shortLabel: '방제',
-                description: '방제 판단과 교호 전략을 확인합니다.',
-                icon: ShieldAlert,
-                workspace: 'advisor',
-                advisorTab: 'pesticide',
-                heroTitle: '병해충 확인과 방제 판단',
-                heroDescription: '지금 확인할 병해충 후보와 방제안을 빠르게 봅니다.',
-                tabs: [
-                    { id: 'protection-risk', label: '위험 징후' },
-                    { id: 'protection-plan', label: '방제안' },
-                    { id: 'protection-check', label: '추가 확인' },
-                ],
-            },
-            {
-                key: 'harvest',
-                path: '/harvest',
-                label: '수확·출하',
-                shortLabel: '수확',
-                description: '수확 추세와 시장 흐름을 함께 봅니다.',
-                icon: Truck,
-                workspace: 'advisor',
-                advisorTab: 'harvest_market',
-                heroTitle: '수확과 출하 판단',
-                heroDescription: '수확 흐름, 가격 변화, 출하 타이밍을 같이 봅니다.',
-                tabs: [
-                    { id: 'harvest-summary', label: '출하 흐름' },
-                    { id: 'harvest-market', label: '시장 가격' },
-                    { id: 'harvest-forecast', label: '앞으로 보기' },
-                ],
-            },
-            {
-                key: 'resources',
-                path: '/resources',
-                label: '자재·비용',
-                shortLabel: '비용',
-                description: '에너지, 자재, 비용 흐름을 확인합니다.',
-                icon: FlaskConical,
-                workspace: 'resources',
-                heroTitle: '자재와 비용 흐름',
-                heroDescription: '에너지, 물, 가격, 자재 부담을 운영 판단과 연결합니다.',
-                tabs: [
-                    { id: 'resources-energy', label: '에너지' },
-                    { id: 'resources-market', label: '시장' },
-                    { id: 'resources-stock', label: '자재' },
-                ],
-            },
-            {
-                key: 'alerts',
-                path: '/alerts',
-                label: '주의 알림',
-                shortLabel: '알림',
-                description: '즉시 봐야 할 주의와 막힘을 모아 봅니다.',
-                icon: BadgeAlert,
-                workspace: 'alerts',
-                heroTitle: '지금 확인할 주의 알림',
-                heroDescription: '읽기 위한 목록이 아니라 바로 조치할 항목만 남깁니다.',
-                tabs: [
-                    { id: 'alerts-priority', label: '우선 확인' },
-                    { id: 'alerts-stream', label: '알림 흐름' },
-                    { id: 'alerts-history', label: '기록' },
-                ],
-            },
-            {
-                key: 'assistant',
-                path: '/assistant',
-                label: 'AI 도우미',
-                shortLabel: '도우미',
-                description: '자료 찾기와 질문 흐름을 한곳에 모읍니다.',
-                icon: MessageCircle,
-                workspace: 'knowledge',
-                heroTitle: '질문과 자료 찾기',
-                heroDescription: '막히는 판단은 자료를 찾고 바로 질문으로 이어갑니다.',
-                tabs: [
-                    { id: 'assistant-chat', label: '질문' },
-                    { id: 'assistant-search', label: '자료 찾기' },
-                    { id: 'assistant-history', label: '최근 흐름' },
-                ],
-            },
-        ]
-        : [
-            {
-                key: 'overview',
-                path: '/overview',
-                label: 'Overview',
-                shortLabel: 'Overview',
-                description: 'See the current state and today’s direction first.',
-                icon: Sprout,
-                workspace: 'command',
-                heroTitle: 'Overview',
-                heroDescription: 'Start with status, actions, and watch items.',
-                tabs: [
-                    { id: 'overview-hero', label: 'Priority' },
-                    { id: 'overview-live', label: 'Live state' },
-                    { id: 'overview-board', label: 'Today board' },
-                ],
-            },
-            {
-                key: 'control',
-                path: '/control',
-                label: 'Control',
-                shortLabel: 'Control',
-                description: 'Review climate control and the light-linked temperature lane.',
-                icon: CircleGauge,
-                workspace: 'rtr',
-                heroTitle: 'Control lane',
-                heroDescription: 'Compare HVAC, vent, screen, and cost effects in one lane.',
-                tabs: [
-                    { id: 'control-rtr', label: 'Recommendation' },
-                    { id: 'control-compare', label: 'Compare' },
-                    { id: 'control-effects', label: 'Effects' },
-                ],
-            },
-            {
-                key: 'growth',
-                path: '/growth',
-                label: 'Growth & Work',
-                shortLabel: 'Growth',
-                description: 'Track vigor, node pace, load, and work pressure.',
-                icon: Leaf,
-                workspace: 'advisor',
-                advisorTab: 'physiology',
-                heroTitle: 'Growth and work',
-                heroDescription: 'Read crop momentum and labor pressure together.',
-                tabs: [
-                    { id: 'growth-crop', label: 'Crop state' },
-                    { id: 'growth-work', label: 'Work compare' },
-                    { id: 'growth-trend', label: 'Trend' },
-                ],
-            },
-            {
-                key: 'nutrient',
-                path: '/nutrient',
-                label: 'Nutrient & Irrigation',
-                shortLabel: 'Nutrient',
-                description: 'Open nutrient and irrigation decisions directly.',
-                icon: Droplets,
-                workspace: 'advisor',
-                advisorTab: 'nutrient',
-                heroTitle: 'Nutrient and irrigation lane',
-                heroDescription: 'Keep recipe, correction, and next-step steering together.',
-                tabs: [
-                    { id: 'nutrient-advice', label: 'Current read' },
-                    { id: 'nutrient-tool', label: 'Correction tool' },
-                    { id: 'nutrient-watch', label: 'Watch items' },
-                ],
-            },
-            {
-                key: 'protection',
-                path: '/protection',
-                label: 'Protection',
-                shortLabel: 'Protection',
-                description: 'Review pest pressure and protection choices.',
-                icon: ShieldAlert,
-                workspace: 'advisor',
-                advisorTab: 'pesticide',
-                heroTitle: 'Protection decisions',
-                heroDescription: 'Surface the current pest risk and next protection step fast.',
-                tabs: [
-                    { id: 'protection-risk', label: 'Risk' },
-                    { id: 'protection-plan', label: 'Plan' },
-                    { id: 'protection-check', label: 'Checks' },
-                ],
-            },
-            {
-                key: 'harvest',
-                path: '/harvest',
-                label: 'Harvest & Shipment',
-                shortLabel: 'Harvest',
-                description: 'Review harvest pace and market direction together.',
-                icon: Truck,
-                workspace: 'advisor',
-                advisorTab: 'harvest_market',
-                heroTitle: 'Harvest and shipment lane',
-                heroDescription: 'Link harvest trend, market move, and shipment timing.',
-                tabs: [
-                    { id: 'harvest-summary', label: 'Flow' },
-                    { id: 'harvest-market', label: 'Market' },
-                    { id: 'harvest-forecast', label: 'Forecast' },
-                ],
-            },
-            {
-                key: 'resources',
-                path: '/resources',
-                label: 'Resources & Cost',
-                shortLabel: 'Resources',
-                description: 'Keep energy, material, and cost in view.',
-                icon: FlaskConical,
-                workspace: 'resources',
-                heroTitle: 'Resources and cost',
-                heroDescription: 'Keep energy, water, prices, and stock tied to decisions.',
-                tabs: [
-                    { id: 'resources-energy', label: 'Energy' },
-                    { id: 'resources-market', label: 'Market' },
-                    { id: 'resources-stock', label: 'Stock' },
-                ],
-            },
-            {
-                key: 'alerts',
-                path: '/alerts',
-                label: 'Alerts',
-                shortLabel: 'Alerts',
-                description: 'Collect the issues that need action now.',
-                icon: BadgeAlert,
-                workspace: 'alerts',
-                heroTitle: 'Alerts to review now',
-                heroDescription: 'Keep only the issues that require action or verification now.',
-                tabs: [
-                    { id: 'alerts-priority', label: 'Priority' },
-                    { id: 'alerts-stream', label: 'Stream' },
-                    { id: 'alerts-history', label: 'History' },
-                ],
-            },
-            {
-                key: 'assistant',
-                path: '/assistant',
-                label: 'Assistant',
-                shortLabel: 'Assist',
-                description: 'Keep question flow and document lookup together.',
-                icon: MessageCircle,
-                workspace: 'knowledge',
-                heroTitle: 'Ask and search lane',
-                heroDescription: 'Move from blocked questions into search and explanation.',
-                tabs: [
-                    { id: 'assistant-chat', label: 'Ask' },
-                    { id: 'assistant-search', label: 'Search' },
-                    { id: 'assistant-history', label: 'Recent flow' },
-                ],
-            },
-        ];
+  return locale === 'ko'
+    ? [
+        {
+          key: 'overview',
+          path: '/overview',
+          label: '오늘 운영',
+          shortLabel: '오늘 운영',
+          description: '지금 상태, 오늘 할 일, 주의 알림을 먼저 봅니다.',
+          icon: LayoutDashboard,
+          workspace: 'command',
+          heroTitle: '오늘 운영',
+          heroDescription: '핵심 판단, 오늘 할 일, 주의 신호를 한 화면에서 봅니다.',
+          tabs: [
+            { id: 'overview-core', label: '핵심' },
+            { id: 'overview-tasks', label: '오늘 할 일' },
+            { id: 'overview-watch', label: '주의' },
+          ],
+        },
+        {
+          key: 'control',
+          path: '/control',
+          label: '환경 제어',
+          shortLabel: '환경 제어',
+          description: '지금 조치, 온도 전략, 장치 상태를 함께 봅니다.',
+          icon: CircleGauge,
+          workspace: 'rtr',
+          advisorTab: 'environment',
+          heroTitle: '환경 제어',
+          heroDescription: '추천 제어안과 온도 전략을 한 화면에서 비교합니다.',
+          tabs: [
+            { id: 'control-action', label: '지금 조치' },
+            { id: 'control-strategy', label: '온도 전략' },
+            { id: 'control-devices', label: '장치 상태' },
+          ],
+        },
+        {
+          key: 'crop-work',
+          path: '/crop-work',
+          label: '생육작업',
+          shortLabel: '생육작업',
+          description: '생육 흐름, 작업 우선순위, 수확 흐름을 함께 봅니다.',
+          icon: Sprout,
+          workspace: 'crop',
+          advisorTab: 'physiology',
+          heroTitle: '생육작업',
+          heroDescription: '생육 상태와 작업 흐름을 한 화면에서 정리합니다.',
+          tabs: [
+            { id: 'crop-work-growth', label: '생육' },
+            { id: 'crop-work-work', label: '작업' },
+            { id: 'crop-work-harvest', label: '수확' },
+          ],
+        },
+        {
+          key: 'resources',
+          path: '/resources',
+          label: '양액에너지',
+          shortLabel: '양액에너지',
+          description: '양액, 배액, 에너지, 비용, 시세를 함께 봅니다.',
+          icon: Droplets,
+          workspace: 'resources',
+          advisorTab: 'nutrient',
+          heroTitle: '양액에너지',
+          heroDescription: '양액과 에너지 흐름을 비용 판단에 연결합니다.',
+          tabs: [
+            { id: 'resources-nutrient', label: '양액' },
+            { id: 'resources-energy', label: '에너지' },
+            { id: 'resources-market', label: '시세' },
+          ],
+        },
+        {
+          key: 'alerts',
+          path: '/alerts',
+          label: '경보',
+          shortLabel: '경보',
+          description: '긴급, 주의, 처리 이력을 분리해 봅니다.',
+          icon: Bell,
+          workspace: 'alerts',
+          advisorTab: 'pesticide',
+          heroTitle: '경보',
+          heroDescription: '바로 확인할 경보와 처리 흐름을 정리합니다.',
+          tabs: [
+            { id: 'alerts-urgent', label: '긴급' },
+            { id: 'alerts-warning', label: '주의' },
+            { id: 'alerts-history', label: '처리 이력' },
+          ],
+        },
+        {
+          key: 'assistant',
+          path: '/assistant',
+          label: '질문 도우미',
+          shortLabel: '질문 도우미',
+          description: '질문과 자료 찾기를 한곳에서 처리합니다.',
+          icon: MessageCircle,
+          workspace: 'knowledge',
+          heroTitle: '질문 도우미',
+          heroDescription: '질문, 자료 찾기, 최근 흐름을 한곳에 모았습니다.',
+          tabs: [
+            { id: 'assistant-chat', label: '질문' },
+            { id: 'assistant-search', label: '자료 찾기' },
+            { id: 'assistant-history', label: '최근 흐름' },
+          ],
+        },
+      ]
+    : [
+        {
+          key: 'overview',
+          path: '/overview',
+          label: 'Overview',
+          shortLabel: 'Overview',
+          description: 'See the current state, tasks, and watch items first.',
+          icon: LayoutDashboard,
+          workspace: 'command',
+          heroTitle: 'Today operations',
+          heroDescription: 'Keep the core read, task queue, and warnings in one page.',
+          tabs: [
+            { id: 'overview-core', label: 'Core' },
+            { id: 'overview-tasks', label: 'Tasks' },
+            { id: 'overview-watch', label: 'Watch' },
+          ],
+        },
+        {
+          key: 'control',
+          path: '/control',
+          label: 'Control',
+          shortLabel: 'Control',
+          description: 'Review live actions, temperature strategy, and device state together.',
+          icon: CircleGauge,
+          workspace: 'rtr',
+          advisorTab: 'environment',
+          heroTitle: 'Environment control',
+          heroDescription: 'Keep recommendation, strategy, and device state in one lane.',
+          tabs: [
+            { id: 'control-action', label: 'Actions' },
+            { id: 'control-strategy', label: 'Strategy' },
+            { id: 'control-devices', label: 'Devices' },
+          ],
+        },
+        {
+          key: 'crop-work',
+          path: '/crop-work',
+          label: 'Crop Work',
+          shortLabel: 'Crop Work',
+          description: 'Track crop flow, work priorities, and harvest flow together.',
+          icon: Sprout,
+          workspace: 'crop',
+          advisorTab: 'physiology',
+          heroTitle: 'Crop work',
+          heroDescription: 'Keep crop, work, and harvest flow in one page.',
+          tabs: [
+            { id: 'crop-work-growth', label: 'Growth' },
+            { id: 'crop-work-work', label: 'Work' },
+            { id: 'crop-work-harvest', label: 'Harvest' },
+          ],
+        },
+        {
+          key: 'resources',
+          path: '/resources',
+          label: 'Resources',
+          shortLabel: 'Resources',
+          description: 'Review nutrient, drainage, energy, cost, and market signals together.',
+          icon: Droplets,
+          workspace: 'resources',
+          advisorTab: 'nutrient',
+          heroTitle: 'Resources',
+          heroDescription: 'Keep nutrient and energy decisions tied to cost and market context.',
+          tabs: [
+            { id: 'resources-nutrient', label: 'Nutrient' },
+            { id: 'resources-energy', label: 'Energy' },
+            { id: 'resources-market', label: 'Market' },
+          ],
+        },
+        {
+          key: 'alerts',
+          path: '/alerts',
+          label: 'Alerts',
+          shortLabel: 'Alerts',
+          description: 'Separate urgent alerts, warnings, and history.',
+          icon: Bell,
+          workspace: 'alerts',
+          advisorTab: 'pesticide',
+          heroTitle: 'Alerts',
+          heroDescription: 'Keep the alert queue and history in one page.',
+          tabs: [
+            { id: 'alerts-urgent', label: 'Urgent' },
+            { id: 'alerts-warning', label: 'Warning' },
+            { id: 'alerts-history', label: 'History' },
+          ],
+        },
+        {
+          key: 'assistant',
+          path: '/assistant',
+          label: 'Assistant',
+          shortLabel: 'Assistant',
+          description: 'Keep ask and search together.',
+          icon: MessageCircle,
+          workspace: 'knowledge',
+          heroTitle: 'Assistant',
+          heroDescription: 'Keep ask, search, and recent flow in one place.',
+          tabs: [
+            { id: 'assistant-chat', label: 'Ask' },
+            { id: 'assistant-search', label: 'Search' },
+            { id: 'assistant-history', label: 'History' },
+          ],
+        },
+      ];
 }
 
 export function findPhytoSection(
-    sections: PhytoSectionDefinition[],
-    pathname: string,
+  sections: PhytoSectionDefinition[],
+  pathname: string,
 ): PhytoSectionDefinition {
-    const normalizedPath = pathname.startsWith('/rtr')
-        ? '/control'
-        : pathname.startsWith('/crop-work')
-            ? '/growth'
-            : pathname.startsWith('/assistant') || pathname.startsWith('/ask')
-                ? '/assistant'
-                : pathname;
+  const normalizedPath = pathname.startsWith('/rtr')
+    ? '/control'
+    : pathname.startsWith('/growth') || pathname.startsWith('/harvest')
+      ? '/crop-work'
+      : pathname.startsWith('/nutrient')
+        ? '/resources'
+        : pathname.startsWith('/protection')
+          ? '/alerts'
+          : pathname.startsWith('/assistant') || pathname.startsWith('/ask')
+            ? '/assistant'
+            : pathname;
 
-    return sections.find((section) => normalizedPath === section.path || normalizedPath.startsWith(`${section.path}/`))
-        ?? sections[0];
+  return sections.find((section) => normalizedPath === section.path || normalizedPath.startsWith(`${section.path}/`))
+    ?? sections[0];
 }
 
 export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceKey): string {
-    switch (workspace) {
-        case 'command':
-            return '/overview';
-        case 'advisor':
-            return '/growth';
-        case 'rtr':
-            return '/control';
-        case 'crop':
-            return '/growth';
-        case 'resources':
-            return '/resources';
-        case 'alerts':
-            return '/alerts';
-        case 'knowledge':
-            return '/assistant';
-        default:
-            return '/overview';
-    }
+  switch (workspace) {
+    case 'command':
+      return '/overview';
+    case 'rtr':
+      return '/control';
+    case 'crop':
+    case 'advisor':
+      return '/crop-work';
+    case 'resources':
+      return '/resources';
+    case 'alerts':
+      return '/alerts';
+    case 'knowledge':
+      return '/assistant';
+    default:
+      return '/overview';
+  }
 }
 
 export function getSectionPathForAdvisorTab(tab: PromptAdvisorTabKey): string {
-    switch (tab) {
-        case 'nutrient':
-            return '/nutrient';
-        case 'pesticide':
-            return '/protection';
-        case 'harvest_market':
-            return '/harvest';
-        case 'environment':
-        case 'physiology':
-        case 'work':
-        default:
-            return '/growth';
-    }
+  switch (tab) {
+    case 'nutrient':
+      return '/resources#resources-nutrient';
+    case 'pesticide':
+      return '/alerts#alerts-warning';
+    case 'harvest_market':
+      return '/crop-work#crop-work-harvest';
+    case 'environment':
+      return '/control#control-strategy';
+    case 'work':
+      return '/crop-work#crop-work-work';
+    case 'physiology':
+    default:
+      return '/crop-work#crop-work-growth';
+  }
 }

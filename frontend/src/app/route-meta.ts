@@ -14,15 +14,19 @@ import type { AppLocale } from '../i18n/locale';
 export type PrimaryRouteKey =
   | 'overview'
   | 'control'
-  | 'rtr'
   | 'crop-work'
   | 'resources'
-  | 'alerts'
+  | 'alerts';
+
+export type AppRouteKey =
+  | PrimaryRouteKey
   | 'assistant'
-  | 'settings';
+  | 'settings'
+  | 'rtr';
 
 export interface PrimaryRouteMeta {
-  key: PrimaryRouteKey;
+  key: AppRouteKey;
+  navKey: PrimaryRouteKey;
   path: string;
   label: string;
   shortLabel: string;
@@ -30,132 +34,169 @@ export interface PrimaryRouteMeta {
   title: string;
   heroDescription: string;
   icon: LucideIcon;
+  visibleInNav: boolean;
 }
 
 const PRIMARY_ROUTE_ORDER: PrimaryRouteKey[] = [
   'overview',
   'control',
-  'rtr',
   'crop-work',
   'resources',
   'alerts',
-  'assistant',
-  'settings',
 ];
 
-export function buildPrimaryRoutes(locale: AppLocale): PrimaryRouteMeta[] {
+function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
   const isKo = locale === 'ko';
 
   return [
     {
       key: 'overview',
+      navKey: 'overview',
       path: '/overview',
-      label: isKo ? '\uC624\uB298 \uC6B4\uC601' : 'Overview',
-      shortLabel: isKo ? '\uC6B4\uC601' : 'Overview',
-      description: isKo ? '\uC9C0\uAE08 \uBA3C\uC800 \uBCFC \uAC12\uACFC \uC624\uB298 \uC870\uCE58\uB97C \uD55C \uD750\uB984\uC73C\uB85C \uBD05\uB2C8\uB2E4.' : 'Start from today’s live signals and operating moves.',
-      title: isKo ? '\uC624\uB298 \uC6B4\uC601' : 'Overview',
-      heroDescription: isKo ? '\uC9C0\uAE08 \uBA3C\uC800 \uBCFC \uAC12\uACFC \uC624\uB298 \uC870\uCE58\uAC00 \uD55C\uB208\uC5D0 \uBCF4\uC785\uB2C8\uB2E4.' : 'See today’s live signals and next moves at a glance.',
+      label: isKo ? '오늘 운영' : 'Overview',
+      shortLabel: isKo ? '오늘 운영' : 'Overview',
+      description: isKo ? '지금 상황, 오늘 할 일, 주의 알림을 한 화면에서 봅니다.' : 'See today’s operating state, tasks, and warnings together.',
+      title: isKo ? '오늘 운영' : 'Today Operations',
+      heroDescription: isKo ? '오늘 먼저 볼 값과 바로 할 일을 타일형 화면으로 정리했습니다.' : 'Start with today’s signals and next actions in one compact canvas.',
       icon: LayoutDashboard,
+      visibleInNav: true,
     },
     {
       key: 'control',
+      navKey: 'control',
       path: '/control',
-      label: isKo ? '\uD658\uACBD \uC81C\uC5B4' : 'Control',
-      shortLabel: isKo ? '\uC81C\uC5B4' : 'Control',
-      description: isKo ? '\uD658\uAE30, \uB09C\uBC29, \uB0C9\uBC29, \uC2B5\uB3C4 \uC870\uCE58\uB97C \uD55C \uD750\uB984\uC73C\uB85C \uBD05\uB2C8\uB2E4.' : 'Review climate, vent, heating, cooling, and humidity in one lane.',
-      title: isKo ? '\uD658\uACBD \uC81C\uC5B4' : 'Control',
-      heroDescription: isKo ? '\uC9C0\uAE08 \uC81C\uC5B4 \uAD8C\uC7A5\uACFC 24\uC2DC\uAC04 \uD750\uB984\uC744 \uBD84\uB9AC\uD574\uC11C \uBD05\uB2C8\uB2E4.' : 'Keep the live control recommendation separate from the broader dashboard.',
+      label: isKo ? '환경 제어' : 'Control',
+      shortLabel: isKo ? '환경 제어' : 'Control',
+      description: isKo ? '지금 조치, 온도 전략, 장치 상태를 함께 봅니다.' : 'Review live control moves, strategy, and device state together.',
+      title: isKo ? '환경 제어' : 'Environment Control',
+      heroDescription: isKo ? '난방, 냉방, 환기, 스크린, 이산화탄소 판단을 한 화면에 모았습니다.' : 'Keep heating, cooling, vent, screen, and CO2 steering in one lane.',
       icon: Thermometer,
-    },
-    {
-      key: 'rtr',
-      path: '/rtr',
-      label: isKo ? 'RTR \uCD5C\uC801\uD654' : 'RTR',
-      shortLabel: 'RTR',
-      description: isKo ? '\uC624\uB298 \uBAA9\uD45C \uC628\uB3C4\uC640 \uBE44\uAD50\uC548\uC744 \uB530\uB85C \uC815\uB9AC\uD569\uB2C8\uB2E4.' : 'Compare minimum-sufficient temperature options for today.',
-      title: isKo ? 'RTR \uCD5C\uC801\uD654' : 'RTR Optimization',
-      heroDescription: isKo ? '\uCD94\uCC9C\uC548, \uAE30\uC900\uC120, \uBE44\uAD50 \uC2DC\uB098\uB9AC\uC624\uB97C \uD55C \uD398\uC774\uC9C0\uC5D0\uC11C \uBD05\uB2C8\uB2E4.' : 'Keep the recommendation, baseline, and scenario table in one page.',
-      icon: CircleGauge,
+      visibleInNav: true,
     },
     {
       key: 'crop-work',
+      navKey: 'crop-work',
       path: '/crop-work',
-      label: isKo ? '\uC0DD\uC721/\uC791\uC5C5' : 'Crop & Work',
-      shortLabel: isKo ? '\uC0DD\uC721' : 'Crop',
-      description: isKo ? '\uC138\uB825, \uC791\uC5C5\uB7C9, \uC218\uD655 \uBD80\uB2F4\uC744 \uAC19\uC774 \uC77D\uC2B5\uB2C8\uB2E4.' : 'Read vigor, labor pressure, and harvest load together.',
-      title: isKo ? '\uC0DD\uC721/\uC791\uC5C5' : 'Crop & Work',
-      heroDescription: isKo ? '\uC0DD\uC721 \uC0C1\uD0DC\uC640 \uC624\uB298 \uC791\uC5C5 \uC6B0\uC120\uC21C\uC704\uB97C \uD568\uAED8 \uBD05\uB2C8\uB2E4.' : 'Track crop state and today’s work priorities together.',
+      label: isKo ? '생육작업' : 'Crop Work',
+      shortLabel: isKo ? '생육작업' : 'Crop Work',
+      description: isKo ? '생육 흐름, 작업 우선순위, 수확 흐름을 함께 봅니다.' : 'Track crop flow, work priorities, and harvest flow together.',
+      title: isKo ? '생육작업' : 'Crop Work',
+      heroDescription: isKo ? '마디 진행, 착과 부담, 작업량, 수확 흐름을 정리했습니다.' : 'Read node pace, crop load, labor pressure, and harvest flow together.',
       icon: Sprout,
+      visibleInNav: true,
     },
     {
       key: 'resources',
+      navKey: 'resources',
       path: '/resources',
-      label: isKo ? '\uC790\uC6D0 \uAD00\uB9AC' : 'Resources',
-      shortLabel: isKo ? '\uC790\uC6D0' : 'Resources',
-      description: isKo ? '\uC591\uC561, \uC5D0\uB108\uC9C0, \uAC00\uACA9 \uD750\uB984\uC744 \uB530\uB85C \uBD05\uB2C8\uB2E4.' : 'Review nutrient, energy, and price signals in a dedicated lane.',
-      title: isKo ? '\uC790\uC6D0 \uAD00\uB9AC' : 'Resources',
-      heroDescription: isKo ? '\uC591\uC561, \uC5D0\uB108\uC9C0, \uAC00\uACA9 \uC2E0\uD638\uB97C overview\uC640 \uBD84\uB9AC\uD574\uC11C \uBD05\uB2C8\uB2E4.' : 'Keep resource and cost decisions out of the main overview.',
+      label: isKo ? '양액에너지' : 'Resources',
+      shortLabel: isKo ? '양액에너지' : 'Resources',
+      description: isKo ? '양액, 배액, 에너지, 비용, 시세를 한 화면에서 봅니다.' : 'Review nutrient, drainage, energy, cost, and market signals together.',
+      title: isKo ? '양액에너지' : 'Resources',
+      heroDescription: isKo ? '양액과 에너지 흐름을 비용 판단과 함께 정리했습니다.' : 'Keep nutrient and energy decisions tied to cost and market context.',
       icon: WalletCards,
+      visibleInNav: true,
     },
     {
       key: 'alerts',
+      navKey: 'alerts',
       path: '/alerts',
-      label: isKo ? '\uACBD\uBCF4' : 'Alerts',
-      shortLabel: isKo ? '\uACBD\uBCF4' : 'Alerts',
-      description: isKo ? '\uC989\uC2DC \uD655\uC778, \uC624\uB298 \uD655\uC778, \uCD94\uC801 \uC911\uC744 \uBD84\uB9AC\uD569\uB2C8\uB2E4.' : 'Separate urgent alerts from follow-up and history.',
-      title: isKo ? '\uACBD\uBCF4' : 'Alerts',
-      heroDescription: isKo ? 'overview\uC5D0\uB294 3\uAC1C\uB9CC \uB450\uACE0, \uB098\uBA38\uC9C0\uB294 \uC5EC\uAE30\uC11C \uC815\uB9AC\uD569\uB2C8\uB2E4.' : 'Keep overview light and move the full alert flow here.',
+      label: isKo ? '경보' : 'Alerts',
+      shortLabel: isKo ? '경보' : 'Alerts',
+      description: isKo ? '긴급, 주의, 처리 이력을 분리해 봅니다.' : 'Separate urgent alerts, warnings, and handling history.',
+      title: isKo ? '경보' : 'Alerts',
+      heroDescription: isKo ? '바로 확인할 경보와 처리 기록을 한 화면에서 정리했습니다.' : 'Keep the current alert queue and history in one place.',
       icon: Bell,
+      visibleInNav: true,
     },
     {
       key: 'assistant',
+      navKey: 'overview',
       path: '/assistant',
-      label: isKo ? 'AI \uB3C4\uC6B0\uBBF8' : 'Assistant',
-      shortLabel: isKo ? '\uB3C4\uC6B0\uBBF8' : 'Ask',
-      description: isKo ? '\uC9C8\uBB38, \uC790\uB8CC \uCC3E\uAE30, \uCD5C\uADFC \uCD94\uCC9C\uC744 \uD55C \uD398\uC774\uC9C0\uC5D0 \uBAA8\uC74D\uB2C8\uB2E4.' : 'Keep ask, search, and recent recommendations together.',
-      title: isKo ? 'AI \uB3C4\uC6B0\uBBF8' : 'Assistant',
-      heroDescription: isKo ? '\uBA54\uC778 \uD654\uBA74 \uD070 \uBC15\uC2A4 \uB300\uC2E0 \uB3C5\uB9BD \uD398\uC774\uC9C0\uB85C \uBD84\uB9AC\uD569\uB2C8\uB2E4.' : 'Use a dedicated page instead of a competing right-rail block.',
+      label: isKo ? '질문 도우미' : 'Assistant',
+      shortLabel: isKo ? '질문 도우미' : 'Assistant',
+      description: isKo ? '질문과 자료 찾기를 한곳에서 처리합니다.' : 'Keep question flow and document lookup together.',
+      title: isKo ? '질문 도우미' : 'Assistant',
+      heroDescription: isKo ? '질문, 자료 찾기, 최근 흐름을 한곳에 모았습니다.' : 'Keep ask, search, and recent flow in one place.',
       icon: MessageCircle,
+      visibleInNav: false,
     },
     {
       key: 'settings',
+      navKey: 'overview',
       path: '/settings',
-      label: isKo ? '\uC124\uC815' : 'Settings',
-      shortLabel: isKo ? '\uC124\uC815' : 'Settings',
-      description: isKo ? '\uD45C\uC2DC \uAE30\uC900\uACFC \uC5F0\uACB0 \uC0C1\uD0DC\uB97C \uD655\uC778\uD569\uB2C8\uB2E4.' : 'Review display, lane, and connection defaults.',
-      title: isKo ? '\uC124\uC815' : 'Settings',
-      heroDescription: isKo ? '\uC6B4\uC601 \uD654\uBA74\uACFC \uBD84\uB9AC\uB41C \uAE30\uBCF8 \uC124\uC815\uB9CC \uBAA8\uC544 \uBD05\uB2C8\uB2E4.' : 'Keep shell defaults and display settings in a separate screen.',
+      label: isKo ? '설정' : 'Settings',
+      shortLabel: isKo ? '설정' : 'Settings',
+      description: isKo ? '화면 기준과 연결 상태를 확인합니다.' : 'Review display defaults and connectivity.',
+      title: isKo ? '설정' : 'Settings',
+      heroDescription: isKo ? '표시 기준과 연결 상태를 확인합니다.' : 'Review display defaults and connectivity.',
       icon: Settings,
+      visibleInNav: false,
+    },
+    {
+      key: 'rtr',
+      navKey: 'control',
+      path: '/rtr',
+      label: isKo ? '온도 전략' : 'Temperature Strategy',
+      shortLabel: isKo ? '온도 전략' : 'Strategy',
+      description: isKo ? '환경 제어 안의 온도 전략 비교 화면입니다.' : 'Compatibility route for the control temperature strategy surface.',
+      title: isKo ? '온도 전략' : 'Temperature Strategy',
+      heroDescription: isKo ? '환경 제어 안에서 온도 전략 비교를 이어서 봅니다.' : 'Continue the temperature strategy comparison inside control.',
+      icon: CircleGauge,
+      visibleInNav: false,
     },
   ];
 }
 
-export function getPrimaryRouteKey(pathname: string): PrimaryRouteKey {
+export function buildPrimaryRoutes(locale: AppLocale): PrimaryRouteMeta[] {
+  return buildRouteCatalog(locale).filter((route) => route.visibleInNav);
+}
+
+function getAppRouteKey(pathname: string): AppRouteKey {
   if (pathname === '/' || pathname.startsWith('/overview')) return 'overview';
   if (pathname.startsWith('/control')) return 'control';
   if (pathname.startsWith('/rtr')) return 'rtr';
   if (pathname.startsWith('/crop-work')) return 'crop-work';
   if (pathname.startsWith('/resources')) return 'resources';
   if (pathname.startsWith('/alerts')) return 'alerts';
-  if (pathname.startsWith('/assistant')) return 'assistant';
+  if (pathname.startsWith('/assistant') || pathname.startsWith('/ask')) return 'assistant';
   if (pathname.startsWith('/settings')) return 'settings';
 
-  if (pathname.startsWith('/growth')) return 'crop-work';
+  if (pathname.startsWith('/growth') || pathname.startsWith('/harvest')) return 'crop-work';
   if (pathname.startsWith('/nutrient')) return 'resources';
   if (pathname.startsWith('/protection')) return 'alerts';
-  if (pathname.startsWith('/harvest')) return 'resources';
-  if (pathname.startsWith('/ask')) return 'assistant';
 
   return 'overview';
 }
 
+export function getPrimaryRouteKey(pathname: string): PrimaryRouteKey {
+  const routeKey = getAppRouteKey(pathname);
+
+  switch (routeKey) {
+    case 'control':
+    case 'rtr':
+      return 'control';
+    case 'crop-work':
+      return 'crop-work';
+    case 'resources':
+      return 'resources';
+    case 'alerts':
+      return 'alerts';
+    case 'assistant':
+    case 'settings':
+    case 'overview':
+    default:
+      return 'overview';
+  }
+}
+
 export function getPrimaryRouteMeta(pathname: string, locale: AppLocale): PrimaryRouteMeta {
-  const routes = buildPrimaryRoutes(locale);
-  const key = getPrimaryRouteKey(pathname);
+  const routes = buildRouteCatalog(locale);
+  const key = getAppRouteKey(pathname);
   return routes.find((route) => route.key === key) ?? routes[0];
 }
 
 export function sortPrimaryRoutes(routes: PrimaryRouteMeta[]): PrimaryRouteMeta[] {
   const order = new Map(PRIMARY_ROUTE_ORDER.map((key, index) => [key, index]));
-  return [...routes].sort((a, b) => (order.get(a.key) ?? 99) - (order.get(b.key) ?? 99));
+  return [...routes].sort((a, b) => (order.get(a.navKey) ?? 99) - (order.get(b.navKey) ?? 99));
 }

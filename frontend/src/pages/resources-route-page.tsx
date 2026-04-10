@@ -23,6 +23,8 @@ interface ResourcesRoutePageProps {
   produceLoading: boolean;
   produceError: string | null;
   activePanel?: 'resources-energy' | 'resources-market' | 'resources-stock';
+  tabs: Array<{ id: string; label: string }>;
+  onSelectTab: (tabId: string) => void;
 }
 
 export default function ResourcesRoutePage({
@@ -37,10 +39,17 @@ export default function ResourcesRoutePage({
   produceLoading,
   produceError,
   activePanel = 'resources-energy',
+  tabs,
+  onSelectTab,
 }: ResourcesRoutePageProps) {
+  const activeTabId = activePanel === 'resources-stock' ? 'resources-nutrient' : activePanel;
+
   return (
     <ResourcesPage
       locale={locale}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
       surface={(
         <Suspense
           fallback={(

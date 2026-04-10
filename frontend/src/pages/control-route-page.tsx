@@ -3,7 +3,10 @@ import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
   ControlStatus,
+  CropType,
   ProducePricesPayload,
+  RtrOptimizationMode,
+  RtrProfile,
   SensorData,
   TemperatureSettings,
   WeatherOutlook,
@@ -16,10 +19,12 @@ import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import ControlPage from './control-page';
 
 const Charts = lazy(() => import('../components/Charts'));
+const RTROptimizerPanel = lazy(() => import('../components/RTROptimizerPanel'));
 const WeatherOutlookPanel = lazy(() => import('../components/WeatherOutlookPanel'));
 
 interface ControlRoutePageProps {
   locale: AppLocale;
+  crop: CropType;
   controls: ControlStatus;
   onToggle: (key: keyof ControlStatus) => void;
   onSettingsChange: (settings: TemperatureSettings) => void;
@@ -33,10 +38,21 @@ interface ControlRoutePageProps {
   weatherError: string | null;
   producePrices: ProducePricesPayload | null;
   produceLoading: boolean;
+  temperatureSettings: TemperatureSettings;
+  profile: RtrProfile | null;
+  profileLoading: boolean;
+  profileError: string | null;
+  optimizerEnabled?: boolean;
+  defaultMode?: RtrOptimizationMode;
+  onRefreshProfiles?: () => void | Promise<void>;
+  tabs: Array<{ id: string; label: string }>;
+  activeTabId?: string;
+  onSelectTab: (tabId: string) => void;
 }
 
 export default function ControlRoutePage({
   locale,
+  crop,
   controls,
   onToggle,
   onSettingsChange,
@@ -50,6 +66,16 @@ export default function ControlRoutePage({
   weatherError,
   producePrices,
   produceLoading,
+  temperatureSettings,
+  profile,
+  profileLoading,
+  profileError,
+  optimizerEnabled,
+  defaultMode,
+  onRefreshProfiles,
+  tabs,
+  activeTabId,
+  onSelectTab,
 }: ControlRoutePageProps) {
   const fallbackAlerts = alertItems.length
     ? alertItems
@@ -63,6 +89,37 @@ export default function ControlRoutePage({
   return (
     <ControlPage
       locale={locale}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
+      strategySurface={(
+        <Suspense
+          fallback={(
+            <LoadingSkeleton
+              title={locale === 'ko' ? '온도 전략' : 'Temperature strategy'}
+              loadingMessage={locale === 'ko' ? '온도 전략 화면을 불러오는 중입니다...' : 'Loading temperature strategy...'}
+              minHeightClassName="min-h-[520px]"
+            />
+          )}
+        >
+          <RTROptimizerPanel
+            crop={crop}
+            currentData={currentData}
+            history={history}
+            temperatureSettings={temperatureSettings}
+            weather={weather}
+            loading={weatherLoading}
+            error={weatherError}
+            profile={profile}
+            profileLoading={profileLoading}
+            profileError={profileError}
+            optimizerEnabled={optimizerEnabled}
+            defaultMode={defaultMode}
+            onRefreshProfiles={onRefreshProfiles}
+            compact
+          />
+        </Suspense>
+      )}
       controlSummary={(
         <ControlPanel
           status={controls}
