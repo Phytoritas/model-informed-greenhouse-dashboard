@@ -42,3 +42,4 @@ If recall results are useful or misleading, record `tool_feedback()` and update 
 ## Exact Next Step
 - Treat `main` as the merged compact-control baseline and start the next non-trivial change from a fresh issue/branch.
 - Keep the current route ids, section hashes, `/rtr` compatibility, and optimizer contracts untouched unless a future issue explicitly reopens them.
+- If `automation/rah.py doctor` reports missing local runtime seed files, recreate `.rah/state/memento_status.json` and `.rah/memory/*.json` locally before trusting the harness output.
