@@ -96,9 +96,9 @@ export default function ControlRoutePage({
         <Suspense
           fallback={(
             <LoadingSkeleton
-              title={locale === 'ko' ? '온도 전략' : 'Temperature strategy'}
-              loadingMessage={locale === 'ko' ? '온도 전략 화면을 불러오는 중입니다...' : 'Loading temperature strategy...'}
-              minHeightClassName="min-h-[412px]"
+              title={locale === 'ko' ? '추천 제어안' : 'Recommended control'}
+              loadingMessage={locale === 'ko' ? '추천 제어안을 불러오는 중입니다...' : 'Loading recommended control...'}
+              minHeightClassName="min-h-[304px]"
             />
           )}
         >

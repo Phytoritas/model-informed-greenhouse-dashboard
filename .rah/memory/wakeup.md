@@ -3,17 +3,17 @@
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
 - topic: `architecture-refactor`
-- sessionId: `model-informed-greenhouse-dashboard#65:hyp-65-simplify-phytosync-ui-into-a-compact-coral-tile-shell`
-- caseId: `case/model-informed-greenhouse-dashboard/65/hyp-65-simplify-phytosync-ui-into-a-compact-coral-tile-shell`
-- issue: `#65`
-- branch: `hyp/65-simplify-phytosync-ui-into-a-compact-coral-tile-shell`
+- sessionId: `model-informed-greenhouse-dashboard#67:hyp-67-simplify-legacy-control-strategy-surface-into-a-tile-native-summary`
+- caseId: `case/model-informed-greenhouse-dashboard/67/hyp-67-simplify-legacy-control-strategy-surface-into-a-tile-native-summary`
+- issue: `#67`
+- branch: `hyp/67-simplify-legacy-control-strategy-surface-into-a-tile-native-summary`
 
 ## Current State
-- current_stage: `issue65-compact-coral-tile-shell`
-- implementation_gate: `validation-and-pr-review`
+- current_stage: `issue67-compact-control-summary`
+- implementation_gate: `issue67-compact-summary-phase`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `issue61-merged-baseline -> issue65 compact shell simplification`
-- latest_validation: `Issue65 follow-up polish remains green after frontend lint/test/build, and PR #66 checks are already passing. The remaining decision is whether the legacy control strategy surface needs a follow-up issue or closes as residual debt.`
+- latest_route_slice: `issue65 merged compact shell -> issue67 control summary follow-up`
+- latest_validation: `The compact control summary/table slice is green locally with frontend lint/test/build, repo ruff/pytest, and a fresh /control Playwright screenshot.`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -26,13 +26,13 @@
 ```python
 context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#65:hyp-65-simplify-phytosync-ui-into-a-compact-coral-tile-shell")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "architecture-refactor", "issue65", "compact-shell", "coral-tile"],
+    keywords=["model-informed-greenhouse-dashboard", "architecture-refactor", "issue67", "control-summary", "compact-control"],
     topic="architecture-refactor",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#65:hyp-65-simplify-phytosync-ui-into-a-compact-coral-tile-shell",
+    sessionId="model-informed-greenhouse-dashboard#67:hyp-67-simplify-legacy-control-strategy-surface-into-a-tile-native-summary",
     caseMode=True,
     depth="standard",
-    contextText="issue65 compact coral tile shell intake before route and page relayout"
+    contextText="issue67 compact control summary follow-up after issue65 merged"
 )
 ```
 
@@ -40,5 +40,5 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Treat the five-page shell, hidden assistant/settings routes, `/rtr` redirect, assistant drawer, and first tile relayout as landed for issue `#65`.
-- Use PR `#66` review to decide whether the remaining legacy control strategy surface deserves a separate follow-up issue or can remain as accepted debt under the current validating PR.
+- Treat the merged issue65 shell as the donor baseline and keep issue67 scoped to the `/control` legacy strategy surface only.
+- Commit and push the compact summary/table slice, then open the issue67 PR with the new `/control` screenshot and local validation results.
