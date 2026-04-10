@@ -1,5 +1,5 @@
 {
-  "earliest_restart_point": "Continue issue #65 from the five-page shell contract after re-reading the wakeup packet and current loop, then relayout overview/control before the remaining pages.",
+  "earliest_restart_point": "Continue issue #67 from the merged issue65 compact-shell baseline after re-reading the wakeup packet and current loop, then finish the compact control summary/table slice before any broader copy cleanup.",
   "agents_and_workflow_gate": {
     "status": "pass",
     "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the active issue #65 branch linkage are satisfied for the compact coral tile shell loop."
@@ -35,6 +35,18 @@
   "issue65_copy_tone_polish": {
     "status": "in_progress",
     "note": "Visible resources/alerts surfaces and hidden assistant/settings routes were tightened toward Korean-first coral-neutral copy, but deeper legacy panels still contain mixed English or machine-facing donor strings that may need a separate cleanup slice."
+  },
+  "issue67_prompt_intake": {
+    "status": "pass",
+    "note": "The remaining control-surface legacy debt is now bound to issue #67 and its issue-based branch before new frontend writes resumed."
+  },
+  "issue67_compact_control_summary": {
+    "status": "in_progress",
+    "note": "The active slice replaces the RTR-heavy `/control` strategy block with a shorter compact summary/table surface inside `RTROptimizerPanel` while preserving the current optimizer hook and route wiring."
+  },
+  "issue67_copy_cleanup_boundary": {
+    "status": "warn",
+    "note": "The compact summary surface is landed locally, but route-meta wording and some weather/RTR fallback copy still leak English or machine-facing donor terms and may require a follow-up decision."
   },
   "legacy_compatibility_retirement": {
     "status": "pass",

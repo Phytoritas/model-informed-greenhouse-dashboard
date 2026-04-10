@@ -830,6 +830,126 @@ const RTROptimizerPanel = ({
         || customScenarioDraft.circulationFanPct.trim().length > 0
         || customScenarioDraft.co2TargetPpm.trim().length > 0;
 
+    const compactCopy = locale === 'ko'
+        ? {
+            title: '추천 제어안',
+            subtitle: '오늘 바로 적용할 온도 전략만 짧게 봅니다.',
+            summaryLabel: '오늘 전략',
+            summaryFallback: '값이 준비되면 추천 제어안을 보여드립니다.',
+            comparisonTitle: '기준선 대비',
+            reasonTitle: '판단 근거',
+            metricHeader: '항목',
+            baselineHeader: '기준선',
+            recommendedHeader: '추천',
+            areaLabel: '면적 기준',
+            strategyMode: '계산 기준',
+            dayHeating: '난방 시작(주간)',
+            nightHeating: '난방 시작(야간)',
+            dayCooling: '냉방 시작(주간)',
+            nightCooling: '냉방 시작(야간)',
+            ventBias: '환기 기준',
+            screenBias: '스크린',
+            circulationFan: '순환팬',
+            co2Target: '이산화탄소 목표',
+            meanTemp: '평균 온도',
+            nodeRate: '마디 진행',
+            energyCost: '에너지 비용',
+            laborCost: '작업량',
+        }
+        : {
+            title: 'Recommended control',
+            subtitle: 'Keep only the compact temperature strategy summary.',
+            summaryLabel: 'Today',
+            summaryFallback: 'The recommended control will appear when fresh values arrive.',
+            comparisonTitle: 'Baseline vs recommended',
+            reasonTitle: 'Why this plan',
+            metricHeader: 'Metric',
+            baselineHeader: 'Baseline',
+            recommendedHeader: 'Recommended',
+            areaLabel: 'Area basis',
+            strategyMode: 'Mode',
+            dayHeating: 'Day heating',
+            nightHeating: 'Night heating',
+            dayCooling: 'Day cooling',
+            nightCooling: 'Night cooling',
+            ventBias: 'Vent bias',
+            screenBias: 'Screen',
+            circulationFan: 'Circulation fan',
+            co2Target: 'CO2 target',
+            meanTemp: 'Mean temp',
+            nodeRate: 'Node rate',
+            energyCost: 'Energy cost',
+            laborCost: 'Labor load',
+        };
+    const compactSummary = explanationCopy?.summary
+        ?? (locale === 'ko'
+            ? `기준선 대비 ${formatNumber(optimizeResponse?.rtr_equivalent.delta_temp_C, 2, locale)}°C 조정해 마디 속도를 맞춥니다.`
+            : `Shift mean temperature by ${formatNumber(optimizeResponse?.rtr_equivalent.delta_temp_C, 2, locale)}°C versus baseline.`);
+    const compactReasonTags = explanationCopy?.reason_tags ?? [];
+    const compactAreaSummary = locale === 'ko'
+        ? `m² 기준 ${formatNumber(areaState.canonicalAreaM2, 1, locale)} / 실면적 ${formatNumber(areaState.actualAreaM2, 1, locale)} m² (${formatNumber(areaState.actualAreaPyeong, 0, locale)}평)`
+        : `Base ${formatNumber(areaState.canonicalAreaM2, 1, locale)} m² / actual ${formatNumber(areaState.actualAreaM2, 1, locale)} m² (${formatNumber(areaState.actualAreaPyeong, 0, locale)} pyeong)`;
+    const compactTargetTiles = [
+        {
+            label: compactCopy.dayHeating,
+            value: `${formatNumber(optimizeResponse?.optimal_targets.day_heating_min_temp_C ?? optimizeResponse?.optimal_targets.day_min_temp_C, 1, locale)}°C`,
+        },
+        {
+            label: compactCopy.nightHeating,
+            value: `${formatNumber(optimizeResponse?.optimal_targets.night_heating_min_temp_C ?? optimizeResponse?.optimal_targets.night_min_temp_C, 1, locale)}°C`,
+        },
+        {
+            label: compactCopy.dayCooling,
+            value: `${formatNumber(optimizeResponse?.optimal_targets.day_cooling_target_C, 1, locale)}°C`,
+        },
+        {
+            label: compactCopy.nightCooling,
+            value: `${formatNumber(optimizeResponse?.optimal_targets.night_cooling_target_C, 1, locale)}°C`,
+        },
+        {
+            label: compactCopy.ventBias,
+            value: `${formatNumber(optimizeResponse?.optimal_targets.vent_bias_C, 2, locale)}°C`,
+        },
+        {
+            label: compactCopy.screenBias,
+            value: `${formatNumber(optimizeResponse?.optimal_targets.screen_bias_pct, 1, locale)}%`,
+        },
+        {
+            label: compactCopy.circulationFan,
+            value: `${formatNumber(optimizeResponse?.optimal_targets.circulation_fan_pct, 0, locale)}%`,
+        },
+        {
+            label: compactCopy.co2Target,
+            value: `${formatNumber(optimizeResponse?.optimal_targets.co2_target_ppm, 0, locale)} ppm`,
+        },
+    ];
+    const compactComparisonRows = [
+        {
+            label: compactCopy.meanTemp,
+            baseline: `${formatNumber(optimizeResponse?.baseline.targets.mean_temp_C, 1, locale)}°C`,
+            recommended: `${formatNumber(optimizeResponse?.optimal_targets.mean_temp_C, 1, locale)}°C`,
+        },
+        {
+            label: compactCopy.nodeRate,
+            baseline: formatNumber(stateResponse?.canonical_state.growth.predicted_node_rate_day, 3, locale),
+            recommended: formatNumber(
+                explanationCopy?.target_node_development_per_day ?? targetNodeDevelopmentPerDay,
+                3,
+                locale,
+            ),
+        },
+        {
+            label: compactCopy.energyCost,
+            baseline: `${formatNumber(optimizeResponse?.baseline.objective_breakdown.energy_cost_krw, 0, locale)} ${locale === 'ko' ? '원' : 'KRW'}`,
+            recommended: `${formatNumber(energySummary?.total_energy_cost_krw_m2_day, 0, locale)} ${locale === 'ko' ? '원' : 'KRW'}`,
+        },
+        {
+            label: compactCopy.laborCost,
+            baseline: formatNumber(optimizeResponse?.baseline.objective_breakdown.labor_index, 3, locale),
+            recommended: formatNumber(laborSummary?.labor_index, 3, locale),
+        },
+    ];
+
     if (isProfilePending) {
         return (
                         <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
@@ -893,6 +1013,161 @@ const RTROptimizerPanel = ({
                     profileError={profileError}
                     compact={compact}
                 />
+            </div>
+        );
+    }
+
+    if (compact) {
+        return (
+            <div className="flex h-full flex-col rounded-[24px] bg-white/82 p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
+                            <CircleGauge className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                            <h3 className="text-sm font-semibold">{compactCopy.title}</h3>
+                        </div>
+                        <p className="mt-1 text-xs text-[color:var(--sg-text-muted)]">{compactCopy.subtitle}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => void refreshOptimization()}
+                        disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget || telemetryOptimizationBlocked}
+                        className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-rose)] hover:text-[color:var(--sg-accent-rose)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-accent-violet-soft)]"
+                    >
+                        {copy.refresh}
+                    </button>
+                </div>
+                <div className="space-y-4">
+                    {optimizerError ? (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                            {optimizerError}
+                        </div>
+                    ) : null}
+                    {waitingForTarget ? (
+                        <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
+                            {copy.waitingTarget}
+                        </div>
+                    ) : null}
+                    {telemetryWarning ? (
+                        <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
+                            {telemetryWarning}
+                        </div>
+                    ) : null}
+                    {lowConfidence ? (
+                        <div className="rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
+                            {locale === 'ko'
+                                ? '추천값 신뢰도가 낮아 현재 센서와 최근 작업 기록을 함께 확인하는 편이 안전합니다.'
+                                : 'Confidence is low, so review recent telemetry and work events before applying aggressive changes.'}
+                        </div>
+                    ) : null}
+
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)]">
+                        <section className="sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4">
+                            <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{compactCopy.summaryLabel}</div>
+                            <p className="mt-2 text-xl font-semibold leading-8 text-[color:var(--sg-text-strong)]">
+                                {optimizeResponse ? compactSummary : compactCopy.summaryFallback}
+                            </p>
+                            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                <div className={metricTileClass}>
+                                    <div className={metricLabelClass}>{copy.predictedNode}</div>
+                                    <div className={metricValueClass}>{formatNumber(stateResponse?.canonical_state.growth.predicted_node_rate_day, 3, locale)}</div>
+                                </div>
+                                <div className={metricTileClass}>
+                                    <div className={metricLabelClass}>{copy.targetNode}</div>
+                                    <div className={metricValueClass}>
+                                        {formatNumber(explanationCopy?.target_node_development_per_day ?? targetNodeDevelopmentPerDay, 3, locale)}
+                                    </div>
+                                </div>
+                                <div className={metricTileClass}>
+                                    <div className={metricLabelClass}>{copy.confidence}</div>
+                                    <div className="mt-1 flex items-center gap-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">
+                                        {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
+                                        {readiness.label}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4">
+                            <div className={metricLabelClass}>{compactCopy.areaLabel}</div>
+                            <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text)]">{compactAreaSummary}</p>
+                            <div className="mt-4 grid gap-3">
+                                <div className={metricTileClass}>
+                                    <div className={metricLabelClass}>{compactCopy.strategyMode}</div>
+                                    <div className={metricValueClass}>{getModeLabel(optimizationMode, locale)}</div>
+                                </div>
+                                <div className={metricTileClass}>
+                                    <div className={metricLabelClass}>{copy.changeLimit}</div>
+                                    <div className={metricValueClass}>
+                                        {controlGuidance ? `${formatNumber(controlGuidance.change_limit_C_per_step, 2, locale)}°C` : '-'}
+                                    </div>
+                                </div>
+                                <div className={metricTileClass}>
+                                    <div className={metricLabelClass}>{copy.holdTime}</div>
+                                    <div className={metricValueClass}>
+                                        {controlGuidance
+                                            ? locale === 'ko'
+                                                ? `주간 ${formatNumber(controlGuidance.day_hold_hours, 0, locale)}h / 야간 ${formatNumber(controlGuidance.night_hold_hours, 0, locale)}h`
+                                                : `Day ${formatNumber(controlGuidance.day_hold_hours, 0, locale)}h / Night ${formatNumber(controlGuidance.night_hold_hours, 0, locale)}h`
+                                            : '-'}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {compactTargetTiles.map((tile) => (
+                            <div key={tile.label} className={metricTileClass}>
+                                <div className={metricLabelClass}>{tile.label}</div>
+                                <div className={metricValueClass}>{tile.value}</div>
+                            </div>
+                        ))}
+                    </section>
+
+                    <section className={sectionPanelClass}>
+                        <div className="mb-3 flex items-center gap-2">
+                            <Activity className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                            <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{compactCopy.comparisonTitle}</h4>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
+                                <thead className="text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                                    <tr>
+                                        <th className="px-2 py-2">{compactCopy.metricHeader}</th>
+                                        <th className="px-2 py-2">{compactCopy.baselineHeader}</th>
+                                        <th className="px-2 py-2">{compactCopy.recommendedHeader}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {compactComparisonRows.map((row) => (
+                                        <tr key={row.label} className="border-t border-[color:var(--sg-outline-soft)]">
+                                            <td className="px-2 py-2 font-medium text-[color:var(--sg-text-strong)]">{row.label}</td>
+                                            <td className="px-2 py-2">{row.baseline}</td>
+                                            <td className="px-2 py-2">{row.recommended}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    {compactReasonTags.length > 0 ? (
+                        <section className={sectionPanelClass}>
+                            <div className="mb-3 flex items-center gap-2">
+                                <Leaf className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                                <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{compactCopy.reasonTitle}</h4>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {compactReasonTags.map((tag) => (
+                                    <span key={tag} className="rounded-full bg-[color:var(--sg-surface-muted)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-text)]">
+                                        {getReasonTagLabel(tag, locale)}
+                                    </span>
+                                ))}
+                            </div>
+                        </section>
+                    ) : null}
+                </div>
             </div>
         );
     }
