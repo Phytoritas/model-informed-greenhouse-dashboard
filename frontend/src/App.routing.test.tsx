@@ -225,13 +225,16 @@ vi.mock('./components/shell/TopBar', () => ({
   default: ({
     pageTitle,
     onAssistantToggle,
+    onOpenSettings,
   }: {
     pageTitle: string
     onAssistantToggle?: () => void
+    onOpenSettings?: () => void
   }) => (
     <div>
       <div data-testid="topbar-title">{pageTitle}</div>
       <button type="button" onClick={onAssistantToggle}>Toggle assistant</button>
+      <button type="button" onClick={onOpenSettings}>Open settings</button>
     </div>
   ),
 }))
@@ -571,14 +574,41 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-history')
   })
 
-  it('can seed the assistant drawer search even from the hidden assistant route', async () => {
+  it('keeps assistant search inline even from the hidden assistant route', async () => {
     renderApp('/assistant')
 
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Find materials inline' }))
 
-    expect(await screen.findByText('AssistantDrawer:assistant-search')).toBeTruthy()
+    expect(await screen.findByText('AskSearchPage:assistant-search')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Assistant' })).toBeTruthy()
+    expect(screen.queryByText('AssistantDrawer:assistant-search')).toBeNull()
+  })
+
+  it('keeps the assistant route inline when the topbar toggle is pressed on /assistant', async () => {
+    renderApp('/assistant')
+
+    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
+
+    expect(await screen.findByText('AskSearchPage:assistant-chat')).toBeTruthy()
+    expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-chat')
+    expect(screen.queryByText('AssistantDrawer:assistant-chat')).toBeNull()
+  })
+
+  it('closes the assistant drawer before navigating to settings', async () => {
+    renderApp('/overview')
+
+    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
+    expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy()
+    expect(screen.queryByText('AssistantDrawer:assistant-chat')).toBeNull()
   })
 })

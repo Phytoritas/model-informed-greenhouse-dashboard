@@ -98,7 +98,7 @@ export default function ControlRoutePage({
             <LoadingSkeleton
               title={locale === 'ko' ? '온도 전략' : 'Temperature strategy'}
               loadingMessage={locale === 'ko' ? '온도 전략 화면을 불러오는 중입니다...' : 'Loading temperature strategy...'}
-              minHeightClassName="min-h-[520px]"
+              minHeightClassName="min-h-[412px]"
             />
           )}
         >
@@ -132,9 +132,9 @@ export default function ControlRoutePage({
         <Suspense
           fallback={(
             <LoadingSkeleton
-              title={locale === 'ko' ? '실시간 환경 분석' : 'Real-time Environmental Analysis'}
-              loadingMessage={locale === 'ko' ? '실시간 환경 분석 모듈을 불러오는 중...' : 'Loading real-time environmental analysis...'}
-              minHeightClassName="min-h-[520px]"
+              title={locale === 'ko' ? '실내 환경 추이' : 'Indoor trend'}
+              loadingMessage={locale === 'ko' ? '실내 환경 흐름을 불러오는 중...' : 'Loading indoor trend...'}
+              minHeightClassName="min-h-[304px]"
             />
           )}
         >
@@ -142,12 +142,12 @@ export default function ControlRoutePage({
         </Suspense>
       )}
       watchList={(
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.04fr)_minmax(320px,0.96fr)]">
+        <div className="grid gap-5">
           <Suspense
             fallback={(
               <LoadingSkeleton
-                title={locale === 'ko' ? '대구 실시간 날씨' : 'Daegu Live Weather'}
-                loadingMessage={locale === 'ko' ? '대구 실시간 날씨 모듈을 불러오는 중...' : 'Loading Daegu live weather...'}
+                title={locale === 'ko' ? '외기와 예보' : 'Weather outlook'}
+                loadingMessage={locale === 'ko' ? '외기와 예보 흐름을 불러오는 중...' : 'Loading weather outlook...'}
                 minHeightClassName="min-h-[320px]"
               />
             )}

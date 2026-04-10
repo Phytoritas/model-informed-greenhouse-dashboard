@@ -1,18 +1,18 @@
 {
   "mode": "hybrid",
   "current_stage": "issue65-compact-coral-tile-shell",
-  "phase": "phase-0-blueprint-and-shell-intake",
-  "implementation_gate": "phase-1-shell-route-refactor",
+  "phase": "phase-4-validation-and-followup-polish",
+  "implementation_gate": "validation-and-pr-review",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-phytosync-route-shell",
   "active_issue": "#65",
   "issue_number": 65,
   "active_branch": "hyp/65-simplify-phytosync-ui-into-a-compact-coral-tile-shell",
   "branch_name": "hyp/65-simplify-phytosync-ui-into-a-compact-coral-tile-shell",
   "implementation_blocked": false,
-  "earliest_restart_point": "Re-read AGENTS.md, docs/architecture/Phytoritas.md, .rah/state/status.json, .rah/state/gates.json, .rah/memory/wakeup.md, and .rah/plans/current_loop.md; then continue issue #65 from the five-page shell contract before touching lower-level page tiles.",
-  "restart_point": "Issue #65 rebuilds the routed shell into a compact coral tile operating app. Start from route-meta/phytosyncSections/AppShell/TopBar/WorkspaceNav, then relayout overview and control before the remaining pages.",
-  "next_action": "Sync the route and shell source of truth to the five-page contract, hide assistant/settings from the primary nav, and absorb `/rtr` into the control flow before the page-level tile relayout expands.",
-  "next_recommended_action": "Implement the phase-1 shell/route reduction for issue #65, then land the first visible page relayout on overview/control with the 1320px tile grid.",
+  "earliest_restart_point": "Re-read AGENTS.md, docs/architecture/Phytoritas.md, .rah/state/status.json, .rah/state/gates.json, .rah/memory/wakeup.md, and .rah/plans/current_loop.md; then continue from the landed issue65 compact shell baseline instead of replaying the old route-reduction phase.",
+  "restart_point": "Issue #65 already landed the five-page shell, hidden assistant/settings routes, `/rtr` compatibility redirect, assistant drawer, and the first coral tile relayout. Resume from remaining polish, especially the legacy control strategy surface and any copy/tone cleanup found during PR #66 review.",
+  "next_action": "Keep PR #66 ready for review while deciding whether to split the legacy RTR-heavy control strategy surface into a smaller tile-native table/card follow-up.",
+  "next_recommended_action": "Use PR #66 validation feedback to decide whether issue #65 closes as-is or whether the control strategy surface needs a dedicated follow-up issue.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": null,
   "doctor_state": "warn",
@@ -23,5 +23,5 @@
   "memento_case_id": "case/model-informed-greenhouse-dashboard/65/hyp-65-simplify-phytosync-ui-into-a-compact-coral-tile-shell",
   "memento_last_context_at": "2026-04-10T01:10:08.1958908+09:00",
   "memento_last_recall_at": "2026-04-10T01:10:08.1958908+09:00",
-  "memory_freshness": "issue65-loop-active"
+  "memory_freshness": "issue65-validating"
 }

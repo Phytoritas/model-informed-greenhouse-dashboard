@@ -28,7 +28,7 @@ export default function ControlPage({
     ? {
         eyebrow: 'PhytoSync',
         title: '환경 제어',
-        description: '환기, 난방, 냉방, 습도 조치를 따로 정리합니다.',
+        description: '지금 조치, 온도 전략, 장치 상태를 한 화면에 모았습니다.',
       }
     : {
         eyebrow: 'Control',
@@ -45,16 +45,14 @@ export default function ControlPage({
       activeTabId={activeTabId}
       onSelectTab={onSelectTab}
     >
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
-        <div className="space-y-5">
-          <div className="min-h-0 [&>*]:h-full">{strategySurface}</div>
-          <div className="min-h-0 [&>*]:h-full">{climateChart}</div>
-        </div>
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{strategySurface}</div>
+        <div className="space-y-5 xl:col-span-4">
           <div className="min-h-0 [&>*]:h-full">{controlActions}</div>
           <div className="min-h-0 [&>*]:h-full">{controlSummary}</div>
-          <div className="min-h-0 [&>*]:h-full">{watchList}</div>
         </div>
+        <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{climateChart}</div>
+        <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{watchList}</div>
       </div>
     </PageCanvas>
   );

@@ -337,6 +337,7 @@ function App() {
     () => findPhytoSection(sections, location.pathname),
     [location.pathname, sections],
   );
+  const isAssistantRoute = location.pathname.startsWith('/assistant') || location.pathname.startsWith('/ask');
   const assistantSection = useMemo(
     () => sections.find((section) => section.key === 'assistant') ?? sections[0],
     [sections],
@@ -619,8 +620,14 @@ function App() {
   }, [setAssistantDrawerOpen, setAssistantDrawerPanel]);
 
   const handleChatToggle = useCallback(() => {
+    if (isAssistantRoute) {
+      setAssistantDrawerOpen(false);
+      setAssistantDrawerPanel('assistant-chat');
+      navigate({ pathname: '/assistant', hash: '#assistant-chat' });
+      return;
+    }
     openAssistantDrawer('assistant-chat');
-  }, [openAssistantDrawer]);
+  }, [isAssistantRoute, navigate, openAssistantDrawer, setAssistantDrawerOpen, setAssistantDrawerPanel]);
 
   const handleOpenRagAssistant = useCallback((request?: RagAssistantLaunchRequest) => {
     const defaultRequest: RagAssistantLaunchRequest = smartGrowSummary?.nutrientCorrectionReady
@@ -663,14 +670,29 @@ function App() {
       ...request,
       nonce: Date.now(),
     });
+    if (isAssistantRoute) {
+      setAssistantDrawerOpen(false);
+      setAssistantDrawerPanel('assistant-search');
+      navigate({ pathname: '/assistant', hash: '#assistant-search' });
+      return;
+    }
     openAssistantDrawer('assistant-search');
   }, [
+    isAssistantRoute,
     locale,
+    navigate,
     openAssistantDrawer,
     selectedCropLabel,
+    setAssistantDrawerOpen,
+    setAssistantDrawerPanel,
     setAssistantSearchRequest,
     smartGrowSummary,
   ]);
+
+  const handleOpenSettings = useCallback(() => {
+    setAssistantDrawerOpen(false);
+    navigate('/settings');
+  }, [navigate, setAssistantDrawerOpen]);
 
   const handleOpenAdvisorTabs = useCallback((
     tab: PromptAdvisorTabKey = 'environment',
@@ -1062,7 +1084,7 @@ function App() {
           onLocaleChange={setLocale}
           onCropChange={setSelectedCrop}
           onAssistantToggle={handleChatToggle}
-          onOpenSettings={() => navigate('/settings')}
+          onOpenSettings={handleOpenSettings}
           assistantOpen={assistantDrawerOpen}
           getCropLabel={getCropLabel}
         />
