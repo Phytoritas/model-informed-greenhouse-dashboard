@@ -10,24 +10,22 @@ interface AppShellProps {
 export default function AppShell({
     header,
     sidebar,
-    commandTray,
     children,
 }: AppShellProps) {
     return (
         <div className="min-h-screen pb-24 font-sans text-[color:var(--sg-text)]">
             {header}
-            <div className="mx-auto w-full max-w-[1536px] px-4 py-8 sm:px-6 xl:px-0">
-                {commandTray ? <div className="mb-8 min-w-0">{commandTray}</div> : null}
-                <div className="flex flex-col gap-6 lg:flex-row">
+            <div className="mx-auto w-full max-w-[1640px] px-4 py-6 sm:px-6 xl:px-8">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
                     {sidebar ? (
                         <div
                             data-testid="app-shell-sidebar-slot"
-                            className="w-full lg:w-[240px] lg:shrink-0 lg:self-start"
+                            className="w-full lg:w-[248px] lg:shrink-0 lg:self-start"
                         >
                             {sidebar}
                         </div>
                     ) : null}
-                    <div className="min-w-0 flex-1 space-y-8">
+                    <div className="min-w-0 flex-1">
                         <div className="min-w-0">{children}</div>
                     </div>
                 </div>
