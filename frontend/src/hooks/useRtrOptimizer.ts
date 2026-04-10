@@ -217,32 +217,66 @@ export const useRtrOptimizer = ({
         optimizeRequestIdRef.current = requestId;
         setLoadingOptimize(true);
         try {
-            const [optimizeData, scenarioData, sensitivityData] = await Promise.all([
-                fetch(`${API_URL}/rtr/optimize`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestPayload),
-                }).then((response) => readJson<RtrOptimizeResponse>(response)),
-                fetch(`${API_URL}/rtr/scenario`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(scenarioRequestPayload),
-                }).then((response) => readJson<RtrScenarioResponse>(response)),
-                fetch(`${API_URL}/rtr/sensitivity`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...requestPayload, step_c: 0.3 }),
-                }).then((response) => readJson<RtrSensitivityResponse>(response)),
+            const optimizePromise = fetch(`${API_URL}/rtr/optimize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestPayload),
+            }).then((response) => readJson<RtrOptimizeResponse>(response));
+            const scenarioPromise = fetch(`${API_URL}/rtr/scenario`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(scenarioRequestPayload),
+            }).then((response) => readJson<RtrScenarioResponse>(response));
+            const sensitivityPromise = fetch(`${API_URL}/rtr/sensitivity`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...requestPayload, step_c: 0.3 }),
+            }).then((response) => readJson<RtrSensitivityResponse>(response));
+            const supplementalResultsPromise = Promise.allSettled([
+                scenarioPromise,
+                sensitivityPromise,
             ]);
+            const optimizeData = await optimizePromise;
 
             if (optimizeRequestIdRef.current !== requestId) {
                 return;
             }
 
             setOptimizeResponse(optimizeData);
-            setScenarioResponse(scenarioData);
-            setSensitivityResponse(sensitivityData);
             setError(null);
+            const [scenarioResult, sensitivityResult] = await supplementalResultsPromise;
+
+            if (optimizeRequestIdRef.current !== requestId) {
+                return;
+            }
+
+            const supplementalErrors: string[] = [];
+
+            if (scenarioResult.status === 'fulfilled') {
+                setScenarioResponse(scenarioResult.value);
+            } else {
+                setScenarioResponse(null);
+                supplementalErrors.push(
+                    scenarioResult.reason instanceof Error
+                        ? scenarioResult.reason.message
+                        : 'Failed to load RTR scenarios.',
+                );
+            }
+
+            if (sensitivityResult.status === 'fulfilled') {
+                setSensitivityResponse(sensitivityResult.value);
+            } else {
+                setSensitivityResponse(null);
+                supplementalErrors.push(
+                    sensitivityResult.reason instanceof Error
+                        ? sensitivityResult.reason.message
+                        : 'Failed to load RTR sensitivities.',
+                );
+            }
+
+            if (supplementalErrors.length > 0) {
+                setError(supplementalErrors[0]);
+            }
         } catch (err) {
             if (optimizeRequestIdRef.current !== requestId) {
                 return;
