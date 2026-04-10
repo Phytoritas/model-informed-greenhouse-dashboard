@@ -23,6 +23,7 @@ import type {
 import { useLocale } from '../i18n/LocaleProvider';
 import { getReadinessDescriptor } from '../lib/design/readiness';
 import { getCropLabel } from '../utils/displayCopy';
+import { getRequestErrorCopy } from '../utils/requestErrorCopy';
 import { useAreaUnit } from '../context/AreaUnitContext';
 import { useRtrOptimizer } from '../hooks/useRtrOptimizer';
 import AreaUnitPanel from './AreaUnitPanel';
@@ -564,6 +565,14 @@ const RTROptimizerPanel = ({
         await refreshState();
         await refreshOptimization();
     };
+    const optimizerErrorCopy = getRequestErrorCopy(optimizerError, locale, {
+        resourceKo: '환경 제어 추천',
+        resourceEn: 'the control recommendation',
+    });
+    const profileErrorCopy = getRequestErrorCopy(profileError, locale, {
+        resourceKo: '온도 기준선',
+        resourceEn: 'the strategy line',
+    });
 
     const copy = locale === 'ko'
         ? {
@@ -964,9 +973,9 @@ const RTROptimizerPanel = ({
     if (isProfileUnavailable || !optimizerEnabled) {
         return (
                         <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                {profileError ? (
+                {profileErrorCopy ? (
                     <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-                        {profileError}
+                        {profileErrorCopy}
                     </div>
                 ) : null}
                                 <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
@@ -983,7 +992,7 @@ const RTROptimizerPanel = ({
                     error={error}
                     profile={profile}
                     profileLoading={profileLoading}
-                    profileError={profileError}
+                    profileError={profileErrorCopy}
                     compact={compact}
                 />
             </div>
@@ -1010,7 +1019,7 @@ const RTROptimizerPanel = ({
                     error={error}
                     profile={profile}
                     profileLoading={profileLoading}
-                    profileError={profileError}
+                    profileError={profileErrorCopy}
                     compact={compact}
                 />
             </div>
@@ -1038,9 +1047,9 @@ const RTROptimizerPanel = ({
                     </button>
                 </div>
                 <div className="space-y-4">
-                    {optimizerError ? (
+                    {optimizerErrorCopy ? (
                         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-                            {optimizerError}
+                            {optimizerErrorCopy}
                         </div>
                     ) : null}
                     {waitingForTarget ? (
@@ -1245,9 +1254,9 @@ const RTROptimizerPanel = ({
                 </button>
             </div>
             <div className="space-y-4">
-                {optimizerError ? (
+                {optimizerErrorCopy ? (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-                        {optimizerError}
+                        {optimizerErrorCopy}
                     </div>
                 ) : null}
                 {waitingForTarget ? (
@@ -2038,7 +2047,7 @@ const RTROptimizerPanel = ({
                             error={error}
                             profile={profile}
                             profileLoading={profileLoading}
-                            profileError={profileError}
+                            profileError={profileErrorCopy}
                             compact
                         />
                     </div>

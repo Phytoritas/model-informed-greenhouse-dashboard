@@ -3,6 +3,7 @@ import type { CropType, RtrProfile, SensorData, TemperatureSettings, WeatherOutl
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate } from '../i18n/locale';
 import { getCropLabel, getWeatherLabel } from '../utils/displayCopy';
+import { getRequestErrorCopy } from '../utils/requestErrorCopy';
 import {
     getRtrProfile,
     buildRTRForecastTargets,
@@ -197,6 +198,14 @@ const RTROutlookPanel = ({
     const localizedStrategyLabel = getLocalizedStrategyLabel(effectiveProfile, locale);
     const localizedSourceNote = getLocalizedSourceNote(effectiveProfile, locale);
     const calibrationModeLabel = getCalibrationModeLabel(effectiveProfile.calibration.mode, locale);
+    const weatherErrorCopy = getRequestErrorCopy(error, locale, {
+        resourceKo: '날씨를 반영한 온도 계획',
+        resourceEn: 'the weather-linked temperature plan',
+    });
+    const profileErrorCopy = getRequestErrorCopy(profileError, locale, {
+        resourceKo: '온도 기준선',
+        resourceEn: 'the strategy line',
+    });
     const profileBadge = effectiveProfile.calibration.mode === 'fitted'
         ? `${copy.badgeFitted} (${effectiveProfile.calibration.sampleDays}${locale === 'ko' ? '일' : ' d'})`
         : effectiveProfile.calibration.mode === 'insufficient-data'
@@ -318,9 +327,9 @@ const RTROutlookPanel = ({
                             </div>
                         )}
                     </div>
-                    {error ? (
+                    {weatherErrorCopy ? (
                         <div className="mt-3 rounded-[18px] border border-[color:var(--sg-accent-amber-soft)] bg-[color:var(--sg-accent-amber-soft)] px-3 py-3 text-xs text-[color:var(--sg-accent-earth)]">
-                            {copy.weatherUnavailable}: {error}
+                            {weatherErrorCopy}
                         </div>
                     ) : null}
                 </div>
@@ -346,9 +355,9 @@ const RTROutlookPanel = ({
                     <div className="mt-1">
                         {copy.currentControlWindow}: {temperatureSettings.heating}&deg;C to {temperatureSettings.cooling}&deg;C.
                     </div>
-                    {profileError ? (
+                    {profileErrorCopy ? (
                         <div className="mt-1 text-[color:var(--sg-accent-earth)]">
-                            {copy.profileEndpointUnavailable}: {profileError}
+                            {profileErrorCopy}
                         </div>
                     ) : null}
                 </div>
