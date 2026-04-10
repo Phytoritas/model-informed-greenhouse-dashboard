@@ -10,9 +10,9 @@ import type {
 import type { KpiTileData } from '../components/KpiStrip';
 import type { AlertRailItem } from '../components/dashboard/AlertRail';
 import AlertRail from '../components/dashboard/AlertRail';
+import CompactMetricDeck from '../components/dashboard/CompactMetricDeck';
 import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
 import HeroControlCard from '../components/dashboard/HeroControlCard';
-import LiveMetricStrip from '../components/dashboard/LiveMetricStrip';
 import TodayBoard from '../components/dashboard/TodayBoard';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import OverviewPage from './overview-page';
@@ -23,7 +23,6 @@ interface OverviewRoutePageProps {
   locale: AppLocale;
   telemetryStatus: TelemetryStatus;
   telemetryDetail: string | null;
-  kpiStatusSummary: string;
   primaryKpiTiles: KpiTileData[];
   secondaryKpiTiles: KpiTileData[];
   runtimeRecommendedAction: string | null;
@@ -52,13 +51,15 @@ interface OverviewRoutePageProps {
   onOpenRtr: () => void;
   onOpenAdvisor: () => void;
   onOpenAssistant: () => void;
+  tabs: Array<{ id: string; label: string }>;
+  activeTabId?: string;
+  onSelectTab: (tabId: string) => void;
 }
 
 export default function OverviewRoutePage({
   locale,
   telemetryStatus,
   telemetryDetail,
-  kpiStatusSummary,
   primaryKpiTiles,
   secondaryKpiTiles,
   runtimeRecommendedAction,
@@ -87,6 +88,9 @@ export default function OverviewRoutePage({
   onOpenRtr,
   onOpenAdvisor,
   onOpenAssistant,
+  tabs,
+  activeTabId,
+  onSelectTab,
 }: OverviewRoutePageProps) {
   const fallbackAlerts = alertItems.length
     ? alertItems
@@ -100,14 +104,10 @@ export default function OverviewRoutePage({
   return (
     <OverviewPage
       locale={locale}
-      kpiBand={(
-        <LiveMetricStrip
-          statusSummary={kpiStatusSummary}
-          telemetryStatus={telemetryStatus}
-          primaryTiles={primaryKpiTiles}
-          secondaryTiles={secondaryKpiTiles}
-        />
-      )}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
+      metricDeck={<CompactMetricDeck tiles={[...primaryKpiTiles, ...secondaryKpiTiles]} />}
       heroCard={(
         <HeroControlCard
           operatingMode={runtimeRecommendedAction ?? (locale === 'ko' ? '비교안 준비' : 'Scenario ready')}

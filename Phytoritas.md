@@ -5,115 +5,118 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `#61`
-- Active branch: `hyp/61-rebuild-phytosync-into-coral-stay-routed-shell`
-- Preserved merged baselines: issues `#19`, `#23`, `#25`, `#27`, `#47`, `#49`, `#57`
+- Active issue: `#65`
+- Active branch: `hyp/65-simplify-phytosync-ui-into-a-compact-coral-tile-shell`
+- Preserved merged baselines: issues `#19`, `#23`, `#25`, `#27`, `#47`, `#49`, `#57`, `#61`, `#63`
 
 ## Active Lane
-Issue `#61` rebuilds the PhytoSync frontend into a Coral Stay-inspired routed shell.
-The mainline target is no longer a giant dashboard page with embedded section composition. The shell must now behave like a real product with explicit routes, bounded page layouts, and a warm coral-first visual rhythm.
+Issue `#65` simplifies the routed PhytoSync frontend into a compact grower-facing operating shell.
+The target is no longer just a routed coral shell. It must now become a tighter five-page operating app with a bounded tile grid, coral-first visual hierarchy, Korean grower-facing copy, and fewer competing navigation paths.
 
 ## Preserved Baseline
-- Keep the current backend runtime, WebSocket telemetry flow, weather/RTR/market panels, crop switching, and AI consult/chat behavior stable.
+- Keep the current backend runtime, WebSocket telemetry flow, weather, advisor, market, crop switching, and area-unit behavior stable.
 - Keep the merged model-first SmartGrow runtime from issue `#19`, including `/api/models/*`, `/api/advisor/*`, and the internal-model RTR baseline from issue `#27`.
-- Keep `configs/rtr_profiles.json`, `/api/rtr/*`, advisor contracts, area-unit projection, and routed advisor lanes backward compatible.
-- Keep the extracted issue `#61` route pages as the primary navigation surface: `/overview`, `/control`, `/rtr`, `/crop-work`, `/resources`, `/alerts`, `/assistant`, `/settings`.
+- Keep `/api/rtr/*`, `configs/rtr_profiles.json`, advisor contracts, area-unit projection, and `/ask#... -> /assistant#...` compatibility stable unless a new issue retires them explicitly.
+- Keep the routed shell extraction from issue `#61` as the baseline starting point, not as the final UI target.
 
 ## Directive Summary
-Issue `#61` must:
-- make route-based navigation the primary interaction model
-- keep each page focused on one operating story instead of stacking all analytical surfaces into one screen
-- move the shell toward a warm Coral Stay editorial system without breaking current runtime behavior
-- preserve direct advisor-lane entry for `/growth`, `/nutrient`, `/protection`, and `/harvest`
-- keep `/ask#...` as a compatibility redirect into `/assistant#...`
-- retire the remaining legacy-only `MainDashboard` compatibility composition before the first PR
+Issue `#65` must:
+- reduce the visible primary navigation to `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts`
+- move assistant access out of the sidebar into a FAB/header-triggered right drawer while preserving `/assistant` as a hidden compatibility route
+- move settings access out of the sidebar into the profile menu while preserving `/settings` as a hidden route
+- absorb `/rtr` into `/control` as the temperature-strategy segment and treat `/rtr` as a compatibility redirect
+- replace stacked vertical shells with a compact 12-column tile layout using `grid-auto-rows: 88px`
+- cap the main content canvas at `1320px`, use a `248px` sidebar, and an `80px` header
+- push the design system toward a coral-first Korean grower-facing UI with restrained green usage and fewer nested card/tabs patterns
 
 ## Source Of Truth
 1. `Phytoritas.md`
-2. GitHub issue `#61`
+2. GitHub issue `#65`
 3. `.rah/state/status.json`
 4. `.rah/state/gates.json`
 5. `.rah/memory/wakeup.md`
 6. `.rah/plans/current_loop.md`
 7. `docs/architecture/Phytoritas.md`
-8. `docs/architecture/00_workspace_audit.md`
-9. `docs/architecture/01_system_brief.md`
-10. `docs/architecture/implementation/implementation_gate_checklist.md`
-11. `docs/architecture/system/current_architecture_map.md`
-12. Repo code and tests
+8. Repo code and tests
 
 ## Non-Negotiables
 - Do not break `/api/rtr/*`, `/api/models/*`, `/api/advisor/*`, weather, market, or area-unit contracts.
-- Do not revert to a fake tabbed single-page structure.
-- Do not regress direct route entry, sidebar navigation, or advisor-lane intent preservation.
-- Do not change `/overview/legacy`, `/control/legacy`, `/resources/legacy`, or `/alerts/legacy` behavior without explicit canonical redirects and test updates.
-- Do not let the routed shell drift away from the issue `#61` coral-first visual direction.
+- Do not re-introduce a fake single-page multi-tab dashboard shell.
+- Do not keep `rtr`, `assistant`, or `settings` as visible peer items in the primary sidebar.
+- Do not let nested tabs, card-within-card, or multi-button card actions remain the default page pattern.
+- Do not keep large green hero panels or machine-like English operational copy in the grower-facing UI.
 
 ## Current Architecture Target
 ### Shell and Navigation
-- `frontend/src/main.tsx`: `BrowserRouter` entry
-- `frontend/src/App.tsx`: root route registration, cross-route state wiring, and explicit compatibility redirects
-- `frontend/src/layout/AppShell.tsx`: shared shell canvas
-- `frontend/src/components/shell/TopBar.tsx`: page-level title and crop/locale controls
-- `frontend/src/components/shell/WorkspaceNav.tsx`: primary route navigation
-- `frontend/src/app/route-meta.ts`: canonical primary-route metadata
+- `frontend/src/App.tsx`: route wiring should shrink toward route registration and shared state plumbing only
+- `frontend/src/app/route-meta.ts`: visible primary-route metadata should represent only the five grower-facing pages
+- `frontend/src/routes/phytosyncSections.ts`: section/tab metadata should normalize `/rtr` into `/control` and keep assistant/settings hidden from primary navigation
+- `frontend/src/layout/AppShell.tsx`: bounded shell canvas with `1320px` content cap and `248px` sidebar contract
+- `frontend/src/components/shell/TopBar.tsx`: `80px` header with page title, search, filters, alerts, assistant trigger, and profile/settings entry
+- `frontend/src/components/shell/WorkspaceNav.tsx`: sidebar/mobile nav rendering only, with five visible items
 
 ### Route-Level Pages
 - `frontend/src/pages/overview-route-page.tsx`
 - `frontend/src/pages/control-route-page.tsx`
-- `frontend/src/pages/rtr-route-page.tsx`
 - `frontend/src/pages/crop-work-route-page.tsx`
 - `frontend/src/pages/resources-route-page.tsx`
 - `frontend/src/pages/alerts-route-page.tsx`
-- `frontend/src/pages/assistant-route-page.tsx`
-- `frontend/src/pages/settings-route-page.tsx`
-- `frontend/src/pages/advisor-lane-route-page.tsx`
+- `frontend/src/pages/assistant-route-page.tsx` (hidden compatibility route)
+- `frontend/src/pages/settings-route-page.tsx` (hidden compatibility route)
 
-### Residual Compatibility Follow-Ups
-- `/overview/legacy`, `/control/legacy`, `/resources/legacy`, and `/alerts/legacy` now redirect explicitly to their canonical routes
-- the old `SectionRouteFrame` / `MainDashboard` wrapper chain is retired from the frontend runtime
-- `frontend/src/routes/phytosyncSections.ts` now treats `assistant` as the canonical knowledge section while preserving `/ask` redirect and `ask-*` panel compatibility
+### Layout Target
+- Desktop grid: `12` columns
+- Tablet grid: `8` columns
+- Mobile grid: `4` columns
+- `grid-auto-rows: 88px`
+- Card heights must be row multiples, not content-driven
+- Page-level segments are allowed, but only one segment layer per page and a maximum of three segment choices
 
 ## Phased Delivery
-### Phase 0. Baseline preservation
-- bind issue `#61` and the issue-based branch
-- preserve backend/API/runtime behavior while changing only shell IA and presentation
+### Phase 0. Blueprint and control-plane sync
+- bind issue `#65` and the issue-based branch
+- rewrite the blueprint and `.rah` state around the compact coral tile shell
 
-### Phase 1. Primary route extraction
-- extract `/overview`, `/control`, `/rtr`, `/crop-work`, `/resources`, `/alerts`, `/assistant`, and `/settings` into dedicated route-level page composition
-- keep advisor lanes route-driven
+### Phase 1. Shell and route contract reduction
+- reduce visible primary nav to five items
+- hide assistant/settings from the sidebar
+- normalize `/rtr` into the control route contract
 
-### Phase 2. Control-plane sync and recon
-- realign `Phytoritas.md`, `docs/architecture/`, and `.rah/` around issue `#61`
-- record the current route-shell seams, interfaces, and hotspots from observed code
+### Phase 2. Shared shell and interaction simplification
+- restyle `AppShell`, `TopBar`, and `WorkspaceNav`
+- move assistant entry to a FAB/right drawer pattern
+- move settings to the profile menu
 
-### Phase 3. Legacy compatibility retirement
-- replace the remaining `/overview|/control|/resources|/alerts` legacy frame composition with explicit canonical redirects
-- remove the dead `SectionRouteFrame` / `MainDashboard` wrapper chain after the redirects land
+### Phase 3. Page tile relayout
+- rebuild `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts` into tile-based page shells
+- keep charts readable and limited in count
+- keep copy Korean-first and grower-facing
 
-### Phase 4. First PR bundle
-- capture screenshots and route-validation evidence
-- open the first PR once the legacy-only seam is isolated and the frontend ladder stays green
+### Phase 4. Validation and review
+- extend route/navigation regression coverage
+- verify layout and copy changes in screenshots and the frontend ladder
 
 ## Decision Gates
 ### Gate A. Runtime preservation
-- backend/runtime contracts remain unchanged while the routed shell evolves
+- backend/runtime contracts remain unchanged while the shell and page IA evolve
 
-### Gate B. Route-shell primacy
-- the eight primary pages render directly through route-level containers
+### Gate B. Five-page shell
+- only the five grower-facing destinations remain visible in primary navigation
 
-### Gate C. Legacy compatibility retirement
-- `/overview|/control|/resources|/alerts/legacy` behave only as explicit canonical redirects and no live `MainDashboard` frame chain remains
+### Gate C. Control absorption
+- `/rtr` is no longer a visible peer page and resolves into control-specific temperature strategy behavior
 
-### Gate D. Coral shell consistency
-- shared shell spacing, page headers, and theme tokens reinforce the issue `#61` visual direction
+### Gate D. Compact tile layout
+- the primary pages render through a consistent tile grid, bounded width, and row-height system
 
-### Gate E. Validation lock
+### Gate E. Korean grower UX
+- user-facing copy, status labels, and error states follow the new Korean-first dictionary and avoid machine-facing wording
+
+### Gate F. Validation lock
 - `npm --prefix frontend run lint`
 - `npm --prefix frontend run test -- --pool=threads`
 - `npm --prefix frontend run build`
 
 ## Immediate Next Action
-- keep the issue `#61` control plane synced to the routed-shell truth
-- decide whether the remaining `ask-*` panel/hash naming should stay as compatibility-only or be renamed after the first PR
-- extend routing tests only as needed to protect `/assistant`, `/ask#...`, and `/overview|/control|/resources|/alerts/legacy` redirect behavior before the first PR
+- sync `route-meta.ts`, `phytosyncSections.ts`, and the shared shell to the five-page contract
+- then relayout `/overview` and `/control` first so the new tile system is visible before the remaining pages follow

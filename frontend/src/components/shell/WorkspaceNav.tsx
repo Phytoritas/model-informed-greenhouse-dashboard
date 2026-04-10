@@ -23,6 +23,7 @@ export interface WorkspaceNavItem {
 interface WorkspaceNavProps {
   items: WorkspaceNavItem[];
   activeWorkspace: string;
+  statusLabel: string;
   onSelect: (workspace: string) => void;
 }
 
@@ -83,27 +84,28 @@ function WorkspaceButton({
 export default function WorkspaceNav({
   items,
   activeWorkspace,
+  statusLabel,
   onSelect,
 }: WorkspaceNavProps) {
   const { locale } = useLocale();
   const activeItem = items.find((item) => item.key === activeWorkspace) ?? items[0];
   const copy = locale === 'ko'
     ? {
-        workspaces: '메뉴',
-        commandNote: '현재 선택',
+        brand: 'PhytoSync',
+        description: '오늘 운영 판단을 빠르게 여는 기본 메뉴입니다.',
       }
     : {
-        workspaces: 'Menu',
-        commandNote: 'Current lane',
+        brand: 'PhytoSync',
+        description: 'Primary operating pages for the day-to-day greenhouse flow.',
       };
 
   return (
     <>
       <Sidebar className="hidden min-h-[calc(100vh-8rem)] lg:block">
         <SidebarHeader>
-          <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{copy.workspaces}</div>
-          <div className="mt-2 text-lg font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">{activeItem?.label}</div>
-          <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">{activeItem?.description}</p>
+          <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{copy.brand}</div>
+          <div className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">{activeItem?.label}</div>
+          <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">{copy.description}</p>
         </SidebarHeader>
         <nav className="space-y-2">
           {items.map((item) => (
@@ -116,10 +118,9 @@ export default function WorkspaceNav({
           ))}
         </nav>
         <SidebarFooter>
-          <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{copy.commandNote}</div>
-          <p className="mt-2">
-            {activeItem?.label} · {activeItem?.description}
-          </p>
+          <span className="inline-flex items-center rounded-full bg-[color:var(--sg-surface-soft)] px-3 py-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">
+            {statusLabel}
+          </span>
         </SidebarFooter>
       </Sidebar>
       <nav className="fixed inset-x-4 bottom-4 z-40 rounded-[28px] border border-white/70 bg-[color:var(--sg-glass)] p-2 backdrop-blur-xl lg:hidden" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>

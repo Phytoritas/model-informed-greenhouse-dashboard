@@ -16,7 +16,7 @@
   }
 
   .sg-card {
-    border-radius: 30px;
+    border-radius: 24px;
     background: linear-gradient(180deg, rgba(255, 251, 246, 0.99), rgba(247, 241, 235, 0.96));
     box-shadow: var(--sg-shadow-card);
     padding: 1.5rem;
@@ -29,7 +29,7 @@
   .sg-card-hero {
     background:
       radial-gradient(circle at top right, rgba(181, 35, 48, 0.12), transparent 26%),
-      radial-gradient(circle at left bottom, rgba(44, 105, 78, 0.08), transparent 24%),
+      radial-gradient(circle at left bottom, rgba(255, 138, 142, 0.08), transparent 24%),
       linear-gradient(180deg, rgba(255, 251, 246, 0.99), rgba(247, 241, 235, 0.97));
   }
 
