@@ -53,6 +53,7 @@ export default function CropWorkRoutePage({
           actionsToday={actionsToday}
           actionsWeek={actionsWeek}
           monitor={monitor}
+          compact
         />
       )}
       forecastSurface={(

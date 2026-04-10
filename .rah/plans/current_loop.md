@@ -1,8 +1,8 @@
 # Current Loop
 
 ## Active State
-- Issue `#80` is active on branch `fix/80-realign-overlapping-layout-tiles-and-panels`.
-- The branch stays bounded to layout overlap cleanup on top of the merged issue `#74` baseline: overview no longer forces large cards into `88px` auto rows, crop-work now follows the same natural 12-column rhythm, and overview charts expose a compact two-chart variant for the dashboard lane.
+- Issue `#82` is active on branch `fix/82-fix-remaining-compact-shell-clipping-and-overflow`.
+- The branch stays bounded to the remaining narrow-rail clipping follow-up on top of the merged issue `#80` baseline: `TodayBoard` now exposes a compact mode that can grow vertically instead of clipping inside right-side rails, and `AlertRail` now collapses its split-count layout into a single-column stack when mounted in narrow rails.
 - Local validation is already green; the next gate is remote PR validation, not more broad refactoring.
 
 ## Latest Delivered Baseline
@@ -22,7 +22,7 @@
   - Vitest coverage for the updated section-tab metadata
 
 ## Latest Validation
-- The issue `#80` local ladder is green with:
+- The issue `#82` local ladder is green with:
   - `npm --prefix frontend run lint`
   - `npm --prefix frontend run test -- --pool=threads`
   - `npm --prefix frontend run build`
@@ -31,12 +31,11 @@
   - `git diff --check`
 - The current frontend result is `20 files, 77 passed`, and the repo Python ladder remains `149 passed, 34 warnings`.
 - Fresh browser captures for the active slice are:
-  - `artifacts/screenshots/issue80-overview-before.png`
-  - `artifacts/screenshots/issue80-overview-after.png`
-  - `artifacts/screenshots/issue80-crop-work-before.png`
-  - `artifacts/screenshots/issue80-crop-work-after.png`
+  - `artifacts/screenshots/issue82-overview-after-compact-rail.png`
+  - `artifacts/screenshots/issue82-control-after-compact-rail.png`
+  - `artifacts/screenshots/issue82-crop-work-after-compact-rail.png`
 
 ## Exact Next Step
-1. Commit the issue `#80` layout slice, push `fix/80-realign-overlapping-layout-tiles-and-panels`, and open the PR with the repo helper script.
+1. Commit the issue `#82` layout slice, push `fix/82-fix-remaining-compact-shell-clipping-and-overflow`, and open the PR with the repo helper script.
 2. Move the project item to `Validating` and watch GitHub Actions Backend/Frontend validation to green.
-3. If reviewers report additional overlap outside the current overview/crop-work slice, open a follow-up issue instead of widening issue `#80` after review starts.
+3. If reviewers report additional clipping outside the current `TodayBoard` / `AlertRail` slice, open a follow-up issue instead of widening issue `#82` after review starts.
