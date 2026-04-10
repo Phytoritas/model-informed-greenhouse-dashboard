@@ -62,9 +62,9 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            eyebrow: '외기 흐름',
-            title: '대구 외기 관측',
-            subtitle: '현재 외기와 3일 전망을 운영 판단 기준으로 다시 묶어 보여줍니다.',
+            eyebrow: '외기와 예보',
+            title: '대구 외기와 3일 예보',
+            subtitle: '현재 외기와 3일 예보를 운영 판단 기준으로 묶었습니다.',
             loading: '대구 외기 정보를 불러오는 중입니다...',
             unavailable: '외기 정보를 아직 불러오지 못했습니다.',
             currentLead: '지금 외기',
@@ -72,10 +72,10 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             feelsLike: '체감',
             summaryLive: '실시간 외기 연동 중입니다.',
             summaryCached: '실시간 외기 연결이 흔들려 최근 캐시를 기준으로 보여줍니다.',
-            summaryFallback: '실시간 외기 연결이 없어 대체 전망을 기준으로 보여줍니다.',
+            summaryFallback: '실시간 외기 연결이 없어 대체 예보를 기준으로 보여줍니다.',
             providerLive: '실시간',
             providerCached: '최근 캐시',
-            providerFallback: '대체 전망',
+            providerFallback: '대체 예보',
             humidityClouds: '습도와 구름',
             humidityCloudsDetail: '상대습도와 운량을 함께 봅니다.',
             windRain: '바람과 강수',
@@ -88,21 +88,21 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             shortwave: '단파복사',
             windMax: '최대 풍속',
             sunshine: '일조',
-            forecastTitle: '3일 운영 캘린더',
-            forecastBody: '야간 운전, 환기 개시, 작업 리듬에 바로 연결되는 외기 요약입니다.',
+            forecastTitle: '3일 운영 요약',
+            forecastBody: '환기 시점, 야간 보온, 작업 리듬에 바로 쓰는 외기 요약입니다.',
         }
         : {
-            eyebrow: 'Outside climate',
-            title: 'Daegu outside weather',
-            subtitle: 'Current outside conditions and the next 3 days translated into operating context.',
-            loading: 'Loading Daegu outside weather...',
-            unavailable: 'Outside weather is unavailable.',
-            currentLead: 'Current outside climate',
-            currentNarrative: 'The outdoor signal that should anchor today’s vent and protection posture.',
+            eyebrow: 'Outside signal',
+            title: 'Daegu outside outlook',
+            subtitle: 'Current conditions and the next 3 days, rewritten for today’s operating decisions.',
+            loading: 'Loading Daegu outside outlook...',
+            unavailable: 'Outside conditions are unavailable.',
+            currentLead: 'Current outside signal',
+            currentNarrative: 'The outside signal that should anchor today’s vent and protection posture.',
             feelsLike: 'Feels like',
             summaryLive: 'Live outside weather feed is connected.',
             summaryCached: 'The live feed is unstable, so the latest cached outside weather is shown.',
-            summaryFallback: 'The live feed is unavailable, so a fallback outlook is shown.',
+            summaryFallback: 'The live feed is unavailable, so a fallback outside outlook is shown.',
             providerLive: 'Live',
             providerCached: 'Cached',
             providerFallback: 'Fallback',
@@ -118,8 +118,8 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             shortwave: 'Shortwave',
             windMax: 'Wind max',
             sunshine: 'Sunshine',
-            forecastTitle: '3-day operating calendar',
-            forecastBody: 'A compact outside-weather strip for vent timing, night protection, and work rhythm.',
+            forecastTitle: '3-day operating summary',
+            forecastBody: 'A compact outside signal for vent timing, night protection, and work rhythm.',
         };
 
     const today = weather?.daily[0];
@@ -138,10 +138,11 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             ? copy.summaryFallback
             : copy.summaryLive;
     const currentWeatherLabel = weather
-        ? isSyntheticFallback
-            ? weather.current.weather_label
-            : getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)
+        ? getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)
         : '';
+    const localizedSummary = weather && locale === 'ko'
+        ? `지금 ${weather.current.temperature_c.toFixed(1)}°C, 체감 ${weather.current.apparent_temperature_c.toFixed(1)}°C입니다. 오늘은 비 가능성 ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}%, 최대 풍속 ${(today?.wind_speed_max_kmh ?? 0).toFixed(1)} km/h를 함께 봅니다.`
+        : weather?.summary ?? '';
 
     const forecastCards = compact ? [] : weather?.daily.slice(0, 3) ?? [];
     const formatForecastLabel = (date: string): string =>
@@ -215,7 +216,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                 <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
                                     <div>
                                         <p className="max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
-                                            {weather.summary}
+                                            {localizedSummary}
                                         </p>
                                         <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--sg-accent-blue)]">
                                             {copy.currentNarrative}
@@ -275,7 +276,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                     </p>
                                 </div>
                                 <div className="rounded-full bg-[color:var(--sg-tint-blue)] px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-blue)]">
-                                    {forecastCards.length} day outlook
+                                    {locale === 'ko' ? `${forecastCards.length}일 요약` : `${forecastCards.length}-day summary`}
                                 </div>
                             </div>
 
