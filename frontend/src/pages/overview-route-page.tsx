@@ -134,11 +134,11 @@ export default function OverviewRoutePage({
             <LoadingSkeleton
               title={locale === 'ko' ? '실시간 환경 분석' : 'Real-time Environmental Analysis'}
               loadingMessage={locale === 'ko' ? '실시간 환경 분석 모듈을 불러오는 중...' : 'Loading real-time environmental analysis...'}
-              minHeightClassName="min-h-[520px]"
+              minHeightClassName="min-h-[304px]"
             />
           )}
         >
-          <Charts data={history} />
+          <Charts data={history} variant="overview" />
         </Suspense>
       )}
       sideAnalytics={(
