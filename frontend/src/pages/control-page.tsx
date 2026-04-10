@@ -33,7 +33,7 @@ export default function ControlPage({
     : {
         eyebrow: 'PhytoSync',
         title: 'Environment Control',
-        description: 'Review live moves, strategy, and device status in one lane.',
+        description: 'See live actions, temperature strategy, and device state in one lane.',
       };
 
   return (
