@@ -5,118 +5,89 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Active issue: `#65`
-- Active branch: `hyp/65-simplify-phytosync-ui-into-a-compact-coral-tile-shell`
-- Preserved merged baselines: issues `#19`, `#23`, `#25`, `#27`, `#47`, `#49`, `#57`, `#61`, `#63`
+- Current baseline branch: `main`
+- Current merged UI baseline: issues `#65`, `#67`, `#69`, `#74`
+- Current control-plane sync baseline: issue `#76`
 
-## Active Lane
-Issue `#65` simplifies the routed PhytoSync frontend into a compact grower-facing operating shell.
-The target is no longer just a routed coral shell. It must now become a tighter five-page operating app with a bounded tile grid, coral-first visual hierarchy, Korean grower-facing copy, and fewer competing navigation paths.
+## Active Baseline
+`main` now carries the compact PhytoSync operating shell and the cleaned control copy baseline.
 
-## Preserved Baseline
-- Keep the current backend runtime, WebSocket telemetry flow, weather, advisor, market, crop switching, and area-unit behavior stable.
-- Keep the merged model-first SmartGrow runtime from issue `#19`, including `/api/models/*`, `/api/advisor/*`, and the internal-model RTR baseline from issue `#27`.
-- Keep `/api/rtr/*`, `configs/rtr_profiles.json`, advisor contracts, area-unit projection, and `/ask#... -> /assistant#...` compatibility stable unless a new issue retires them explicitly.
-- Keep the routed shell extraction from issue `#61` as the baseline starting point, not as the final UI target.
+- visible primary navigation: `/overview`, `/control`, `/crop-work`, `/resources`, `/alerts`
+- hidden compatibility routes: `/assistant`, `/settings`
+- compatibility redirects: `/rtr -> /control#control-strategy`, `/ask#... -> /assistant#...`
+- bounded shell rhythm: `248px` sidebar, `80px` header, `1320px` main canvas
+- preserved product/runtime seams: `/api/models/*`, `/api/advisor/*`, `/api/rtr/*`, weather, market, crop switching, and area-unit projections
 
-## Directive Summary
-Issue `#65` must:
-- reduce the visible primary navigation to `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts`
-- move assistant access out of the sidebar into a FAB/header-triggered right drawer while preserving `/assistant` as a hidden compatibility route
-- move settings access out of the sidebar into the profile menu while preserving `/settings` as a hidden route
-- absorb `/rtr` into `/control` as the temperature-strategy segment and treat `/rtr` as a compatibility redirect
-- replace stacked vertical shells with a compact 12-column tile layout using `grid-auto-rows: 88px`
-- cap the main content canvas at `1320px`, use a `248px` sidebar, and an `80px` header
-- push the design system toward a coral-first Korean grower-facing UI with restrained green usage and fewer nested card/tabs patterns
+## Current Maintenance Lane
+The current maintenance work is no longer a product IA rewrite. It is baseline hygiene.
+
+- keep blueprint pointers aligned with the merged `main` baseline
+- keep `.rah` control-plane truth aligned with the same merged baseline
+- rehydrate missing local-only `.rah` runtime seed files when harness doctor/status/resume need them
+- start any new non-trivial product or architecture change from a fresh GitHub issue/branch instead of reopening merged UI slices
 
 ## Source Of Truth
-1. `Phytoritas.md`
-2. GitHub issue `#65`
+1. nearest `AGENTS.md`
+2. this `Phytoritas.md`
 3. `.rah/state/status.json`
 4. `.rah/state/gates.json`
 5. `.rah/memory/wakeup.md`
 6. `.rah/plans/current_loop.md`
 7. `docs/architecture/Phytoritas.md`
-8. Repo code and tests
+8. repo code, tests, and GitHub issue state
 
 ## Non-Negotiables
-- Do not break `/api/rtr/*`, `/api/models/*`, `/api/advisor/*`, weather, market, or area-unit contracts.
-- Do not re-introduce a fake single-page multi-tab dashboard shell.
-- Do not keep `rtr`, `assistant`, or `settings` as visible peer items in the primary sidebar.
-- Do not let nested tabs, card-within-card, or multi-button card actions remain the default page pattern.
-- Do not keep large green hero panels or machine-like English operational copy in the grower-facing UI.
+- Do not break `/api/models/*`, `/api/advisor/*`, `/api/rtr/*`, weather, market, or area-unit contracts while doing shell or copy cleanup.
+- Do not reopen the routed-shell IA or compact-control work without a fresh bounded issue.
+- Do not treat local runtime seed JSON as versioned durable source of truth; tracked control-plane truth stays in `status.json`, `gates.json`, `current_loop.md`, and `wakeup.md`.
+- Do not let Memento memory override repo facts or the active `AGENTS.md`.
+- Do not skip the repo validation ladder before claiming a bounded slice is complete.
 
 ## Current Architecture Target
-### Shell and Navigation
-- `frontend/src/App.tsx`: route wiring should shrink toward route registration and shared state plumbing only
-- `frontend/src/app/route-meta.ts`: visible primary-route metadata should represent only the five grower-facing pages
-- `frontend/src/routes/phytosyncSections.ts`: section/tab metadata should normalize `/rtr` into `/control` and keep assistant/settings hidden from primary navigation
-- `frontend/src/layout/AppShell.tsx`: bounded shell canvas with `1320px` content cap and `248px` sidebar contract
-- `frontend/src/components/shell/TopBar.tsx`: `80px` header with page title, search, filters, alerts, assistant trigger, and profile/settings entry
-- `frontend/src/components/shell/WorkspaceNav.tsx`: sidebar/mobile nav rendering only, with five visible items
+### Product Shell Baseline
+- `frontend/src/App.tsx`: route registration and shared state plumbing, not a giant page assembler
+- `frontend/src/app/route-meta.ts`: current grower-facing shell metadata
+- `frontend/src/routes/phytosyncSections.ts`: canonical section metadata and compatibility hashes
+- `frontend/src/layout/AppShell.tsx`: bounded shell canvas and sidebar/header contract
+- `frontend/src/pages/*`: dedicated routed page composition instead of the old stack shell
 
-### Route-Level Pages
-- `frontend/src/pages/overview-route-page.tsx`
-- `frontend/src/pages/control-route-page.tsx`
-- `frontend/src/pages/crop-work-route-page.tsx`
-- `frontend/src/pages/resources-route-page.tsx`
-- `frontend/src/pages/alerts-route-page.tsx`
-- `frontend/src/pages/assistant-route-page.tsx` (hidden compatibility route)
-- `frontend/src/pages/settings-route-page.tsx` (hidden compatibility route)
-
-### Layout Target
-- Desktop grid: `12` columns
-- Tablet grid: `8` columns
-- Mobile grid: `4` columns
-- `grid-auto-rows: 88px`
-- Card heights must be row multiples, not content-driven
-- Page-level segments are allowed, but only one segment layer per page and a maximum of three segment choices
-
-## Phased Delivery
-### Phase 0. Blueprint and control-plane sync
-- bind issue `#65` and the issue-based branch
-- rewrite the blueprint and `.rah` state around the compact coral tile shell
-
-### Phase 1. Shell and route contract reduction
-- reduce visible primary nav to five items
-- hide assistant/settings from the sidebar
-- normalize `/rtr` into the control route contract
-
-### Phase 2. Shared shell and interaction simplification
-- restyle `AppShell`, `TopBar`, and `WorkspaceNav`
-- move assistant entry to a FAB/right drawer pattern
-- move settings to the profile menu
-
-### Phase 3. Page tile relayout
-- rebuild `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts` into tile-based page shells
-- keep charts readable and limited in count
-- keep copy Korean-first and grower-facing
-
-### Phase 4. Validation and review
-- extend route/navigation regression coverage
-- verify layout and copy changes in screenshots and the frontend ladder
+### Harness Baseline
+- tracked control-plane truth:
+  - `.rah/state/status.json`
+  - `.rah/state/gates.json`
+  - `.rah/plans/current_loop.md`
+  - `.rah/memory/wakeup.md`
+  - `.rah/logs/activity_log.md`
+- local runtime seed/state files that may need rehydration on a clean checkout:
+  - `.rah/state/memento_status.json`
+  - `.rah/memory/memento_context.json`
+  - `.rah/memory/memento_recall.json`
+  - `.rah/memory/memento_feedback.json`
+  - `.rah/memory/memento_reflect_draft.json`
+  - `.rah/memory/case_map.json`
+- harness entrypoint when the repo itself has no local wrapper:
+  - `python C:\Users\yhmoo\.codex\skills\recursive-architecture-refactoring-auto\automation\rah.py doctor <repo-root>`
+  - `python C:\Users\yhmoo\.codex\skills\recursive-architecture-refactoring-auto\automation\rah.py status <repo-root>`
+  - `python C:\Users\yhmoo\.codex\skills\recursive-architecture-refactoring-auto\automation\rah.py resume <repo-root>`
 
 ## Decision Gates
-### Gate A. Runtime preservation
-- backend/runtime contracts remain unchanged while the shell and page IA evolve
+### Gate A. Product contract preservation
+- keep the merged issue `#65/#67/#69/#74` shell behavior and runtime contracts stable
 
-### Gate B. Five-page shell
-- only the five grower-facing destinations remain visible in primary navigation
+### Gate B. Harness health
+- `automation/rah.py doctor` must not hard-fail on a healthy local checkout
+- warn-only findings such as optional hook/deployment gaps are acceptable
 
-### Gate C. Control absorption
-- `/rtr` is no longer a visible peer page and resolves into control-specific temperature strategy behavior
+### Gate C. Blueprint pointer alignment
+- `Phytoritas.md`, `docs/architecture/Phytoritas.md`, `.rah/state/status.json`, `.rah/state/gates.json`, `.rah/memory/wakeup.md`, and `.rah/plans/current_loop.md` must describe the same baseline
 
-### Gate D. Compact tile layout
-- the primary pages render through a consistent tile grid, bounded width, and row-height system
-
-### Gate E. Korean grower UX
-- user-facing copy, status labels, and error states follow the new Korean-first dictionary and avoid machine-facing wording
-
-### Gate F. Validation lock
+### Gate D. Validation lock
 - `npm --prefix frontend run lint`
 - `npm --prefix frontend run test -- --pool=threads`
 - `npm --prefix frontend run build`
+- `poetry run ruff check .`
+- `poetry run pytest`
 
 ## Immediate Next Action
-- sync `route-meta.ts`, `phytosyncSections.ts`, and the shared shell to the five-page contract
-- then relayout `/overview` and `/control` first so the new tile system is visible before the remaining pages follow
+- If product work resumes, open a fresh issue/branch from `main`.
+- If harness doctor/status/resume drift reappears, rehydrate the local runtime seed files first, then rerun `automation/rah.py doctor|status|resume` before making broader decisions.
