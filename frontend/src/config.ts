@@ -1,4 +1,11 @@
-const LOCAL_BACKEND_PORT_CANDIDATES = ["8003", "8000"] as const;
+const LOCAL_BACKEND_PORT_CANDIDATES = ["8000", "8003"] as const;
+
+type BrowserLocationLike = Pick<Location, "hostname" | "origin" | "port" | "protocol" | "search">;
+type BrowserStorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+type BrowserContextLike = {
+  location: BrowserLocationLike;
+  localStorage: BrowserStorageLike;
+};
 
 function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
@@ -8,17 +15,54 @@ function isLocalPreviewHost(hostname: string): boolean {
   return hostname === "127.0.0.1" || hostname === "localhost";
 }
 
-function readBrowserBackendOverride(): string | undefined {
+function isStandardLocalBackendOrigin(origin: string): boolean {
+  try {
+    const parsed = new URL(origin);
+    return (
+      isLocalPreviewHost(parsed.hostname) &&
+      LOCAL_BACKEND_PORT_CANDIDATES.includes(
+        parsed.port as (typeof LOCAL_BACKEND_PORT_CANDIDATES)[number],
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function clearStoredBackendOverride(storage: BrowserStorageLike): void {
+  try {
+    storage.removeItem("smartgrow.backendOrigin");
+    storage.removeItem("smartgrow.backendOriginPinned");
+  } catch {
+    // Ignore storage failures and fall back to runtime defaults.
+  }
+}
+
+function getBrowserContext(): BrowserContextLike | undefined {
   if (typeof window === "undefined") {
     return undefined;
   }
 
+  return {
+    location: window.location,
+    localStorage: window.localStorage,
+  };
+}
+
+function readBrowserBackendOverride(browser: BrowserContextLike): string | undefined {
+  const { location, localStorage } = browser;
+
   try {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const queryOrigin = params.get("backendOrigin")?.trim();
     if (queryOrigin) {
       const normalizedQueryOrigin = normalizeBaseUrl(queryOrigin);
-      window.localStorage.setItem("smartgrow.backendOrigin", normalizedQueryOrigin);
+      if (isStandardLocalBackendOrigin(normalizedQueryOrigin)) {
+        clearStoredBackendOverride(localStorage);
+      } else {
+        localStorage.setItem("smartgrow.backendOrigin", normalizedQueryOrigin);
+        localStorage.setItem("smartgrow.backendOriginPinned", "true");
+      }
       return normalizedQueryOrigin;
     }
   } catch {
@@ -26,20 +70,29 @@ function readBrowserBackendOverride(): string | undefined {
   }
 
   try {
-    const storedOrigin = window.localStorage.getItem("smartgrow.backendOrigin")?.trim();
-    return storedOrigin ? normalizeBaseUrl(storedOrigin) : undefined;
+    const storedOrigin = localStorage.getItem("smartgrow.backendOrigin")?.trim();
+    if (!storedOrigin) {
+      return undefined;
+    }
+    const normalizedStoredOrigin = normalizeBaseUrl(storedOrigin);
+    if (isStandardLocalBackendOrigin(normalizedStoredOrigin)) {
+      clearStoredBackendOverride(localStorage);
+      return undefined;
+    }
+    // Keep nonstandard origins so custom backend hosts survive reloads.
+    return normalizedStoredOrigin;
   } catch {
     return undefined;
   }
 }
 
-function inferDefaultBackendOrigin(): string {
-  if (typeof window === "undefined") {
-    return "http://localhost:8003";
+export function inferDefaultBackendOrigin(browser = getBrowserContext()): string {
+  if (!browser) {
+    return "http://localhost:8000";
   }
 
-  const { hostname, origin, port, protocol } = window.location;
-  const browserOverride = readBrowserBackendOverride();
+  const { hostname, origin, port, protocol } = browser.location;
+  const browserOverride = readBrowserBackendOverride(browser);
   if (browserOverride) {
     return browserOverride;
   }

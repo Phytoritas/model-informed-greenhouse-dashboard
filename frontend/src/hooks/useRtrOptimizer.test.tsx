@@ -17,6 +17,20 @@ function jsonResponse(payload: unknown): Response {
     } as Response;
 }
 
+function deferredResponse<T>() {
+    let resolve!: (value: Response) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<Response>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return {
+        promise,
+        resolve: (payload: T) => resolve(jsonResponse(payload)),
+        reject,
+    };
+}
+
 function buildStateResponse(): RtrStateResponse {
     return {
         status: 'ready',
@@ -362,6 +376,57 @@ describe('useRtrOptimizer', () => {
         expect(optimizeBody.crop).toBe('cucumber');
         expect(optimizeBody.target_node_development_per_day).toBe(0.73);
         expect(optimizeBody.optimization_mode).toBe('energy_saving');
+    });
+
+    it('hydrates optimize results before slower scenario and sensitivity responses finish', async () => {
+        const optimizeDeferred = deferredResponse<RtrOptimizeResponse>();
+        const scenarioDeferred = deferredResponse<RtrScenarioResponse>();
+        const sensitivityDeferred = deferredResponse<RtrSensitivityResponse>();
+
+        fetchMock.mockImplementation((input: string | URL) => {
+            const url = String(input);
+            if (url.includes('/rtr/state')) return Promise.resolve(jsonResponse(buildStateResponse()));
+            if (url.includes('/rtr/optimize')) return optimizeDeferred.promise;
+            if (url.includes('/rtr/scenario')) return scenarioDeferred.promise;
+            if (url.includes('/rtr/sensitivity')) return sensitivityDeferred.promise;
+            if (url.includes('/rtr/area-settings')) return Promise.resolve(jsonResponse({ status: 'ok' }));
+            return Promise.reject(new Error(`Unexpected URL: ${url}`));
+        });
+
+        const { result } = renderHook(() =>
+            useRtrOptimizer({
+                crop: 'Cucumber',
+                actualAreaM2: 2809.92,
+                actualAreaPyeong: 850,
+                actualAreaSource: 'server',
+                optimizerEnabled: true,
+            }),
+        );
+
+        await waitFor(() => {
+            expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/optimize'))).toBe(true);
+        });
+
+        act(() => {
+            optimizeDeferred.resolve(buildOptimizeResponse());
+        });
+
+        await waitFor(() => {
+            expect(result.current.optimizeResponse?.optimal_targets.mean_temp_C).toBe(19.5);
+        });
+
+        expect(result.current.scenarioResponse).toBeNull();
+        expect(result.current.sensitivityResponse).toBeNull();
+
+        act(() => {
+            scenarioDeferred.resolve(buildScenarioResponse());
+            sensitivityDeferred.resolve(buildSensitivityResponse());
+        });
+
+        await waitFor(() => {
+            expect(result.current.scenarioResponse?.scenarios[0]?.mean_temp_C).toBe(19.5);
+            expect(result.current.sensitivityResponse?.sensitivities[0]?.control).toBe('temperature_day');
+        });
     });
 
     it('does not persist server-hydrated area settings until the user makes a local override', async () => {
