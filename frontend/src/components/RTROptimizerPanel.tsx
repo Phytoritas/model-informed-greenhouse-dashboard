@@ -941,12 +941,12 @@ const RTROptimizerPanel = ({
         {
             label: compactCopy.energyCost,
             baseline: `${formatNumber(optimizeResponse?.baseline.objective_breakdown.energy_cost_krw, 0, locale)} ${locale === 'ko' ? '원' : 'KRW'}`,
-            recommended: `${formatNumber(energySummary?.total_energy_cost_krw_m2_day, 0, locale)} ${locale === 'ko' ? '원' : 'KRW'}`,
+            recommended: `${formatNumber(energySummary?.total_energy_cost_krw_m2_day ?? optimizeResponse?.objective_breakdown.energy_cost_krw, 0, locale)} ${locale === 'ko' ? '원' : 'KRW'}`,
         },
         {
             label: compactCopy.laborCost,
             baseline: formatNumber(optimizeResponse?.baseline.objective_breakdown.labor_index, 3, locale),
-            recommended: formatNumber(laborSummary?.labor_index, 3, locale),
+            recommended: formatNumber(laborSummary?.labor_index ?? optimizeResponse?.objective_breakdown.labor_index, 3, locale),
         },
     ];
 
@@ -1060,6 +1060,43 @@ const RTROptimizerPanel = ({
                                 : 'Confidence is low, so review recent telemetry and work events before applying aggressive changes.'}
                         </div>
                     ) : null}
+                    {warningBadges.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                            {warningBadges.map((badge) => (
+                                <span
+                                    key={badge}
+                                    className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-medium text-amber-800"
+                                >
+                                    {getWarningLabel(badge, locale)}
+                                </span>
+                            ))}
+                        </div>
+                    ) : null}
+                    {riskFlags.length > 0 ? (
+                        <section className={sectionPanelClass}>
+                            <div className="mb-3 flex items-center gap-2">
+                                <BadgeAlert className="h-4 w-4 text-amber-600" />
+                                <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                                    {locale === 'ko' ? '주의와 제한' : 'Warnings and limits'}
+                                </h4>
+                            </div>
+                            <div className="space-y-2">
+                                {riskFlags.map((riskFlag, index) => {
+                                    const code = String(riskFlag.code ?? `risk-${index}`);
+                                    const severity = String(riskFlag.severity ?? 'info');
+                                    return (
+                                        <div
+                                            key={`${code}-${index}`}
+                                            className={`rounded-lg border px-3 py-2 text-xs leading-5 ${getRiskSeverityClass(severity)}`}
+                                        >
+                                            <p className="font-semibold">{getRiskFlagTitle(code, locale)}</p>
+                                            <p className="mt-1">{getRiskFlagMessage(riskFlag, locale)}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    ) : null}
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)]">
                         <section className="sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4">
@@ -1067,6 +1104,20 @@ const RTROptimizerPanel = ({
                             <p className="mt-2 text-xl font-semibold leading-8 text-[color:var(--sg-text-strong)]">
                                 {optimizeResponse ? compactSummary : compactCopy.summaryFallback}
                             </p>
+                            <label className="mt-4 block text-xs font-medium text-[color:var(--sg-text)]">
+                                <span>{copy.targetNode}</span>
+                                <input
+                                    aria-label={copy.targetNode}
+                                    inputMode="decimal"
+                                    disabled={telemetryOptimizationBlocked}
+                                    className="sg-field-input mt-2"
+                                    value={targetNodeDevelopmentPerDay ?? ''}
+                                    onChange={(event) => {
+                                        const parsed = Number(event.target.value);
+                                        setTargetNodeDevelopmentPerDay(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+                                    }}
+                                />
+                            </label>
                             <div className="mt-4 grid gap-3 sm:grid-cols-3">
                                 <div className={metricTileClass}>
                                     <div className={metricLabelClass}>{copy.predictedNode}</div>
