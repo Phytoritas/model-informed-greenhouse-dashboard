@@ -22,14 +22,14 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
             coolingThreshold: '냉방 시작 온도',
         }
         : {
-            title: 'Manual Controls',
-            ventilation: 'Ventilation',
-            irrigation: 'Irrigation',
-            heating: 'Heating',
-            shading: 'Shading',
-            temperatureSettings: 'Temperature Settings',
-            heatingThreshold: 'Heating Threshold',
-            coolingThreshold: 'Cooling Threshold',
+            title: 'Quick controls',
+            ventilation: 'Vent',
+            irrigation: 'Water',
+            heating: 'Heat',
+            shading: 'Screen',
+            temperatureSettings: 'Temperature guide',
+            heatingThreshold: 'Heat start',
+            coolingThreshold: 'Cool start',
         };
 
     return (
