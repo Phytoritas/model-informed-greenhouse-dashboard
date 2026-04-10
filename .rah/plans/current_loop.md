@@ -1,9 +1,12 @@
 # Current Loop
 
 ## Active State
-- Issue `#82` is active on branch `fix/82-fix-remaining-compact-shell-clipping-and-overflow`.
-- The branch stays bounded to the remaining narrow-rail clipping follow-up on top of the merged issue `#80` baseline: `TodayBoard` now exposes a compact mode that can grow vertically instead of clipping inside right-side rails, and `AlertRail` now collapses its split-count layout into a single-column stack when mounted in narrow rails.
-- Local validation is already green; the next gate is remote PR validation, not more broad refactoring.
+- Issue `#84` is active on branch `fix/84-fix-control-realtime-failures-and-user-facing-fetch-errors`.
+- The branch stays bounded to control realtime recovery on top of the merged issue `#82` baseline:
+  - `frontend/src/config.ts` now prefers `8000` before `8003`
+  - stale standard local backend overrides in `localStorage` are discarded instead of pinning the app to a dead port
+  - user-facing request failures in the control strategy surfaces are rewritten into grower-facing Korean copy instead of exposing raw `Failed to fetch` / `Not Found`
+- Local validation is green again; the next gate is commit/push/PR plus remote validation.
 
 ## Latest Delivered Baseline
 - `main` still includes the merged issue `#65` shell bundle:
@@ -22,20 +25,23 @@
   - Vitest coverage for the updated section-tab metadata
 
 ## Latest Validation
-- The issue `#82` local ladder is green with:
+- The issue `#84` local ladder is green with:
   - `npm --prefix frontend run lint`
   - `npm --prefix frontend run test -- --pool=threads`
   - `npm --prefix frontend run build`
   - `poetry run ruff check .`
   - `poetry run pytest`
   - `git diff --check`
-- The current frontend result is `20 files, 77 passed`, and the repo Python ladder remains `149 passed, 34 warnings`.
-- Fresh browser captures for the active slice are:
-  - `artifacts/screenshots/issue82-overview-after-compact-rail.png`
-  - `artifacts/screenshots/issue82-control-after-compact-rail.png`
-  - `artifacts/screenshots/issue82-crop-work-after-compact-rail.png`
+- The current frontend result is `22 files, 84 passed`, and the repo Python ladder remains `149 passed, 34 warnings`.
+- Fresh browser capture for the active slice is:
+  - `artifacts/screenshots/issue84-control-realtime-recovered.png`
+- Live browser verification showed:
+  - `/control` now calls `http://127.0.0.1:8000/api/*` even when `smartgrow.backendOrigin=http://127.0.0.1:8003` was pre-seeded in localStorage
+  - `smartgrow.backendOrigin` and `smartgrow.backendOriginPinned` are cleared after the page heals back to the standard local backend
+  - raw `Failed to fetch` and `Not Found` strings no longer appear in the `/control` UI
+  - the current local backend environment still has overlapping uvicorn listeners on `8000`, so `/api/rtr/state` remains unavailable in that environment and is now handled with bounded fallback copy instead of raw errors
 
 ## Exact Next Step
-1. Commit the issue `#82` layout slice, push `fix/82-fix-remaining-compact-shell-clipping-and-overflow`, and open the PR with the repo helper script.
+1. Commit the issue `#84` realtime-recovery slice, push `fix/84-fix-control-realtime-failures-and-user-facing-fetch-errors`, and open the PR with the repo helper script.
 2. Move the project item to `Validating` and watch GitHub Actions Backend/Frontend validation to green.
-3. If reviewers report additional clipping outside the current `TodayBoard` / `AlertRail` slice, open a follow-up issue instead of widening issue `#82` after review starts.
+3. If the overlapping local backend listeners on `8000` still need operational cleanup after the frontend fix lands, open a separate follow-up issue instead of widening issue `#84` beyond frontend recovery and grower-facing fallback copy.

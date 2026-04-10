@@ -681,6 +681,41 @@ describe('RTROptimizerPanel', () => {
         expect(screen.queryByText('RTR calibration workspace stub')).toBeNull();
     });
 
+    it('shows a loading summary instead of fallback copy while compact optimizer results are still pending', async () => {
+        useRtrOptimizerMock.mockReturnValue({
+            stateResponse: buildStateResponse(),
+            optimizeResponse: null,
+            scenarioResponse: null,
+            sensitivityResponse: null,
+            targetNodeDevelopmentPerDay: 0.63,
+            setTargetNodeDevelopmentPerDay: vi.fn(),
+            optimizationMode: 'balanced',
+            setOptimizationMode: vi.fn(),
+            customScenario: null,
+            setCustomScenario: vi.fn(),
+            includeEnergyCost: true,
+            setIncludeEnergyCost: vi.fn(),
+            includeCoolingCost: true,
+            setIncludeCoolingCost: vi.fn(),
+            includeLaborCost: true,
+            setIncludeLaborCost: vi.fn(),
+            telemetryOptimizationBlocked: false,
+            loading: true,
+            loadingState: false,
+            loadingOptimize: true,
+            error: null,
+            refreshState: vi.fn(),
+            refreshOptimization: vi.fn(),
+        });
+
+        renderPanel({ compact: true, locale: 'ko' });
+
+        expect(await screen.findByText('추천 제어안')).toBeTruthy();
+        expect(screen.getByText('추천 제어안을 계산하는 중입니다.')).toBeTruthy();
+        expect(screen.queryByText('값이 준비되면 추천 제어안을 보여드립니다.')).toBeNull();
+        expect(screen.getAllByText('계산 중').length).toBeGreaterThanOrEqual(4);
+    });
+
     it('syncs server area meta into context and reruns the optimizer with user area overrides', async () => {
         renderPanel();
 

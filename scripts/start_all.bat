@@ -32,6 +32,7 @@ call :ensure_frontend
 if errorlevel 1 exit /b 1
 
 echo [3/5] Clearing stale listeners...
+call :clear_existing_backend_launchers %BACKEND_PORT%
 call :clear_existing_listener %BACKEND_PORT% backend
 call :clear_existing_listener %FRONTEND_PORT% frontend
 
@@ -206,6 +207,19 @@ if not defined FOUND_LISTENER echo      No existing %TARGET_LABEL% listener dete
 set "TARGET_PORT="
 set "TARGET_LABEL="
 set "FOUND_LISTENER="
+exit /b 0
+
+:clear_existing_backend_launchers
+set "TARGET_PORT=%~1"
+set "FOUND_BACKEND="
+for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$port='%TARGET_PORT%'; Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like '*model_informed_greenhouse_dashboard.backend.app.main:app*' -and $_.CommandLine -like ('*--port ' + $port + '*') } | Select-Object -ExpandProperty ProcessId"`) do (
+    set "FOUND_BACKEND=1"
+    echo      Stopping existing backend launcher on port %TARGET_PORT% ^(PID %%P^)...
+    taskkill /PID %%P /T /F >nul 2>&1
+)
+if not defined FOUND_BACKEND echo      No existing backend launcher detected on port %TARGET_PORT%.
+set "TARGET_PORT="
+set "FOUND_BACKEND="
 exit /b 0
 
 :validate_frontend_dependencies
