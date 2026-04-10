@@ -535,6 +535,7 @@ function renderPanel(options?: {
     profileLoading?: boolean;
     telemetryStatus?: TelemetryStatus;
     onRefreshProfiles?: () => void | Promise<void>;
+    compact?: boolean;
 }) {
     if (options?.locale) {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, options.locale);
@@ -557,6 +558,7 @@ function renderPanel(options?: {
                     profileError={null}
                     optimizerEnabled={optimizerEnabled}
                     onRefreshProfiles={options?.onRefreshProfiles}
+                    compact={options?.compact ?? false}
                 />
             </AreaUnitProvider>
         </LocaleProvider>,
@@ -659,6 +661,19 @@ describe('RTROptimizerPanel', () => {
             expect(refreshState).toHaveBeenCalledTimes(1);
             expect(refreshOptimization).toHaveBeenCalledTimes(1);
         });
+    });
+
+    it('renders a compact summary/table surface without the legacy scenario editor', async () => {
+        renderPanel({ compact: true });
+
+        expect(await screen.findByText('추천 제어안')).toBeTruthy();
+        expect(screen.getByText('기준선 대비')).toBeTruthy();
+        expect(screen.getByText('판단 근거')).toBeTruthy();
+        expect(screen.getByText('난방 시작(주간)')).toBeTruthy();
+        expect(screen.getByText('이산화탄소 목표')).toBeTruthy();
+        expect(screen.queryByText('시나리오 비교')).toBeNull();
+        expect(screen.queryByText('사용자 비교 시나리오')).toBeNull();
+        expect(screen.queryByText('RTR calibration workspace stub')).toBeNull();
     });
 
     it('syncs server area meta into context and reruns the optimizer with user area overrides', async () => {
