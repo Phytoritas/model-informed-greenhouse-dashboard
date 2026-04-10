@@ -21,16 +21,20 @@
     "note": "Root blueprint and architecture mirror now point to the five-page shell, hidden assistant/settings routes, control absorption of `/rtr`, bounded 1320px canvas, and the 88px tile-grid contract."
   },
   "issue65_shell_contract": {
-    "status": "in_progress",
-    "note": "The new primary-shell contract is to keep only `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts` visible in navigation while treating `/assistant`, `/settings`, and `/rtr` as hidden compatibility routes."
+    "status": "pass",
+    "note": "The primary shell now keeps only `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts` visible in navigation, while `/assistant`, `/settings`, and `/rtr` remain hidden compatibility routes."
   },
   "issue65_tile_layout_contract": {
-    "status": "pending",
-    "note": "Overview, control, crop-work, resources, and alerts still need to be rebuilt onto the compact tile grid with 88px row multiples and the 1320px page canvas."
+    "status": "in_progress",
+    "note": "The 1320px page canvas and compact-tile wrappers are now live across the routed pages, but control still uses a pragmatic stacked layout around the legacy RTR-heavy strategy surface instead of a fully row-locked tile composition."
   },
   "issue65_assistant_drawer_contract": {
-    "status": "pending",
-    "note": "The grower-facing assistant entry still needs to move from the inline routed surface into a FAB/header-triggered right drawer while preserving `/assistant` as a hidden route."
+    "status": "pass",
+    "note": "The grower-facing assistant now opens from the header/FAB into a right drawer, while `/assistant` stays available as a hidden compatibility route."
+  },
+  "issue65_copy_tone_polish": {
+    "status": "in_progress",
+    "note": "Visible resources/alerts surfaces and hidden assistant/settings routes were tightened toward Korean-first coral-neutral copy, but deeper legacy panels still contain mixed English or machine-facing donor strings that may need a separate cleanup slice."
   },
   "legacy_compatibility_retirement": {
     "status": "pass",

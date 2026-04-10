@@ -25,35 +25,35 @@ export default function AlertsCommandCenter({
 }: AlertsCommandCenterProps) {
     const copy = locale === 'ko'
         ? {
-            eyebrow: '바로 조치 센터',
-            title: '경보를 읽는 대신 바로 조치합니다',
-            description: '긴급, 주의, 운영 메모를 한곳에 모아 지금 손볼 일과 다음 확인 순서를 분리합니다.',
-            critical: '바로 조치',
-            warning: '주의 확인',
-            resolved: '해결 완료',
+            eyebrow: '경보 요약',
+            title: '긴급과 주의를 바로 가릅니다',
+            description: '지금 확인할 항목과 처리 이력을 한 화면에서 정리합니다.',
+            critical: '긴급',
+            warning: '주의',
+            resolved: '처리 완료',
             next: '다음 확인',
             empty: '현재 바로 조치할 항목은 없습니다. 센서 신선도와 운영 메모만 유지 점검하세요.',
             severity: {
-                critical: '바로 조치',
-                warning: '주의 확인',
+                critical: '긴급',
+                warning: '주의',
                 info: '운영 메모',
-                resolved: '해결 완료',
+                resolved: '처리 완료',
             },
         }
         : {
-            eyebrow: 'Action center',
-            title: 'Turn alerts into operating actions',
-            description: 'Separate what needs action now from what only needs verification or logging.',
-            critical: 'Act now',
-            warning: 'Review',
-            resolved: 'Resolved',
+            eyebrow: 'Alert summary',
+            title: 'Separate urgent and review items',
+            description: 'Keep urgent checks, warnings, and handling history in one page.',
+            critical: 'Urgent',
+            warning: 'Warning',
+            resolved: 'Handled',
             next: 'Next check',
             empty: 'There is no urgent alert right now. Keep telemetry freshness and operating notes in view.',
             severity: {
-                critical: 'Act now',
-                warning: 'Review',
+                critical: 'Urgent',
+                warning: 'Warning',
                 info: 'Operational note',
-                resolved: 'Resolved',
+                resolved: 'Handled',
             },
         };
 
@@ -70,7 +70,7 @@ export default function AlertsCommandCenter({
             label: copy.critical,
             value: `${counts.critical}`,
             detail: leadItem?.severity === 'critical' ? leadItem.title : copy.empty,
-            toneClass: 'sg-tint-amber',
+            toneClass: 'bg-[color:var(--sg-accent-rose-soft)]',
         },
         {
             label: copy.warning,
@@ -82,7 +82,7 @@ export default function AlertsCommandCenter({
             label: copy.resolved,
             value: `${counts.resolved}`,
             detail: locale === 'ko' ? '최근 정리된 항목도 같은 화면에서 확인합니다.' : 'Keep recently resolved items in the same lane.',
-            toneClass: 'sg-tint-green',
+            toneClass: 'sg-tint-neutral',
         },
         {
             label: copy.next,

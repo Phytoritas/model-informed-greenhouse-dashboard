@@ -10,10 +10,10 @@
 
 ## Current State
 - current_stage: `issue65-compact-coral-tile-shell`
-- implementation_gate: `phase-1-shell-route-refactor`
+- implementation_gate: `validation-and-pr-review`
 - agents_and_workflow_gate: `satisfied`
 - latest_route_slice: `issue61-merged-baseline -> issue65 compact shell simplification`
-- latest_validation: `The preserved baseline remains green from the merged issue61 loop; issue65 is now in blueprint/shell refactor mode and has not yet completed the new frontend ladder.`
+- latest_validation: `Issue65 follow-up polish remains green after frontend lint/test/build, and PR #66 checks are already passing. The remaining decision is whether the legacy control strategy surface needs a follow-up issue or closes as residual debt.`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -40,5 +40,5 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Keep issue `#65` focused on shell reduction first: five visible pages, hidden assistant/settings routes, and `/rtr` normalized into control.
-- Then relayout overview/control into the bounded compact tile canvas before expanding the same layout system to crop-work/resources/alerts.
+- Treat the five-page shell, hidden assistant/settings routes, `/rtr` redirect, assistant drawer, and first tile relayout as landed for issue `#65`.
+- Use PR `#66` review to decide whether the remaining legacy control strategy surface deserves a separate follow-up issue or can remain as accepted debt under the current validating PR.

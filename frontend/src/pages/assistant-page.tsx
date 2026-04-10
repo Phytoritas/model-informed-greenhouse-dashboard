@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import PageHeader from '../components/common/PageHeader';
+import PageCanvas from '../components/layout/PageCanvas';
 
 interface AssistantPageProps {
   locale: 'ko' | 'en';
@@ -14,23 +14,22 @@ export default function AssistantPage({
 }: AssistantPageProps) {
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Assistant',
-        title: 'AI 도우미',
-        description: '질문, 자료 찾기, 최근 추천을 한 페이지로 정리합니다.',
+        eyebrow: 'PhytoSync',
+        title: '질문 도우미',
+        description: '질문, 자료 찾기, 최근 흐름을 한곳에서 봅니다.',
       }
     : {
-        eyebrow: 'Assistant',
+        eyebrow: 'PhytoSync',
         title: 'Assistant',
-        description: 'Keep ask, search, and recent recommendations in one route.',
+        description: 'Keep ask, search, and recent flow together.',
       };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-8">
-      <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+    <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
       <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,392px)]">
         <div className="min-w-0">{surface}</div>
         {summaryRail ? <div className="min-w-0">{summaryRail}</div> : null}
       </div>
-    </div>
+    </PageCanvas>
   );
 }
