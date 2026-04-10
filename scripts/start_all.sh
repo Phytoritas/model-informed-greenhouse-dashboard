@@ -116,6 +116,24 @@ clear_port() {
   sleep 1
 }
 
+clear_backend_processes() {
+  local port="$1"
+  local pids=""
+
+  if command -v pgrep >/dev/null 2>&1; then
+    pids="$(pgrep -f "model_informed_greenhouse_dashboard.backend.app.main:app.*--port ${port}" || true)"
+  fi
+
+  if [[ -z "${pids//[[:space:]]/}" ]]; then
+    echo "      No existing backend launcher detected on port ${port}."
+    return 0
+  fi
+
+  echo "      Stopping existing backend launcher on port ${port}: ${pids}"
+  kill ${pids} 2>/dev/null || true
+  sleep 1
+}
+
 validate_frontend_dependencies() {
   if [[ ! -d "${REPO_ROOT}/frontend/node_modules" ]]; then
     return 1
@@ -269,6 +287,7 @@ ensure_backend
 ensure_frontend
 
 echo "[3/5] Clearing stale listeners..."
+clear_backend_processes "${BACKEND_PORT}"
 clear_port "${BACKEND_PORT}" backend
 clear_port "${FRONTEND_PORT}" frontend
 

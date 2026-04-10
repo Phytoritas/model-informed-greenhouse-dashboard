@@ -812,6 +812,7 @@ const RTROptimizerPanel = ({
     const waitingForTarget = !loadingState && targetNodeDevelopmentPerDay === null;
     const telemetryWarning = getTelemetryWarningCopy(telemetryStatus, locale);
     const lowConfidence = confidence !== null && confidence < 0.75;
+    const compactPending = !optimizeResponse && (loadingOptimize || loadingState);
     const controlGuidance = useMemo(() => {
         if (optimizeResponse?.control_guidance) {
             return optimizeResponse.control_guidance;
@@ -844,6 +845,7 @@ const RTROptimizerPanel = ({
             title: '추천 제어안',
             subtitle: '오늘 바로 적용할 온도 전략만 짧게 봅니다.',
             summaryLabel: '오늘 전략',
+            summaryLoading: '추천 제어안을 계산하는 중입니다.',
             summaryFallback: '값이 준비되면 추천 제어안을 보여드립니다.',
             comparisonTitle: '기준선 대비',
             reasonTitle: '판단 근거',
@@ -869,6 +871,7 @@ const RTROptimizerPanel = ({
             title: 'Recommended control',
             subtitle: 'Keep only the compact temperature strategy summary.',
             summaryLabel: 'Today',
+            summaryLoading: 'Calculating the recommended control now.',
             summaryFallback: 'The recommended control will appear when fresh values arrive.',
             comparisonTitle: 'Baseline vs recommended',
             reasonTitle: 'Why this plan',
@@ -890,6 +893,24 @@ const RTROptimizerPanel = ({
             energyCost: 'Energy cost',
             laborCost: 'Labor load',
         };
+    const compactPendingValue = locale === 'ko' ? '계산 중' : 'Calculating';
+    const formatCompactValue = (
+        value: number | null | undefined,
+        digits: number,
+        suffix = '',
+    ): string => {
+        if (compactPending) {
+            return compactPendingValue;
+        }
+        const formatted = formatNumber(value, digits, locale);
+        return formatted === '-' || suffix.length === 0 ? formatted : `${formatted}${suffix}`;
+    };
+    const formatCompactCostValue = (value: number | null | undefined, digits = 0): string => {
+        if (compactPending) {
+            return compactPendingValue;
+        }
+        return `${formatNumber(value, digits, locale)} ${locale === 'ko' ? '원' : 'KRW'}`;
+    };
     const compactSummary = explanationCopy?.summary
         ?? (locale === 'ko'
             ? `기준선 대비 ${formatNumber(optimizeResponse?.rtr_equivalent.delta_temp_C, 2, locale)}°C 조정해 마디 속도를 맞춥니다.`
@@ -901,47 +922,59 @@ const RTROptimizerPanel = ({
     const compactTargetTiles = [
         {
             label: compactCopy.dayHeating,
-            value: `${formatNumber(optimizeResponse?.optimal_targets.day_heating_min_temp_C ?? optimizeResponse?.optimal_targets.day_min_temp_C, 1, locale)}°C`,
+            value: formatCompactValue(
+                optimizeResponse?.optimal_targets.day_heating_min_temp_C ?? optimizeResponse?.optimal_targets.day_min_temp_C,
+                1,
+                '°C',
+            ),
         },
         {
             label: compactCopy.nightHeating,
-            value: `${formatNumber(optimizeResponse?.optimal_targets.night_heating_min_temp_C ?? optimizeResponse?.optimal_targets.night_min_temp_C, 1, locale)}°C`,
+            value: formatCompactValue(
+                optimizeResponse?.optimal_targets.night_heating_min_temp_C ?? optimizeResponse?.optimal_targets.night_min_temp_C,
+                1,
+                '°C',
+            ),
         },
         {
             label: compactCopy.dayCooling,
-            value: `${formatNumber(optimizeResponse?.optimal_targets.day_cooling_target_C, 1, locale)}°C`,
+            value: formatCompactValue(optimizeResponse?.optimal_targets.day_cooling_target_C, 1, '°C'),
         },
         {
             label: compactCopy.nightCooling,
-            value: `${formatNumber(optimizeResponse?.optimal_targets.night_cooling_target_C, 1, locale)}°C`,
+            value: formatCompactValue(optimizeResponse?.optimal_targets.night_cooling_target_C, 1, '°C'),
         },
         {
             label: compactCopy.ventBias,
-            value: `${formatNumber(optimizeResponse?.optimal_targets.vent_bias_C, 2, locale)}°C`,
+            value: formatCompactValue(optimizeResponse?.optimal_targets.vent_bias_C, 2, '°C'),
         },
         {
             label: compactCopy.screenBias,
-            value: `${formatNumber(optimizeResponse?.optimal_targets.screen_bias_pct, 1, locale)}%`,
+            value: formatCompactValue(optimizeResponse?.optimal_targets.screen_bias_pct, 1, '%'),
         },
         {
             label: compactCopy.circulationFan,
-            value: `${formatNumber(optimizeResponse?.optimal_targets.circulation_fan_pct, 0, locale)}%`,
+            value: formatCompactValue(optimizeResponse?.optimal_targets.circulation_fan_pct, 0, '%'),
         },
         {
             label: compactCopy.co2Target,
-            value: `${formatNumber(optimizeResponse?.optimal_targets.co2_target_ppm, 0, locale)} ppm`,
+            value: formatCompactValue(optimizeResponse?.optimal_targets.co2_target_ppm, 0, ' ppm'),
         },
     ];
     const compactComparisonRows = [
         {
             label: compactCopy.meanTemp,
-            baseline: `${formatNumber(optimizeResponse?.baseline.targets.mean_temp_C, 1, locale)}°C`,
-            recommended: `${formatNumber(optimizeResponse?.optimal_targets.mean_temp_C, 1, locale)}°C`,
+            baseline: formatCompactValue(optimizeResponse?.baseline.targets.mean_temp_C, 1, '°C'),
+            recommended: formatCompactValue(optimizeResponse?.optimal_targets.mean_temp_C, 1, '°C'),
         },
         {
             label: compactCopy.nodeRate,
-            baseline: formatNumber(stateResponse?.canonical_state.growth.predicted_node_rate_day, 3, locale),
-            recommended: formatNumber(
+            baseline: compactPending
+                ? compactPendingValue
+                : formatNumber(stateResponse?.canonical_state.growth.predicted_node_rate_day, 3, locale),
+            recommended: compactPending
+                ? compactPendingValue
+                : formatNumber(
                 explanationCopy?.target_node_development_per_day ?? targetNodeDevelopmentPerDay,
                 3,
                 locale,
@@ -949,13 +982,19 @@ const RTROptimizerPanel = ({
         },
         {
             label: compactCopy.energyCost,
-            baseline: `${formatNumber(optimizeResponse?.baseline.objective_breakdown.energy_cost_krw, 0, locale)} ${locale === 'ko' ? '원' : 'KRW'}`,
-            recommended: `${formatNumber(energySummary?.total_energy_cost_krw_m2_day ?? optimizeResponse?.objective_breakdown.energy_cost_krw, 0, locale)} ${locale === 'ko' ? '원' : 'KRW'}`,
+            baseline: formatCompactCostValue(optimizeResponse?.baseline.objective_breakdown.energy_cost_krw),
+            recommended: formatCompactCostValue(
+                energySummary?.total_energy_cost_krw_m2_day ?? optimizeResponse?.objective_breakdown.energy_cost_krw,
+            ),
         },
         {
             label: compactCopy.laborCost,
-            baseline: formatNumber(optimizeResponse?.baseline.objective_breakdown.labor_index, 3, locale),
-            recommended: formatNumber(laborSummary?.labor_index ?? optimizeResponse?.objective_breakdown.labor_index, 3, locale),
+            baseline: compactPending
+                ? compactPendingValue
+                : formatNumber(optimizeResponse?.baseline.objective_breakdown.labor_index, 3, locale),
+            recommended: compactPending
+                ? compactPendingValue
+                : formatNumber(laborSummary?.labor_index ?? optimizeResponse?.objective_breakdown.labor_index, 3, locale),
         },
     ];
 
@@ -1111,7 +1150,11 @@ const RTROptimizerPanel = ({
                         <section className="sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4">
                             <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{compactCopy.summaryLabel}</div>
                             <p className="mt-2 text-xl font-semibold leading-8 text-[color:var(--sg-text-strong)]">
-                                {optimizeResponse ? compactSummary : compactCopy.summaryFallback}
+                                {optimizeResponse
+                                    ? compactSummary
+                                    : compactPending
+                                        ? compactCopy.summaryLoading
+                                        : compactCopy.summaryFallback}
                             </p>
                             <label className="mt-4 block text-xs font-medium text-[color:var(--sg-text)]">
                                 <span>{copy.targetNode}</span>
