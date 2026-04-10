@@ -26,53 +26,65 @@ interface RTROutlookPanelProps {
 const getCalibrationModeLabel = (mode: RtrProfile['calibration']['mode'], locale: 'en' | 'ko'): string => {
     if (locale === 'ko') {
         if (mode === 'fitted') return '하우스 보정';
-        if (mode === 'insufficient-data') return '기준선 유지(데이터 부족)';
+        if (mode === 'insufficient-data') return '기준선 유지';
         return '기준선';
     }
 
-    return mode;
+    if (mode === 'fitted') return 'House-tuned';
+    if (mode === 'insufficient-data') return 'Baseline only';
+    return 'Baseline';
 };
 
 const getLocalizedStrategyLabel = (profile: RtrProfile, locale: 'en' | 'ko'): string => {
-    if (locale !== 'ko') {
-        return profile.strategyLabel;
-    }
-
     const cropLabel = getCropLabel(profile.crop, locale);
     if (profile.calibration.mode === 'fitted') {
-        return `${cropLabel} 하우스 보정 RTR 선`;
+        return locale === 'ko'
+            ? `${cropLabel} 하우스 맞춤 광-온도 기준선`
+            : `${cropLabel} house-tuned light-temperature line`;
     }
     if (profile.calibration.mode === 'insufficient-data') {
-        return `${cropLabel} RTR 기준선(데이터 보강 필요)`;
+        return locale === 'ko'
+            ? `${cropLabel} 광-온도 기준선(데이터 보강 필요)`
+            : `${cropLabel} baseline line (needs more data)`;
     }
-    return `${cropLabel} RTR 기준선`;
+    return locale === 'ko'
+        ? `${cropLabel} 광-온도 기준선`
+        : `${cropLabel} baseline line`;
 };
 
 const getLocalizedSourceNote = (profile: RtrProfile, locale: 'en' | 'ko'): string => {
-    if (locale !== 'ko') {
-        return profile.sourceNote;
-    }
-
     const { calibration } = profile;
     if (calibration.mode === 'fitted') {
         if (calibration.selectionSource === 'curated-windows') {
-            return `고생산 구간 ${calibration.windowCount ?? 0}개에서 유효 RTR 데이터 ${calibration.sampleDays}개를 사용해 보정한 하우스 맞춤 RTR 선입니다.`;
+            return locale === 'ko'
+                ? `고생산 구간 ${calibration.windowCount ?? 0}개와 유효 일수 ${calibration.sampleDays}일을 바탕으로 맞춘 하우스 기준선입니다.`
+                : `House-tuned line built from ${calibration.windowCount ?? 0} high-yield windows and ${calibration.sampleDays} valid days.`;
         }
-        return `이 하우스의 유효 RTR 데이터 ${calibration.sampleDays}개를 사용해 보정한 하우스 맞춤 RTR 선입니다.`;
+        return locale === 'ko'
+            ? `이 하우스의 유효 일수 ${calibration.sampleDays}일을 바탕으로 맞춘 하우스 기준선입니다.`
+            : `House-tuned line built from ${calibration.sampleDays} valid days in this house.`;
     }
 
     if (calibration.mode === 'insufficient-data') {
         if (calibration.selectionSource === 'curated-windows') {
-            return '고생산 구간은 설정되어 있지만 보정에 충분한 일별 RTR 포인트가 아직 부족해 기준선을 유지합니다.';
+            return locale === 'ko'
+                ? '고생산 구간은 정했지만 기준선을 다시 맞출 만큼 데이터가 아직 부족합니다.'
+                : 'High-yield windows are selected, but there is not enough data yet to retune the baseline.';
         }
-        return '하우스별 데이터를 더 확보하기 전까지는 RTR 기준선을 유지합니다.';
+        return locale === 'ko'
+            ? '하우스 데이터를 더 모을 때까지 기본 기준선을 유지합니다.'
+            : 'The built-in baseline stays in place until this house collects more data.';
     }
 
     if (profile.crop === 'Tomato') {
-        return 'WUR RTR 프레이밍과 TomatoesNZ 예시 그래프를 기준으로 한 토마토 RTR 기준선입니다. 하우스별 고생산 구간이 확보되면 다시 보정하세요.';
+        return locale === 'ko'
+            ? '토마토 광·온도 가이드를 바탕으로 만든 기본 기준선입니다. 하우스 데이터가 쌓이면 다시 맞춥니다.'
+            : 'Tomato baseline line based on grower light-temperature guidance. Retune it when house data is ready.';
     }
 
-    return '오이의 24시간 평균온도 가이드를 기준으로 한 RTR 기준선입니다. 하우스별 고생산 구간이 확보되면 다시 보정하세요.';
+    return locale === 'ko'
+        ? '오이 광·온도 가이드를 바탕으로 만든 기본 기준선입니다. 하우스 데이터가 쌓이면 다시 맞춥니다.'
+        : 'Cucumber baseline line based on grower light-temperature guidance. Retune it when house data is ready.';
 };
 
 const RTROutlookPanel = ({
@@ -91,32 +103,32 @@ const RTROutlookPanel = ({
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            title: 'RTR 모니터',
-            subtitle: `${getCropLabel(crop, locale)}의 최근 24시간 광-온도 균형`,
-            profileLoading: 'RTR 프로파일을 불러오는 중...',
-            rolling: '최근 24시간 RTR',
-            vsProfile: '프로파일 기준선 대비',
-            coverage: '윈도우 커버리지',
+            title: '빛·온도 균형',
+            subtitle: `${getCropLabel(crop, locale)}의 최근 24시간 광량·온도 흐름`,
+            profileLoading: '온도 기준선을 불러오는 중...',
+            rolling: '최근 24시간 균형',
+            vsProfile: '기준선 대비',
+            coverage: '적용 시간',
             radiationSum: '광량 합계',
             meanTemp: '24시간 평균 온도',
-            exampleTarget: '예시 목표',
-            steeringPlan: '3일 RTR 제어 계획',
+            exampleTarget: '오늘 목표',
+            steeringPlan: '3일 온도 계획',
             forecastLoading: '대구 복사 예보를 불러오는 중...',
-            forecastWaiting: '복사량 데이터가 들어오면 RTR 목표가 계산됩니다.',
-            weatherUnavailable: '날씨 기반 RTR 예측을 불러올 수 없습니다',
-            referenceLine: '기준식',
-            profileMode: '프로파일 모드',
-            selectionPath: '선정 경로',
-            fitQuality: '적합도',
-            currentControlWindow: '현재 제어 범위',
-            profileEndpointUnavailable: 'RTR 프로파일 엔드포인트를 사용할 수 없어 내장 기준선을 사용합니다',
-            selectionCurated: '선별 윈도우',
-            selectionFallback: '휴리스틱 fallback',
-            badgeFitted: '하우스 보정',
-            badgeBaselineNeedMore: '기준선 (데이터 부족)',
+            forecastWaiting: '복사량 데이터가 들어오면 오늘 목표 온도가 계산됩니다.',
+            weatherUnavailable: '날씨를 반영한 온도 계획을 불러오지 못했습니다',
+            referenceLine: '기준선 식',
+            profileMode: '기준 방식',
+            selectionPath: '선정 방식',
+            fitQuality: '맞춤 정도',
+            currentControlWindow: '현재 온도 범위',
+            profileEndpointUnavailable: '온도 기준선을 불러오지 못해 기본 기준선을 사용합니다',
+            selectionCurated: '선별 구간',
+            selectionFallback: '기본 기준',
+            badgeFitted: '하우스 맞춤',
+            badgeBaselineNeedMore: '기준선 · 데이터 보강 필요',
             badgeBaseline: '기준선',
             balanced: {
-                badge: 'RTR 기준선 근처',
+                badge: '기준선 근처',
                 tone: 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
                 description: '온도와 광이 비교적 균형 있게 움직이고 있습니다.',
             },
@@ -132,42 +144,42 @@ const RTROutlookPanel = ({
             },
         }
         : {
-            title: 'RTR Monitor',
-            subtitle: `Rolling 24 h radiation-to-temperature balance for ${crop}`,
-            profileLoading: 'Loading RTR profile...',
-            rolling: 'Rolling 24 h RTR',
-            vsProfile: 'vs profile line',
+            title: 'Light and temperature',
+            subtitle: `Rolling 24 h light-temperature balance for ${crop}`,
+            profileLoading: 'Loading strategy line...',
+            rolling: 'Rolling 24 h balance',
+            vsProfile: 'vs baseline',
             coverage: 'Window coverage',
             radiationSum: 'Radiation sum',
             meanTemp: '24 h mean temp',
-            exampleTarget: 'Example target',
-            steeringPlan: '3-day RTR steering plan',
+            exampleTarget: 'Today target',
+            steeringPlan: '3-day temperature plan',
             forecastLoading: 'Loading Daegu radiation forecast...',
-            forecastWaiting: 'Forecast-linked RTR targets are waiting for radiation data.',
-            weatherUnavailable: 'Weather-linked RTR forecast is unavailable',
-            referenceLine: 'Reference line',
-            profileMode: 'Profile mode',
-            selectionPath: 'Selection path',
+            forecastWaiting: 'Target temperature will appear once radiation data is available.',
+            weatherUnavailable: 'Could not load the weather-linked temperature plan',
+            referenceLine: 'Baseline line',
+            profileMode: 'Line mode',
+            selectionPath: 'Source',
             fitQuality: 'Fit quality',
-            currentControlWindow: 'Current control window',
-            profileEndpointUnavailable: 'RTR profile endpoint unavailable, using bundled baseline',
-            selectionCurated: 'curated windows',
-            selectionFallback: 'heuristic fallback',
-            badgeFitted: 'House-fit',
+            currentControlWindow: 'Current temperature range',
+            profileEndpointUnavailable: 'Could not load the strategy line, using the built-in baseline',
+            selectionCurated: 'selected windows',
+            selectionFallback: 'baseline fallback',
+            badgeFitted: 'House-tuned',
             badgeBaselineNeedMore: 'Baseline (needs more data)',
             badgeBaseline: 'Baseline',
             balanced: {
-                badge: 'Near RTR line',
+                badge: 'Near baseline',
                 tone: 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
                 description: 'Temperature and light are moving together in a balanced range.',
             },
             'warm-for-light': {
-                badge: 'Warm for light',
+                badge: 'Too warm for light',
                 tone: 'bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]',
                 description: 'Temperature is running ahead of the available light, which can push the crop more generative.',
             },
             'cool-for-light': {
-                badge: 'Cool for light',
+                badge: 'Cool under strong light',
                 tone: 'bg-[color:var(--sg-status-provisional-bg)] text-[color:var(--sg-status-provisional-text)]',
                 description: 'Light is strong relative to the current temperature, which can push the crop more vegetative.',
             },
@@ -318,7 +330,7 @@ const RTROutlookPanel = ({
                 <div className="rounded-[20px] border border-[color:var(--sg-outline-soft)] px-3 py-3 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
                     <div className="font-medium text-[color:var(--sg-text)]">{localizedStrategyLabel}</div>
                     <div className="mt-1">
-                        {copy.referenceLine}: T24 = {effectiveProfile.baseTempC.toFixed(1)} + {effectiveProfile.slopeCPerMjM2.toFixed(2)} x radiation sum (MJ m⁻² d⁻¹).
+                        {copy.referenceLine}: T24 = {effectiveProfile.baseTempC.toFixed(1)} + {effectiveProfile.slopeCPerMjM2.toFixed(2)} x {locale === 'ko' ? '광량 합계' : 'radiation sum'} (MJ m⁻² d⁻¹).
                     </div>
                     <div className="mt-1">
                         {copy.profileMode}: {calibrationModeLabel}, {locale === 'ko' ? '샘플 일수' : 'sample days'} {effectiveProfile.calibration.sampleDays}.
