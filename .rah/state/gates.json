@@ -1,16 +1,16 @@
 {
-  "earliest_restart_point": "Treat `main` as the post-issue69 merged baseline after re-reading the wakeup packet and current loop, then start the next non-trivial change from a fresh issue/branch instead of resuming the retired issue69 loop.",
+  "earliest_restart_point": "Treat `main` as the post-issue74 merged baseline after re-reading the wakeup packet and current loop, then start the next non-trivial change from a fresh issue/branch instead of resuming the retired issue74 loop.",
   "agents_and_workflow_gate": {
     "status": "pass",
     "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the post-merge harness-sync discipline are satisfied; `.rah` no longer points at the retired issue69 branch."
   },
   "memento_recall_gate": {
     "status": "pass",
-    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the issue69 merge follow-up. Fresh recall confirmed the post-merge sync rule: reset `.rah` to a truthful `main` baseline instead of leaving the merged issue69 identifiers active."
+    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the issue74 follow-up. Fresh recall confirmed that the remaining ControlPanel/section-copy residue should stay a separate bounded issue instead of reopening issue69."
   },
   "memento_feedback_gate": {
     "status": "pass",
-    "note": "Recall feedback for the issue69 control-copy search was recorded as relevant and sufficient, so the current baseline already includes fresh Memento feedback for the latest follow-up loop."
+    "note": "Recall feedback for the issue74 control-copy search was recorded as relevant and sufficient, so the merged baseline carries fresh Memento feedback for the latest follow-up loop."
   },
   "issue65_prompt_intake": {
     "status": "pass",
@@ -34,7 +34,7 @@
   },
   "issue65_copy_tone_polish": {
     "status": "pass",
-    "note": "Visible resources/alerts surfaces, hidden assistant/settings routes, and the remaining `/control` route/outlook/weather wording were tightened through the merged issue69 follow-up; any leftover `ControlPanel` or section-copy cleanup should start as a new bounded issue rather than remaining active debt here."
+    "note": "Visible resources/alerts surfaces, hidden assistant/settings routes, and the remaining `/control` route/outlook/weather wording were tightened through the merged issue69 follow-up, while issue74 cleaned the last bounded ControlPanel and section-copy residue on top of that baseline."
   },
   "issue67_prompt_intake": {
     "status": "pass",
@@ -64,6 +64,22 @@
     "status": "pass",
     "note": "PR #70 merged issue #69 into `main` after GitHub Actions Backend/Frontend Validation both returned success; the issue is closed and the project item is now `Done`."
   },
+  "issue74_prompt_intake": {
+    "status": "pass",
+    "note": "The remaining ControlPanel fallback labels and section-copy residue were isolated into issue #74 and its issue-based branch before any non-trivial frontend writes resumed."
+  },
+  "issue74_copy_cleanup_slice": {
+    "status": "pass",
+    "note": "Issue #74 stayed bounded to `ControlPanel.tsx`, `control-page.tsx`, `control-route-page.tsx`, and `phytosyncSections.ts`, tightening leftover grower-facing English fallback copy while preserving route ids, hashes, compatibility redirects, and existing optimizer/API contracts."
+  },
+  "issue74_local_validation": {
+    "status": "pass",
+    "note": "Issue #74 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, and `git diff --check`; the frontend ladder stayed at `19 files, 75 passed` and pytest at `149 passed, 34 warnings`."
+  },
+  "issue74_pr_validation": {
+    "status": "pass",
+    "note": "PR #75 merged issue #74 into `main` after GitHub Actions Backend/Frontend Validation both returned success; the issue is closed and the project item is now `Done`."
+  },
   "legacy_compatibility_retirement": {
     "status": "pass",
     "note": "The `/overview|/control|/resources|/alerts/legacy` paths now redirect explicitly to their canonical pages, `frontend/src/routes/LegacyCompatibilityFrame.tsx` is removed, and the dead `SectionRouteFrame` / `MainDashboard` wrapper chain is retired from the frontend runtime."
@@ -82,7 +98,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "No implementation branch is currently active in `.rah`; future non-trivial changes should start from a fresh issue/branch instead of reusing the merged issue69 identifiers."
+    "note": "No implementation branch is currently active in `.rah`; issue #74 merged through PR #75 and future non-trivial changes should start from a fresh issue/branch instead of reusing retired identifiers."
   },
   "issue61_merge_complete": {
     "status": "pass",
