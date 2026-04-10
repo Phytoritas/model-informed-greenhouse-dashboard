@@ -40,6 +40,8 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Treat `main` as the only truthful post-issue84 baseline and start the next non-trivial change from a fresh issue-based branch.
-- Keep issue `#84` retired; if more work is needed, split backend listener hygiene, control latency profiling, or remaining layout overlap work into separate bounded issues.
+- Treat `main` as the only truthful post-issue84 baseline.
+- Keep issue `#88` bounded to blueprint/backlog sync only, and keep issue `#84` retired.
+- Keep issue `#3` blocked until real grower-approved tomato/cucumber production windows are supplied.
+- Start any unrelated non-trivial change from a fresh issue-based branch.
 - Keep the current route ids, section hashes, `/rtr` compatibility, and API contracts untouched unless a future issue explicitly reopens those seams.
