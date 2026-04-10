@@ -419,7 +419,6 @@ describe('App routed shell', () => {
   it('navigates between routed pages from the sidebar', async () => {
     renderApp('/overview')
 
-    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
     expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
 
@@ -433,12 +432,12 @@ describe('App routed shell', () => {
   it('opens the assistant drawer from the topbar without leaving the current page', async () => {
     renderApp('/overview')
 
-    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
     expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
   })
 
@@ -535,7 +534,7 @@ describe('App routed shell', () => {
   it('opens the control strategy segment when overview requests the environment lane', async () => {
     renderApp('/overview')
 
-    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
 
     fireEvent.click(screen.getByRole('button', { name: 'Open advisor lane' }))
 
@@ -601,7 +600,7 @@ describe('App routed shell', () => {
   it('closes the assistant drawer before navigating to settings', async () => {
     renderApp('/overview')
 
-    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()

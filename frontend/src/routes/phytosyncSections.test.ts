@@ -39,7 +39,7 @@ describe('phytosyncSections', () => {
 
         expect(overview?.path).toBe('/overview');
         expect(overview?.workspace).toBe('command');
-        expect(overview?.tabs.map((tab) => tab.label)).toEqual(['핵심', '오늘 할 일', '주의']);
+        expect(overview?.tabs.map((tab) => tab.label)).toEqual(['오늘 운영', '대시보드', '주의']);
 
         expect(cropWork?.path).toBe('/crop-work');
         expect(cropWork?.workspace).toBe('crop');
@@ -56,7 +56,7 @@ describe('phytosyncSections', () => {
         expect(assistant?.path).toBe('/assistant');
         expect(assistant?.workspace).toBe('knowledge');
         expect(assistant?.tabs.map((tab) => tab.id)).toEqual(['assistant-chat', 'assistant-search', 'assistant-history']);
-        expect(enOverview?.tabs.map((tab) => tab.label)).toEqual(['Summary', 'Today', 'Watch']);
+        expect(enOverview?.tabs.map((tab) => tab.label)).toEqual(['Operations', 'Dashboard', 'Watch']);
         expect(enControl?.tabs.map((tab) => tab.label)).toEqual(['Now', 'Temp plan', 'Devices']);
         expect(enResources?.tabs.map((tab) => tab.label)).toEqual(['Nutrients', 'Energy', 'Market']);
         expect(enAssistant?.tabs.map((tab) => tab.label)).toEqual(['Ask', 'Materials', 'Recent']);

@@ -52,8 +52,8 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           heroTitle: '오늘 운영',
           heroDescription: '핵심 판단, 오늘 할 일, 주의 신호를 한 화면에서 봅니다.',
           tabs: [
-            { id: 'overview-core', label: '핵심' },
-            { id: 'overview-tasks', label: '오늘 할 일' },
+            { id: 'overview-core', label: '오늘 운영' },
+            { id: 'overview-dashboard', label: '대시보드' },
             { id: 'overview-watch', label: '주의' },
           ],
         },
@@ -154,8 +154,8 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           heroTitle: 'Today operations',
           heroDescription: 'Keep the key read, work queue, and warnings in one page.',
           tabs: [
-            { id: 'overview-core', label: 'Summary' },
-            { id: 'overview-tasks', label: 'Today' },
+            { id: 'overview-core', label: 'Operations' },
+            { id: 'overview-dashboard', label: 'Dashboard' },
             { id: 'overview-watch', label: 'Watch' },
           ],
         },
