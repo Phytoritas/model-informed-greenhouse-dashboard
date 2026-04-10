@@ -31,8 +31,10 @@
   - `poetry run pytest`
   - `git diff --check`
 - The final frontend result for the merged slice was `19 files, 75 passed`, and the repo Python ladder was `149 passed, 34 warnings`.
+- The local harness runtime sidecar was rehydrated on this checkout, and `automation/rah.py doctor|status|resume` now returns a warn-only doctor result instead of a hard failure.
 
 ## Exact Next Step
 1. Start the next non-trivial repo change from a fresh GitHub issue/branch instead of reusing the retired issue74 identifiers.
 2. Treat `main` as the compact control baseline and keep route ids, section hashes, `/rtr` compatibility, and the current optimizer contracts unchanged unless a future issue explicitly changes them.
-3. If any broader control-surface English donor copy still matters, scope it as a new bounded copy-only issue rather than reopening issue74.
+3. If `automation/rah.py doctor` hard-fails on a fresh local checkout because `.rah/state/memento_status.json` or `.rah/memory/*.json` are missing, rehydrate those local runtime seed files before broader work.
+4. If any broader control-surface English donor copy still matters, scope it as a new bounded copy-only issue rather than reopening issue74.
