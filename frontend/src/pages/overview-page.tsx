@@ -53,29 +53,35 @@ export default function OverviewPage({
       activeTabId={activeTabId}
       onSelectTab={onSelectTab}
     >
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-8 xl:auto-rows-[88px] xl:grid-cols-12">
-        <div className="min-h-0 xl:col-span-8 xl:row-span-2 [&>*]:h-full">{heroCard}</div>
-        <div className="min-h-0 xl:col-span-4 xl:row-span-2">
-          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-            {copy.priority}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{heroCard}</div>
+        <div className="min-h-0 xl:col-span-4">
+          <div className="flex h-full min-h-0 flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+              {copy.priority}
+            </div>
+            <div className="min-h-0 [&>*]:h-full">{priorityRail}</div>
           </div>
-          <div className="[&>*]:h-full">{priorityRail}</div>
         </div>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:col-span-12 xl:grid-cols-6">
           {metricDeck}
         </div>
-        <div className="min-h-0 xl:col-span-8 xl:row-span-3">
-          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-            {copy.analytics}
+        <div className="min-h-0 xl:col-span-8">
+          <div className="flex h-full min-h-0 flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+              {copy.analytics}
+            </div>
+            <div className="min-h-0 [&>*]:h-full">{leadAnalytics}</div>
           </div>
-          <div className="[&>*]:h-full">{leadAnalytics}</div>
         </div>
-        <div className="min-h-0 xl:col-span-4 xl:row-span-2 [&>*]:h-full">{sideAnalytics}</div>
-        <div className="min-h-0 xl:col-span-12 xl:row-span-3">
-          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-            {copy.recent}
+        <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{sideAnalytics}</div>
+        <div className="min-h-0 xl:col-span-12">
+          <div className="flex h-full min-h-0 flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+              {copy.recent}
+            </div>
+            <div className="min-h-0 [&>*]:h-full">{recentActivity}</div>
           </div>
-          <div className="[&>*]:h-full">{recentActivity}</div>
         </div>
       </div>
     </PageCanvas>

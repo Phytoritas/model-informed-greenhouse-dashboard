@@ -43,11 +43,11 @@ export default function CropWorkPage({
       activeTabId={activeTabId}
       onSelectTab={onSelectTab}
     >
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-8 xl:auto-rows-[88px] xl:grid-cols-12">
-        <div className="min-h-0 xl:col-span-8 xl:row-span-2 [&>*]:h-full">{cropSummary}</div>
-        <div className="min-h-0 xl:col-span-4 xl:row-span-2 [&>*]:h-full">{workBoard}</div>
-        <div className="min-h-0 xl:col-span-6 xl:row-span-3 [&>*]:h-full">{forecastSurface}</div>
-        <div className="min-h-0 xl:col-span-6 xl:row-span-3 [&>*]:h-full">{recentWorkSurface}</div>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+        <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{cropSummary}</div>
+        <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{workBoard}</div>
+        <div className="min-h-0 xl:col-span-6 [&>*]:h-full">{forecastSurface}</div>
+        <div className="min-h-0 xl:col-span-6 [&>*]:h-full">{recentWorkSurface}</div>
       </div>
     </PageCanvas>
   );

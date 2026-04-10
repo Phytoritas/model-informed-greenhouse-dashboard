@@ -5,15 +5,15 @@
 - topic: `architecture-refactor`
 - sessionId: `model-informed-greenhouse-dashboard#main:post-issue74-merged-baseline`
 - caseId: `case/model-informed-greenhouse-dashboard/main/post-issue74-merged-baseline`
-- issue: `none`
-- branch: `main`
+- issue: `80`
+- branch: `fix/80-realign-overlapping-layout-tiles-and-panels`
 
 ## Current State
-- current_stage: `post-issue74-merged-baseline`
-- implementation_gate: `ready-for-next-issue`
+- current_stage: `issue80-layout-overlap-fix`
+- implementation_gate: `local-validation-green`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `issue65 compact shell -> issue67 compact control summary -> issue69 control copy cleanup -> issue74 residual copy cleanup merged on main`
-- latest_validation: `PR #75 merged after green local ladder plus green Backend/Frontend Validation`
+- latest_route_slice: `issue65 compact shell -> issue67 compact control summary -> issue69 control copy cleanup -> issue74 residual copy cleanup -> issue80 layout overlap cleanup in progress`
+- latest_validation: `issue80 local ladder green with overview/crop-work layout simplification, compact overview charts, and fresh Playwright screenshots`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -40,6 +40,6 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Treat `main` as the merged compact-control baseline and start the next non-trivial change from a fresh issue/branch.
+- Resume issue `#80` on branch `fix/80-realign-overlapping-layout-tiles-and-panels` and keep the scope bounded to layout overlap removal plus compact overview charting.
 - Keep the current route ids, section hashes, `/rtr` compatibility, and optimizer contracts untouched unless a future issue explicitly reopens them.
-- If `automation/rah.py doctor` reports missing local runtime seed files, recreate `.rah/state/memento_status.json` and `.rah/memory/*.json` locally before trusting the harness output.
+- If validation stays green, the next move is commit -> push -> PR for issue `#80`; do not widen the branch into unrelated control copy or backend fetch-error cleanup.
