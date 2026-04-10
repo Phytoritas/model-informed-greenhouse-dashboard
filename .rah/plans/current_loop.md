@@ -1,21 +1,38 @@
 # Current Loop
 
 ## Active State
-- Issue `#69` is active on branch `fix/69-clean-remaining-control-copy-residue-after-compact-shell`.
-- `main` already carries the merged issue `#67` compact control summary baseline on top of the issue `#65` compact coral tile shell.
-- The active target is narrower again: remove the remaining `/control` route copy residue without reopening route ids, section hashes, or optimizer contracts.
+- Issue `#69` is closed and merged through PR `#70`, and local `main` is fast-forwarded to merge commit `1853af6`.
+- The compact control baseline now lives on `main`: issue `#65` delivered the five-page coral shell, issue `#67` compacted the legacy control strategy surface, and issue `#69` cleaned the remaining route/outlook/weather copy residue.
+- No implementation branch is currently active in `.rah`; the next non-trivial change should begin from a fresh issue/branch and a fresh Memento session/case identity.
 
-## Baseline To Preserve
-- `main` already includes the merged issue `#65` five-page shell, hidden assistant/settings routes, `/rtr` compatibility redirect, and bounded `1320px` page canvas.
-- `main` also carries the merged issue `#67` compact `RTROptimizerPanel` summary/table surface on `/control`.
-- Existing optimizer hooks, route wiring, section ids, and the current `ControlPanel` / `DecisionSnapshotGrid` composition should stay unchanged in this slice.
+## Latest Delivered Baseline
+- `main` now includes the merged issue `#65` shell bundle:
+  - visible navigation for `/overview`, `/control`, `/crop-work`, `/resources`, and `/alerts`
+  - hidden compatibility routes for `/assistant`, `/settings`, and `/rtr`
+  - a bounded `1320px` page canvas with the compact coral shell rhythm
+- `main` also includes the merged issue `#67` compact `/control` strategy surface:
+  - short strategy summary
+  - recommended setpoint tiles
+  - baseline-vs-recommended comparison table
+  - preserved optimizer hook and route wiring
+- `main` now includes the merged issue `#69` copy cleanup:
+  - grower-facing control-route metadata and shell copy
+  - cleaner `RTROutlookPanel` / `WeatherOutlookPanel` wording
+  - localized weather labels in `App.tsx` and `DecisionSnapshotGrid.tsx`
+  - no raw backend English weather summary leaking into the Korean weather card
 
-## Current Slice
-1. The change surface is copy-only across `route-meta.ts`, `control-page.tsx`, `control-route-page.tsx`, `RTROutlookPanel.tsx`, `WeatherOutlookPanel.tsx`, plus the weather-label spillover in `App.tsx` and `DecisionSnapshotGrid.tsx`.
-2. The intended result is a Korean-first, grower-facing `/control` experience with simpler skeleton labels, less machine wording, and no raw backend English summary leaking into the weather panel.
-3. `phytosyncSections.ts` and `ControlPanel.tsx` stay out of this phase unless a regression forces a second bounded slice.
+## Latest Validation
+- PR `#70` merged after GitHub Actions `Backend Validation` and `Frontend Validation` both returned `SUCCESS`.
+- The final local ladder for the merged issue69 slice stayed green with:
+  - `npm --prefix frontend run lint`
+  - `npm --prefix frontend run test -- --pool=threads`
+  - `npm --prefix frontend run build`
+  - `poetry run ruff check .`
+  - `poetry run pytest`
+- The final frontend result for the merged slice was `19 files, 75 passed`, and the repo Python ladder was `149 passed, 34 warnings`.
+- The refreshed `/control` screenshot remains at `artifacts/screenshots/issue69-control-copy-cleanup-final.png`.
 
 ## Exact Next Step
-1. Commit and push the issue69 copy-cleanup slice with the refreshed `/control` screenshot at `artifacts/screenshots/issue69-control-copy-cleanup-final.png`.
-2. Open the issue69 PR and move the project item from `Running` to `Validating` once the local ladder results are attached.
-3. Decide after PR review whether the remaining `ControlPanel` English fallback labels and section-copy polish in `phytosyncSections.ts` should become a separate follow-up issue.
+1. Start the next non-trivial repo change from a fresh GitHub issue/branch instead of reusing the retired issue69 identifiers.
+2. Treat `main` as the compact control baseline and keep route ids, section hashes, `/rtr` compatibility, and the current optimizer contracts unchanged unless a future issue explicitly changes them.
+3. If the remaining `ControlPanel` English fallback labels or `phytosyncSections.ts` section copy still matter, open a new bounded follow-up issue rather than reopening issue69.

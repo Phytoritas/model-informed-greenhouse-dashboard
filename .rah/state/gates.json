@@ -1,16 +1,16 @@
 {
-  "earliest_restart_point": "Continue issue #69 from the merged issue67 compact-control baseline after re-reading the wakeup packet and current loop, then finish the bounded `/control` copy-only cleanup before considering any broader section-label or manual-control sweep.",
+  "earliest_restart_point": "Treat `main` as the post-issue69 merged baseline after re-reading the wakeup packet and current loop, then start the next non-trivial change from a fresh issue/branch instead of resuming the retired issue69 loop.",
   "agents_and_workflow_gate": {
     "status": "pass",
-    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the active issue #69 branch linkage are satisfied for the bounded control copy-cleanup loop."
+    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the post-merge harness-sync discipline are satisfied; `.rah` no longer points at the retired issue69 branch."
   },
   "memento_recall_gate": {
     "status": "pass",
-    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the active issue69 control copy-cleanup loop. Fresh recall confirmed the merged compact-control baseline and the decision to keep this slice copy-only without route or API changes."
+    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the issue69 merge follow-up. Fresh recall confirmed the post-merge sync rule: reset `.rah` to a truthful `main` baseline instead of leaving the merged issue69 identifiers active."
   },
   "memento_feedback_gate": {
-    "status": "warn",
-    "note": "Historical recall feedback from the issue61 loop exists, but the new issue65 shell simplification recall is still sparse and should receive fresh tool feedback after the first meaningful implementation slice."
+    "status": "pass",
+    "note": "Recall feedback for the issue69 control-copy search was recorded as relevant and sufficient, so the current baseline already includes fresh Memento feedback for the latest follow-up loop."
   },
   "issue65_prompt_intake": {
     "status": "pass",
@@ -33,8 +33,8 @@
     "note": "The grower-facing assistant now opens from the header/FAB into a right drawer, while `/assistant` stays available as a hidden compatibility route."
   },
   "issue65_copy_tone_polish": {
-    "status": "in_progress",
-    "note": "Visible resources/alerts surfaces and hidden assistant/settings routes were tightened toward Korean-first coral-neutral copy, and the remaining `/control` wording residue is now isolated into issue #69 instead of reopening the broader shell refactor."
+    "status": "pass",
+    "note": "Visible resources/alerts surfaces, hidden assistant/settings routes, and the remaining `/control` route/outlook/weather wording were tightened through the merged issue69 follow-up; any leftover `ControlPanel` or section-copy cleanup should start as a new bounded issue rather than remaining active debt here."
   },
   "issue67_prompt_intake": {
     "status": "pass",
@@ -46,19 +46,23 @@
   },
   "issue67_copy_cleanup_boundary": {
     "status": "pass",
-    "note": "The residual route-meta and weather/RTR donor wording was split into issue #69 as a bounded copy-only follow-up instead of expanding issue #67 after the compact summary baseline merged."
+    "note": "The residual route-meta and weather/RTR donor wording was correctly split into issue #69, resolved there as a bounded copy-only follow-up, and merged onto `main` via PR #70 without reopening issue #67."
   },
   "issue69_prompt_intake": {
     "status": "pass",
-    "note": "The remaining `/control` copy residue is now bound to issue #69 and its issue-based branch before any non-trivial frontend writes resumed."
+    "note": "The remaining `/control` copy residue was isolated into issue #69 and its issue-based branch before any non-trivial frontend writes resumed."
   },
   "issue69_copy_cleanup_slice": {
     "status": "pass",
-    "note": "The active slice stays copy-only across `route-meta.ts`, `control-page.tsx`, `control-route-page.tsx`, `RTROutlookPanel.tsx`, `WeatherOutlookPanel.tsx`, plus the weather-label spillover in `App.tsx` and `DecisionSnapshotGrid.tsx`, preserving route ids, hashes, and API contracts while localizing route/outlook wording for the compact control experience."
+    "note": "Issue #69 stayed copy-only across `route-meta.ts`, `control-page.tsx`, `control-route-page.tsx`, `RTROutlookPanel.tsx`, `WeatherOutlookPanel.tsx`, plus the weather-label spillover in `App.tsx` and `DecisionSnapshotGrid.tsx`, preserving route ids, hashes, and API contracts while localizing route/outlook wording for the compact control experience."
   },
   "issue69_local_validation": {
     "status": "pass",
     "note": "Issue #69 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, `npm --prefix frontend run build`, `poetry run ruff check .`, and `poetry run pytest`, and a fresh `/control` screenshot was captured at `artifacts/screenshots/issue69-control-copy-cleanup-final.png`."
+  },
+  "issue69_pr_validation": {
+    "status": "pass",
+    "note": "PR #70 merged issue #69 into `main` after GitHub Actions Backend/Frontend Validation both returned success; the issue is closed and the project item is now `Done`."
   },
   "legacy_compatibility_retirement": {
     "status": "pass",
@@ -78,7 +82,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "Issue `#65` is now the active implementation loop on branch `hyp/65-simplify-phytosync-ui-into-a-compact-coral-tile-shell`, created after the issue61 routed-shell baseline was merged onto `main`."
+    "note": "No implementation branch is currently active in `.rah`; future non-trivial changes should start from a fresh issue/branch instead of reusing the merged issue69 identifiers."
   },
   "issue61_merge_complete": {
     "status": "pass",
