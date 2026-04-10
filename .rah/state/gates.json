@@ -1,16 +1,16 @@
 {
-  "earliest_restart_point": "Treat `main` as the post-issue74 merged baseline after re-reading the wakeup packet and current loop, then start the next non-trivial change from a fresh issue/branch instead of resuming the retired issue74 loop.",
+  "earliest_restart_point": "Treat `main` as the post-issue84 merged baseline after re-reading the wakeup packet and current loop, keep issue #3 blocked until real grower-approved windows exist, and start any unrelated non-trivial change from a fresh issue/branch instead of resuming a retired delivery loop.",
   "agents_and_workflow_gate": {
     "status": "pass",
-    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the post-merge harness-sync discipline are satisfied; `.rah` no longer points at the retired issue69 branch."
+    "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the post-merge harness-sync discipline are satisfied; `main` is clean after issue #84 / #86, and issue #88 is only the bounded docs-sync lane for blueprint/backlog drift."
   },
   "memento_recall_gate": {
     "status": "pass",
-    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the issue74 follow-up. Fresh recall confirmed that the remaining ControlPanel/section-copy residue should stay a separate bounded issue instead of reopening issue69."
+    "note": "Runtime `context()` and task-scoped `recall()` were hydrated for workspace `model-informed-greenhouse-dashboard`, topic `architecture-refactor`, and the post-issue84 remaining-work intake. Fresh recall plus repo inspection confirmed that the workflow itself is already clean on `main`, while the only open known product backlog is blocked issue #3 for real grower-approved calibration windows."
   },
   "memento_feedback_gate": {
     "status": "pass",
-    "note": "Recall feedback for the issue74 control-copy search was recorded as relevant and sufficient, so the merged baseline carries fresh Memento feedback for the latest follow-up loop."
+    "note": "Recall feedback is current for the post-issue84 remaining-work lookup, so the merged baseline now distinguishes solved workflow drift from the still-blocked issue #3 calibration backlog."
   },
   "issue65_prompt_intake": {
     "status": "pass",
