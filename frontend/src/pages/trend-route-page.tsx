@@ -5,6 +5,7 @@ import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
   CropType,
+  OverviewSignalsPayload,
   ProducePricesPayload,
   SensorData,
   WeatherOutlook,
@@ -24,6 +25,7 @@ interface TrendRoutePageProps {
   weatherError: string | null;
   producePrices: ProducePricesPayload | null;
   produceLoading: boolean;
+  overviewSignals: OverviewSignalsPayload | null;
 }
 
 export default function TrendRoutePage({
@@ -37,6 +39,7 @@ export default function TrendRoutePage({
   weatherError,
   producePrices,
   produceLoading,
+  overviewSignals,
 }: TrendRoutePageProps) {
   return (
     <TrendPage
@@ -67,6 +70,7 @@ export default function TrendRoutePage({
           producePrices={producePrices}
           produceLoading={produceLoading}
           history={history}
+          overviewSignals={overviewSignals}
         />
       )}
     />

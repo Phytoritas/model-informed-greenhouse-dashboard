@@ -32,6 +32,8 @@ export default function OverviewPage({
   const showOperationsLane = selectedTabId === 'overview-core';
   const showDashboardLane = selectedTabId === 'overview-dashboard';
   const showWatchLane = selectedTabId === 'overview-watch';
+  const operationsAsideHeightClass = 'xl:h-[430px]';
+  const operationsSecondaryRowHeightClass = 'xl:h-[312px]';
 
   const copy = locale === 'ko'
     ? {
@@ -51,22 +53,24 @@ export default function OverviewPage({
       description=""
       hideHeader
     >
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-start">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-5 xl:items-start">
         {showOperationsLane ? (
           <>
-            <div className="min-h-0 xl:col-span-8">
-              <div className="flex h-full min-h-0 flex-col gap-5">
-                <div className="min-h-0">{heroCard}</div>
-                {heroSupplement ? <div className="min-h-0">{heroSupplement}</div> : null}
-              </div>
+            <div className="min-h-0 xl:col-span-3 xl:[&>*]:h-full">{heroCard}</div>
+            <div className={`min-h-0 xl:col-span-2 xl:self-start xl:[&>*]:h-full ${operationsAsideHeightClass}`}>
+              {operationsAside ?? priorityRail}
             </div>
-            <div className="min-h-0 xl:col-span-4">
-              <div className="flex h-full min-h-0 flex-col gap-5">
-                {operationsAside ? <div className="min-h-0">{operationsAside}</div> : <div className="min-h-0">{priorityRail}</div>}
-                {priorityTrend ? <div className="min-h-0">{priorityTrend}</div> : null}
+            {heroSupplement ? (
+              <div className={`min-h-0 xl:col-span-3 xl:self-start xl:[&>*]:h-full ${operationsSecondaryRowHeightClass}`}>
+                {heroSupplement}
               </div>
-            </div>
-            <div className="min-h-0 xl:col-span-12">
+            ) : null}
+            {priorityTrend ? (
+              <div className={`min-h-0 xl:col-span-2 xl:self-start xl:[&>*]:h-full ${operationsSecondaryRowHeightClass}`}>
+                {priorityTrend}
+              </div>
+            ) : null}
+            <div className="min-h-0 xl:col-span-5">
               <div className="flex h-full min-h-0 flex-col gap-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                   {copy.recent}
@@ -78,10 +82,10 @@ export default function OverviewPage({
         ) : null}
         {showDashboardLane ? (
           <>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:col-span-12 xl:grid-cols-6">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:col-span-5 xl:grid-cols-6">
               {metricDeck}
             </div>
-            <div className="min-h-0 xl:col-span-8">
+            <div className="min-h-0 xl:col-span-3">
               <div className="flex h-full min-h-0 flex-col gap-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                   {copy.analytics}
@@ -89,15 +93,15 @@ export default function OverviewPage({
                 <div className="min-h-0">{leadAnalytics}</div>
               </div>
             </div>
-            <div className="min-h-0 xl:col-span-4">{sideAnalytics}</div>
+            <div className="min-h-0 xl:col-span-2">{sideAnalytics}</div>
           </>
         ) : null}
         {showWatchLane ? (
           <>
-            <div className="min-h-0 xl:col-span-12">
+            <div className="min-h-0 xl:col-span-5">
               <div className="min-h-0">{priorityRail}</div>
             </div>
-            <div className="min-h-0 xl:col-span-12">
+            <div className="min-h-0 xl:col-span-5">
               <div className="flex h-full min-h-0 flex-col gap-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                   {copy.recent}
@@ -108,7 +112,7 @@ export default function OverviewPage({
           </>
         ) : null}
         {!showOperationsLane && !showDashboardLane && !showWatchLane ? (
-          <div className="min-h-0 xl:col-span-12">{heroCard}</div>
+          <div className="min-h-0 xl:col-span-5">{heroCard}</div>
         ) : null}
       </div>
     </PageCanvas>

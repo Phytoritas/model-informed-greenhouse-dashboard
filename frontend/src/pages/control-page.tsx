@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
 import PageCanvas from '../components/layout/PageCanvas';
 
+export type ControlPagePanelId = 'control-strategy' | 'control-devices';
+
 interface ControlPageProps {
   locale: 'ko' | 'en';
+  activePanel: ControlPagePanelId;
   strategySurface: ReactNode;
   controlActions: ReactNode;
   controlSummary: ReactNode;
@@ -10,6 +13,7 @@ interface ControlPageProps {
 
 export default function ControlPage({
   locale,
+  activePanel,
   strategySurface,
   controlActions,
   controlSummary,
@@ -33,13 +37,19 @@ export default function ControlPage({
       description={copy.description}
       hideHeader
     >
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{strategySurface}</div>
-        <div className="grid gap-5 lg:grid-cols-2 xl:col-span-12">
-          <div className="min-h-0 [&>*]:h-full">{controlActions}</div>
-          <div className="min-h-0 [&>*]:h-full">{controlSummary}</div>
+      {activePanel === 'control-strategy' ? (
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{controlActions}</div>
+          <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{strategySurface}</div>
+          <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{controlSummary}</div>
         </div>
-      </div>
+      ) : null}
+      {activePanel === 'control-devices' ? (
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{controlSummary}</div>
+          <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{controlActions}</div>
+        </div>
+      ) : null}
     </PageCanvas>
   );
 }

@@ -14,12 +14,13 @@ import AlertRail from '../components/dashboard/AlertRail';
 import ControlPanel from '../components/ControlPanel';
 import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
-import ControlPage from './control-page';
+import ControlPage, { type ControlPagePanelId } from './control-page';
 
 const RTROptimizerPanel = lazy(() => import('../components/RTROptimizerPanel'));
 
 interface ControlRoutePageProps {
   locale: AppLocale;
+  activePanel?: ControlPagePanelId;
   crop: CropType;
   controls: ControlStatus;
   onToggle: (key: keyof ControlStatus) => void;
@@ -44,6 +45,7 @@ interface ControlRoutePageProps {
 
 export default function ControlRoutePage({
   locale,
+  activePanel = 'control-strategy',
   crop,
   controls,
   onToggle,
@@ -77,6 +79,7 @@ export default function ControlRoutePage({
   return (
     <ControlPage
       locale={locale}
+      activePanel={activePanel}
       strategySurface={(
         <Suspense
           fallback={(
