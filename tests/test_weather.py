@@ -67,3 +67,59 @@ def test_shortwave_history_cache_refreshes_on_history_ttl(
     third_payload = asyncio.run(weather_service.fetch_daegu_shortwave_history(hours=72))
     assert request_count["value"] == 2
     assert third_payload["points"][0]["shortwave_radiation_w_m2"] == pytest.approx(102.0)
+
+
+def test_shortwave_history_appends_current_point(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    weather_service = _weather_service()
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "current": {
+                    "time": "2026-04-12T09:15:00+09:00",
+                    "shortwave_radiation": 359.0,
+                },
+                "hourly": {
+                    "time": ["2026-04-12T09:00:00+09:00"],
+                    "shortwave_radiation": [102.0],
+                },
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        async def get(self, url: str, params: dict) -> FakeResponse:
+            del url, params
+            return FakeResponse()
+
+    monkeypatch.setattr(weather_service.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        weather_service,
+        "_weather_history_cache",
+        {"expires_at": 0.0, "payload": None},
+    )
+
+    payload = asyncio.run(weather_service.fetch_daegu_shortwave_history(hours=72))
+    assert payload["source"]["fetched_at"] == "2026-04-12T09:15:00+09:00"
+    assert payload["points"][-2:] == [
+        {
+            "time": "2026-04-12T09:00:00+09:00",
+            "shortwave_radiation_w_m2": pytest.approx(102.0),
+        },
+        {
+            "time": "2026-04-12T09:15:00+09:00",
+            "shortwave_radiation_w_m2": pytest.approx(359.0),
+        },
+    ]

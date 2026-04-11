@@ -75,6 +75,7 @@ export const useAiAssistant = () => {
     const [aiAnalysis, setAiAnalysis] = useState('');
     const [aiDisplay, setAiDisplay] = useState<AdvisorDisplayPayload | null>(null);
     const [aiModelRuntime, setAiModelRuntime] = useState<ModelRuntimePayload | null>(null);
+    const [advisorUpdatedAt, setAdvisorUpdatedAt] = useState<number | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const requestIdRef = useRef(0);
@@ -133,6 +134,7 @@ export const useAiAssistant = () => {
             setAiAnalysis(json?.text || '');
             setAiDisplay(json?.machine_payload?.display ?? null);
             setAiModelRuntime(json?.machine_payload?.model_runtime ?? null);
+            setAdvisorUpdatedAt(Date.now());
             setAiError(null);
             if (callback) {
                 callback(extractRecommendationCandidates(json));
@@ -163,6 +165,7 @@ export const useAiAssistant = () => {
         aiAnalysis,
         aiDisplay,
         aiModelRuntime,
+        advisorUpdatedAt,
         aiError,
         isAnalyzing,
         analyzeData,

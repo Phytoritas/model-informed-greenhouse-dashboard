@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useLocale } from '../../i18n/LocaleProvider';
-import { formatLocaleTime } from '../../i18n/locale';
+import { formatLocaleDateTime, formatLocaleTime } from '../../i18n/locale';
 import type { OverviewSignalsPayload } from '../../types';
 import { normalizeOverviewSourceSinkBalance } from '../../utils/sourceSinkBalance';
 import ChartFrame from '../charts/ChartFrame';
@@ -136,6 +136,7 @@ export default function OverviewSignalTrendCard({
       empty: '표시할 실제 추세가 아직 없습니다.',
       modelMissing: '모델 스냅샷 이력이 아직 없어 소스-싱크 추세를 표시할 수 없습니다.',
       mergedTitle: '외기 일사량과 소스-싱크를 한 차트에서 봅니다.',
+      updated: '기준',
     }
     : {
       eyebrow: '3-day trend',
@@ -150,7 +151,9 @@ export default function OverviewSignalTrendCard({
       empty: 'No live trend is available yet.',
       modelMissing: 'Model snapshot history is not available yet for the source-sink trend.',
       mergedTitle: 'Outside irradiance and source-sink are shown in one chart.',
+      updated: 'Updated',
     };
+  const irradianceUpdatedAt = signals?.irradiance.source.fetched_at ?? null;
 
   const hasIrradiance = irradianceSeries.length >= 2;
   const hasSourceSink = sourceSinkSeries.length >= 2;
@@ -209,16 +212,28 @@ export default function OverviewSignalTrendCard({
       className="h-full !p-4"
     >
       <div className="rounded-[16px] bg-[color:var(--sg-surface-soft)] px-2.5 py-2.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.06em] text-[color:var(--sg-text-faint)]">
-          <span>{copy.mergedTitle}</span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-4 rounded-full bg-[#d26a2e]" />
-            {copy.irradiance}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-4 rounded-full bg-[#8a3d4a]" />
-            {copy.balance}
-          </span>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[10px] font-semibold tracking-[0.06em] text-[color:var(--sg-text-faint)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span>{copy.mergedTitle}</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-4 rounded-full bg-[#d26a2e]" />
+              {copy.irradiance}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-4 rounded-full bg-[#8a3d4a]" />
+              {copy.balance}
+            </span>
+          </div>
+          {irradianceUpdatedAt ? (
+            <span className="rounded-full bg-white/82 px-2 py-1 text-[10px] font-semibold text-[color:var(--sg-text-faint)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+              {copy.updated} {formatLocaleDateTime(locale, irradianceUpdatedAt, {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          ) : null}
         </div>
         {hasIrradiance ? (
           <ChartFrame minHeight={192} style={{ height: 192 }}>
