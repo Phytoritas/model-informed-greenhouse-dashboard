@@ -1,9 +1,10 @@
 # Current Loop
 
 ## Active State
-- `main` is the truthful post-issue96 merged baseline.
-- No active product implementation branch is open in the repository.
-- The only open tracked backlog issue is blocked issue `#3`, which still waits for grower-approved RTR windows.
+- Active implementation branch: `fix/100-fix-sensor-freshness-semantics-and-websocket-delay`.
+- Active issue: `#100` (`[Bug] Fix sensor freshness semantics and websocket delay`).
+- Active pull request: `#101` (`fix: recover stalled telemetry streams`).
+- Current bounded scope: keep the issue100 lane in `Validating`, with the pushed backend/frontend/runtime-recovery diff waiting only for review and merge.
 
 ## Stable Main Baseline
 - PR `#95` merged issue `#94` into `main` at `ff0a92a`.
@@ -20,7 +21,10 @@
 - `npm --prefix frontend run build`
 - `poetry run ruff check .`
 - `poetry run pytest`
+- GitHub Actions `CI` succeeded for both the `push` and `pull_request` runs on commit `ae600ed`.
+- Local smoke confirmed that `/api/status` returns immediately after single-backend restart, `last_error` clears, and the overview page reconnects the cucumber WebSocket after an offline transition.
 
 ## Exact Next Step
-1. If working on RTR calibration, unblock issue `#3` with real grower-approved windows before opening its implementation branch.
-2. Otherwise, start the next non-trivial task from a fresh issue-based branch off clean `main`.
+1. Review and merge PR `#101` once the bounded issue100 runtime-recovery diff is accepted.
+2. After merge, fast-forward local `main`, confirm the merged baseline stays green, and open the small docs sync issue that realigns tracked `.rah` state on main.
+3. Keep blocked issue `#3` out of this lane; resume it only from a separate branch when grower-approved RTR windows exist.

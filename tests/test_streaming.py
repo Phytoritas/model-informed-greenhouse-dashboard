@@ -1,8 +1,11 @@
+import asyncio
+
 import pandas as pd
 from fastapi.testclient import TestClient
 
 from model_informed_greenhouse_dashboard import get_app
 from model_informed_greenhouse_dashboard.backend.app import main as backend_main
+from model_informed_greenhouse_dashboard.backend.app.ws import ConnectionManager
 
 
 class DummySimulator:
@@ -60,3 +63,30 @@ def test_step_endpoint_broadcasts_single_crop_payload(monkeypatch) -> None:
     assert broadcasts[0][0] == "/ws/sim/tomato"
     assert broadcasts[0][1]["irrigation"]["recommended_irrigation_l"] == 12.5
     assert broadcasts[0][1]["energy"]["P_elec_kW"] == 4.2
+
+
+def test_broadcast_tolerates_connection_set_changes_mid_iteration() -> None:
+    manager = ConnectionManager()
+    path = "/ws/sim/cucumber"
+    sent_payloads: list[str] = []
+
+    class PassiveSocket:
+        async def send_text(self, data: str) -> None:
+            sent_payloads.append(f"passive:{data}")
+
+    class DisconnectingSocket:
+        def __init__(self, target: PassiveSocket) -> None:
+            self._target = target
+
+        async def send_text(self, data: str) -> None:
+            sent_payloads.append(f"disconnecting:{data}")
+            manager.disconnect(self._target, path)
+
+    passive_socket = PassiveSocket()
+    disconnecting_socket = DisconnectingSocket(passive_socket)
+    manager.active_connections[path] = {disconnecting_socket, passive_socket}
+
+    asyncio.run(manager.broadcast(path, {"status": "ok"}))
+
+    assert sent_payloads
+    assert passive_socket not in manager.active_connections[path]

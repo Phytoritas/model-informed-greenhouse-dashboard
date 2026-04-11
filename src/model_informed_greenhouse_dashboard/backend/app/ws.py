@@ -61,7 +61,8 @@ class ConnectionManager:
         
         # Broadcast to all connections
         dead_connections = set()
-        for websocket in self.active_connections[path]:
+        current_connections = tuple(self.active_connections.get(path, ()))
+        for websocket in current_connections:
             try:
                 await websocket.send_text(data)
             except Exception as e:
