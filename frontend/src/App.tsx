@@ -44,6 +44,13 @@ import {
   getDashboardSensorCopy,
   NUMERIC_IDEAL_RANGES,
 } from './utils/displayCopy';
+import {
+  AUTO_ANALYSIS_RETRY_BACKOFF_MS,
+  buildAdvisorForecastSignature,
+  createEmptyAdvisorAutoRefreshState,
+  shouldRefreshAdvisorSummary,
+  type AdvisorAutoRefreshState,
+} from './utils/advisorAutoRefresh';
 import { deriveSourceSinkBalance } from './utils/derivedRuntimeMetrics';
 import { localizeSmartGrowSurfaceNames } from './utils/smartGrowSurfaceNames';
 import type { KpiTileData } from './components/KpiStrip';
@@ -70,7 +77,6 @@ const APP_COPY = {
   },
 } as const;
 
-const AUTO_ANALYSIS_INTERVAL_MS = 30 * 60 * 1000;
 type SensorMetricKey = 'temperature' | 'humidity' | 'co2' | 'light' | 'vpd' | 'stomatalConductance';
 type AssistantPanelId = 'assistant-chat' | 'assistant-search' | 'assistant-history';
 type RagAssistantLaunchRequest = Omit<RagAssistantOpenRequest, 'nonce'>;
@@ -320,7 +326,8 @@ function App() {
     aiAnalysis,
     aiDisplay,
     aiModelRuntime,
-    analyzeData
+    analyzeData,
+    isAnalyzing,
   } = useAiAssistant();
   const {
     weather,
@@ -355,9 +362,13 @@ function App() {
   const [assistantDrawerPanel, setAssistantDrawerPanel] = useState<AssistantPanelId>('assistant-chat');
   const [telemetryClock, setTelemetryClock] = useState(() => Date.now());
   const [sectionTabSelections, setSectionTabSelections] = useState<Record<string, string>>({});
-  const lastAutoAnalysisRef = useRef<Record<CropType, { telemetryTimestamp: number; marketFetchedAt: string | null }>>({
-    Tomato: { telemetryTimestamp: 0, marketFetchedAt: null },
-    Cucumber: { telemetryTimestamp: 0, marketFetchedAt: null },
+  const lastAutoAnalysisRef = useRef<Record<CropType, AdvisorAutoRefreshState>>({
+    Tomato: createEmptyAdvisorAutoRefreshState(),
+    Cucumber: createEmptyAdvisorAutoRefreshState(),
+  });
+  const autoAnalysisRetryAfterRef = useRef<Record<CropType, number>>({
+    Tomato: 0,
+    Cucumber: 0,
   });
   const deferredHistory = useDeferredValue(history);
   const deferredForecast = useDeferredValue(forecast);
@@ -943,12 +954,12 @@ function App() {
   }, [telemetry.lastMessageAt, telemetry.status]);
 
   // Trigger analysis
-  const handleAnalyze = useCallback(() => {
-    if (!hasTelemetryData || telemetry.status === 'loading') {
-      return;
+  const handleAnalyze = useCallback(async (): Promise<'success' | 'failed' | 'skipped'> => {
+    if (!hasTelemetryData || telemetry.status === 'loading' || isAnalyzing) {
+      return 'skipped';
     }
 
-    analyzeData(
+    const didAnalyze = await analyzeData(
       currentData,
       modelMetrics,
       selectedCrop,
@@ -972,12 +983,14 @@ function App() {
           setControlValue('shading', true);
         }
       });
+    return didAnalyze ? 'success' : 'failed';
   }, [
     analyzeData,
     currentData,
     forecast,
     hasTelemetryData,
     history,
+    isAnalyzing,
     modelMetrics,
     producePrices,
     rtrProfilesPayload,
@@ -989,36 +1002,58 @@ function App() {
 
   // Auto analysis when actual data has arrived for the selected crop.
   useEffect(() => {
-    const latestTimestamp = history[history.length - 1]?.timestamp
-      ?? (hasTelemetryData ? currentData.timestamp : 0);
-    const latestMarketFetchedAt = producePrices?.source.fetched_at ?? null;
+    const latestTelemetryReceivedAt = history[history.length - 1]?.receivedAtTimestamp
+      ?? (hasTelemetryData
+        ? (currentData.receivedAtTimestamp ?? telemetry.lastMessageAt ?? 0)
+        : 0);
+    const nextAutoAnalysisState: AdvisorAutoRefreshState = {
+      telemetryReceivedAt: latestTelemetryReceivedAt,
+      marketFetchedAt: producePrices?.source?.fetched_at ?? null,
+      weatherFetchedAt: weather?.source?.fetched_at ?? null,
+      profilesUpdatedAt: rtrProfilesPayload?.updatedAt ?? null,
+      forecastSignature: buildAdvisorForecastSignature(forecast),
+    };
+    const retryAfterTimestamp = autoAnalysisRetryAfterRef.current[selectedCrop];
 
-    if (!latestTimestamp || telemetry.status === 'loading') {
+    if (!latestTelemetryReceivedAt || telemetry.status === 'loading' || isAnalyzing || retryAfterTimestamp > Date.now()) {
       return;
     }
 
     const lastAuto = lastAutoAnalysisRef.current[selectedCrop];
-    const telemetryNeedsRefresh =
-      lastAuto.telemetryTimestamp === 0
-      || latestTimestamp - lastAuto.telemetryTimestamp >= AUTO_ANALYSIS_INTERVAL_MS;
-    const marketNeedsRefresh =
-      latestMarketFetchedAt !== null
-      && latestMarketFetchedAt !== lastAuto.marketFetchedAt;
-    const shouldAnalyze = telemetryNeedsRefresh || marketNeedsRefresh;
-    if (!shouldAnalyze) {
+    if (!shouldRefreshAdvisorSummary(lastAuto, nextAutoAnalysisState)) {
       return;
     }
 
     const timer = setTimeout(() => {
-      lastAutoAnalysisRef.current[selectedCrop] = {
-        telemetryTimestamp: latestTimestamp,
-        marketFetchedAt: latestMarketFetchedAt,
-      };
-      handleAnalyze();
+      void (async () => {
+        const result = await handleAnalyze();
+        if (result === 'success') {
+          lastAutoAnalysisRef.current[selectedCrop] = nextAutoAnalysisState;
+          autoAnalysisRetryAfterRef.current[selectedCrop] = 0;
+          return;
+        }
+        if (result === 'failed') {
+          autoAnalysisRetryAfterRef.current[selectedCrop] = Date.now() + AUTO_ANALYSIS_RETRY_BACKOFF_MS;
+        }
+      })();
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [currentData.timestamp, handleAnalyze, hasTelemetryData, history, producePrices, selectedCrop, telemetry.status]);
+  }, [
+    currentData.receivedAtTimestamp,
+    forecast,
+    handleAnalyze,
+    hasTelemetryData,
+    history,
+    isAnalyzing,
+    producePrices,
+    rtrProfilesPayload,
+    selectedCrop,
+    telemetryClock,
+    telemetry.lastMessageAt,
+    telemetry.status,
+    weather,
+  ]);
 
   const workspaceItems = useMemo<WorkspaceNavItem[]>(() => (
     primaryRoutes.map((route) => ({
