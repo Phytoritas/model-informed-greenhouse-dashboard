@@ -11,11 +11,12 @@ describe('phytosyncSections', () => {
         const koSections = buildPhytoSections('ko');
         const enSections = buildPhytoSections('en');
 
-        expect(koSections).toHaveLength(6);
-        expect(enSections).toHaveLength(6);
+        expect(koSections).toHaveLength(7);
+        expect(enSections).toHaveLength(7);
         expect(koSections.map((section) => section.key)).toEqual([
             'overview',
             'control',
+            'trend',
             'crop-work',
             'resources',
             'alerts',
@@ -34,12 +35,13 @@ describe('phytosyncSections', () => {
         const assistant = koSections.find((section) => section.key === 'assistant');
         const enOverview = enSections.find((section) => section.key === 'overview');
         const enControl = enSections.find((section) => section.key === 'control');
+        const enTrend = enSections.find((section) => section.key === 'trend');
         const enResources = enSections.find((section) => section.key === 'resources');
         const enAssistant = enSections.find((section) => section.key === 'assistant');
 
         expect(overview?.path).toBe('/overview');
         expect(overview?.workspace).toBe('command');
-        expect(overview?.tabs.map((tab) => tab.label)).toEqual(['핵심', '오늘 할 일', '주의']);
+        expect(overview?.tabs.map((tab) => tab.label)).toEqual(['오늘 운영', '대시보드', '주의']);
 
         expect(cropWork?.path).toBe('/crop-work');
         expect(cropWork?.workspace).toBe('crop');
@@ -55,12 +57,13 @@ describe('phytosyncSections', () => {
 
         expect(assistant?.path).toBe('/assistant');
         expect(assistant?.workspace).toBe('knowledge');
-        expect(assistant?.tabs.map((tab) => tab.id)).toEqual(['assistant-chat', 'assistant-search', 'assistant-history']);
-        expect(enOverview?.tabs.map((tab) => tab.label)).toEqual(['Summary', 'Today', 'Watch']);
+        expect(assistant?.tabs.map((tab) => tab.id)).toEqual(['assistant-chat', 'assistant-search']);
+        expect(enOverview?.tabs.map((tab) => tab.label)).toEqual(['Operations', 'Dashboard', 'Watch']);
         expect(enControl?.tabs.map((tab) => tab.label)).toEqual(['Now', 'Temp plan', 'Devices']);
+        expect(enTrend?.tabs).toEqual([]);
         expect(enResources?.tabs.map((tab) => tab.label)).toEqual(['Nutrients', 'Energy', 'Market']);
-        expect(enAssistant?.tabs.map((tab) => tab.label)).toEqual(['Ask', 'Materials', 'Recent']);
-        expect(assistant?.tabs.map((tab) => tab.label)).toEqual(['질문', '자료 찾기', '최근 흐름']);
+        expect(enAssistant?.tabs.map((tab) => tab.label)).toEqual(['Ask', 'Materials']);
+        expect(assistant?.tabs.map((tab) => tab.label)).toEqual(['질문', '자료 찾기']);
     });
 
     it('matches nested paths, keeps /ask as an alias, and falls back to overview on unknown paths', () => {
@@ -77,6 +80,7 @@ describe('phytosyncSections', () => {
     it('returns stable default section paths for workspace and advisor tab routing', () => {
         expect(getDefaultSectionPathForWorkspace('command')).toBe('/overview');
         expect(getDefaultSectionPathForWorkspace('rtr')).toBe('/control');
+        expect(getDefaultSectionPathForWorkspace('trend')).toBe('/trend');
         expect(getDefaultSectionPathForWorkspace('crop')).toBe('/crop-work');
         expect(getDefaultSectionPathForWorkspace('advisor')).toBe('/crop-work');
         expect(getDefaultSectionPathForWorkspace('resources')).toBe('/resources');

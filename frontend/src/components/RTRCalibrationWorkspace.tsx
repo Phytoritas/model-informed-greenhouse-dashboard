@@ -50,7 +50,7 @@ const RTRCalibrationWorkspace = ({
     const copy = locale === 'ko'
         ? {
             title: 'RTR 칼리브레이션 워크스페이스',
-            subtitle: `${getCropLabel(crop, locale)} 고생산 구간을 직접 입력해 RTR 기준선을 다시 맞춥니다.`,
+            subtitle: `${getCropLabel(crop, locale)} 고생산 구간을 직접 입력해 RTR 설정을 다시 맞춥니다.`,
             loading: '보정 상태를 불러오는 중...',
             rangeTitle: '사용 가능한 환경 이력',
             rangeMissing: '아직 이 작물의 환경 이력이 로드되지 않았습니다. 시뮬레이터 시작 후 다시 시도하세요.',

@@ -6,6 +6,7 @@ import {
   Settings,
   Sprout,
   Thermometer,
+  TrendingUp,
   WalletCards,
   type LucideIcon,
 } from 'lucide-react';
@@ -14,6 +15,7 @@ import type { AppLocale } from '../i18n/locale';
 export type PrimaryRouteKey =
   | 'overview'
   | 'control'
+  | 'trend'
   | 'crop-work'
   | 'resources'
   | 'alerts';
@@ -40,6 +42,7 @@ export interface PrimaryRouteMeta {
 const PRIMARY_ROUTE_ORDER: PrimaryRouteKey[] = [
   'overview',
   'control',
+  'trend',
   'crop-work',
   'resources',
   'alerts',
@@ -55,9 +58,9 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       path: '/overview',
       label: isKo ? '오늘 운영' : 'Overview',
       shortLabel: isKo ? '오늘 운영' : 'Overview',
-      description: isKo ? '지금 상황, 오늘 할 일, 주의 알림을 한 화면에서 봅니다.' : 'See today’s operating state, tasks, and warnings together.',
+      description: isKo ? '지금 상황, 오늘 할 일, 확인 필요 항목을 한 화면에서 봅니다.' : 'See today’s operating state, tasks, and warnings together.',
       title: isKo ? '오늘 운영' : 'Today Operations',
-      heroDescription: isKo ? '오늘 먼저 볼 값과 바로 할 일을 타일형 화면으로 정리했습니다.' : 'Start with today’s signals and next actions in one compact canvas.',
+      heroDescription: isKo ? '스마트 온실 인공지능 의사결정 플랫폼' : 'Start with today’s signals and next actions in one compact canvas.',
       icon: LayoutDashboard,
       visibleInNav: true,
     },
@@ -65,22 +68,34 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       key: 'control',
       navKey: 'control',
       path: '/control',
-      label: isKo ? '환경 제어' : 'Control',
-      shortLabel: isKo ? '환경 제어' : 'Control',
-      description: isKo ? '지금 조치, 온도 전략, 장치 상태를 함께 봅니다.' : 'Review live moves, temperature strategy, and device status together.',
-      title: isKo ? '환경 제어' : 'Environment Control',
-      heroDescription: isKo ? '난방, 냉방, 환기, 스크린, 이산화탄소 판단을 한 화면에 모았습니다.' : 'Keep heating, cooling, vent, screen, and CO2 decisions in one lane.',
+      label: isKo ? '온실 환경' : 'Control',
+      shortLabel: isKo ? '온실 환경' : 'Control',
+      description: isKo ? '추천 제어안과 장치 상태를 함께 봅니다.' : 'Review recommendations and device status together.',
+      title: isKo ? '온실 환경' : 'Control Solutions',
+      heroDescription: '',
       icon: Thermometer,
+      visibleInNav: true,
+    },
+    {
+      key: 'trend',
+      navKey: 'trend',
+      path: '/trend',
+      label: isKo ? '날씨와 시세' : 'Trend',
+      shortLabel: isKo ? '날씨와 시세' : 'Trend',
+      description: isKo ? '날씨와 도매 시세를 바로 확인합니다.' : 'Track weather and wholesale market trends in a separate lane.',
+      title: isKo ? '날씨와 시세' : 'Trend',
+      heroDescription: '',
+      icon: TrendingUp,
       visibleInNav: true,
     },
     {
       key: 'crop-work',
       navKey: 'crop-work',
       path: '/crop-work',
-      label: isKo ? '생육작업' : 'Crop Work',
-      shortLabel: isKo ? '생육작업' : 'Crop Work',
+      label: isKo ? '작물 상태 및 농작업' : 'Crop Work',
+      shortLabel: isKo ? '작물·농작업' : 'Crop Work',
       description: isKo ? '생육 흐름, 작업 우선순위, 수확 흐름을 함께 봅니다.' : 'Track crop flow, work priorities, and harvest flow together.',
-      title: isKo ? '생육작업' : 'Crop Work',
+      title: isKo ? '작물 상태 및 농작업' : 'Crop Work',
       heroDescription: isKo ? '마디 진행, 착과 부담, 작업량, 수확 흐름을 정리했습니다.' : 'Read node pace, crop load, labor pressure, and harvest flow together.',
       icon: Sprout,
       visibleInNav: true,
@@ -101,11 +116,11 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       key: 'alerts',
       navKey: 'alerts',
       path: '/alerts',
-      label: isKo ? '경보' : 'Alerts',
-      shortLabel: isKo ? '경보' : 'Alerts',
-      description: isKo ? '긴급, 주의, 처리 이력을 분리해 봅니다.' : 'Separate urgent alerts, warnings, and handling history.',
-      title: isKo ? '경보' : 'Alerts',
-      heroDescription: isKo ? '바로 확인할 경보와 처리 기록을 한 화면에서 정리했습니다.' : 'Keep the current alert queue and history in one place.',
+      label: isKo ? '긴급 알림' : 'Alerts',
+      shortLabel: isKo ? '긴급 알림' : 'Alerts',
+      description: isKo ? '긴급 알림, 확인 필요, 처리 이력을 분리해 봅니다.' : 'Separate urgent alerts, warnings, and handling history.',
+      title: isKo ? '긴급 알림' : 'Alerts',
+      heroDescription: isKo ? '바로 확인할 긴급 알림과 처리 기록을 한 화면에서 정리했습니다.' : 'Keep the current alert queue and history in one place.',
       icon: Bell,
       visibleInNav: true,
     },
@@ -117,7 +132,7 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       shortLabel: isKo ? '질문 도우미' : 'Assistant',
       description: isKo ? '질문과 자료 찾기를 한곳에서 처리합니다.' : 'Keep question flow and document lookup together.',
       title: isKo ? '질문 도우미' : 'Assistant',
-      heroDescription: isKo ? '질문, 자료 찾기, 최근 흐름을 한곳에 모았습니다.' : 'Keep ask, search, and recent flow in one place.',
+      heroDescription: isKo ? '질문과 자료 찾기를 한곳에 모았습니다.' : 'Keep ask and search in one place.',
       icon: MessageCircle,
       visibleInNav: false,
     },
@@ -139,9 +154,9 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       path: '/rtr',
       label: isKo ? '온도 전략' : 'Temperature Strategy',
       shortLabel: isKo ? '온도 전략' : 'Strategy',
-      description: isKo ? '환경 제어 안의 온도 전략 비교 화면입니다.' : 'Hidden shortcut into the control temperature strategy view.',
+      description: isKo ? '온실 환경 안의 온도 전략 비교 화면입니다.' : 'Hidden shortcut into the control temperature strategy view.',
       title: isKo ? '온도 전략' : 'Temperature Strategy',
-      heroDescription: isKo ? '환경 제어 안에서 온도 전략 비교를 이어서 봅니다.' : 'Continue the temperature strategy view inside control.',
+      heroDescription: isKo ? '온실 환경 안에서 온도 전략 비교를 이어서 봅니다.' : 'Continue the temperature strategy view inside control.',
       icon: CircleGauge,
       visibleInNav: false,
     },
@@ -155,6 +170,7 @@ export function buildPrimaryRoutes(locale: AppLocale): PrimaryRouteMeta[] {
 function getAppRouteKey(pathname: string): AppRouteKey {
   if (pathname === '/' || pathname.startsWith('/overview')) return 'overview';
   if (pathname.startsWith('/control')) return 'control';
+  if (pathname.startsWith('/trend')) return 'trend';
   if (pathname.startsWith('/rtr')) return 'rtr';
   if (pathname.startsWith('/crop-work')) return 'crop-work';
   if (pathname.startsWith('/resources')) return 'resources';
@@ -176,6 +192,8 @@ export function getPrimaryRouteKey(pathname: string): PrimaryRouteKey {
     case 'control':
     case 'rtr':
       return 'control';
+    case 'trend':
+      return 'trend';
     case 'crop-work':
       return 'crop-work';
     case 'resources':

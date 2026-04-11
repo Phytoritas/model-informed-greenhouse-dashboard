@@ -80,6 +80,7 @@ export default function RtrRoutePage({
           )}
         >
           <RTROptimizerPanel
+            key={crop}
             crop={crop}
             currentData={currentData}
             history={history}
@@ -105,12 +106,14 @@ export default function RtrRoutePage({
             onSettingsChange={onSettingsChange}
           />
           <DecisionSnapshotGrid
+            crop={crop}
             currentData={currentData}
             modelMetrics={modelMetrics}
             weather={weather}
             weatherLoading={weatherLoading}
             producePrices={producePrices}
             produceLoading={produceLoading}
+            history={history}
           />
         </div>
       )}

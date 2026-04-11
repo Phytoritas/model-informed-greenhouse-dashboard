@@ -9,7 +9,7 @@ export const phytoGlossary = {
         controlEffects: '조치 영향',
         setpoint: '목표값',
         resourceTracking: '자재·비용',
-        alerts: '주의 알림',
+        alerts: '긴급 알림',
     },
     en: {
         rtr: 'Light-linked temperature',

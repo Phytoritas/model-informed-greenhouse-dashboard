@@ -11,6 +11,7 @@ interface PageCanvasProps {
   eyebrow?: string;
   title: string;
   description: string;
+  hideHeader?: boolean;
   tabs?: PageCanvasTab[];
   activeTabId?: string;
   onSelectTab?: (tabId: string) => void;
@@ -22,6 +23,7 @@ export default function PageCanvas({
   eyebrow,
   title,
   description,
+  hideHeader = false,
   tabs = [],
   activeTabId,
   onSelectTab,
@@ -30,7 +32,7 @@ export default function PageCanvas({
 }: PageCanvasProps) {
   return (
     <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6">
-      <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />
+      {hideHeader ? null : <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />}
       {tabs.length > 0 ? (
         <div className="min-w-0">
           <PageSectionTabs tabs={tabs} activeId={activeTabId} onSelect={onSelectTab} />

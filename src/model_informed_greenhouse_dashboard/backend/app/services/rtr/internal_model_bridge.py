@@ -6,6 +6,8 @@ import copy
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+import pandas as pd
+
 from ...adapters.cucumber import CucumberAdapter
 from ...adapters.tomato import TomatoAdapter
 from ...config import greenhouse_config
@@ -26,6 +28,67 @@ def _compute_vpd_kpa(temp_c: float, rh_pct: float) -> float:
     rh_fraction = max(0.0, min(1.0, rh_pct / 100.0))
     saturation = 0.6108 * (2.718281828 ** ((17.27 * temp_c) / (temp_c + 237.3)))
     return max(0.0, saturation * (1.0 - rh_fraction))
+
+
+def _coerce_timestamp(value: Any) -> pd.Timestamp | None:
+    if value is None:
+        return None
+    timestamp = pd.to_datetime(value, errors="coerce")
+    if pd.isna(timestamp):
+        return None
+    if getattr(timestamp, "tzinfo", None) is not None:
+        timestamp = timestamp.tz_convert(None)
+    return timestamp
+
+
+def _resolve_development_reference_temp_c(
+    *,
+    crop_state: Mapping[str, Any] | None,
+    snapshot_timestamp: Any,
+    fallback_temp_c: float,
+    window_hours: float = 24.0,
+) -> float:
+    env_df = (crop_state or {}).get("df_env")
+    if env_df is None or not hasattr(env_df, "columns"):
+        return fallback_temp_c
+    if "datetime" not in env_df.columns or "T_air_C" not in env_df.columns:
+        return fallback_temp_c
+
+    working_df = env_df.loc[:, ["datetime", "T_air_C"]].copy()
+    working_df["datetime"] = pd.to_datetime(working_df["datetime"], errors="coerce")
+    if getattr(working_df["datetime"].dt, "tz", None) is not None:
+        working_df["datetime"] = working_df["datetime"].dt.tz_convert(None)
+    working_df["T_air_C"] = pd.to_numeric(working_df["T_air_C"], errors="coerce")
+    working_df = (
+        working_df.dropna(subset=["datetime", "T_air_C"])
+        .sort_values("datetime")
+        .reset_index(drop=True)
+    )
+    if working_df.empty:
+        return fallback_temp_c
+
+    end_ts = _coerce_timestamp(snapshot_timestamp) or working_df["datetime"].iloc[-1]
+    start_ts = end_ts - pd.Timedelta(hours=max(window_hours, 1.0))
+    window_df = working_df.loc[
+        (working_df["datetime"] >= start_ts) & (working_df["datetime"] <= end_ts)
+    ].copy()
+    if window_df.empty:
+        return fallback_temp_c
+    if len(window_df) == 1:
+        return float(window_df.iloc[0]["T_air_C"])
+
+    delta_seconds = (window_df["datetime"].shift(-1) - window_df["datetime"]).dt.total_seconds()
+    median_delta = float(delta_seconds.dropna().median()) if delta_seconds.notna().any() else 300.0
+    if not pd.notna(median_delta) or median_delta <= 0:
+        median_delta = 300.0
+    trailing_gap = max(0.0, float((end_ts - window_df["datetime"].iloc[-1]).total_seconds()))
+    last_delta = min(max(trailing_gap, 1.0), median_delta)
+    window_df["dtSeconds"] = delta_seconds.fillna(last_delta).clip(lower=1.0)
+    total_seconds = float(window_df["dtSeconds"].sum())
+    if total_seconds <= 0:
+        return fallback_temp_c
+    weighted_temp = float((window_df["T_air_C"] * window_df["dtSeconds"]).sum())
+    return weighted_temp / total_seconds
 
 
 def _clone_adapter(crop: str, raw_adapter_state: Mapping[str, Any]):
@@ -103,6 +166,7 @@ def build_internal_model_context(
     state = normalized_snapshot.get("state", {})
     gas_exchange = normalized_snapshot.get("gas_exchange", {})
     live_observation = normalized_snapshot.get("live_observation", {})
+    snapshot_timestamp = normalized_snapshot.get("captured_at") or snapshot_record.get("snapshot_time")
     raw_adapter_state = snapshot_record.get("raw_adapter_state", {})
     raw_last_state = (
         raw_adapter_state.get("_adapter_meta", {}).get("last_state", {})
@@ -238,10 +302,15 @@ def build_internal_model_context(
             },
         }
 
+    development_reference_temp_c = _resolve_development_reference_temp_c(
+        crop_state=crop_state,
+        snapshot_timestamp=snapshot_timestamp,
+        fallback_temp_c=t_air_c,
+    )
     predicted_node_rate_day = predict_development_rate_day(
         crop=crop,
         raw_adapter_state=raw_adapter_state,
-        mean_air_temp_c=float(ops_config.get("heating_set_C", t_air_c)),
+        mean_air_temp_c=development_reference_temp_c,
     )
 
     source_capacity = _safe_float(state.get("source_capacity"), gross_assim)
@@ -253,7 +322,7 @@ def build_internal_model_context(
     )
 
     canonical_state = {
-        "timestamp": normalized_snapshot.get("captured_at") or snapshot_record.get("snapshot_time"),
+        "timestamp": snapshot_timestamp,
         "crop": crop,
         "greenhouse_id": greenhouse_id,
         "env": {
@@ -278,6 +347,7 @@ def build_internal_model_context(
             "LAI": round(_safe_float(state.get("lai"), state.get("LAI")), 6),
             "node_count": int(node_count),
             "predicted_node_rate_day": round(predicted_node_rate_day, 6),
+            "development_reference_temp_C": round(development_reference_temp_c, 6),
             "fruit_load": round(_safe_float(state.get("fruit_load"), 0.0), 6),
             "sink_demand": round(sink_demand, 6),
             "source_capacity": round(source_capacity, 6),

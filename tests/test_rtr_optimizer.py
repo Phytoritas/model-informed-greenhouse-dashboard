@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import math
 import sys
 import types
 from types import SimpleNamespace
@@ -441,6 +442,260 @@ def _full_test_weights(value: float = 1.0) -> dict[str, float]:
     }
 
 
+def test_tomato_development_curve_rows_use_predictor_values_not_linear_target_fit() -> None:
+    services = _load_light_rtr_services()
+    node_target_engine = importlib.import_module(
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.node_target_engine"
+    )
+    backend_main = _backend_main()
+    context = _fake_context(
+        crop="tomato",
+        par_umol_m2_s=860.0,
+        co2_ppm=760.0,
+        t_air_c=20.0,
+        outside_t_c=8.0,
+        source_capacity=1.02,
+        sink_demand=0.88,
+        fruit_load=10.5,
+        source_sink_balance=0.12,
+    )
+    optimization_inputs = _optimization_inputs(
+        services,
+        "tomato",
+        target_node_development_per_day=0.12,
+    )
+    baseline_candidate = {
+        "controls": {"mean_temp_C": 19.0},
+        "objective_breakdown": {
+            "respiration_cost": 0.3,
+            "energy_cost": 0.2,
+            "labor_index": 0.1,
+        },
+        "node_summary": {"target_hit": True},
+    }
+    optimized_candidate = {
+        "controls": {"mean_temp_C": 20.0},
+        "objective_breakdown": {
+            "respiration_cost": 0.31,
+            "energy_cost": 0.21,
+            "labor_index": 0.1,
+        },
+        "node_summary": {"target_hit": True},
+    }
+    payload = backend_main._build_rtr_explanation_payload(
+        context=context,
+        optimization_inputs=optimization_inputs,
+        baseline_candidate=baseline_candidate,
+        optimized_candidate=optimized_candidate,
+        rtr_equivalent={"delta_temp_C": 1.0},
+        crop_specific_insight={
+            "active_trusses": 3,
+            "dominant_cohort_id": 1,
+        },
+    )
+
+    rows = payload["temperature_development_rows"]
+    assert rows
+    assert payload["development_metric"] == "truss"
+    assert rows[0]["mean_temp_C"] == 15.0
+    assert rows[-1]["mean_temp_C"] <= 23.0
+
+    row_by_temp = {float(row["mean_temp_C"]): float(row["development_rate_day"]) for row in rows}
+    expected_15 = round(
+        float(
+            node_target_engine.predict_development_rate_day(
+                crop="tomato",
+                raw_adapter_state=context.adapter.dump_state(),
+                mean_air_temp_c=15.0,
+            )
+        )
+        / 3.0,
+        3,
+    )
+    expected_20 = round(
+        float(
+            node_target_engine.predict_development_rate_day(
+                crop="tomato",
+                raw_adapter_state=context.adapter.dump_state(),
+                mean_air_temp_c=20.0,
+            )
+        )
+        / 3.0,
+        3,
+    )
+    assert row_by_temp[15.0] == expected_15
+    assert row_by_temp[20.0] == expected_20
+    assert row_by_temp[20.0] > row_by_temp[15.0]
+
+
+def test_internal_model_context_predicts_development_from_live_air_temperature(
+    monkeypatch,
+) -> None:
+    internal_model_bridge = importlib.import_module(
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.internal_model_bridge"
+    )
+
+    class _StubAdapter:
+        def __init__(self):
+            self.model = SimpleNamespace(
+                T_a=293.15,
+                T_c=294.15,
+                RH=0.7,
+                u_CO2=760.0,
+                u_PAR=520.0,
+            )
+
+        def load_state(self, state):
+            return None
+
+        def dump_state(self):
+            return {}
+
+    captured: dict[str, float] = {}
+
+    def _capture_rate(**kwargs):
+        captured["mean_air_temp_c"] = float(kwargs["mean_air_temp_c"])
+        return 0.51
+
+    monkeypatch.setattr(
+        internal_model_bridge,
+        "_clone_adapter",
+        lambda crop, raw_adapter_state: _StubAdapter(),
+    )
+    monkeypatch.setattr(
+        internal_model_bridge,
+        "_estimate_energy",
+        lambda **kwargs: {
+            "Q_load_kW": 41.0,
+            "P_elec_kW": 12.0,
+            "COP_current": 3.2,
+            "daily_kWh": 300.0,
+        },
+    )
+    monkeypatch.setattr(internal_model_bridge, "predict_development_rate_day", _capture_rate)
+
+    snapshot_record = {
+        "crop": "tomato",
+        "normalized_snapshot": {
+            "crop": "tomato",
+            "captured_at": "2026-04-08T12:00:00",
+            "state": {
+                "truss_count": 4,
+                "active_trusses": 3,
+                "truss_cohorts": [],
+                "source_capacity": 1.12,
+                "sink_demand": 0.96,
+                "fruit_load": 11.4,
+                "vegetative_dry_matter_g_m2": 70.0,
+                "fruit_dry_matter_g_m2": 22.0,
+                "harvested_fruit_dry_matter_g_m2": 6.0,
+                "lai": 2.3,
+                "current_fruit_partition_ratio": 0.58,
+            },
+            "gas_exchange": {
+                "canopy_gross_assimilation_umol_m2_s": 18.0,
+                "canopy_net_assimilation_umol_m2_s": 14.5,
+            },
+            "live_observation": {
+                "stomatal_conductance_m_s": 0.22,
+            },
+        },
+        "raw_adapter_state": {
+            "_adapter_meta": {
+                "area_m2": 3305.8,
+                "last_state": {
+                    "T_air_C": 22.4,
+                    "T_canopy_C": 23.1,
+                    "RH_percent": 74.0,
+                    "CO2_ppm": 760.0,
+                    "PAR_umol": 540.0,
+                    "T_out_C": 9.0,
+                    "dt_seconds": 3600.0,
+                },
+            },
+        },
+    }
+    crop_state = {
+        "ops_config": {
+            "heating_set_C": 15.0,
+            "cooling_set_C": 24.0,
+            "p_band_C": 2.0,
+            "co2_target_ppm": 780.0,
+            "vent_start_C": 23.0,
+        },
+        "energy": object(),
+        "df_env": pd.DataFrame(
+            {
+                "datetime": pd.date_range("2026-04-07T12:00:00", periods=25, freq="1h"),
+                "T_air_C": ([18.0] * 24) + [22.4],
+            }
+        ),
+    }
+    profiles_payload = {
+        "profiles": {
+            "Tomato": {
+                "baseTempC": 18.5,
+                "slopeCPerMjM2": 0.7,
+                "baseline": {"baseline_target_C": 19.1},
+                "optimizer": {"enabled": True},
+            }
+        }
+    }
+
+    context = internal_model_bridge.build_internal_model_context(
+        snapshot_record=snapshot_record,
+        crop_state=crop_state,
+        greenhouse_id="house-a",
+        profiles_payload=profiles_payload,
+    )
+
+    assert abs(captured["mean_air_temp_c"] - 18.0) < 0.05
+    assert context.canonical_state["growth"]["predicted_node_rate_day"] == 0.51
+    assert abs(context.canonical_state["growth"]["development_reference_temp_C"] - 18.0) < 0.05
+
+
+def test_tomato_predictor_uses_active_truss_tdvs_fdvr_when_available() -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.rtr import node_target_engine
+
+    raw_adapter_state = {
+        "truss_cohorts": [
+            {"tdvs": 0.55, "n_fruits": 5, "active": True},
+            {"tdvs": 0.28, "n_fruits": 3, "active": True},
+            {"tdvs": 1.02, "n_fruits": 4, "active": False},
+        ]
+    }
+
+    rate = node_target_engine.predict_development_rate_day(
+        crop="tomato",
+        raw_adapter_state=raw_adapter_state,
+        mean_air_temp_c=22.0,
+    )
+
+    ln_term = math.log(22.0 / 20.0)
+    fdvr_first = max(0.0, 0.0181 + ln_term * (0.0392 - 0.213 * 0.55 + 0.451 * 0.55**2 - 0.240 * 0.55**3))
+    fdvr_second = max(0.0, 0.0181 + ln_term * (0.0392 - 0.213 * 0.28 + 0.451 * 0.28**2 - 0.240 * 0.28**3))
+    expected = ((fdvr_first * 5.0) + (fdvr_second * 3.0)) / 8.0 * 3.0
+
+    assert abs(rate - expected) < 1e-12
+
+
+def test_cucumber_predictor_uses_post_15_node_threshold_for_solution_inputs() -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.rtr import node_target_engine
+
+    rate = node_target_engine.predict_development_rate_day(
+        crop="cucumber",
+        raw_adapter_state={
+            "node_count": 16,
+            "threshold_before": 26.3,
+            "threshold_after": 15.6,
+            "reproductive_node_threshold": 15.0,
+        },
+        mean_air_temp_c=20.0,
+    )
+
+    assert rate == (20.0 - 10.0) / 15.6
+
+
 def test_unit_projection_keeps_canonical_m2_and_projects_actual_area() -> None:
     services = _load_light_rtr_services()
 
@@ -566,7 +821,69 @@ def test_tomato_fruit_thinning_relaxes_temperature_pressure() -> None:
     )
 
 
-def test_rtr_optimizer_balances_high_par_vs_low_par_high_temp() -> None:
+def test_stage1_feasibility_prefers_baseline_adjacent_solution_over_coldest_feasible(
+    monkeypatch,
+) -> None:
+    services = _load_optimizer_rtr_services()
+    context = _fake_context(
+        crop="cucumber",
+        par_umol_m2_s=900.0,
+        co2_ppm=760.0,
+        t_air_c=19.2,
+        outside_t_c=8.0,
+        source_capacity=1.0,
+        sink_demand=0.82,
+        fruit_load=12.0,
+        source_sink_balance=0.1,
+    )
+    optimization_inputs = _optimization_inputs(services, "cucumber")
+
+    def _stable_feasible_candidate(**kwargs):
+        mean_temp_c = ((float(kwargs["day_min_temp_c"]) * 14.0) + (float(kwargs["night_min_temp_c"]) * 10.0)) / 24.0
+        return {
+            "controls": {
+                "mean_temp_C": mean_temp_c,
+                "day_heating_min_temp_C": float(kwargs["day_min_temp_c"]),
+                "night_heating_min_temp_C": float(kwargs["night_min_temp_c"]),
+                "day_cooling_target_C": float(kwargs["day_cooling_target_c"]),
+                "night_cooling_target_C": float(kwargs["night_cooling_target_c"]),
+                "vent_bias_C": float(kwargs["vent_bias_c"]),
+                "screen_bias_pct": float(kwargs["screen_bias_pct"]),
+                "circulation_fan_pct": float(kwargs["circulation_fan_pct"]),
+                "co2_target_ppm": float(kwargs["co2_target_ppm"]),
+            },
+            "objective_breakdown": {
+                "node_target_penalty": 0.0,
+                "carbon_margin_penalty": 0.0,
+                "disease_penalty": 0.0,
+                "stress_penalty": 0.0,
+            },
+            "feasibility": {
+                "target_node_hit": True,
+                "carbon_margin_positive": True,
+                "risk_flags": [],
+            },
+            "objective_value": 0.0,
+        }
+
+    monkeypatch.setattr(services.lagrangian_optimizer, "evaluate_rtr_candidate", _stable_feasible_candidate)
+
+    result = services.lagrangian_optimizer.optimize_rtr_targets(
+        context=context,
+        optimization_inputs=optimization_inputs,
+    )
+
+    baseline_mean_temp_c = (
+        (
+            float(context.canonical_state["baseline_rtr"]["baseline_target_C"]) * 14.0
+            + float(context.ops_config["heating_set_C"]) * 10.0
+        )
+        / 24.0
+    )
+    assert abs(result["controls"]["mean_temp_C"] - baseline_mean_temp_c) < 0.2
+
+
+def test_rtr_optimizer_high_par_can_hold_equal_or_lower_mean_temp_than_low_par_case() -> None:
     services = _load_optimizer_rtr_services()
     high_context = _fake_context(
         crop="cucumber",
@@ -609,11 +926,7 @@ def test_rtr_optimizer_balances_high_par_vs_low_par_high_temp() -> None:
         low_context.canonical_state["flux"]["respiration_proxy_umol_m2_s"]
         > high_context.canonical_state["flux"]["respiration_proxy_umol_m2_s"]
     )
-    assert (
-        low_result["rtr_equivalent"]["delta_temp_C"]
-        if "rtr_equivalent" in low_result
-        else low_result["controls"]["mean_temp_C"]
-    ) <= high_result["controls"]["mean_temp_C"] + 0.2
+    assert high_result["controls"]["mean_temp_C"] <= low_result["controls"]["mean_temp_C"] + 0.2
 
 
 def test_rtr_optimizer_modes_apply_energy_and_labor_penalties() -> None:

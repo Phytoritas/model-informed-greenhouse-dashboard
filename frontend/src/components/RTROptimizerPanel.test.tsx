@@ -23,7 +23,7 @@ vi.mock('../hooks/useRtrOptimizer', () => ({
 }));
 
 vi.mock('./RTROutlookPanel', () => ({
-    default: () => <div>기준선 비교 카드 내용</div>,
+    default: () => <div>평소 설정 비교 카드 내용</div>,
 }));
 
 vi.mock('./RTRCalibrationWorkspace', () => ({
@@ -279,10 +279,18 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
             labor_index_day: 1601.65,
         },
         explanation_payload: {
-            summary: '목표 마디 전개를 맞추기 위해 기준선보다 소폭 높은 평균 온도가 필요합니다.',
+            summary: '목표 마디 전개를 맞추기 위해 평소 설정값보다 소폭 높은 평균 온도가 필요합니다.',
             target_node_development_per_day: 0.68,
             baseline_mean_temp_C: 19.1,
             optimized_mean_temp_C: 19.5,
+            development_metric: 'node',
+            temperature_development_rows: [
+                { mean_temp_C: 15.0, development_rate_day: 0.42 },
+                { mean_temp_C: 17.5, development_rate_day: 0.49 },
+                { mean_temp_C: 19.0, development_rate_day: 0.55 },
+                { mean_temp_C: 19.5, development_rate_day: 0.57 },
+                { mean_temp_C: 20.0, development_rate_day: 0.59 },
+            ],
             reason_tags: [
                 'temperature-up',
                 'node-target-guarded',
@@ -604,22 +612,69 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getByText('총 수확량 / 일')).toBeTruthy();
         expect(screen.getByText('총 수확량 / 주')).toBeTruthy();
         expect(screen.getByText('목표 마디 전개')).toBeTruthy();
-        expect(screen.getByText('기준선보다 온도 상향')).toBeTruthy();
+        expect(screen.getByText('평소 설정보다 온도 상향')).toBeTruthy();
         expect(screen.getByText('목표 마디 속도 방어')).toBeTruthy();
         expect(screen.getByText('에너지 비용 고려')).toBeTruthy();
         expect(screen.getByText('위험 제약 적용 중')).toBeTruthy();
         expect(screen.getByText('RTR 편차 이유 설명 필요')).toBeTruthy();
         expect(screen.getByText('시나리오 비교')).toBeTruthy();
         expect(screen.getAllByText('균형').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText('기준선').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getByText('기준선 +0.3°C')).toBeTruthy();
+        expect(screen.getAllByText('평소 설정').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('평소 설정 +0.3°C')).toBeTruthy();
         expect(screen.getAllByText('스크린 편차').length).toBeGreaterThanOrEqual(2);
         expect(screen.getByText('스크린 편차 → 습도 위험 패널티')).toBeTruthy();
-        expect(screen.getByText('RTR calibration workspace stub')).toBeTruthy();
-        expect(screen.getByText('기준선 비교 카드')).toBeTruthy();
-        expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
+        expect(await screen.findByText('RTR calibration workspace stub')).toBeTruthy();
+        expect(screen.getByText('평소 설정 비교 카드')).toBeTruthy();
+        expect(screen.getByText('평소 설정 비교 카드 내용')).toBeTruthy();
         expect(screen.getByText('실면적 120.8 kg/일 · 845.6 kg/주')).toBeTruthy();
         expect(screen.getByText('실면적 8,140.2 kWh/일 · 977,880 원/일')).toBeTruthy();
+    });
+
+    it('keeps the target development tile synced with the current target state when the optimize echo is stale', async () => {
+        const optimizeResponse = buildOptimizeResponse();
+        optimizeResponse.explanation_payload = {
+            ...optimizeResponse.explanation_payload,
+            target_node_development_per_day: 0.447,
+        };
+        const stateResponse = buildStateResponse();
+        stateResponse.canonical_state = {
+            ...stateResponse.canonical_state,
+            growth: {
+                ...stateResponse.canonical_state.growth,
+                predicted_node_rate_day: 0.91,
+            },
+        };
+        useRtrOptimizerMock.mockReturnValue({
+            stateResponse,
+            optimizeResponse,
+            scenarioResponse: buildScenarioResponse(),
+            sensitivityResponse: buildSensitivityResponse(),
+            targetNodeDevelopmentPerDay: 1.06,
+            setTargetNodeDevelopmentPerDay: vi.fn(),
+            optimizationMode: 'balanced',
+            setOptimizationMode: vi.fn(),
+            customScenario: null,
+            setCustomScenario: vi.fn(),
+            includeEnergyCost: true,
+            setIncludeEnergyCost: vi.fn(),
+            includeCoolingCost: true,
+            setIncludeCoolingCost: vi.fn(),
+            includeLaborCost: true,
+            setIncludeLaborCost: vi.fn(),
+            telemetryOptimizationBlocked: false,
+            loading: false,
+            loadingState: false,
+            loadingOptimize: false,
+            error: null,
+            refreshState: vi.fn(),
+            refreshOptimization: vi.fn(),
+        });
+
+        renderPanel({ compact: true });
+
+        expect(await screen.findByDisplayValue('1.06')).toBeTruthy();
+        expect(screen.getAllByText('1.060').length).toBeGreaterThanOrEqual(1);
+        expect(screen.queryByText('0.447')).toBeNull();
     });
 
     it('refreshes profiles and optimizer state after calibration save completes', async () => {
@@ -673,7 +728,7 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getByText('CO2 target')).toBeTruthy();
         expect(screen.getByText('Risk bound active')).toBeTruthy();
         expect(screen.getByText('Large RTR deviation')).toBeTruthy();
-        expect(screen.getByLabelText('Target node rate')).toBeTruthy();
+        expect(screen.getByLabelText('Target node progression')).toBeTruthy();
         expect(screen.getByText('348 KRW')).toBeTruthy();
         expect(screen.getAllByText('0.570').length).toBeGreaterThanOrEqual(1);
         expect(screen.queryByText('Scenario review')).toBeNull();
@@ -751,7 +806,7 @@ describe('RTROptimizerPanel', () => {
 
         expect(await screen.findByText('Light-linked temperature')).toBeTruthy();
         expect(screen.getByText(/The recommended control raised mean temperature by 0\.40°C/)).toBeTruthy();
-        expect(screen.queryByText('목표 마디 전개를 맞추기 위해 기준선보다 소폭 높은 평균 온도가 필요합니다.')).toBeNull();
+        expect(screen.queryByText('목표 마디 전개를 맞추기 위해 평소 설정값보다 소폭 높은 평균 온도가 필요합니다.')).toBeNull();
         expect(screen.getByPlaceholderText('e.g. 850')).toBeTruthy();
         expect(screen.getByPlaceholderText('e.g. 2809.9')).toBeTruthy();
     });
@@ -761,7 +816,7 @@ describe('RTROptimizerPanel', () => {
 
         expect(await screen.findByText('Baseline temperature compare')).toBeTruthy();
         expect(screen.getByText('This profile keeps the automatic control calculation disabled, so only the baseline comparison is shown.')).toBeTruthy();
-        expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
+        expect(screen.getByText('평소 설정 비교 카드 내용')).toBeTruthy();
         expect(screen.queryByText('Light-linked temperature')).toBeNull();
     });
 
@@ -932,7 +987,7 @@ describe('RTROptimizerPanel', () => {
         renderPanel({ telemetryStatus: 'offline' });
 
         expect(await screen.findByText('실시간 수신이 오래돼 새 계산을 잠시 멈췄습니다.')).toBeTruthy();
-        expect(screen.getByText('기준선 비교 카드 내용')).toBeTruthy();
+        expect(screen.getByText('평소 설정 비교 카드 내용')).toBeTruthy();
         expect(screen.queryByText('목표 마디 전개')).toBeNull();
     });
 

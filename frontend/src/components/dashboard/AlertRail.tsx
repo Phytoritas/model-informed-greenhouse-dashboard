@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3 } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import DashboardCard from '../common/DashboardCard';
@@ -13,6 +14,20 @@ interface AlertRailProps {
     items: AlertRailItem[];
     compact?: boolean;
 }
+
+const clampOneStyle: CSSProperties = {
+    display: '-webkit-box',
+    overflow: 'hidden',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: 1,
+};
+
+const clampTwoStyle: CSSProperties = {
+    display: '-webkit-box',
+    overflow: 'hidden',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: 2,
+};
 
 function severityMeta(severity: AlertRailItem['severity']) {
     if (severity === 'critical') {
@@ -43,13 +58,13 @@ export default function AlertRail({ items, compact = false }: AlertRailProps) {
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            eyebrow: '주의 알림',
-            title: '바로 조치 · 주의 확인 · 운영 메모',
+            eyebrow: '긴급 알림',
+            title: '바로 조치 · 확인 필요 · 운영 메모',
             description: '지금 손봐야 하거나 확인이 필요한 운영 이슈만 먼저 모아 보여줍니다.',
             empty: '현재 바로 조치할 알림은 없지만, RTR 권장안과 운영 메모는 계속 확인해 주세요.',
             severity: {
                 critical: '바로 조치',
-                warning: '주의 확인',
+                warning: '확인 필요',
                 info: '운영 메모',
                 resolved: '해결 완료',
             },
@@ -88,6 +103,74 @@ export default function AlertRail({ items, compact = false }: AlertRailProps) {
         },
         { critical: 0, warning: 0, info: 0, resolved: 0 },
     );
+    const compactItems = items.slice(0, 2);
+
+    if (compact) {
+        return (
+            <DashboardCard
+                variant="alert"
+                eyebrow={copy.eyebrow}
+                title={copy.title}
+                description={undefined}
+                className="h-full"
+                contentClassName="flex h-full flex-col gap-3"
+            >
+                <div className="grid grid-cols-2 gap-2">
+                    {(['critical', 'warning', 'info', 'resolved'] as const).map((severity) => (
+                        <div
+                            key={severity}
+                            className={`rounded-[16px] px-3 py-2 ${severityMeta(severity).className}`}
+                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                        >
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-75">
+                                {copy.severity[severity]}
+                            </div>
+                            <div className="mt-1 text-lg font-semibold leading-none tracking-[-0.04em]">
+                                {severityCounts[severity]}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="flex min-h-0 flex-col gap-2">
+                    {compactItems.length > 0 ? compactItems.map((item) => {
+                        const meta = severityMeta(item.severity);
+                        const Icon = meta.icon;
+                        return (
+                            <article
+                                key={item.id}
+                                className={`rounded-[18px] px-3 py-2.5 ${meta.className}`}
+                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                            >
+                                <div className="flex items-start gap-2.5">
+                                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-white/75">
+                                        <Icon className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-75">
+                                            {copy.severity[item.severity]}
+                                        </div>
+                                        <div className="mt-1 text-sm font-semibold leading-5" style={clampOneStyle}>
+                                            {item.title}
+                                        </div>
+                                        <p className="mt-1 text-xs leading-5 opacity-90" style={clampTwoStyle}>
+                                            {item.body}
+                                        </p>
+                                    </div>
+                                </div>
+                            </article>
+                        );
+                    }) : (
+                        <div
+                            className="rounded-[18px] bg-white/78 px-3 py-3 text-sm text-[color:var(--sg-text-muted)]"
+                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                        >
+                            {copy.noUrgent}
+                        </div>
+                    )}
+                </div>
+            </DashboardCard>
+        );
+    }
 
     return (
         <DashboardCard
