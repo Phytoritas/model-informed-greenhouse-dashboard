@@ -19,6 +19,8 @@ interface UseRtrOptimizerOptions {
     optimizerEnabled?: boolean;
     defaultMode?: RtrOptimizationMode;
     telemetryStatus?: TelemetryStatus;
+    active?: boolean;
+    autoRunSupplemental?: boolean;
 }
 
 interface RtrCustomScenarioDraft {
@@ -127,6 +129,8 @@ export const useRtrOptimizer = ({
     optimizerEnabled = true,
     defaultMode = DEFAULT_MODE,
     telemetryStatus = 'live',
+    active = true,
+    autoRunSupplemental = true,
 }: UseRtrOptimizerOptions) => {
     const persistedStateRef = useRef<PersistedRtrOptimizerCropState>(
         resolvePersistedCropState(crop, defaultMode),
@@ -216,6 +220,10 @@ export const useRtrOptimizer = ({
     }, [cropKey, greenhouseId]);
 
     const refreshState = useCallback(async () => {
+        if (!active) {
+            setLoadingState(false);
+            return;
+        }
         const requestId = stateRequestIdRef.current + 1;
         stateRequestIdRef.current = requestId;
         setLoadingState(true);
@@ -237,15 +245,19 @@ export const useRtrOptimizer = ({
                 setLoadingState(false);
             }
         }
-    }, [stateQuery]);
+    }, [active, stateQuery]);
 
     useEffect(() => {
+        if (!active) {
+            setLoadingState(false);
+            return;
+        }
         void refreshState();
         const interval = window.setInterval(() => {
             void refreshState();
         }, stateRefreshMs);
         return () => window.clearInterval(interval);
-    }, [refreshState, stateRefreshMs]);
+    }, [active, refreshState, stateRefreshMs]);
 
     useEffect(() => {
         if (hasManualTargetRef.current) {
@@ -271,6 +283,7 @@ export const useRtrOptimizer = ({
         return {
             crop: cropKey,
             greenhouse_id: greenhouseId,
+            snapshot_id: stateResponse?.snapshot_id,
             target_node_development_per_day: targetNodeDevelopmentPerDay,
             optimization_mode: optimizationModeState,
             include_energy_cost: includeEnergyCost,
@@ -292,6 +305,7 @@ export const useRtrOptimizer = ({
         optimizerEnabled,
         telemetryOptimizationBlocked,
         targetNodeDevelopmentPerDay,
+        stateResponse?.snapshot_id,
     ]);
 
     const scenarioRequestPayload = useMemo(() => {
@@ -304,10 +318,11 @@ export const useRtrOptimizer = ({
         };
     }, [customScenario, requestPayload]);
 
-    const runOptimizer = useCallback(async () => {
+    const runOptimizer = useCallback(async (options?: { includeSupplemental?: boolean }) => {
         if (!optimizerEnabled || !requestPayload || !scenarioRequestPayload) {
             return;
         }
+        const includeSupplemental = options?.includeSupplemental ?? true;
 
         const requestId = optimizeRequestIdRef.current + 1;
         optimizeRequestIdRef.current = requestId;
@@ -318,6 +333,20 @@ export const useRtrOptimizer = ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestPayload),
             }).then((response) => readJson<RtrOptimizeResponse>(response));
+            const optimizeData = await optimizePromise;
+
+            if (optimizeRequestIdRef.current !== requestId) {
+                return;
+            }
+
+            setOptimizeResponse(optimizeData);
+            setError(null);
+            if (!includeSupplemental) {
+                setScenarioResponse(null);
+                setSensitivityResponse(null);
+                return;
+            }
+
             const scenarioPromise = fetch(`${API_URL}/rtr/scenario`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -332,14 +361,6 @@ export const useRtrOptimizer = ({
                 scenarioPromise,
                 sensitivityPromise,
             ]);
-            const optimizeData = await optimizePromise;
-
-            if (optimizeRequestIdRef.current !== requestId) {
-                return;
-            }
-
-            setOptimizeResponse(optimizeData);
-            setError(null);
             const [scenarioResult, sensitivityResult] = await supplementalResultsPromise;
 
             if (optimizeRequestIdRef.current !== requestId) {
@@ -392,11 +413,19 @@ export const useRtrOptimizer = ({
             setSensitivityResponse(null);
             return;
         }
-        if (telemetryOptimizationBlocked || !requestPayload) {
+        if (!active || telemetryOptimizationBlocked || !requestPayload) {
             return;
         }
-        void runOptimizer();
-    }, [optimizerEnabled, requestPayload, runOptimizer, targetNodeDevelopmentPerDay, telemetryOptimizationBlocked]);
+        void runOptimizer({ includeSupplemental: autoRunSupplemental });
+    }, [
+        active,
+        autoRunSupplemental,
+        optimizerEnabled,
+        requestPayload,
+        runOptimizer,
+        targetNodeDevelopmentPerDay,
+        telemetryOptimizationBlocked,
+    ]);
 
     useEffect(() => {
         const areaPersistenceSignature = JSON.stringify({
@@ -505,6 +534,6 @@ export const useRtrOptimizer = ({
         loadingOptimize,
         error,
         refreshState,
-        refreshOptimization: runOptimizer,
+        refreshOptimization: () => runOptimizer({ includeSupplemental: true }),
     };
 };

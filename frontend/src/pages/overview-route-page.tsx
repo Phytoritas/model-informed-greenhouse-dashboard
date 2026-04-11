@@ -42,6 +42,10 @@ interface OverviewRoutePageProps {
   sourceSinkBalance?: number | null;
   canopyAssimilation?: number | null;
   lai?: number | null;
+  liveSourceSinkSeries?: Array<{
+    timestamp: number;
+    value: number;
+  }>;
   alertItems: AlertRailItem[];
   fallbackAlertBody: string;
   history: SensorData[];
@@ -82,6 +86,7 @@ export default function OverviewRoutePage({
   sourceSinkBalance = null,
   canopyAssimilation = null,
   lai = null,
+  liveSourceSinkSeries = [],
   alertItems,
   fallbackAlertBody,
   history,
@@ -143,6 +148,7 @@ export default function OverviewRoutePage({
           signals={overviewSignals}
           loading={overviewSignalsLoading}
           error={overviewSignalsError}
+          liveSourceSinkSeries={liveSourceSinkSeries}
         />
       )}
       priorityRail={<AlertRail items={fallbackAlerts} compact />}
