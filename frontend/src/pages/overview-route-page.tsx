@@ -152,7 +152,7 @@ export default function OverviewRoutePage({
             <LoadingSkeleton
               title={locale === 'ko' ? 'RTR 추세' : 'RTR trend'}
               loadingMessage={locale === 'ko' ? 'RTR 추세선을 불러오는 중입니다...' : 'Loading RTR trendline...'}
-              minHeightClassName="min-h-[220px]"
+              minHeightClassName="h-[312px]"
             />
           )}
         >
