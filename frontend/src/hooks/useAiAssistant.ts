@@ -127,7 +127,7 @@ export const useAiAssistant = () => {
             }
 
             if (requestId !== requestIdRef.current) {
-                return;
+                return false;
             }
 
             setAiAnalysis(json?.text || '');
@@ -137,9 +137,10 @@ export const useAiAssistant = () => {
             if (callback) {
                 callback(extractRecommendationCandidates(json));
             }
+            return true;
         } catch (error) {
             if (requestId !== requestIdRef.current) {
-                return;
+                return false;
             }
             const message = error instanceof Error ? error.message : 'unknown_error';
             setAiDisplay(null);
@@ -150,6 +151,7 @@ export const useAiAssistant = () => {
                     ? `모델 상담을 일시적으로 사용할 수 없습니다.\n원인: ${message}`
                     : `AI consulting is temporarily unavailable. Cause: ${message}`,
             );
+            return false;
         } finally {
             if (requestId === requestIdRef.current) {
                 setIsAnalyzing(false);

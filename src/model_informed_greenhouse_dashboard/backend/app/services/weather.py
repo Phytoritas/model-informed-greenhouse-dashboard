@@ -14,6 +14,7 @@ import httpx
 OPEN_METEO_DOCS_URL = "https://open-meteo.com/en/docs"
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 WEATHER_CACHE_TTL_SECONDS = 15 * 60
+WEATHER_HISTORY_CACHE_TTL_SECONDS = 60
 WEATHER_UPSTREAM_TIMEOUT = httpx.Timeout(connect=3.0, read=6.0, write=6.0, pool=6.0)
 WEATHER_HISTORY_HOURS = 72
 
@@ -447,5 +448,5 @@ async def fetch_daegu_shortwave_history(
         "points": points,
     }
     _weather_history_cache["payload"] = deepcopy(payload)
-    _weather_history_cache["expires_at"] = now + WEATHER_CACHE_TTL_SECONDS
+    _weather_history_cache["expires_at"] = now + WEATHER_HISTORY_CACHE_TTL_SECONDS
     return payload
