@@ -380,7 +380,10 @@ function App() {
   const routeHashTabId = activeSection.key === 'assistant'
     ? normalizeAssistantPanelId(location.hash.replace(/^#/, ''))
     : location.hash.replace(/^#/, '') || null;
-  const routeSectionTabId = activeSection.tabs.find((tab) => tab.id === routeHashTabId)?.id;
+  const normalizedRouteHashTabId = activeSection.key === 'control' && routeHashTabId === 'control-action'
+    ? 'control-strategy'
+    : routeHashTabId;
+  const routeSectionTabId = activeSection.tabs.find((tab) => tab.id === normalizedRouteHashTabId)?.id;
   const activeSectionTabId = routeSectionTabId ?? sectionTabSelections[activeSection.key] ?? activeSection.tabs[0]?.id;
   const activePanelId = activeSectionTabId ?? activeSection.tabs[0]?.id ?? '';
   const hasTelemetryData = history.length > 0 || telemetry.lastMessageAt !== null;
@@ -896,6 +899,12 @@ function App() {
     }
 
     setSectionTabSelections((current) => ({ ...current, [targetSection.key]: tabId }));
+
+    if (workspace === 'control') {
+      navigate(targetSection.path, { replace: true });
+      return;
+    }
+
     navigate({ pathname: targetSection.path, hash: `#${tabId}` }, { replace: true });
   }, [navigate, sections, setSectionTabSelections]);
 
@@ -913,6 +922,14 @@ function App() {
 
     navigate({ pathname: activeSection.path, hash: `#${normalizedHash}` }, { replace: true });
   }, [activeSection.key, activeSection.path, location.hash, navigate]);
+
+  useEffect(() => {
+    if (activeSection.key !== 'control' || routeHashTabId !== 'control-action') {
+      return;
+    }
+
+    navigate({ pathname: activeSection.path, hash: '#control-strategy' }, { replace: true });
+  }, [activeSection.key, activeSection.path, navigate, routeHashTabId]);
 
   useEffect(() => {
     if (telemetry.lastMessageAt === null) {
@@ -1183,6 +1200,7 @@ function App() {
       weatherError={weatherError}
       producePrices={producePrices}
       produceLoading={isProducePricesLoading}
+      overviewSignals={overviewSignals}
     />
   );
 
@@ -1307,6 +1325,9 @@ function App() {
             <Suspense fallback={<RouteLoadingFallback />}>
               <ControlRoutePage
                 locale={locale}
+                activePanel={activePanelId === 'control-devices'
+                  ? 'control-devices'
+                  : 'control-strategy'}
                 crop={selectedCrop}
                 controls={controls}
                 onToggle={toggleControl}

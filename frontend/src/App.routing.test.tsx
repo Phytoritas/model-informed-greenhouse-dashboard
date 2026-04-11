@@ -680,6 +680,30 @@ describe('App routed shell', () => {
     expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
   })
 
+  it('keeps control section actions inline and leaves the recommended control surface visible', async () => {
+    renderApp('/control')
+
+    expect(screen.getByText('AlertRail')).toBeTruthy()
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByText('ControlPanel')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Action:control-devices' }))
+
+    expect(screen.queryByText('RTROptimizerPanel')).toBeNull()
+    expect(screen.getByText('AlertRail')).toBeTruthy()
+    expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.queryByTestId('page-section-active')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Action:control-devices' }).getAttribute('aria-current')).toBe('step')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Action:control-strategy' }))
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByText('AlertRail')).toBeTruthy()
+    expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-current')).toBe('step')
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+  })
+
   it('opens the assistant drawer from the topbar without leaving the current page', async () => {
     renderApp('/overview')
 
