@@ -1,9 +1,9 @@
 # Current Loop
 
 ## Active State
-- Active implementation branch: `docs/102-sync-issue100-merged-harness-state-on-main`.
-- Active issue: `#102` (`[Doc] Sync issue100 merged harness state on main`).
-- Current bounded scope: realign tracked `.rah` control-plane files with the clean `main` baseline after PR `#101` merged, without reopening product/runtime scope.
+- `main` is the truthful post-issue100 merged baseline.
+- No active product implementation branch is open in the repository.
+- The only open tracked backlog issue is blocked issue `#3`, which still waits for grower-approved RTR windows.
 
 ## Stable Main Baseline
 - PR `#95` merged issue `#94` into `main` at `ff0a92a`.
@@ -28,6 +28,5 @@
 - This repo does not currently contain `automation/rah.py`, so the docs-sync lane validates control-plane changes by re-reading tracked `.rah` files directly and running `git diff --check`.
 
 ## Exact Next Step
-1. Update the tracked `.rah` files so they describe the post-issue100 merged `main` baseline instead of the retired validating branch.
-2. Re-read the tracked `.rah` files and run `git diff --check`, then commit, push, and open the docs PR for issue `#102`.
-3. After the docs PR merges, return local `main` to a clean baseline that points back at the blocked issue `#3` backlog.
+1. If working on RTR calibration, unblock issue `#3` with real grower-approved windows before opening its implementation branch.
+2. Otherwise, start the next non-trivial task from a fresh issue-based branch off clean `main`.
