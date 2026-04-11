@@ -2,19 +2,19 @@
 
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
-- topic: `post-issue94-main`
-- sessionId: `model-informed-greenhouse-dashboard#main:post-issue94`
-- caseId: `case/model-informed-greenhouse-dashboard/main/post-issue94`
-- issue: `#96` (docs-only harness sync)
-- branch: `docs/96-sync-issue94-merged-harness-state-on-main`
+- topic: `main-clean-issue3-blocked`
+- sessionId: `model-informed-greenhouse-dashboard#main:issue3-blocked`
+- caseId: `case/model-informed-greenhouse-dashboard/main/issue3-blocked`
+- open backlog issue: `#3`
+- branch: `main`
 
 ## Current State
-- current_stage: `post-issue94-main`
-- implementation_gate: `pass`
+- current_stage: `main-clean-issue3-blocked`
+- implementation_gate: `blocked`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `issue94 merged -> main is clean -> docs sync lane updates tracked harness state`
-- latest_validation: `the merged issue94 baseline is green on backend and frontend validation ladders`
-- local_worktree_followup: `only the docs-only harness sync lane remains before settling on clean main`
+- latest_route_slice: `issue94 merged -> issue96 merged -> main clean -> blocked RTR calibration backlog remains`
+- latest_validation: `the merged main baseline is green on backend and frontend validation ladders`
+- local_worktree_followup: `main is clean; new work should start from a fresh issue-based branch`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -25,15 +25,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#main:post-issue94")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#main:issue3-blocked")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "post-issue94-main", "main", "harness-sync"],
-    topic="post-issue94-main",
+    keywords=["model-informed-greenhouse-dashboard", "main-clean-issue3-blocked", "main", "issue3", "blocked"],
+    topic="main-clean-issue3-blocked",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#main:post-issue94",
+    sessionId="model-informed-greenhouse-dashboard#main:issue3-blocked",
     caseMode=True,
     depth="standard",
-    contextText="resume from the post-issue94 merged main baseline and keep harness state aligned"
+    contextText="resume from the clean main baseline and decide whether to unblock issue #3 or start a fresh issue-based branch"
 )
 ```
 
@@ -41,6 +41,5 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Merge docs issue `#96`.
-- Return to clean `main`.
-- Start the next product change from a fresh issue-based branch.
+- Unblock issue `#3` only when grower-approved windows are available.
+- For unrelated work, stay on clean `main` and open a new issue/branch first.
