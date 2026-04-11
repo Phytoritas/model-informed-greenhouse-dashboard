@@ -37,6 +37,8 @@ except TypeError:
     _dotenv = dotenv_values(dotenv_path=_ENV_PATH)
 
 for _k in ("OPENAI_API_KEY", "OPENAI_MODEL"):
+    if os.getenv(_k):
+        continue
     if _dotenv.get(_k):
         os.environ[_k] = str(_dotenv[_k]).strip()
 

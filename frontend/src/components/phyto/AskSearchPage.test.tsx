@@ -14,14 +14,6 @@ vi.mock('./AskKnowledgeBoard', () => ({
     ),
 }));
 
-vi.mock('./AskRecentFlow', () => ({
-    default: () => <div>AskRecentFlow</div>,
-}));
-
-vi.mock('./AskResultSummary', () => ({
-    default: () => <div>AskResultSummary</div>,
-}));
-
 import AskSearchPage from './AskSearchPage';
 
 const baseProps = {
@@ -39,13 +31,6 @@ const baseProps = {
         nutrientCorrectionDraftMode: null,
         nutrientCorrectionLimitation: null,
     },
-    actionsNow: ['Keep the vent line steady.'],
-    actionsToday: ['Review humidity after sunset.'],
-    note: 'Keep the assistant flow inside one page.',
-    signals: [
-        { label: 'Data', value: 'Live' },
-        { label: 'Market', value: 'Connected' },
-    ],
     currentData: {
         timestamp: Date.now(),
         temperature: 22.4,
@@ -78,8 +63,6 @@ describe('AskSearchPage', () => {
 
         expect(screen.getByText('ChatAssistant:inline')).toBeTruthy();
         expect(screen.queryByText(/AskKnowledgeBoard:/)).toBeNull();
-        expect(screen.queryByText('AskRecentFlow')).toBeNull();
-        expect(screen.queryByText('AskResultSummary')).toBeNull();
     });
 
     it('renders the inline knowledge board and hydrates a seeded search query', async () => {
@@ -93,10 +76,9 @@ describe('AskSearchPage', () => {
 
         expect(await screen.findByText('AskKnowledgeBoard:powdery mildew rotation')).toBeTruthy();
         expect(screen.queryByText('ChatAssistant:inline')).toBeNull();
-        expect(screen.queryByText('AskRecentFlow')).toBeNull();
     });
 
-    it('renders the history summary without chat or search surfaces', () => {
+    it('maps legacy history panel to the search surface', () => {
         render(
             <AskSearchPage
                 {...baseProps}
@@ -104,9 +86,7 @@ describe('AskSearchPage', () => {
             />,
         );
 
-        expect(screen.getByText('AskRecentFlow')).toBeTruthy();
-        expect(screen.getByText('AskResultSummary')).toBeTruthy();
+        expect(screen.getByText('AskKnowledgeBoard:empty')).toBeTruthy();
         expect(screen.queryByText('ChatAssistant:inline')).toBeNull();
-        expect(screen.queryByText(/AskKnowledgeBoard:/)).toBeNull();
     });
 });

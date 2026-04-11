@@ -27,8 +27,8 @@ interface RTROutlookPanelProps {
 const getCalibrationModeLabel = (mode: RtrProfile['calibration']['mode'], locale: 'en' | 'ko'): string => {
     if (locale === 'ko') {
         if (mode === 'fitted') return '하우스 보정';
-        if (mode === 'insufficient-data') return '기준선 유지';
-        return '기준선';
+        if (mode === 'insufficient-data') return '평소 설정 유지';
+        return '평소 설정';
     }
 
     if (mode === 'fitted') return 'House-tuned';
@@ -40,16 +40,16 @@ const getLocalizedStrategyLabel = (profile: RtrProfile, locale: 'en' | 'ko'): st
     const cropLabel = getCropLabel(profile.crop, locale);
     if (profile.calibration.mode === 'fitted') {
         return locale === 'ko'
-            ? `${cropLabel} 하우스 맞춤 광-온도 기준선`
+            ? `${cropLabel} 하우스 맞춤 광-온도 설정`
             : `${cropLabel} house-tuned light-temperature line`;
     }
     if (profile.calibration.mode === 'insufficient-data') {
         return locale === 'ko'
-            ? `${cropLabel} 광-온도 기준선(데이터 보강 필요)`
+            ? `${cropLabel} 광-온도 설정(데이터 보강 필요)`
             : `${cropLabel} baseline line (needs more data)`;
     }
     return locale === 'ko'
-        ? `${cropLabel} 광-온도 기준선`
+        ? `${cropLabel} 광-온도 설정`
         : `${cropLabel} baseline line`;
 };
 
@@ -58,33 +58,33 @@ const getLocalizedSourceNote = (profile: RtrProfile, locale: 'en' | 'ko'): strin
     if (calibration.mode === 'fitted') {
         if (calibration.selectionSource === 'curated-windows') {
             return locale === 'ko'
-                ? `고생산 구간 ${calibration.windowCount ?? 0}개와 유효 일수 ${calibration.sampleDays}일을 바탕으로 맞춘 하우스 기준선입니다.`
+                ? `고생산 구간 ${calibration.windowCount ?? 0}개와 유효 일수 ${calibration.sampleDays}일을 바탕으로 맞춘 하우스 설정입니다.`
                 : `House-tuned line built from ${calibration.windowCount ?? 0} high-yield windows and ${calibration.sampleDays} valid days.`;
         }
         return locale === 'ko'
-            ? `이 하우스의 유효 일수 ${calibration.sampleDays}일을 바탕으로 맞춘 하우스 기준선입니다.`
+            ? `이 하우스의 유효 일수 ${calibration.sampleDays}일을 바탕으로 맞춘 하우스 설정입니다.`
             : `House-tuned line built from ${calibration.sampleDays} valid days in this house.`;
     }
 
     if (calibration.mode === 'insufficient-data') {
         if (calibration.selectionSource === 'curated-windows') {
             return locale === 'ko'
-                ? '고생산 구간은 정했지만 기준선을 다시 맞출 만큼 데이터가 아직 부족합니다.'
+                ? '고생산 구간은 정했지만 설정을 다시 맞출 만큼 데이터가 아직 부족합니다.'
                 : 'High-yield windows are selected, but there is not enough data yet to retune the baseline.';
         }
         return locale === 'ko'
-            ? '하우스 데이터를 더 모을 때까지 기본 기준선을 유지합니다.'
+            ? '하우스 데이터를 더 모을 때까지 기본 설정을 유지합니다.'
             : 'The built-in baseline stays in place until this house collects more data.';
     }
 
     if (profile.crop === 'Tomato') {
         return locale === 'ko'
-            ? '토마토 광·온도 가이드를 바탕으로 만든 기본 기준선입니다. 하우스 데이터가 쌓이면 다시 맞춥니다.'
+            ? '토마토 광·온도 가이드를 바탕으로 만든 기본 설정입니다. 하우스 데이터가 쌓이면 다시 맞춥니다.'
             : 'Tomato baseline line based on grower light-temperature guidance. Retune it when house data is ready.';
     }
 
     return locale === 'ko'
-        ? '오이 광·온도 가이드를 바탕으로 만든 기본 기준선입니다. 하우스 데이터가 쌓이면 다시 맞춥니다.'
+        ? '오이 광·온도 가이드를 바탕으로 만든 기본 설정입니다. 하우스 데이터가 쌓이면 다시 맞춥니다.'
         : 'Cucumber baseline line based on grower light-temperature guidance. Retune it when house data is ready.';
 };
 
@@ -106,9 +106,9 @@ const RTROutlookPanel = ({
         ? {
             title: '빛·온도 균형',
             subtitle: `${getCropLabel(crop, locale)}의 최근 24시간 광량·온도 흐름`,
-            profileLoading: '온도 기준선을 불러오는 중...',
+            profileLoading: '온도 설정을 불러오는 중...',
             rolling: '최근 24시간 균형',
-            vsProfile: '기준선 대비',
+            vsProfile: '평소 설정 대비',
             coverage: '적용 시간',
             radiationSum: '광량 합계',
             meanTemp: '24시간 평균 온도',
@@ -117,19 +117,19 @@ const RTROutlookPanel = ({
             forecastLoading: '대구 복사 예보를 불러오는 중...',
             forecastWaiting: '복사량 데이터가 들어오면 오늘 목표 온도가 계산됩니다.',
             weatherUnavailable: '날씨를 반영한 온도 계획을 불러오지 못했습니다',
-            referenceLine: '기준선 식',
-            profileMode: '기준 방식',
+            referenceLine: '온도 설정 식',
+            profileMode: '설정 방식',
             selectionPath: '선정 방식',
             fitQuality: '맞춤 정도',
             currentControlWindow: '현재 온도 범위',
-            profileEndpointUnavailable: '온도 기준선을 불러오지 못해 기본 기준선을 사용합니다',
+            profileEndpointUnavailable: '온도 설정을 불러오지 못해 기본 설정을 사용합니다',
             selectionCurated: '선별 구간',
-            selectionFallback: '기본 기준',
+            selectionFallback: '기본 설정',
             badgeFitted: '하우스 맞춤',
-            badgeBaselineNeedMore: '기준선 · 데이터 보강 필요',
-            badgeBaseline: '기준선',
+            badgeBaselineNeedMore: '기본 설정 · 데이터 보강 필요',
+            badgeBaseline: '기본 설정',
             balanced: {
-                badge: '기준선 근처',
+                badge: '평소 설정 근처',
                 tone: 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]',
                 description: '온도와 광이 비교적 균형 있게 움직이고 있습니다.',
             },
@@ -203,7 +203,7 @@ const RTROutlookPanel = ({
         resourceEn: 'the weather-linked temperature plan',
     });
     const profileErrorCopy = getRequestErrorCopy(profileError, locale, {
-        resourceKo: '온도 기준선',
+        resourceKo: '온도 설정',
         resourceEn: 'the strategy line',
     });
     const profileBadge = effectiveProfile.calibration.mode === 'fitted'

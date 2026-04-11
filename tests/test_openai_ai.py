@@ -48,6 +48,32 @@ def test_openai_helper_uses_responses_output_text(monkeypatch: pytest.MonkeyPatc
     assert "Crop: tomato" in fake_client.responses.calls[0]["input"]
 
 
+def test_openai_helper_accepts_smartgrow_api_key_fallback_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_client = _FakeOpenAI()
+    captured: dict[str, str | None] = {}
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("SMARTGROW_OPENAI_API_KEY", "smartgrow-test-key")
+
+    def _fake_openai(*, api_key: str | None = None):
+        captured["api_key"] = api_key
+        return fake_client
+
+    monkeypatch.setattr(ai_service, "OpenAI", _fake_openai)
+
+    result = ai_service.generate_chat_reply(
+        crop="cucumber",
+        messages=[{"role": "user", "content": "상태 요약"}],
+        dashboard={"currentData": {}, "metrics": {}},
+        language="ko",
+    )
+
+    assert result == "stubbed response"
+    assert captured["api_key"] == "smartgrow-test-key"
+
+
 def test_openai_helper_uses_korean_headings_for_korean_consulting(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

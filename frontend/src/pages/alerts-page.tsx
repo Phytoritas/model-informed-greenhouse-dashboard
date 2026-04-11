@@ -4,23 +4,17 @@ import PageCanvas from '../components/layout/PageCanvas';
 interface AlertsPageProps {
   locale: 'ko' | 'en';
   surface: ReactNode;
-  tabs?: Array<{ id: string; label: string }>;
-  activeTabId?: string;
-  onSelectTab?: (tabId: string) => void;
 }
 
 export default function AlertsPage({
   locale,
   surface,
-  tabs = [],
-  activeTabId,
-  onSelectTab,
 }: AlertsPageProps) {
   const copy = locale === 'ko'
     ? {
         eyebrow: 'PhytoSync',
-        title: '경보',
-        description: '즉시 확인, 오늘 확인, 추적 중을 한 화면에서 모읍니다.',
+        title: '긴급 알림',
+        description: '긴급 알림, 확인 필요, 처리 이력을 한 화면에서 모읍니다.',
       }
     : {
         eyebrow: 'Alerts',
@@ -33,9 +27,7 @@ export default function AlertsPage({
       eyebrow={copy.eyebrow}
       title={copy.title}
       description={copy.description}
-      tabs={tabs}
-      activeTabId={activeTabId}
-      onSelectTab={onSelectTab}
+      hideHeader
     >
       <div className="min-w-0">{surface}</div>
     </PageCanvas>

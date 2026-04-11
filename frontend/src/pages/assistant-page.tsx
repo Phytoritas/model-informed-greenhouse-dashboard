@@ -16,12 +16,12 @@ export default function AssistantPage({
     ? {
         eyebrow: 'PhytoSync',
         title: '질문 도우미',
-        description: '질문, 자료 찾기, 최근 흐름을 한곳에서 봅니다.',
+        description: '질문과 자료 찾기를 한곳에서 봅니다.',
       }
     : {
         eyebrow: 'PhytoSync',
         title: 'Assistant',
-        description: 'Keep ask, search, and recent flow together.',
+        description: 'Keep ask and search together.',
       };
 
   return (

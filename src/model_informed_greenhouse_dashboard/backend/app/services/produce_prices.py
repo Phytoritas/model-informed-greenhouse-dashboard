@@ -131,7 +131,7 @@ def build_featured_produce_prices_fallback_payload(*, reason: str) -> Dict[str, 
         "source": {
             "provider": "KAMIS",
             "docs_url": KAMIS_OPEN_API_DOCS_URL,
-            "endpoint": "dailySalesList + periodRetailProductList (retail trend overlay)",
+            "endpoint": "dailySalesList + periodWholesaleProductList (wholesale trend overlay)",
             "auth_mode": "fallback",
             "status": "fallback-unavailable",
             "fetched_at": fallback_now,
@@ -142,7 +142,7 @@ def build_featured_produce_prices_fallback_payload(*, reason: str) -> Dict[str, 
         "items": [],
         "markets": empty_markets,
         "trend": {
-            "market_key": "retail",
+            "market_key": "wholesale",
             "reference_date": reference_date,
             "history_days": PRODUCE_TREND_HISTORY_DAYS,
             "forecast_days": PRODUCE_TREND_FORECAST_DAYS,
@@ -497,7 +497,7 @@ def _build_summary(
         f"{down_count} down, and {flat_count} flat moves across featured produce. "
         f"{lead_item['display_name']} is {lead_item['direction']} at "
         f"KRW {lead_item['current_price_krw']:,}/{lead_item['unit']}, and the panel "
-        f"now exposes live {market_label_lower} cards alongside the retail 14-day "
+        f"now exposes live {market_label_lower} cards alongside the {market_label_lower} 14-day "
         f"trend overlay and forward 3y/5y/10y seasonal normals."
     )
 
@@ -562,6 +562,8 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
             timezone.utc
         ).date()
 
+        trend_market_key = "wholesale" if wholesale_items else "retail"
+        trend_items = wholesale_items if wholesale_items else retail_items
         trend_tasks = [
             _build_trend_series_for_item(
                 client,
@@ -570,7 +572,7 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
                 kamis_api_key=kamis_api_key,
                 kamis_api_id=kamis_api_id,
             )
-            for item in retail_items
+            for item in trend_items
         ]
         try:
             trend_series_results = await asyncio.wait_for(
@@ -579,13 +581,15 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
             )
         except TimeoutError:
             trend_series_results = [
-                TimeoutError("Retail trend enrichment timed out.")
-                for _ in retail_items
+                TimeoutError(
+                    f"{trend_market_key.capitalize()} trend enrichment timed out."
+                )
+                for _ in trend_items
             ]
 
     trend_series: list[Dict[str, Any]] = []
     unavailable_series: list[Dict[str, str]] = []
-    for item, result in zip(retail_items, trend_series_results):
+    for item, result in zip(trend_items, trend_series_results):
         if isinstance(result, Exception):
             unavailable_series.append(
                 {
@@ -621,14 +625,14 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
         }
         for market_code, items in (("01", retail_items), ("02", wholesale_items))
     }
-    primary_market_key = "retail" if retail_items else "wholesale"
+    primary_market_key = "wholesale" if wholesale_items else "retail"
     primary_market = markets[primary_market_key]
 
     payload = {
         "source": {
             "provider": "KAMIS",
             "docs_url": KAMIS_OPEN_API_DOCS_URL,
-            "endpoint": "dailySalesList + periodRetailProductList (retail trend overlay)",
+            "endpoint": "dailySalesList + periodWholesaleProductList (wholesale trend overlay)",
             "auth_mode": auth_mode,
             "fetched_at": datetime.now(timezone.utc)
             .isoformat()
@@ -639,7 +643,7 @@ async def fetch_featured_produce_prices(force_refresh: bool = False) -> Dict[str
         "items": primary_market["items"],
         "markets": markets,
         "trend": {
-            "market_key": "retail",
+            "market_key": trend_market_key,
             "reference_date": reference_date.isoformat(),
             "history_days": PRODUCE_TREND_HISTORY_DAYS,
             "forecast_days": PRODUCE_TREND_FORECAST_DAYS,

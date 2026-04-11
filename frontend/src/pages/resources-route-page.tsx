@@ -3,6 +3,7 @@ import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
+  CropType,
   ProducePricesPayload,
   SensorData,
   WeatherOutlook,
@@ -13,6 +14,7 @@ const ResourcesCommandCenter = lazy(() => import('../components/resources/Resour
 
 interface ResourcesRoutePageProps {
   locale: AppLocale;
+  crop: CropType;
   cropLabel: string;
   currentData: SensorData;
   modelMetrics: AdvancedModelMetrics;
@@ -23,12 +25,11 @@ interface ResourcesRoutePageProps {
   produceLoading: boolean;
   produceError: string | null;
   activePanel?: 'resources-energy' | 'resources-market' | 'resources-stock';
-  tabs: Array<{ id: string; label: string }>;
-  onSelectTab: (tabId: string) => void;
 }
 
 export default function ResourcesRoutePage({
   locale,
+  crop,
   cropLabel,
   currentData,
   modelMetrics,
@@ -39,17 +40,10 @@ export default function ResourcesRoutePage({
   produceLoading,
   produceError,
   activePanel = 'resources-energy',
-  tabs,
-  onSelectTab,
 }: ResourcesRoutePageProps) {
-  const activeTabId = activePanel === 'resources-stock' ? 'resources-nutrient' : activePanel;
-
   return (
     <ResourcesPage
       locale={locale}
-      tabs={tabs}
-      activeTabId={activeTabId}
-      onSelectTab={onSelectTab}
       surface={(
         <Suspense
           fallback={(
@@ -62,6 +56,7 @@ export default function ResourcesRoutePage({
         >
           <ResourcesCommandCenter
             locale={locale}
+            crop={crop}
             cropLabel={cropLabel}
             currentData={currentData}
             modelMetrics={modelMetrics}

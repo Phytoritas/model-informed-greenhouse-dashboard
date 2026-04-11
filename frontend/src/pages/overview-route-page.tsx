@@ -2,7 +2,10 @@ import { Suspense, lazy } from 'react';
 import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
+  CropType,
+  OverviewSignalsPayload,
   ProducePricesPayload,
+  RtrProfile,
   SensorData,
   TelemetryStatus,
   WeatherOutlook,
@@ -13,14 +16,18 @@ import AlertRail from '../components/dashboard/AlertRail';
 import CompactMetricDeck from '../components/dashboard/CompactMetricDeck';
 import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
 import HeroControlCard from '../components/dashboard/HeroControlCard';
+import OverviewPhotoCollageCard from '../components/dashboard/OverviewPhotoCollageCard';
+import OverviewSignalTrendCard from '../components/dashboard/OverviewSignalTrendCard';
 import TodayBoard from '../components/dashboard/TodayBoard';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import OverviewPage from './overview-page';
 
 const Charts = lazy(() => import('../components/Charts'));
+const RtrTrendCard = lazy(() => import('../components/dashboard/RtrTrendCard'));
 
 interface OverviewRoutePageProps {
   locale: AppLocale;
+  crop: CropType;
   telemetryStatus: TelemetryStatus;
   telemetryDetail: string | null;
   primaryKpiTiles: KpiTileData[];
@@ -40,6 +47,9 @@ interface OverviewRoutePageProps {
   history: SensorData[];
   currentData: SensorData;
   modelMetrics: AdvancedModelMetrics;
+  overviewSignals: OverviewSignalsPayload | null;
+  overviewSignalsLoading: boolean;
+  overviewSignalsError: string | null;
   weather: WeatherOutlook | null;
   weatherLoading: boolean;
   producePrices: ProducePricesPayload | null;
@@ -51,13 +61,13 @@ interface OverviewRoutePageProps {
   onOpenRtr: () => void;
   onOpenAdvisor: () => void;
   onOpenAssistant: () => void;
-  tabs: Array<{ id: string; label: string }>;
+  rtrProfile?: RtrProfile | null;
   activeTabId?: string;
-  onSelectTab: (tabId: string) => void;
 }
 
 export default function OverviewRoutePage({
   locale,
+  crop,
   telemetryStatus,
   telemetryDetail,
   primaryKpiTiles,
@@ -77,6 +87,9 @@ export default function OverviewRoutePage({
   history,
   currentData,
   modelMetrics,
+  overviewSignals,
+  overviewSignalsLoading,
+  overviewSignalsError,
   weather,
   weatherLoading,
   producePrices,
@@ -88,9 +101,8 @@ export default function OverviewRoutePage({
   onOpenRtr,
   onOpenAdvisor,
   onOpenAssistant,
-  tabs,
+  rtrProfile = null,
   activeTabId,
-  onSelectTab,
 }: OverviewRoutePageProps) {
   const fallbackAlerts = alertItems.length
     ? alertItems
@@ -104,9 +116,7 @@ export default function OverviewRoutePage({
   return (
     <OverviewPage
       locale={locale}
-      tabs={tabs}
       activeTabId={activeTabId}
-      onSelectTab={onSelectTab}
       metricDeck={<CompactMetricDeck tiles={[...primaryKpiTiles, ...secondaryKpiTiles]} />}
       heroCard={(
         <HeroControlCard
@@ -127,7 +137,33 @@ export default function OverviewRoutePage({
           onOpenAssistant={onOpenAssistant}
         />
       )}
+      heroSupplement={<OverviewPhotoCollageCard />}
+      operationsAside={(
+        <OverviewSignalTrendCard
+          signals={overviewSignals}
+          loading={overviewSignalsLoading}
+          error={overviewSignalsError}
+        />
+      )}
       priorityRail={<AlertRail items={fallbackAlerts} compact />}
+      priorityTrend={(
+        <Suspense
+          fallback={(
+            <LoadingSkeleton
+              title={locale === 'ko' ? 'RTR 추세' : 'RTR trend'}
+              loadingMessage={locale === 'ko' ? 'RTR 추세선을 불러오는 중입니다...' : 'Loading RTR trendline...'}
+              minHeightClassName="min-h-[220px]"
+            />
+          )}
+        >
+          <RtrTrendCard
+            crop={crop}
+            currentData={currentData}
+            history={history}
+            profile={rtrProfile}
+          />
+        </Suspense>
+      )}
       leadAnalytics={(
         <Suspense
           fallback={(
@@ -143,12 +179,14 @@ export default function OverviewRoutePage({
       )}
       sideAnalytics={(
         <DecisionSnapshotGrid
+          crop={crop}
           currentData={currentData}
           modelMetrics={modelMetrics}
           weather={weather}
           weatherLoading={weatherLoading}
           producePrices={producePrices}
           produceLoading={produceLoading}
+          history={history}
         />
       )}
       recentActivity={(

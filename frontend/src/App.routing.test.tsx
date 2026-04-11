@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { useState, type ReactNode } from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LocaleProvider } from './i18n/LocaleProvider'
@@ -138,8 +138,72 @@ const advisorState = {
   analyzeData: vi.fn(),
 }
 
+const cucumberRtrOptimizerState = {
+  stateResponse: {
+    canonical_state: {
+      growth: {
+        predicted_node_rate_day: 0.73,
+      },
+    },
+  },
+  optimizeResponse: null,
+  scenarioResponse: null,
+  sensitivityResponse: null,
+  targetNodeDevelopmentPerDay: 0.73,
+  setTargetNodeDevelopmentPerDay: vi.fn(),
+  optimizationMode: 'balanced',
+  setOptimizationMode: vi.fn(),
+  customScenario: null,
+  setCustomScenario: vi.fn(),
+  includeEnergyCost: true,
+  setIncludeEnergyCost: vi.fn(),
+  includeCoolingCost: true,
+  setIncludeCoolingCost: vi.fn(),
+  includeLaborCost: true,
+  setIncludeLaborCost: vi.fn(),
+  telemetryOptimizationBlocked: false,
+  loading: false,
+  loadingState: false,
+  loadingOptimize: false,
+  error: null,
+  refreshState: vi.fn(),
+  refreshOptimization: vi.fn(),
+}
+
+const tomatoRtrOptimizerState = {
+  ...cucumberRtrOptimizerState,
+  stateResponse: {
+    canonical_state: {
+      growth: {
+        predicted_node_rate_day: 1.26,
+      },
+    },
+  },
+  targetNodeDevelopmentPerDay: 1.26,
+  optimizationMode: 'yield_priority',
+}
+
 vi.mock('./hooks/useGreenhouse', () => ({
-  useGreenhouse: () => greenhouseState,
+  useGreenhouse: () => {
+    const [selectedCrop, setSelectedCrop] = useState<typeof greenhouseState.selectedCrop>(greenhouseState.selectedCrop)
+    return {
+      ...greenhouseState,
+      selectedCrop,
+      setSelectedCrop,
+    }
+  },
+}))
+
+vi.mock('./context/AreaUnitContext', () => ({
+  useAreaUnit: () => ({
+    areaByCrop: {
+      Tomato: { actualAreaM2: null, actualAreaPyeong: null, source: 'default' },
+      Cucumber: { actualAreaM2: null, actualAreaPyeong: null, source: 'default' },
+    },
+    setActualAreaM2: vi.fn(),
+    setActualAreaPyeong: vi.fn(),
+    syncAreaMeta: vi.fn(),
+  }),
 }))
 
 vi.mock('./hooks/useAiAssistant', () => ({
@@ -177,6 +241,37 @@ vi.mock('./hooks/useProducePrices', () => ({
   }),
 }))
 
+vi.mock('./hooks/useOverviewSignalTrends', () => ({
+  useOverviewSignalTrends: () => ({
+    signals: {
+      status: 'success',
+      crop: 'cucumber',
+      greenhouse_id: 'cucumber',
+      window_hours: 72,
+      irradiance: {
+        source: { provider: 'Open-Meteo' },
+        unit: 'W/m²',
+        points: [
+          { time: '2026-04-09T08:00:00+09:00', shortwave_radiation_w_m2: 280 },
+          { time: '2026-04-09T09:00:00+09:00', shortwave_radiation_w_m2: 410 },
+        ],
+      },
+      source_sink: {
+        source: { provider: 'Model runtime snapshots' },
+        unit: 'index',
+        status: 'ready',
+        points: [
+          { time: '2026-04-09T08:00:00+09:00', source_sink_balance: 0.21, source_capacity: 12.4, sink_demand: 8.2 },
+          { time: '2026-04-09T09:00:00+09:00', source_sink_balance: 0.26, source_capacity: 12.9, sink_demand: 7.6 },
+        ],
+      },
+    },
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+}))
+
 vi.mock('./hooks/useRtrProfiles', () => ({
   useRtrProfiles: () => ({
     profiles: {
@@ -188,12 +283,25 @@ vi.mock('./hooks/useRtrProfiles', () => ({
             enabled: true,
           },
         },
+        Tomato: {
+          strategyLabel: 'Yield lane',
+          optimizer: {
+            enabled: true,
+            default_mode: 'yield_priority',
+          },
+        },
       },
     },
     loading: false,
     error: null,
     refresh: vi.fn(),
   }),
+}))
+
+vi.mock('./hooks/useRtrOptimizer', () => ({
+  useRtrOptimizer: ({ crop }: { crop: 'Cucumber' | 'Tomato' }) => (
+    crop === 'Tomato' ? tomatoRtrOptimizerState : cucumberRtrOptimizerState
+  ),
 }))
 
 vi.mock('./hooks/useSmartGrowKnowledge', () => ({
@@ -224,15 +332,21 @@ vi.mock('./layout/AppShell', () => ({
 vi.mock('./components/shell/TopBar', () => ({
   default: ({
     pageTitle,
+    selectedCrop,
+    onCropChange,
     onAssistantToggle,
     onOpenSettings,
   }: {
     pageTitle: string
+    selectedCrop?: 'Cucumber' | 'Tomato'
+    onCropChange?: (crop: 'Cucumber' | 'Tomato') => void
     onAssistantToggle?: () => void
     onOpenSettings?: () => void
   }) => (
     <div>
       <div data-testid="topbar-title">{pageTitle}</div>
+      <button type="button" aria-pressed={selectedCrop === 'Cucumber'} onClick={() => onCropChange?.('Cucumber')}>Cucumber</button>
+      <button type="button" aria-pressed={selectedCrop === 'Tomato'} onClick={() => onCropChange?.('Tomato')}>Tomato</button>
       <button type="button" onClick={onAssistantToggle}>Toggle assistant</button>
       <button type="button" onClick={onOpenSettings}>Open settings</button>
     </div>
@@ -243,22 +357,39 @@ vi.mock('./components/shell/WorkspaceNav', () => ({
   default: ({
     items,
     activeWorkspace,
+    activeActionId,
     onSelect,
+    onSelectAction,
   }: {
-    items: Array<{ key: string; label: string }>
+    items: Array<{ key: string; label: string; actions?: Array<{ id: string; label: string }> }>
     activeWorkspace: string
+    activeActionId?: string
     onSelect: (value: string) => void
+    onSelectAction?: (workspace: string, actionId: string) => void
   }) => (
     <nav aria-label="Primary navigation">
       {items.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          aria-current={item.key === activeWorkspace ? 'page' : undefined}
-          onClick={() => onSelect(item.key)}
-        >
-          {item.label}
-        </button>
+        <div key={item.key}>
+          <button
+            type="button"
+            aria-current={item.key === activeWorkspace ? 'page' : undefined}
+            onClick={() => onSelect(item.key)}
+          >
+            {item.label}
+          </button>
+          {item.key === activeWorkspace
+            ? item.actions?.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  aria-current={activeActionId === action.id ? 'step' : undefined}
+                  onClick={() => onSelectAction?.(item.key, action.id)}
+                >
+                  {`Action:${action.id}`}
+                </button>
+              ))
+            : null}
+        </div>
       ))}
     </nav>
   ),
@@ -334,9 +465,7 @@ vi.mock('./components/phyto/PageSectionTabs', () => ({
 vi.mock('./components/status/ConfidenceBadge', () => ({ default: () => <div>ConfidenceBadge</div> }))
 vi.mock('./features/advisor/AdvisorPanelFallback', () => ({ default: () => <div>AdvisorPanelFallback</div> }))
 vi.mock('./features/common/LoadingSkeleton', () => ({ default: ({ title }: { title?: string }) => <div>{title ?? 'LoadingSkeleton'}</div> }))
-vi.mock('./components/AiAdvisor', () => ({ default: () => <div>AiAdvisor</div> }))
 vi.mock('./components/Charts', () => ({ default: () => <div>Charts</div> }))
-vi.mock('./components/ModelAnalytics', () => ({ default: () => <div>ModelAnalytics</div> }))
 vi.mock('./components/ForecastPanel', () => ({ default: () => <div>ForecastPanel</div> }))
 vi.mock('./components/ConsultingReport', () => ({ default: () => <div>ConsultingReport</div> }))
 vi.mock('./components/SmartGrowSurfacePanel', () => ({
@@ -359,7 +488,33 @@ vi.mock('./components/alerts/AlertsCommandCenter', () => ({
 vi.mock('./components/resources/ResourcesCommandCenter', () => ({
   default: ({ activePanel }: { activePanel?: string }) => <div>{`ResourcesCommandCenter:${activePanel ?? 'missing'}`}</div>,
 }))
-vi.mock('./components/RTROptimizerPanel', () => ({ default: () => <div>RTROptimizerPanel</div> }))
+vi.mock('./components/RTROptimizerPanel', () => ({
+  default: ({
+    optimizerState,
+    uiState,
+  }: {
+    optimizerState?: {
+      targetNodeDevelopmentPerDay?: number | null
+      optimizationMode?: string
+    }
+    uiState?: {
+      targetNodeInputValue?: string
+      setTargetNodeInputValue?: (value: string) => void
+    }
+  }) => (
+    <div>
+      <div>RTROptimizerPanel</div>
+      <div data-testid="rtr-optimizer-state">{`${optimizerState?.targetNodeDevelopmentPerDay ?? 'missing'}|${optimizerState?.optimizationMode ?? 'missing'}`}</div>
+      <div data-testid="rtr-ui-state">{uiState?.targetNodeInputValue ?? ''}</div>
+      <button
+        type="button"
+        onClick={() => uiState?.setTargetNodeInputValue?.('0.81')}
+      >
+        Persist RTR draft
+      </button>
+    </div>
+  ),
+}))
 vi.mock('./features/assistant/AssistantDrawer', () => ({
   default: ({
     open,
@@ -419,26 +574,121 @@ describe('App routed shell', () => {
   it('navigates between routed pages from the sidebar', async () => {
     renderApp('/overview')
 
-    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
     expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Control' }))
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Environment Control')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+  }, 15000)
+
+  it('keeps RTR state outside route-local control pages', async () => {
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
+  })
+
+  it('keeps RTR draft input state across section transitions', async () => {
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Persist RTR draft' }))
+    expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
+  })
+
+  it('restores RTR draft ui state from localStorage on first render', async () => {
+    window.localStorage.setItem('smartgrow-rtr-ui-state-v1', JSON.stringify({
+      Cucumber: {
+        customScenarioDraft: {
+          label: '',
+          dayHeatingMinTempC: '',
+          nightHeatingMinTempC: '',
+          dayCoolingTargetC: '',
+          nightCoolingTargetC: '',
+          ventBiasC: '',
+          screenBiasPct: '',
+          circulationFanPct: '',
+          co2TargetPpm: '',
+        },
+        targetNodeInputValue: '0.92',
+        isTargetNodeInputActive: true,
+      },
+      Tomato: {
+        customScenarioDraft: {
+          label: '',
+          dayHeatingMinTempC: '',
+          nightHeatingMinTempC: '',
+          dayCoolingTargetC: '',
+          nightCoolingTargetC: '',
+          ventBiasC: '',
+          screenBiasPct: '',
+          circulationFanPct: '',
+          co2TargetPpm: '',
+        },
+        targetNodeInputValue: '',
+        isTargetNodeInputActive: false,
+      },
+    }))
+
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.92')
+  })
+
+  it('restores committed RTR state when switching crops back and forth', async () => {
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tomato' }))
+    expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('1.26|yield_priority')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cucumber' }))
+    expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
+  })
+
+  it('shows section actions on sidebar interaction and applies the selected section action', async () => {
+    renderApp('/overview')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Overview' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Action:overview-dashboard' }))
+
+    expect(await screen.findByText('Charts')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('opens the assistant drawer from the topbar without leaving the current page', async () => {
     renderApp('/overview')
 
-    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
     expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
   })
 
@@ -446,12 +696,12 @@ describe('App routed shell', () => {
     renderApp('/control')
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Environment Control')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
 
     fireEvent.click(screen.getByRole('button', { name: 'Open assistant fab' }))
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Environment Control')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
   })
 
   it('keeps resources and alerts as dedicated pages instead of overview fallbacks', async () => {
@@ -468,6 +718,15 @@ describe('App routed shell', () => {
     expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
   })
 
+  it('keeps trend as a dedicated page separated from control', async () => {
+    renderApp('/trend')
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    expect(await screen.findByText('WeatherOutlookPanel')).toBeTruthy()
+    expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
+  })
+
   it('keeps crop-work as a dedicated page instead of assembling it inline in App', async () => {
     renderApp('/crop-work')
 
@@ -480,7 +739,7 @@ describe('App routed shell', () => {
   it.each([
     ['/ask#ask-chat', 'AskSearchPage:assistant-chat'],
     ['/ask#ask-search', 'AskSearchPage:assistant-search'],
-    ['/ask#ask-history', 'AskSearchPage:assistant-history'],
+    ['/ask#ask-history', 'AskSearchPage:assistant-search'],
     ['/assistant#ask-search', 'AskSearchPage:assistant-search'],
   ])('keeps legacy assistant hash compatibility for %s', async (path, expectedPanel) => {
     renderApp(path)
@@ -493,8 +752,9 @@ describe('App routed shell', () => {
 
   it.each([
     ['/overview/legacy', 'Today Operations'],
-    ['/control/legacy', 'Environment Control'],
-    ['/rtr', 'Environment Control'],
+    ['/control/legacy', 'Control Solutions'],
+    ['/trend/legacy', 'Trend'],
+    ['/rtr', 'Control Solutions'],
     ['/resources/legacy', 'Resources'],
     ['/alerts/legacy', 'Alerts'],
   ])('redirects %s to the canonical routed page', async (path, heading) => {
@@ -506,9 +766,8 @@ describe('App routed shell', () => {
   it('redirects nutrient into the resources page with the nutrient segment selected', async () => {
     renderApp('/nutrient#nutrient-tool')
 
-    expect(await screen.findByRole('heading', { name: 'Resources' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
     expect(await screen.findByText('ResourcesCommandCenter:resources-stock')).toBeTruthy()
-    expect(screen.getByTestId('page-section-active').textContent).toBe('resources-nutrient')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
   })
@@ -518,7 +777,6 @@ describe('App routed shell', () => {
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
     expect(await screen.findByText('TodayBoard')).toBeTruthy()
-    expect(screen.getByTestId('page-section-active').textContent).toBe('crop-work-harvest')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
   })
@@ -526,22 +784,21 @@ describe('App routed shell', () => {
   it('redirects protection into the alerts page with the warning segment selected', async () => {
     renderApp('/protection#protection-check')
 
-    expect(await screen.findByRole('heading', { name: 'Alerts' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
     expect(await screen.findByText('AlertsCommandCenter:alerts-stream')).toBeTruthy()
-    expect(screen.getByTestId('page-section-active').textContent).toBe('alerts-warning')
     expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('opens the control strategy segment when overview requests the environment lane', async () => {
     renderApp('/overview')
 
-    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
 
     fireEvent.click(screen.getByRole('button', { name: 'Open advisor lane' }))
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Environment Control')
-    expect(screen.getByTestId('page-section-active').textContent).toBe('control-strategy')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
+    expect(screen.queryByTestId('page-section-active')).toBeNull()
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
   })
 
@@ -552,9 +809,8 @@ describe('App routed shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open nutrient correction' }))
 
-    expect(await screen.findByRole('heading', { name: 'Resources' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
     expect(await screen.findByText('ResourcesCommandCenter:resources-stock')).toBeTruthy()
-    expect(screen.getByTestId('page-section-active').textContent).toBe('resources-nutrient')
     expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
   })
 
@@ -568,10 +824,6 @@ describe('App routed shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tab:assistant-search' }))
     expect(await screen.findByText('AskSearchPage:assistant-search')).toBeTruthy()
     expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-search')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Tab:assistant-history' }))
-    expect(await screen.findByText('AskSearchPage:assistant-history')).toBeTruthy()
-    expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-history')
   })
 
   it('keeps assistant search inline even from the hidden assistant route', async () => {
@@ -601,7 +853,7 @@ describe('App routed shell', () => {
   it('closes the assistant drawer before navigating to settings', async () => {
     renderApp('/overview')
 
-    expect(await screen.findByRole('heading', { name: 'Today operations' })).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()

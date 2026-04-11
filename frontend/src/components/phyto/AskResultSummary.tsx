@@ -1,4 +1,5 @@
 import DashboardCard from '../common/DashboardCard';
+import { localizeSmartGrowSurfaceNames } from '../../utils/smartGrowSurfaceNames';
 
 interface AskResultSummaryProps {
   locale: 'ko' | 'en';
@@ -13,6 +14,7 @@ export default function AskResultSummary({
   note,
   signals,
 }: AskResultSummaryProps) {
+  const localizedReadyTools = localizeSmartGrowSurfaceNames(readyTools, locale);
   const copy = locale === 'ko'
     ? {
         eyebrow: '바로 이어질 화면',
@@ -38,7 +40,7 @@ export default function AskResultSummary({
         <div className="sg-advisor-inset space-y-3">
           <div className="sg-eyebrow">{copy.tools}</div>
           <div className="flex flex-wrap gap-2">
-            {readyTools.length > 0 ? readyTools.map((tool) => (
+            {localizedReadyTools.length > 0 ? localizedReadyTools.map((tool) => (
               <span
                 key={tool}
                 className="rounded-full bg-white/86 px-3 py-2 text-xs font-semibold text-[color:var(--sg-text-muted)]"

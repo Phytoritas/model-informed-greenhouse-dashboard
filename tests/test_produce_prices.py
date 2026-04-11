@@ -413,14 +413,14 @@ def test_fetch_featured_produce_prices_preserves_cards_when_trend_enrichment_fai
 
     payload = asyncio.run(produce_prices.fetch_featured_produce_prices(force_refresh=True))
 
-    assert len(payload["items"]) == 4
+    assert len(payload["items"]) == 2
     assert payload["items"][0]["display_name"] == "Tomato"
     assert payload["markets"]["retail"]["items"][0]["market_label"] == "\uc18c\ub9e4"
     assert payload["markets"]["wholesale"]["items"][0]["market_label"] == "\ub3c4\ub9e4"
     assert payload["markets"]["wholesale"]["items"][0]["unit"] == "5kg"
     assert payload["trend"]["series"] == []
-    assert payload["trend"]["market_key"] == "retail"
-    assert len(payload["trend"]["unavailable_series"]) == 4
+    assert payload["trend"]["market_key"] == "wholesale"
+    assert len(payload["trend"]["unavailable_series"]) == 2
     assert payload["trend"]["unavailable_series"][0]["display_name"] == "Tomato"
 
 

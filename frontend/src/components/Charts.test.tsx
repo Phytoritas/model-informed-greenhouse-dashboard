@@ -41,7 +41,7 @@ describe('Charts', () => {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en');
   });
 
-  it('limits overview variant to two compact charts', () => {
+  it('keeps all five charts in overview while preserving compact height', () => {
     render(
       <LocaleProvider>
         <Charts data={SENSOR_FIXTURE} variant="overview" />
@@ -49,7 +49,7 @@ describe('Charts', () => {
     );
 
     const cards = screen.getAllByTestId('chart-card');
-    expect(cards).toHaveLength(2);
+    expect(cards).toHaveLength(5);
     expect(cards[0].textContent).toBe('Air and canopy temperature:176');
     expect(cards[1].textContent).toBe('Vapor pressure deficit and transpiration:176');
   });

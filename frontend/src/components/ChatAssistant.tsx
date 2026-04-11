@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Bot, Send, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -30,6 +30,7 @@ interface ChatAssistantProps {
     onOpenKnowledgeSearch?: (
         request?: Omit<RagAssistantOpenRequest, 'nonce'>,
     ) => void;
+    initialUserQuery?: { query: string; nonce: number } | null;
     currentData: SensorData;
     metrics: AdvancedModelMetrics;
     crop: CropType;
@@ -189,6 +190,7 @@ const ChatAssistant = ({
     onClose,
     layoutMode = 'drawer',
     onOpenKnowledgeSearch,
+    initialUserQuery = null,
     currentData,
     metrics,
     crop,
@@ -281,6 +283,7 @@ const ChatAssistant = ({
     ]);
     const [input, setInput] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const processedQueryNonceRef = useRef<number | null>(null);
 
     const smartGrowPrompts = !smartGrowLoading && !smartGrowError && smartGrowSummary
         ? [
@@ -414,12 +417,10 @@ const ChatAssistant = ({
         );
     };
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
-
-        const userMsg = input;
+    const sendMessage = async (rawMessage: string) => {
+        const userMsg = rawMessage.trim();
+        if (!userMsg) return;
         setMessages((prev) => [...prev, { role: 'user', text: userMsg }]);
-        setInput('');
         setIsSending(true);
 
         try {
@@ -483,6 +484,31 @@ const ChatAssistant = ({
             setIsSending(false);
         }
     };
+
+    const handleSend = async () => {
+        if (!input.trim()) return;
+        const pending = input;
+        setInput('');
+        await sendMessage(pending);
+    };
+
+    const sendInitialUserQuery = useEffectEvent((query: string) => {
+        void sendMessage(query);
+    });
+
+    useEffect(() => {
+        if (!initialUserQuery?.query?.trim()) {
+            return;
+        }
+        if (processedQueryNonceRef.current === initialUserQuery.nonce) {
+            return;
+        }
+        if (isSending) {
+            return;
+        }
+        processedQueryNonceRef.current = initialUserQuery.nonce;
+        sendInitialUserQuery(initialUserQuery.query);
+    }, [initialUserQuery, isSending]);
 
     if (!isInline && !isOpen) {
         return null;

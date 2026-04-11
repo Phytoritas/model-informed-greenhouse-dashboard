@@ -131,6 +131,50 @@ export interface WeatherOutlook {
     daily: WeatherForecastDay[];
 }
 
+export interface OverviewSignalPoint {
+    time: string;
+}
+
+export interface OverviewIrradiancePoint extends OverviewSignalPoint {
+    shortwave_radiation_w_m2: number;
+}
+
+export interface OverviewSourceSinkPoint extends OverviewSignalPoint {
+    source_sink_balance: number;
+    source_capacity: number;
+    sink_demand: number;
+}
+
+export interface OverviewSignalHistory {
+    source: {
+        provider: string;
+        docs_url?: string;
+        endpoint?: string;
+        fetched_at?: string;
+    };
+    unit: string;
+    points: OverviewIrradiancePoint[];
+    window_hours?: number;
+}
+
+export interface OverviewSourceSinkHistory {
+    source: {
+        provider: string;
+    };
+    unit: string;
+    status: 'ready' | 'model_history_unavailable';
+    points: OverviewSourceSinkPoint[];
+}
+
+export interface OverviewSignalsPayload {
+    status: string;
+    crop: string;
+    greenhouse_id: string;
+    window_hours: number;
+    irradiance: OverviewSignalHistory;
+    source_sink: OverviewSourceSinkHistory;
+}
+
 export type ProducePriceDirection = 'up' | 'down' | 'flat';
 export type ProducePriceAuthMode = 'sample' | 'configured';
 export type ProduceMarketKey = 'retail' | 'wholesale';
@@ -555,6 +599,11 @@ export interface RtrExplanationPayload {
     target_node_development_per_day: number;
     baseline_mean_temp_C: number;
     optimized_mean_temp_C: number;
+    development_metric?: 'node' | 'truss';
+    temperature_development_rows?: Array<{
+        mean_temp_C: number;
+        development_rate_day: number;
+    }>;
     reason_tags: string[];
     crop_summary: string;
     missing_work_event_warning?: string | null;

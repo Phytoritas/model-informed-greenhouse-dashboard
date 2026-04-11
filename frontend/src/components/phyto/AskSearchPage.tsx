@@ -12,20 +12,15 @@ import type {
 import type { RagAssistantOpenRequest } from '../chat/ragAssistantTypes';
 import ChatAssistant from '../ChatAssistant';
 import AskKnowledgeBoard from './AskKnowledgeBoard';
-import AskRecentFlow from './AskRecentFlow';
-import AskResultSummary from './AskResultSummary';
 
 interface AskSearchPageProps {
   locale: 'ko' | 'en';
   crop: CropType;
   cropLabel: string;
   summary: SmartGrowKnowledgeSummary | null;
-  actionsNow: string[];
-  actionsToday: string[];
-  note: string;
-  signals: Array<{ label: string; value: string }>;
   activePanel?: 'assistant-chat' | 'assistant-search' | 'assistant-history';
   searchRequest?: RagAssistantOpenRequest | null;
+  chatRequest?: { query: string; nonce: number } | null;
   currentData: SensorData;
   metrics: AdvancedModelMetrics;
   forecast?: ForecastData | null;
@@ -43,12 +38,9 @@ export default function AskSearchPage({
   crop,
   cropLabel,
   summary,
-  actionsNow,
-  actionsToday,
-  note,
-  signals,
   activePanel = 'assistant-chat',
   searchRequest = null,
+  chatRequest = null,
   currentData,
   metrics,
   forecast = null,
@@ -74,10 +66,11 @@ export default function AskSearchPage({
       seedNonce: searchRequest?.nonce ?? current.seedNonce,
     }));
   };
+  const resolvedPanel = activePanel === 'assistant-history' ? 'assistant-search' : activePanel;
 
   return (
     <div className="space-y-6">
-      {activePanel === 'assistant-chat' ? (
+      {resolvedPanel === 'assistant-chat' ? (
         <ChatAssistant
           isOpen
           layoutMode="inline"
@@ -92,10 +85,11 @@ export default function AskSearchPage({
           smartGrowSummary={summary}
           smartGrowLoading={smartGrowLoading}
           smartGrowError={smartGrowError}
+          initialUserQuery={chatRequest}
           onOpenKnowledgeSearch={onOpenSearch}
         />
       ) : null}
-      {activePanel === 'assistant-search' ? (
+      {resolvedPanel === 'assistant-search' ? (
         <AskKnowledgeBoard
           locale={locale}
           crop={crop}
@@ -104,22 +98,6 @@ export default function AskSearchPage({
           onQueryChange={handleSearchDraftChange}
           searchRequest={searchRequest}
         />
-      ) : null}
-      {activePanel === 'assistant-history' ? (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <AskRecentFlow
-            locale={locale}
-            nowItems={actionsNow}
-            todayItems={actionsToday}
-            pendingParsers={summary?.pendingParsers ?? []}
-          />
-          <AskResultSummary
-            locale={locale}
-            readyTools={summary?.advisorySurfaceNames ?? []}
-            note={note}
-            signals={signals}
-          />
-        </div>
       ) : null}
     </div>
   );

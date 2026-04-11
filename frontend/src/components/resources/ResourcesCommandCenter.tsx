@@ -1,16 +1,23 @@
+import { Suspense, lazy } from 'react';
 import type {
     AdvancedModelMetrics,
+    CropType,
     ProducePricesPayload,
     SensorData,
     WeatherOutlook,
 } from '../../types';
+import { getProduceDisplayName } from '../../utils/displayCopy';
+import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import DashboardCard from '../common/DashboardCard';
 import DecisionSnapshotGrid from '../dashboard/DecisionSnapshotGrid';
-import ProducePricesPanel from '../ProducePricesPanel';
 import WeatherOutlookPanel from '../WeatherOutlookPanel';
+import LoadingSkeleton from '../../features/common/LoadingSkeleton';
+
+const ProducePricesPanel = lazy(() => import('../ProducePricesPanel'));
 
 interface ResourcesCommandCenterProps {
     locale: 'ko' | 'en';
+    crop: CropType;
     cropLabel: string;
     currentData: SensorData;
     modelMetrics: AdvancedModelMetrics;
@@ -25,6 +32,7 @@ interface ResourcesCommandCenterProps {
 
 export default function ResourcesCommandCenter({
     locale,
+    crop,
     cropLabel,
     currentData,
     modelMetrics,
@@ -47,9 +55,9 @@ export default function ResourcesCommandCenter({
             cropLoad: '양액·생육 신호',
             energyDetail: '현재 사용량과 예상 비용을 같이 봅니다.',
             weatherDetail: '환기와 냉난방 판단에 바로 연결되는 외기 상태입니다.',
-            marketDetail: '출하 판단에 연결되는 현재 가격입니다.',
+            marketDetail: '도매가격 기준으로 출하 판단 신호를 확인합니다.',
             cropDetail: '증산, 광합성, 수확 압력을 같이 봅니다.',
-            noMarket: '시장 데이터 대기 중',
+            noMarket: '도매 시세 대기 중',
             unitCost: '예상 비용',
         }
         : {
@@ -62,15 +70,16 @@ export default function ResourcesCommandCenter({
             cropLoad: 'Crop signal',
             energyDetail: 'Keep usage and expected cost together.',
             weatherDetail: 'Outside conditions directly shape vent and HVAC cost.',
-            marketDetail: 'Use live price direction before harvest pacing decisions.',
+            marketDetail: 'Uses wholesale market prices for harvest pacing decisions.',
             cropDetail: 'Read transpiration, assimilation, and harvest pressure together.',
-            noMarket: 'Market data pending',
+            noMarket: 'Wholesale market pending',
             unitCost: 'Estimated cost',
         };
 
-    const marketItem = producePrices?.items?.[0] ?? null;
+    const selectedMarket = selectProduceItemForCrop(producePrices, crop, { marketPreference: ['wholesale'] });
+    const marketItem = selectedMarket?.item ?? null;
     const marketValue = marketItem
-        ? `${marketItem.display_name} ${marketItem.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${locale === 'ko' ? '원' : ' KRW'}`
+        ? `${getProduceDisplayName(marketItem.display_name, locale)} ${marketItem.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${locale === 'ko' ? '원' : ' KRW'}`
         : copy.noMarket;
     const energyValue = `${modelMetrics.energy.consumption.toFixed(1)} kW · COP ${modelMetrics.energy.efficiency.toFixed(2)}`;
     const weatherValue = weather
@@ -141,6 +150,7 @@ export default function ResourcesCommandCenter({
                         error={weatherError}
                     />
                     <DecisionSnapshotGrid
+                        crop={crop}
                         currentData={currentData}
                         modelMetrics={modelMetrics}
                         weather={weather}
@@ -152,15 +162,26 @@ export default function ResourcesCommandCenter({
             ) : null}
 
             {activePanel === 'resources-market' ? (
-                <ProducePricesPanel
-                    prices={producePrices}
-                    loading={produceLoading}
-                    error={produceError}
-                />
+                <Suspense
+                    fallback={(
+                        <LoadingSkeleton
+                            title={locale === 'ko' ? '도매 시세' : 'Wholesale prices'}
+                            loadingMessage={locale === 'ko' ? '시세 차트를 불러오는 중입니다...' : 'Loading price chart...'}
+                            minHeightClassName="min-h-[520px]"
+                        />
+                    )}
+                >
+                    <ProducePricesPanel
+                        prices={producePrices}
+                        loading={produceLoading}
+                        error={produceError}
+                    />
+                </Suspense>
             ) : null}
 
             {activePanel === 'resources-stock' ? (
                 <DecisionSnapshotGrid
+                    crop={crop}
                     currentData={currentData}
                     modelMetrics={modelMetrics}
                     weather={weather}

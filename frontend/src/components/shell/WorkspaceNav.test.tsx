@@ -13,6 +13,7 @@ describe('WorkspaceNav', () => {
 
     it('marks the active section and notifies when another section is chosen', () => {
         const onSelect = vi.fn();
+        const onSelectAction = vi.fn();
 
         render(
             <LocaleProvider>
@@ -24,11 +25,15 @@ describe('WorkspaceNav', () => {
                             shortLabel: '오늘',
                             description: '지금 상태와 오늘 할 일을 먼저 봅니다.',
                             icon: Sprout,
+                            actions: [
+                                { id: 'overview-core', label: '핵심' },
+                                { id: 'overview-dashboard', label: '대시보드' },
+                            ],
                         },
                         {
                             key: 'control',
-                            label: '환경 제어',
-                            shortLabel: '제어',
+                            label: '온실 환경',
+                            shortLabel: '온실',
                             description: '지금 조치와 온도 전략을 함께 봅니다.',
                             icon: Leaf,
                         },
@@ -36,12 +41,13 @@ describe('WorkspaceNav', () => {
                     activeWorkspace="overview"
                     statusLabel="센서 정상"
                     onSelect={onSelect}
+                    onSelectAction={onSelectAction}
                 />
             </LocaleProvider>,
         );
 
         const overviewButtons = screen.getAllByRole('button', { name: /오늘 운영|오늘/ });
-        const controlButtons = screen.getAllByRole('button', { name: /환경 제어|제어/ });
+        const controlButtons = screen.getAllByRole('button', { name: /온실 환경|온실/ });
 
         expect(overviewButtons.some((button) => button.getAttribute('aria-current') === 'page')).toBe(true);
         expect(controlButtons.every((button) => button.getAttribute('aria-current') !== 'page')).toBe(true);
@@ -51,5 +57,9 @@ describe('WorkspaceNav', () => {
         expect(onSelect).toHaveBeenCalledWith('control');
         expect(screen.getByText('PhytoSync')).toBeTruthy();
         expect(screen.getByText('센서 정상')).toBeTruthy();
+
+        fireEvent.click(overviewButtons[0]!);
+        fireEvent.click(screen.getAllByRole('button', { name: '핵심' })[0]!);
+        expect(onSelectAction).toHaveBeenCalledWith('overview', 'overview-core');
     });
 });

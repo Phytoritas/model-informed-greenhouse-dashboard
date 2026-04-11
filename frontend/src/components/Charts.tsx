@@ -104,9 +104,7 @@ const Charts = ({ data, variant = 'default' }: ChartsProps) => {
             icon: <Zap className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />,
         },
     ], [copy]);
-    const visibleChartCards = variant === 'overview'
-        ? chartCards.slice(0, 2)
-        : chartCards;
+    const visibleChartCards = chartCards;
     const chartHeight = variant === 'overview' ? 176 : 200;
     const gridClassName = variant === 'overview'
         ? 'grid grid-cols-1 gap-5 md:grid-cols-2'
