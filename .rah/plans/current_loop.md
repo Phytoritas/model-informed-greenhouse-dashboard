@@ -1,16 +1,18 @@
 # Current Loop
 
 ## Active State
-- `main` is the truthful post-issue94 merged baseline.
-- Issue `#96` on branch `docs/96-sync-issue94-merged-harness-state-on-main` is only the harness-sync lane.
-- No active product implementation branch is open in the repo state.
+- `main` is the truthful post-issue96 merged baseline.
+- No active product implementation branch is open in the repository.
+- The only open tracked backlog issue is blocked issue `#3`, which still waits for grower-approved RTR windows.
 
-## Post-Issue94 Baseline
+## Stable Main Baseline
 - PR `#95` merged issue `#94` into `main` at `ff0a92a`.
+- PR `#97` merged issue `#96` into `main` at `daaef46`.
 - The merged baseline now includes:
   - frontend dashboard follow-up polish and the cucumber overview photo asset
   - precision-ladder advisor recommendations with bounded scenario verification
   - additive OpenAI-ready runtime payloads and regression tests
+  - tracked harness files synced through the post-issue94 mainline
 
 ## Latest Validation
 - `npm --prefix frontend run lint`
@@ -20,6 +22,5 @@
 - `poetry run pytest`
 
 ## Exact Next Step
-1. Merge the docs-only issue `#96` sync slice so the tracked harness files reflect the post-issue94 merged baseline.
-2. Stay on clean `main` after that merge.
-3. Start any new non-trivial work from a fresh issue-based branch off `main`.
+1. If working on RTR calibration, unblock issue `#3` with real grower-approved windows before opening its implementation branch.
+2. Otherwise, start the next non-trivial task from a fresh issue-based branch off clean `main`.
