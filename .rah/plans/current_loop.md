@@ -22,9 +22,9 @@
   - `poetry run ruff check .`
   - `poetry run pytest`
 - Focused regressions also passed with `npm --prefix frontend run test -- src/utils/advisorAutoRefresh.test.ts src/hooks/useOverviewSignalTrends.test.tsx` and `poetry run pytest tests/test_weather.py`.
-- No PR is open yet for the current issue106 branch; the stacked base remains issue104 / PR #105.
+- Stacked PR `#107` is open against `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`, and the issue106 project item is now `Validating`.
 
 ## Exact Next Step
 1. Keep the diff bounded to issue `#106` and avoid reopening broader telemetry cleanup.
-2. Commit the validated fix set on `fix/106-restore-overview-solution-and-irradiance-live-updates`.
-3. Push the branch and open a stacked PR against `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync` while PR `#105` remains open.
+2. Monitor PR `#107` while keeping merge order explicit: issue104 / PR `#105` first, then issue106 / PR `#107`.
+3. Once both validation lanes are green, merge the stacked base before retargeting or merging the follow-up if needed.

@@ -14,7 +14,7 @@
 - agents_and_workflow_gate: `satisfied`
 - latest_route_slice: `issue106 restores Today operating-direction freshness through receivedAt-based advisor auto-refresh gating and restores outside irradiance freshness through a dedicated shortwave-history cache TTL`
 - latest_validation: `local ladder is green on npm lint/test/build plus ruff/pytest for the current issue106 follow-up set, including dedicated advisorAutoRefresh and weather-history regressions`
-- local_worktree_followup: `the branch is not yet committed or attached to a PR; because PR #105 is still open, the next clean GitHub step is commit -> push -> stacked PR`
+- local_worktree_followup: `the branch is committed, pushed, and attached to stacked PR #107 on top of PR #105; next step is to watch remote validation and merge in order`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -41,6 +41,6 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Keep work scoped to issue `#106` until the validated follow-up set is committed.
-- Open a stacked PR from `fix/106-restore-overview-solution-and-irradiance-live-updates` against `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync` while PR `#105` is still open.
-- Split any additional unrelated telemetry/performance work into another fresh issue after issue106 is linked.
+- Keep work scoped to issue `#106` while PR `#107` validates on top of PR `#105`.
+- Merge in stack order: issue104 / PR `#105` first, then issue106 / PR `#107`.
+- Split any additional unrelated telemetry/performance work into another fresh issue after the stacked follow-up is merged.
