@@ -2,19 +2,19 @@
 
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
-- topic: `issue-94-runtime-dashboard-followup`
-- sessionId: `model-informed-greenhouse-dashboard#fix-94-runtime-dashboard-followup:validating`
-- caseId: `case/model-informed-greenhouse-dashboard/fix-94-runtime-dashboard-followup/issue-94`
-- issue: `#94`
-- branch: `fix/94-finalize-post-issue92-dashboard-polish-and-precision-runtime-recommendations`
+- topic: `post-issue94-main`
+- sessionId: `model-informed-greenhouse-dashboard#main:post-issue94`
+- caseId: `case/model-informed-greenhouse-dashboard/main/post-issue94`
+- issue: `#96` (docs-only harness sync)
+- branch: `docs/96-sync-issue94-merged-harness-state-on-main`
 
 ## Current State
-- current_stage: `issue94-validating`
-- implementation_gate: `issue94-validating`
+- current_stage: `post-issue94-main`
+- implementation_gate: `pass`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `frontend dashboard follow-up polish -> precision ladder model-runtime recommendations -> issue-linked GitHub workflow restoration`
-- latest_validation: `local ladder is green on fix/94 with ruff, pytest, frontend lint, frontend vitest, and frontend build`
-- local_worktree_followup: `PR #95 is open and the local worktree is clean; the remaining step is remote validation and merge completion`
+- latest_route_slice: `issue94 merged -> main is clean -> docs sync lane updates tracked harness state`
+- latest_validation: `the merged issue94 baseline is green on backend and frontend validation ladders`
+- local_worktree_followup: `only the docs-only harness sync lane remains before settling on clean main`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -25,15 +25,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#fix-94-runtime-dashboard-followup:validating")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#main:post-issue94")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "issue-94-runtime-dashboard-followup", "fix/94", "validating"],
-    topic="issue-94-runtime-dashboard-followup",
+    keywords=["model-informed-greenhouse-dashboard", "post-issue94-main", "main", "harness-sync"],
+    topic="post-issue94-main",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#fix-94-runtime-dashboard-followup:validating",
+    sessionId="model-informed-greenhouse-dashboard#main:post-issue94",
     caseMode=True,
     depth="standard",
-    contextText="resume issue #94 validating work, verify PR #95, and finish the merge-to-main workflow"
+    contextText="resume from the post-issue94 merged main baseline and keep harness state aligned"
 )
 ```
 
@@ -41,6 +41,6 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Watch PR `#95` until the remote validation checks pass.
-- Merge PR `#95`, then fast-forward local `main`.
-- Keep new follow-up scope off issue `#94`; start a fresh issue/branch from `main` if more product work appears.
+- Merge docs issue `#96`.
+- Return to clean `main`.
+- Start the next product change from a fresh issue-based branch.
