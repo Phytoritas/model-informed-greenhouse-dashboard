@@ -13,6 +13,7 @@ describe('route-meta', () => {
     expect(koRoutes.map((route) => route.key)).toEqual([
       'overview',
       'control',
+      'trend',
       'crop-work',
       'resources',
       'alerts',
@@ -23,6 +24,7 @@ describe('route-meta', () => {
   it('maps direct and legacy paths to the new top-level route keys', () => {
     expect(getPrimaryRouteKey('/overview')).toBe('overview');
     expect(getPrimaryRouteKey('/control')).toBe('control');
+    expect(getPrimaryRouteKey('/trend')).toBe('trend');
     expect(getPrimaryRouteKey('/rtr')).toBe('control');
     expect(getPrimaryRouteKey('/crop-work')).toBe('crop-work');
     expect(getPrimaryRouteKey('/assistant')).toBe('overview');
@@ -37,6 +39,7 @@ describe('route-meta', () => {
 
   it('returns localized metadata for the active route', () => {
     expect(getPrimaryRouteMeta('/overview', 'ko').title).toBe('오늘 운영');
+    expect(getPrimaryRouteMeta('/trend', 'ko').label).toBe('날씨와 시세');
     expect(getPrimaryRouteMeta('/assistant', 'ko').label).toBe('질문 도우미');
     expect(getPrimaryRouteMeta('/rtr', 'en').title).toBe('Temperature Strategy');
   });

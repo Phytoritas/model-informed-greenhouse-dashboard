@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { cn } from '../../utils/cn';
@@ -7,10 +8,16 @@ export type DashboardWorkspaceKey =
   | 'command'
   | 'advisor'
   | 'rtr'
+  | 'trend'
   | 'crop'
   | 'resources'
   | 'alerts'
   | 'knowledge';
+
+export interface WorkspaceNavAction {
+  id: string;
+  label: string;
+}
 
 export interface WorkspaceNavItem {
   key: string;
@@ -18,13 +25,16 @@ export interface WorkspaceNavItem {
   shortLabel: string;
   description: string;
   icon: LucideIcon;
+  actions?: WorkspaceNavAction[];
 }
 
 interface WorkspaceNavProps {
   items: WorkspaceNavItem[];
   activeWorkspace: string;
+  activeActionId?: string;
   statusLabel: string;
   onSelect: (workspace: string) => void;
+  onSelectAction?: (workspace: string, actionId: string) => void;
 }
 
 function WorkspaceButton({
@@ -84,20 +94,37 @@ function WorkspaceButton({
 export default function WorkspaceNav({
   items,
   activeWorkspace,
+  activeActionId,
   statusLabel,
   onSelect,
+  onSelectAction,
 }: WorkspaceNavProps) {
   const { locale } = useLocale();
+  const [expandedWorkspace, setExpandedWorkspace] = useState<string | null>(null);
   const activeItem = items.find((item) => item.key === activeWorkspace) ?? items[0];
   const copy = locale === 'ko'
     ? {
         brand: 'PhytoSync',
-        description: '오늘 운영 판단을 빠르게 여는 기본 메뉴입니다.',
       }
     : {
         brand: 'PhytoSync',
-        description: 'Primary operating pages for the day-to-day greenhouse flow.',
       };
+
+  const handleWorkspaceClick = (item: WorkspaceNavItem) => {
+    onSelect(item.key);
+
+    if (!item.actions?.length) {
+      setExpandedWorkspace(null);
+      return;
+    }
+
+    setExpandedWorkspace((current) => {
+      if (item.key === activeWorkspace) {
+        return current === item.key ? null : item.key;
+      }
+      return item.key;
+    });
+  };
 
   return (
     <>
@@ -105,16 +132,39 @@ export default function WorkspaceNav({
         <SidebarHeader>
           <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{copy.brand}</div>
           <div className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">{activeItem?.label}</div>
-          <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">{copy.description}</p>
         </SidebarHeader>
         <nav className="space-y-2">
           {items.map((item) => (
-            <WorkspaceButton
-              key={item.key}
-              item={item}
-              active={item.key === activeWorkspace}
-              onSelect={() => onSelect(item.key)}
-            />
+            <div key={item.key} className="space-y-2">
+              <WorkspaceButton
+                item={item}
+                active={item.key === activeWorkspace}
+                onSelect={() => handleWorkspaceClick(item)}
+              />
+              {item.key === activeWorkspace && expandedWorkspace === item.key && item.actions?.length ? (
+                <div
+                  className="grid w-full gap-2 rounded-[18px] bg-white/75 p-2"
+                  style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                >
+                  {item.actions.map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      aria-current={activeActionId === action.id ? 'step' : undefined}
+                      onClick={() => onSelectAction?.(item.key, action.id)}
+                      className={cn(
+                        'rounded-full px-3 py-2 text-xs font-semibold transition',
+                        activeActionId === action.id
+                          ? 'bg-[color:var(--sg-accent-violet)] text-white'
+                          : 'bg-white/80 text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]',
+                      )}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           ))}
         </nav>
         <SidebarFooter>
@@ -130,11 +180,31 @@ export default function WorkspaceNav({
               key={item.key}
               item={item}
               active={item.key === activeWorkspace}
-              onSelect={() => onSelect(item.key)}
+              onSelect={() => handleWorkspaceClick(item)}
               compact
             />
           ))}
         </div>
+        {expandedWorkspace === activeWorkspace && activeItem.actions?.length ? (
+          <div className="mt-2 grid gap-2 rounded-[20px] bg-white/75 p-2">
+            {activeItem.actions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                aria-current={activeActionId === action.id ? 'step' : undefined}
+                onClick={() => onSelectAction?.(activeItem.key, action.id)}
+                className={cn(
+                  'rounded-full px-3 py-2 text-xs font-semibold transition',
+                  activeActionId === action.id
+                    ? 'bg-[color:var(--sg-accent-violet)] text-white'
+                    : 'bg-white text-[color:var(--sg-text-muted)]',
+                )}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </nav>
     </>
   );

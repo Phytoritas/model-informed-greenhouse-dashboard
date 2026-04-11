@@ -25,11 +25,8 @@ interface AssistantDrawerProps {
   panelTabs: Array<{ id: string; label: string }>;
   activePanel: AssistantPanelId;
   summary: SmartGrowKnowledgeSummary | null;
-  actionsNow: string[];
-  actionsToday: string[];
-  note: string;
-  signals: Array<{ label: string; value: string }>;
   searchRequest?: RagAssistantOpenRequest | null;
+  chatRequest?: { query: string; nonce: number } | null;
   currentData: SensorData;
   metrics: AdvancedModelMetrics;
   forecast?: ForecastData | null;
@@ -52,11 +49,8 @@ export default function AssistantDrawer({
   panelTabs,
   activePanel,
   summary,
-  actionsNow,
-  actionsToday,
-  note,
-  signals,
   searchRequest = null,
+  chatRequest = null,
   currentData,
   metrics,
   forecast = null,
@@ -73,11 +67,11 @@ export default function AssistantDrawer({
   const copy = locale === 'ko'
     ? {
         title: '질문 도우미',
-        description: '질문, 자료 찾기, 최근 흐름을 한곳에서 봅니다.',
+        description: '질문과 자료 찾기를 한곳에서 봅니다.',
       }
     : {
         title: 'Assistant',
-        description: 'Keep ask, search, and recent flow in one place.',
+        description: 'Keep ask and search in one place.',
       };
 
   return (
@@ -116,12 +110,9 @@ export default function AssistantDrawer({
               crop={crop}
               cropLabel={cropLabel}
               summary={summary}
-              actionsNow={actionsNow}
-              actionsToday={actionsToday}
-              note={note}
-              signals={signals}
               activePanel={activePanel}
               searchRequest={searchRequest}
+              chatRequest={chatRequest}
               currentData={currentData}
               metrics={metrics}
               forecast={forecast}

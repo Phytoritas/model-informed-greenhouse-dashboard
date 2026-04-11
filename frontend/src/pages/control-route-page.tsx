@@ -1,10 +1,8 @@
 import { Suspense, lazy } from 'react';
 import type { AppLocale } from '../i18n/locale';
 import type {
-  AdvancedModelMetrics,
   ControlStatus,
   CropType,
-  ProducePricesPayload,
   RtrOptimizationMode,
   RtrProfile,
   SensorData,
@@ -14,13 +12,11 @@ import type {
 import type { AlertRailItem } from '../components/dashboard/AlertRail';
 import AlertRail from '../components/dashboard/AlertRail';
 import ControlPanel from '../components/ControlPanel';
-import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
+import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import ControlPage from './control-page';
 
-const Charts = lazy(() => import('../components/Charts'));
 const RTROptimizerPanel = lazy(() => import('../components/RTROptimizerPanel'));
-const WeatherOutlookPanel = lazy(() => import('../components/WeatherOutlookPanel'));
 
 interface ControlRoutePageProps {
   locale: AppLocale;
@@ -32,12 +28,9 @@ interface ControlRoutePageProps {
   fallbackAlertBody: string;
   history: SensorData[];
   currentData: SensorData;
-  modelMetrics: AdvancedModelMetrics;
   weather: WeatherOutlook | null;
   weatherLoading: boolean;
   weatherError: string | null;
-  producePrices: ProducePricesPayload | null;
-  produceLoading: boolean;
   temperatureSettings: TemperatureSettings;
   profile: RtrProfile | null;
   profileLoading: boolean;
@@ -45,9 +38,8 @@ interface ControlRoutePageProps {
   optimizerEnabled?: boolean;
   defaultMode?: RtrOptimizationMode;
   onRefreshProfiles?: () => void | Promise<void>;
-  tabs: Array<{ id: string; label: string }>;
-  activeTabId?: string;
-  onSelectTab: (tabId: string) => void;
+  optimizerState?: RTROptimizerStateLike;
+  uiState?: RTROptimizerUiStateLike;
 }
 
 export default function ControlRoutePage({
@@ -60,12 +52,9 @@ export default function ControlRoutePage({
   fallbackAlertBody,
   history,
   currentData,
-  modelMetrics,
   weather,
   weatherLoading,
   weatherError,
-  producePrices,
-  produceLoading,
   temperatureSettings,
   profile,
   profileLoading,
@@ -73,9 +62,8 @@ export default function ControlRoutePage({
   optimizerEnabled,
   defaultMode,
   onRefreshProfiles,
-  tabs,
-  activeTabId,
-  onSelectTab,
+  optimizerState,
+  uiState,
 }: ControlRoutePageProps) {
   const fallbackAlerts = alertItems.length
     ? alertItems
@@ -89,9 +77,6 @@ export default function ControlRoutePage({
   return (
     <ControlPage
       locale={locale}
-      tabs={tabs}
-      activeTabId={activeTabId}
-      onSelectTab={onSelectTab}
       strategySurface={(
         <Suspense
           fallback={(
@@ -103,6 +88,7 @@ export default function ControlRoutePage({
           )}
         >
           <RTROptimizerPanel
+            key={crop}
             crop={crop}
             currentData={currentData}
             history={history}
@@ -116,6 +102,8 @@ export default function ControlRoutePage({
             optimizerEnabled={optimizerEnabled}
             defaultMode={defaultMode}
             onRefreshProfiles={onRefreshProfiles}
+            optimizerState={optimizerState}
+            uiState={uiState}
             compact
           />
         </Suspense>
@@ -128,46 +116,6 @@ export default function ControlRoutePage({
         />
       )}
       controlActions={<AlertRail items={fallbackAlerts} compact />}
-      climateChart={(
-        <Suspense
-          fallback={(
-            <LoadingSkeleton
-              title={locale === 'ko' ? '실내 환경 추이' : 'Indoor climate'}
-              loadingMessage={locale === 'ko' ? '실내 환경 흐름을 불러오는 중...' : 'Loading indoor climate...'}
-              minHeightClassName="min-h-[304px]"
-            />
-          )}
-        >
-          <Charts data={history} />
-        </Suspense>
-      )}
-      watchList={(
-        <div className="grid gap-5">
-          <Suspense
-            fallback={(
-            <LoadingSkeleton
-                title={locale === 'ko' ? '외기와 예보' : 'Outside outlook'}
-                loadingMessage={locale === 'ko' ? '외기와 예보 흐름을 불러오는 중...' : 'Loading outside outlook...'}
-                minHeightClassName="min-h-[320px]"
-              />
-            )}
-          >
-            <WeatherOutlookPanel
-              weather={weather}
-              loading={weatherLoading}
-              error={weatherError}
-            />
-          </Suspense>
-          <DecisionSnapshotGrid
-            currentData={currentData}
-            modelMetrics={modelMetrics}
-            weather={weather}
-            weatherLoading={weatherLoading}
-            producePrices={producePrices}
-            produceLoading={produceLoading}
-          />
-        </div>
-      )}
     />
   );
 }

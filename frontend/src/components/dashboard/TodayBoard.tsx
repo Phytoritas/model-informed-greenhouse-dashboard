@@ -41,7 +41,7 @@ function CompactListTile({
     compact?: boolean;
 }) {
     const visibleItems = items.slice(0, compact ? 1 : 2);
-    const itemClampStyle = compact ? clampThreeStyle : clampTwoStyle;
+    const itemClampStyle = compact ? clampThreeStyle : undefined;
 
     return (
         <article className={`rounded-[22px] px-4 py-4 ${tone}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
@@ -88,7 +88,7 @@ export default function TodayBoard({
             title: '지금 · 오늘 · 이번주 운영 보드',
             description: '지금 할 일과 지켜볼 항목만 짧게 묶었습니다.',
             leadLabel: '오늘 운영 방향',
-            leadFallback: '현재는 큰 전환보다 리듬 유지와 추세 확인이 우선입니다.',
+            leadFallback: '기존 환경 설정을 유지하며 작물 상태를 지켜보시길 권장합니다.',
             leadSupport: '즉시 조치, 오늘 조정, 주간 검토, 추가 확인을 한 번에 봅니다.',
             now: '지금',
             today: '오늘',
@@ -140,7 +140,7 @@ export default function TodayBoard({
                     <div className="mt-3 text-[clamp(1.35rem,1.05rem+0.6vw,1.9rem)] font-semibold leading-tight tracking-[-0.05em] text-[color:var(--sg-text-strong)]" style={compact ? clampThreeStyle : clampTwoStyle}>
                         {leadMessage}
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={compact ? clampThreeStyle : clampTwoStyle}>
+                    <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={compact ? clampThreeStyle : undefined}>
                         {copy.leadSupport}
                     </p>
                 </div>

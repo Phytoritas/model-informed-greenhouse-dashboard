@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import {
     Activity,
     ArrowDownRight,
@@ -27,7 +28,6 @@ import { getRequestErrorCopy } from '../utils/requestErrorCopy';
 import { useAreaUnit } from '../context/AreaUnitContext';
 import { useRtrOptimizer } from '../hooks/useRtrOptimizer';
 import AreaUnitPanel from './AreaUnitPanel';
-import RTRCalibrationWorkspace from './RTRCalibrationWorkspace';
 import RTROutlookPanel from './RTROutlookPanel';
 
 interface RTROptimizerPanelProps {
@@ -46,6 +46,60 @@ interface RTROptimizerPanelProps {
     defaultMode?: RtrOptimizationMode;
     onRefreshProfiles?: () => void | Promise<void>;
     compact?: boolean;
+    optimizerState?: RTROptimizerStateLike;
+    uiState?: RTROptimizerUiStateLike;
+}
+
+export interface RTROptimizerStateLike {
+    stateResponse: ReturnType<typeof useRtrOptimizer>['stateResponse'];
+    optimizeResponse: ReturnType<typeof useRtrOptimizer>['optimizeResponse'];
+    scenarioResponse: ReturnType<typeof useRtrOptimizer>['scenarioResponse'];
+    sensitivityResponse: ReturnType<typeof useRtrOptimizer>['sensitivityResponse'];
+    targetNodeDevelopmentPerDay: ReturnType<typeof useRtrOptimizer>['targetNodeDevelopmentPerDay'];
+    setTargetNodeDevelopmentPerDay: ReturnType<typeof useRtrOptimizer>['setTargetNodeDevelopmentPerDay'];
+    optimizationMode: ReturnType<typeof useRtrOptimizer>['optimizationMode'];
+    setOptimizationMode: ReturnType<typeof useRtrOptimizer>['setOptimizationMode'];
+    customScenario: ReturnType<typeof useRtrOptimizer>['customScenario'];
+    setCustomScenario: ReturnType<typeof useRtrOptimizer>['setCustomScenario'];
+    includeEnergyCost: ReturnType<typeof useRtrOptimizer>['includeEnergyCost'];
+    setIncludeEnergyCost: ReturnType<typeof useRtrOptimizer>['setIncludeEnergyCost'];
+    includeCoolingCost: ReturnType<typeof useRtrOptimizer>['includeCoolingCost'];
+    setIncludeCoolingCost: ReturnType<typeof useRtrOptimizer>['setIncludeCoolingCost'];
+    includeLaborCost: ReturnType<typeof useRtrOptimizer>['includeLaborCost'];
+    setIncludeLaborCost: ReturnType<typeof useRtrOptimizer>['setIncludeLaborCost'];
+    telemetryOptimizationBlocked: ReturnType<typeof useRtrOptimizer>['telemetryOptimizationBlocked'];
+    loading: ReturnType<typeof useRtrOptimizer>['loading'];
+    loadingState: ReturnType<typeof useRtrOptimizer>['loadingState'];
+    loadingOptimize: ReturnType<typeof useRtrOptimizer>['loadingOptimize'];
+    error: ReturnType<typeof useRtrOptimizer>['error'];
+    refreshState: ReturnType<typeof useRtrOptimizer>['refreshState'];
+    refreshOptimization: ReturnType<typeof useRtrOptimizer>['refreshOptimization'];
+}
+
+export interface RTROptimizerCustomScenarioDraft {
+    label: string;
+    dayHeatingMinTempC: string;
+    nightHeatingMinTempC: string;
+    dayCoolingTargetC: string;
+    nightCoolingTargetC: string;
+    ventBiasC: string;
+    screenBiasPct: string;
+    circulationFanPct: string;
+    co2TargetPpm: string;
+}
+
+export interface RTROptimizerUiStateLike {
+    customScenarioDraft: RTROptimizerCustomScenarioDraft;
+    setCustomScenarioDraft: Dispatch<SetStateAction<RTROptimizerCustomScenarioDraft>>;
+    targetNodeInputValue: string;
+    setTargetNodeInputValue: Dispatch<SetStateAction<string>>;
+    isTargetNodeInputActive: boolean;
+    setIsTargetNodeInputActive: Dispatch<SetStateAction<boolean>>;
+}
+
+interface RTROptimizerPanelContentProps extends Omit<RTROptimizerPanelProps, 'optimizerState' | 'uiState'> {
+    optimizerState: RTROptimizerStateLike;
+    uiState?: RTROptimizerUiStateLike;
 }
 
 const MODE_ORDER: RtrOptimizationMode[] = [
@@ -63,6 +117,46 @@ const metricLabelClass = 'text-[11px] text-[color:var(--sg-text-muted)]';
 const metricValueClass = 'mt-1 text-lg font-semibold text-[color:var(--sg-text-strong)]';
 const metricValueLargeClass = 'mt-1 text-xl font-semibold text-[color:var(--sg-text-strong)]';
 const metricMetaClass = 'mt-1 text-[11px] text-[color:var(--sg-text-muted)]';
+const DECIMAL_INPUT_PATTERN = /^\d*(?:[.,]\d*)?$/;
+const RTRCalibrationWorkspace = lazy(() => import('./RTRCalibrationWorkspace'));
+
+function createEmptyCustomScenarioDraft(): RTROptimizerCustomScenarioDraft {
+    return {
+        label: '',
+        dayHeatingMinTempC: '',
+        nightHeatingMinTempC: '',
+        dayCoolingTargetC: '',
+        nightCoolingTargetC: '',
+        ventBiasC: '',
+        screenBiasPct: '',
+        circulationFanPct: '',
+        co2TargetPpm: '',
+    };
+}
+
+function formatDraftNumber(value: number | undefined): string {
+    return typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+}
+
+function buildCustomScenarioDraft(
+    customScenario: RTROptimizerStateLike['customScenario'],
+    fallbackLabel: string,
+): RTROptimizerCustomScenarioDraft {
+    if (!customScenario) {
+        return createEmptyCustomScenarioDraft();
+    }
+    return {
+        label: customScenario.label === fallbackLabel ? '' : customScenario.label,
+        dayHeatingMinTempC: formatDraftNumber(customScenario.day_heating_min_temp_C),
+        nightHeatingMinTempC: formatDraftNumber(customScenario.night_heating_min_temp_C),
+        dayCoolingTargetC: formatDraftNumber(customScenario.day_cooling_target_C),
+        nightCoolingTargetC: formatDraftNumber(customScenario.night_cooling_target_C),
+        ventBiasC: formatDraftNumber(customScenario.vent_bias_C),
+        screenBiasPct: formatDraftNumber(customScenario.screen_bias_pct),
+        circulationFanPct: formatDraftNumber(customScenario.circulation_fan_pct),
+        co2TargetPpm: formatDraftNumber(customScenario.co2_target_ppm),
+    };
+}
 
 function formatNumber(
     value: number | null | undefined,
@@ -90,7 +184,7 @@ function getModeLabel(mode: string, locale: 'en' | 'ko'): string {
         if (mode === 'energy_saving') return '에너지 절감';
         if (mode === 'labor_saving') return '작업 절감';
         if (mode === 'custom_weights') return '사용자 가중치';
-        if (mode === 'baseline') return '기준선';
+        if (mode === 'baseline') return '평소 설정';
         return '균형';
     }
 
@@ -136,13 +230,13 @@ function getScenarioLabel(label: string, locale: 'en' | 'ko'): string {
     ]);
 
     if (label === 'offset_minus_0_3c') {
-        return locale === 'ko' ? '기준선 -0.3°C' : 'Baseline -0.3°C';
+        return locale === 'ko' ? '평소 설정 -0.3°C' : 'Baseline -0.3°C';
     }
     if (label === 'offset_plus_0_3c') {
-        return locale === 'ko' ? '기준선 +0.3°C' : 'Baseline +0.3°C';
+        return locale === 'ko' ? '평소 설정 +0.3°C' : 'Baseline +0.3°C';
     }
     if (label === 'offset_plus_0_6c') {
-        return locale === 'ko' ? '기준선 +0.6°C' : 'Baseline +0.6°C';
+        return locale === 'ko' ? '평소 설정 +0.6°C' : 'Baseline +0.6°C';
     }
     if (label === 'heating_weaker') {
         return locale === 'ko' ? '난방 약화' : 'Heating weaker';
@@ -197,8 +291,8 @@ function getWarningLabel(code: string, locale: 'en' | 'ko'): string {
 
 function getReasonTagLabel(code: string, locale: 'en' | 'ko'): string {
     const koMap: Record<string, string> = {
-        'temperature-up': '기준선보다 온도 상향',
-        'temperature-down': '기준선보다 온도 하향',
+        'temperature-up': '평소 설정보다 온도 상향',
+        'temperature-down': '평소 설정보다 온도 하향',
         'node-target-guarded': '목표 마디 속도 방어',
         'respiration-tradeoff': '호흡 손실 증가 억제',
         'energy-tradeoff': '에너지 비용 고려',
@@ -216,7 +310,7 @@ function getReasonTagLabel(code: string, locale: 'en' | 'ko'): string {
     return (locale === 'ko' ? koMap[code] : enMap[code]) ?? code;
 }
 
-function getSensitivityControlLabel(code: string, locale: 'en' | 'ko'): string {
+function getSensitivityControlLabel(code: string, locale: 'en' | 'ko', crop?: CropType): string {
     const koMap: Record<string, string> = {
         day_heating_min_temp_C: '주간 난방 기준',
         night_heating_min_temp_C: '야간 난방 기준',
@@ -248,10 +342,13 @@ function getSensitivityControlLabel(code: string, locale: 'en' | 'ko'): string {
         screen_bias: 'Screen bias',
     };
 
+    if (locale === 'ko' && crop === 'Tomato' && code === 'target_node_rate_day') {
+        return '목표 화방 전개';
+    }
     return (locale === 'ko' ? koMap[code] : enMap[code]) ?? code;
 }
 
-function getSensitivityTargetLabel(code: string, locale: 'en' | 'ko'): string {
+function getSensitivityTargetLabel(code: string, locale: 'en' | 'ko', crop?: CropType): string {
     const koMap: Record<string, string> = {
         objective: '목적함수',
         predicted_node_rate_day: '예측 마디 전개',
@@ -277,12 +374,15 @@ function getSensitivityTargetLabel(code: string, locale: 'en' | 'ko'): string {
         disease_penalty: 'Disease penalty',
     };
 
+    if (locale === 'ko' && crop === 'Tomato' && code === 'predicted_node_rate_day') {
+        return '예측 화방 전개';
+    }
     return (locale === 'ko' ? koMap[code] : enMap[code]) ?? code;
 }
 
 function getScenarioGroupLabel(group: string, locale: 'en' | 'ko'): string {
     const koMap: Record<string, string> = {
-        baseline: '기준선 비교',
+        baseline: '평소 설정 비교',
         hvac: '냉난방 비교',
         'vent-screen': '환기·스크린 비교',
         optimizer: '권장 제어안',
@@ -348,6 +448,14 @@ function getRiskFlagMessage(
     return locale === 'ko' ? (koMap[code] ?? fallback) : fallback;
 }
 
+function shouldHideRiskFlagCode(code: string): boolean {
+    return code === 'trust_region_exceeded';
+}
+
+function shouldHideRiskFlag(riskFlag: Record<string, unknown>): boolean {
+    return shouldHideRiskFlagCode(String(riskFlag.code ?? ''));
+}
+
 function getTelemetryWarningCopy(status: TelemetryStatus, locale: 'en' | 'ko'): string | null {
     if (status === 'stale') {
         return locale === 'ko'
@@ -369,7 +477,7 @@ function getTelemetryWarningCopy(status: TelemetryStatus, locale: 'en' | 'ko'): 
 
 function getScenarioBadgeLabel(value: string, locale: 'en' | 'ko'): string {
     const koMap: Record<string, string> = {
-        baseline: '기준선',
+        baseline: '평소 설정',
         recommended: '권장',
         compare: '비교',
         custom: '사용자',
@@ -491,7 +599,7 @@ function renderCropSpecificInsight(
     );
 }
 
-const RTROptimizerPanel = ({
+const RTROptimizerPanelContent = ({
     crop,
     currentData,
     history,
@@ -504,27 +612,16 @@ const RTROptimizerPanel = ({
     profileLoading,
     profileError,
     optimizerEnabled: optimizerEnabledProp,
-    defaultMode: defaultModeProp,
     onRefreshProfiles,
     compact = false,
-}: RTROptimizerPanelProps) => {
+    optimizerState,
+    uiState,
+}: RTROptimizerPanelContentProps) => {
     const { locale } = useLocale();
     const { areaByCrop, setActualAreaM2, setActualAreaPyeong, syncAreaMeta } = useAreaUnit();
     const areaState = areaByCrop[crop];
     const defaultCustomLabel = locale === 'ko' ? '사용자 비교' : 'Custom compare';
     const optimizerEnabled = profileLoading ? false : (profile?.optimizer?.enabled ?? optimizerEnabledProp ?? false);
-    const defaultMode = defaultModeProp ?? profile?.optimizer?.default_mode ?? DEFAULT_OPTIMIZATION_MODE;
-    const [customScenarioDraft, setCustomScenarioDraft] = useState({
-        label: '',
-        dayHeatingMinTempC: '',
-        nightHeatingMinTempC: '',
-        dayCoolingTargetC: '',
-        nightCoolingTargetC: '',
-        ventBiasC: '',
-        screenBiasPct: '',
-        circulationFanPct: '',
-        co2TargetPpm: '',
-    });
     const {
         stateResponse,
         optimizeResponse,
@@ -549,17 +646,76 @@ const RTROptimizerPanel = ({
         error: optimizerError,
         refreshState,
         refreshOptimization,
-    } = useRtrOptimizer({
-        crop,
-        actualAreaM2: areaState.actualAreaM2,
-        actualAreaPyeong: areaState.actualAreaPyeong,
-        actualAreaSource: areaState.source,
-        optimizerEnabled,
-        defaultMode,
-        telemetryStatus,
-    });
+    } = optimizerState;
+    const [localCustomScenarioDraft, setLocalCustomScenarioDraft] = useState<RTROptimizerCustomScenarioDraft>(() => (
+        buildCustomScenarioDraft(customScenario, defaultCustomLabel)
+    ));
+    const [localTargetNodeInputValue, setLocalTargetNodeInputValue] = useState('');
+    const [localIsTargetNodeInputActive, setLocalIsTargetNodeInputActive] = useState(false);
+    const customScenarioDraft = uiState?.customScenarioDraft ?? localCustomScenarioDraft;
+    const setCustomScenarioDraft = uiState?.setCustomScenarioDraft ?? setLocalCustomScenarioDraft;
+    const targetNodeInputValue = uiState?.targetNodeInputValue ?? localTargetNodeInputValue;
+    const setTargetNodeInputValue = uiState?.setTargetNodeInputValue ?? setLocalTargetNodeInputValue;
+    const isTargetNodeInputActive = uiState?.isTargetNodeInputActive ?? localIsTargetNodeInputActive;
+    const setIsTargetNodeInputActive = uiState?.setIsTargetNodeInputActive ?? setLocalIsTargetNodeInputActive;
     const isProfilePending = profileLoading && profile === null;
     const isProfileUnavailable = !profileLoading && profile === null;
+    const defaultDevelopmentMetric = crop === 'Tomato' ? 'truss' : 'node';
+    const developmentMetric = optimizeResponse?.explanation_payload?.development_metric ?? defaultDevelopmentMetric;
+    const usesTrussProgress = developmentMetric === 'truss';
+    const developmentDisplayScale = usesTrussProgress ? 3 : 1;
+    const developmentLabelKo = usesTrussProgress ? '화방 진행' : '마디 전개';
+    const developmentLabelEn = usesTrussProgress ? 'truss progression' : 'node progression';
+    const developmentUnit = usesTrussProgress ? 'truss/day' : 'node/day';
+    const developmentHeaderKo = usesTrussProgress ? '화방/일' : '마디/일';
+    const toDisplayDevelopmentRate = useCallback((value: number | null | undefined): number | null => {
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+            return null;
+        }
+        return value / developmentDisplayScale;
+    }, [developmentDisplayScale]);
+
+    const syncedTargetNodeInputValue = useMemo(() => {
+        const displayRate = toDisplayDevelopmentRate(targetNodeDevelopmentPerDay);
+        if (displayRate === null) {
+            return '';
+        }
+        return String(Number(displayRate.toFixed(3)));
+    }, [targetNodeDevelopmentPerDay, toDisplayDevelopmentRate]);
+    const targetNodeInputDisplayValue = isTargetNodeInputActive
+        ? targetNodeInputValue
+        : syncedTargetNodeInputValue;
+
+    const handleTargetNodeInputChange = (rawValue: string) => {
+        if (!DECIMAL_INPUT_PATTERN.test(rawValue)) {
+            return;
+        }
+
+        setTargetNodeInputValue(rawValue);
+        const normalized = rawValue.replace(',', '.');
+        if (!normalized) {
+            setTargetNodeDevelopmentPerDay(null);
+            return;
+        }
+        if (normalized.endsWith('.')) {
+            return;
+        }
+
+        const parsed = Number(normalized);
+        setTargetNodeDevelopmentPerDay(
+            Number.isFinite(parsed) && parsed > 0
+                ? parsed * developmentDisplayScale
+                : null,
+        );
+    };
+    const handleTargetNodeInputFocus = () => {
+        setTargetNodeInputValue(syncedTargetNodeInputValue);
+        setIsTargetNodeInputActive(true);
+    };
+    const handleTargetNodeInputBlur = () => {
+        setIsTargetNodeInputActive(false);
+    };
+
     const refreshCalibrationConsumers = async () => {
         await Promise.resolve(onRefreshProfiles?.());
         await refreshState();
@@ -570,30 +726,40 @@ const RTROptimizerPanel = ({
         resourceEn: 'the control recommendation',
     });
     const profileErrorCopy = getRequestErrorCopy(profileError, locale, {
-        resourceKo: '온도 기준선',
+        resourceKo: '평소 온도 설정',
         resourceEn: 'the strategy line',
     });
 
     const copy = locale === 'ko'
         ? {
             title: '빛 맞춤 온도',
-            subtitle: `${getCropLabel(crop, locale)} 오늘 제어안과 목표 마디 전개를 함께 봅니다`,
-            targetNode: '목표 마디 전개',
-            predictedNode: '현재 예측 전개',
+            subtitle: `${getCropLabel(crop, locale)} 오늘 제어안과 목표 ${developmentLabelKo}를 함께 봅니다`,
+            targetNode: `목표 ${developmentLabelKo}`,
+            targetNodeHint: usesTrussProgress
+                ? `하루 화방 진행 목표 (${developmentUnit})`
+                : `하루 목표 마디 (${developmentUnit})`,
+            predictedNode: `현재 예측 ${developmentLabelKo}`,
             recommendedMeanTemp: '추천 최소 평균온도',
-            deltaTemp: '기준선 대비 ΔT',
+            deltaTemp: '평소 설정 대비 ΔT',
             rtrEquivalent: '최적 RTR 환산값',
             confidence: '반영 상태',
+            nodeGuideTitle: `평균 온도별 예상 ${developmentLabelKo}`,
+            nodeGuideRange: '유효 온도 범위',
+            nodeGuideTemp: '평균 온도(°C)',
+            nodeGuideNode: usesTrussProgress
+                ? `예상 화방 진행(${developmentUnit})`
+                : `예상 ${developmentLabelKo}(${developmentUnit})`,
+            nodeGuideWaiting: '온도별 계산값을 표시할 수 없습니다.',
             gainLoss: '이득/손실 균형',
             cropInsight: '작물별 해석',
             setpoints: '추천 제어값',
             scenarios: '시나리오 비교',
             customScenarioTitle: '사용자 비교 시나리오',
-            customScenarioBody: '난방·냉방·환기·스크린·팬·CO₂ 후보를 직접 넣어 기준선과 권장안 사이에서 비교합니다.',
+            customScenarioBody: '난방·냉방·환기·스크린·팬·CO₂ 후보를 직접 넣어 평소 설정안과 권장안을 비교합니다.',
             customLabel: '비교 이름',
             customApply: '비교에 반영',
             customReset: '초기화',
-            baselineCard: '기준선 비교 카드',
+            baselineCard: '평소 설정 비교 카드',
             refresh: '다시 계산',
             includeEnergy: '에너지 비용 포함',
             includeCooling: '냉방 비용 포함',
@@ -631,7 +797,7 @@ const RTROptimizerPanel = ({
             computing: '빛 맞춤 온도를 계산하는 중...',
             modeHeader: '시나리오',
             meanHeader: '평균온도',
-            nodeHeader: '마디/일',
+            nodeHeader: developmentHeaderKo,
             carbonHeader: '탄소/동화',
             riskHeader: '습도/병해',
             energyHeader: '냉난방 비용',
@@ -639,23 +805,29 @@ const RTROptimizerPanel = ({
             laborHeader: '노동',
             telemetryBlockedTitle: '실시간 수신이 오래돼 새 계산을 잠시 멈췄습니다.',
             telemetryBlockedBody: '센서가 오래되었거나 끊기면 마지막 유효 스냅샷 기준 비교만 유지합니다.',
-            disabledTitle: '기준선 온도 비교',
-            disabledBody: '이 프로파일은 아직 자동 맞춤 계산을 켜지 않아 기준선 비교만 보여줍니다.',
+            disabledTitle: '평소 온도 설정 비교',
+            disabledBody: '이 프로파일은 아직 자동 맞춤 계산을 켜지 않아 평소 설정 비교만 보여줍니다.',
             profileLoadingTitle: '빛 맞춤 설정 준비 중',
             profileLoadingBody: '프로파일 설정을 확인한 뒤 맞춤 제어 화면을 엽니다.',
-            profileFallbackBody: '프로파일을 아직 불러오지 못해 기준선 비교 카드만 먼저 보여줍니다.',
+            profileFallbackBody: '프로파일을 아직 불러오지 못해 평소 설정 비교 카드만 먼저 보여줍니다.',
             energyUnit: 'kWh/m²/일',
-            waitingTarget: '현재 상태에서 예측 마디 전개를 아직 계산하지 못했습니다. 목표 마디 전개를 직접 입력하면 다시 계산합니다.',
+            waitingTarget: `현재 상태에서 예측 ${developmentLabelKo}를 아직 계산하지 못했습니다. 목표 ${developmentLabelKo}를 직접 입력하면 다시 계산합니다.`,
         }
         : {
             title: 'Light-linked temperature',
-            subtitle: `Review today’s control lane and target node progression for ${getCropLabel(crop, locale)}`,
-            targetNode: 'Target node rate',
-            predictedNode: 'Predicted node rate',
+            subtitle: `Review today’s control lane and target ${developmentLabelEn} for ${getCropLabel(crop, locale)}`,
+            targetNode: `Target ${developmentLabelEn}`,
+            targetNodeHint: `Daily target (${developmentUnit})`,
+            predictedNode: `Predicted ${developmentLabelEn}`,
             recommendedMeanTemp: 'Recommended minimum mean temp',
             deltaTemp: 'ΔT vs baseline',
             rtrEquivalent: 'Optimized RTR equivalent',
             confidence: 'Readiness',
+            nodeGuideTitle: `${usesTrussProgress ? 'Truss' : 'Node'} progression by mean temperature`,
+            nodeGuideRange: 'Valid temperature range',
+            nodeGuideTemp: 'Mean temp (°C)',
+            nodeGuideNode: `Expected ${usesTrussProgress ? 'truss' : 'node'} progression (${developmentUnit})`,
+            nodeGuideWaiting: 'Temperature guide is unavailable.',
             gainLoss: 'Gain/loss trade-off',
             cropInsight: 'Crop-specific insight',
             setpoints: 'Control result',
@@ -703,7 +875,7 @@ const RTROptimizerPanel = ({
             computing: 'Computing light-linked temperature...',
             modeHeader: 'Scenario',
             meanHeader: 'Tmean',
-            nodeHeader: 'Node/day',
+            nodeHeader: usesTrussProgress ? 'Truss/day' : 'Node/day',
             carbonHeader: 'Carbon/assim',
             riskHeader: 'Humidity/risk',
             energyHeader: 'HVAC cost',
@@ -717,7 +889,7 @@ const RTROptimizerPanel = ({
             profileLoadingBody: 'The control panel will open after the profile contract is confirmed.',
             profileFallbackBody: 'Profile data is unavailable, so the panel is staying on the baseline comparison card.',
             energyUnit: 'kWh/m²/day',
-            waitingTarget: 'Predicted node progression is not available yet. Enter the target node rate manually to run the control comparison.',
+            waitingTarget: `Predicted ${developmentLabelEn} is not available yet. Enter the target value manually to run the control comparison.`,
         };
 
     const explanationCopy = useMemo(() => {
@@ -733,6 +905,7 @@ const RTROptimizerPanel = ({
         const deltaTemp = optimizeResponse?.rtr_equivalent.delta_temp_C ?? 0;
         const direction = deltaTemp >= 0 ? 'raised' : 'lowered';
         const roundedDelta = formatNumber(Math.abs(deltaTemp), 2, locale);
+        const targetDisplayRate = toDisplayDevelopmentRate(payload.target_node_development_per_day);
         let cropSummary = payload.crop_summary;
 
         if (insight?.crop === 'cucumber') {
@@ -744,7 +917,7 @@ const RTROptimizerPanel = ({
 
         return {
             ...payload,
-            summary: `The recommended control ${direction} mean temperature by ${roundedDelta}°C to protect the node target near ${formatNumber(payload.target_node_development_per_day, 2, locale)} node/day.`,
+            summary: `The recommended control ${direction} mean temperature by ${roundedDelta}°C to protect the target near ${formatNumber(targetDisplayRate, 2, locale)} ${developmentUnit}.`,
             crop_summary: cropSummary,
             missing_work_event_warning: payload.missing_work_event_warning
                 ? insight?.crop === 'cucumber'
@@ -752,7 +925,7 @@ const RTROptimizerPanel = ({
                     : 'Recent fruit-thinning history is missing, so sink-load interpretation is less certain.'
                 : null,
         };
-    }, [locale, optimizeResponse]);
+    }, [locale, optimizeResponse, toDisplayDevelopmentRate, developmentUnit]);
 
     useEffect(() => {
         const serverAreaMeta =
@@ -784,7 +957,10 @@ const RTROptimizerPanel = ({
         }));
     }, [sensitivityResponse]);
 
-    const warningBadges = optimizeResponse?.warning_badges ?? [];
+    const warningBadges = useMemo(
+        () => (optimizeResponse?.warning_badges ?? []).filter((badge) => !shouldHideRiskFlagCode(String(badge))),
+        [optimizeResponse],
+    );
     const scenarioRows = useMemo(() => scenarioResponse?.scenarios ?? [], [scenarioResponse]);
     const actuatorAvailability =
         optimizeResponse?.actuator_availability
@@ -800,7 +976,10 @@ const RTROptimizerPanel = ({
             }))
             .filter((entry) => entry.rows.length > 0);
     }, [scenarioRows]);
-    const riskFlags = optimizeResponse?.feasibility.risk_flags ?? [];
+    const riskFlags = useMemo(
+        () => (optimizeResponse?.feasibility.risk_flags ?? []).filter((riskFlag) => !shouldHideRiskFlag(riskFlag)),
+        [optimizeResponse],
+    );
     const hasOptimizerSurface = optimizeResponse !== null || scenarioResponse !== null || sensitivityResponse !== null;
     const targetHit = optimizeResponse?.feasibility.target_node_hit ?? false;
     const confidence = optimizeResponse?.feasibility.confidence ?? null;
@@ -830,6 +1009,27 @@ const RTROptimizerPanel = ({
         };
     }, [optimizeResponse, profile]);
 
+    const nodeGuideRows = useMemo(() => {
+        const backendRows = explanationCopy?.temperature_development_rows;
+        if (Array.isArray(backendRows) && backendRows.length > 0) {
+            return backendRows
+                .filter((row) => Number.isFinite(row?.mean_temp_C) && Number.isFinite(row?.development_rate_day))
+                .map((row) => ({
+                    meanTempC: Number(Number(row.mean_temp_C).toFixed(1)),
+                    nodeRate: Math.max(0, Number(Number(row.development_rate_day).toFixed(3))),
+                }));
+        }
+        return [] as Array<{ meanTempC: number; nodeRate: number }>;
+    }, [explanationCopy]);
+
+    const nodeGuideRangeLabel = useMemo(() => {
+        const maxTemp = nodeGuideRows[nodeGuideRows.length - 1]?.meanTempC;
+        if (!Number.isFinite(maxTemp)) {
+            return null;
+        }
+        return `15.0 ~ ${Number(maxTemp).toFixed(1)}°C`;
+    }, [nodeGuideRows]);
+
     const hasCustomScenarioDraft =
         customScenarioDraft.dayHeatingMinTempC.trim().length > 0
         || customScenarioDraft.nightHeatingMinTempC.trim().length > 0
@@ -847,10 +1047,10 @@ const RTROptimizerPanel = ({
             summaryLabel: '오늘 전략',
             summaryLoading: '추천 제어안을 계산하는 중입니다.',
             summaryFallback: '값이 준비되면 추천 제어안을 보여드립니다.',
-            comparisonTitle: '기준선 대비',
+            comparisonTitle: '평소 설정 대비',
             reasonTitle: '판단 근거',
             metricHeader: '항목',
-            baselineHeader: '기준선',
+            baselineHeader: '평소 설정',
             recommendedHeader: '추천',
             areaLabel: '면적 기준',
             strategyMode: '계산 기준',
@@ -863,7 +1063,7 @@ const RTROptimizerPanel = ({
             circulationFan: '순환팬',
             co2Target: '이산화탄소 목표',
             meanTemp: '평균 온도',
-            nodeRate: '마디 진행',
+            nodeRate: developmentHeaderKo,
             energyCost: '에너지 비용',
             laborCost: '작업량',
         }
@@ -913,7 +1113,7 @@ const RTROptimizerPanel = ({
     };
     const compactSummary = explanationCopy?.summary
         ?? (locale === 'ko'
-            ? `기준선 대비 ${formatNumber(optimizeResponse?.rtr_equivalent.delta_temp_C, 2, locale)}°C 조정해 마디 속도를 맞춥니다.`
+            ? `평소 설정 대비 ${formatNumber(optimizeResponse?.rtr_equivalent.delta_temp_C, 2, locale)}°C 조정해 ${usesTrussProgress ? '화방 진행' : '마디 전개'} 속도를 맞춥니다.`
             : `Shift mean temperature by ${formatNumber(optimizeResponse?.rtr_equivalent.delta_temp_C, 2, locale)}°C versus baseline.`);
     const compactReasonTags = explanationCopy?.reason_tags ?? [];
     const compactAreaSummary = locale === 'ko'
@@ -961,6 +1161,8 @@ const RTROptimizerPanel = ({
             value: formatCompactValue(optimizeResponse?.optimal_targets.co2_target_ppm, 0, ' ppm'),
         },
     ];
+    const predictedDevelopmentRate = toDisplayDevelopmentRate(stateResponse?.canonical_state.growth.predicted_node_rate_day);
+    const targetDevelopmentRate = toDisplayDevelopmentRate(targetNodeDevelopmentPerDay);
     const compactComparisonRows = [
         {
             label: compactCopy.meanTemp,
@@ -971,14 +1173,10 @@ const RTROptimizerPanel = ({
             label: compactCopy.nodeRate,
             baseline: compactPending
                 ? compactPendingValue
-                : formatNumber(stateResponse?.canonical_state.growth.predicted_node_rate_day, 3, locale),
+                : formatNumber(predictedDevelopmentRate, 3, locale),
             recommended: compactPending
                 ? compactPendingValue
-                : formatNumber(
-                explanationCopy?.target_node_development_per_day ?? targetNodeDevelopmentPerDay,
-                3,
-                locale,
-            ),
+                : formatNumber(targetDevelopmentRate, 3, locale),
         },
         {
             label: compactCopy.energyCost,
@@ -1163,22 +1361,24 @@ const RTROptimizerPanel = ({
                                     inputMode="decimal"
                                     disabled={telemetryOptimizationBlocked}
                                     className="sg-field-input mt-2"
-                                    value={targetNodeDevelopmentPerDay ?? ''}
+                                    value={targetNodeInputDisplayValue}
+                                    onFocus={handleTargetNodeInputFocus}
+                                    onBlur={handleTargetNodeInputBlur}
                                     onChange={(event) => {
-                                        const parsed = Number(event.target.value);
-                                        setTargetNodeDevelopmentPerDay(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+                                        handleTargetNodeInputChange(event.target.value);
                                     }}
                                 />
+                                <span className={metricMetaClass}>{copy.targetNodeHint}</span>
                             </label>
                             <div className="mt-4 grid gap-3 sm:grid-cols-3">
                                 <div className={metricTileClass}>
                                     <div className={metricLabelClass}>{copy.predictedNode}</div>
-                                    <div className={metricValueClass}>{formatNumber(stateResponse?.canonical_state.growth.predicted_node_rate_day, 3, locale)}</div>
+                                    <div className={metricValueClass}>{formatNumber(predictedDevelopmentRate, 3, locale)}</div>
                                 </div>
                                 <div className={metricTileClass}>
                                     <div className={metricLabelClass}>{copy.targetNode}</div>
                                     <div className={metricValueClass}>
-                                        {formatNumber(explanationCopy?.target_node_development_per_day ?? targetNodeDevelopmentPerDay, 3, locale)}
+                                        {formatNumber(targetDevelopmentRate, 3, locale)}
                                     </div>
                                 </div>
                                 <div className={metricTileClass}>
@@ -1218,6 +1418,44 @@ const RTROptimizerPanel = ({
                             </div>
                         </section>
                     </div>
+
+                    <section className={sectionPanelClass}>
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                                <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.nodeGuideTitle}</h4>
+                            </div>
+                            {nodeGuideRangeLabel ? (
+                                <span className="rounded-full bg-[color:var(--sg-surface-muted)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-text)]">
+                                    {copy.nodeGuideRange}: {nodeGuideRangeLabel}
+                                </span>
+                            ) : null}
+                        </div>
+                        {nodeGuideRows.length > 0 ? (
+                            <div className="max-h-[200px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-white/72">
+                                <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
+                                    <thead className="sticky top-0 bg-white/95 text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                                        <tr>
+                                            <th className="px-3 py-2">{copy.nodeGuideTemp}</th>
+                                            <th className="px-3 py-2">{copy.nodeGuideNode}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {nodeGuideRows.map((row) => (
+                                            <tr key={`compact-${row.meanTempC}`} className="border-t border-[color:var(--sg-outline-soft)]">
+                                                <td className="px-3 py-2">{formatNumber(row.meanTempC, 1, locale)}°C</td>
+                                                <td className="px-3 py-2">{formatNumber(row.nodeRate, 3, locale)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="rounded-[14px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
+                                {copy.nodeGuideWaiting}
+                            </div>
+                        )}
+                    </section>
 
                     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {compactTargetTiles.map((tile) => (
@@ -1328,17 +1566,19 @@ const RTROptimizerPanel = ({
                             inputMode="decimal"
                             disabled={telemetryOptimizationBlocked}
                             className="sg-field-input mt-2"
-                            value={targetNodeDevelopmentPerDay ?? ''}
+                            value={targetNodeInputDisplayValue}
+                            onFocus={handleTargetNodeInputFocus}
+                            onBlur={handleTargetNodeInputBlur}
                             onChange={(event) => {
-                                const parsed = Number(event.target.value);
-                                setTargetNodeDevelopmentPerDay(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+                                handleTargetNodeInputChange(event.target.value);
                             }}
                         />
+                        <span className={metricMetaClass}>{copy.targetNodeHint}</span>
                     </label>
                     <div className={metricTileClass}>
                         <div className={metricLabelClass}>{copy.predictedNode}</div>
                         <div className={metricValueLargeClass}>
-                            {formatNumber(stateResponse?.canonical_state.growth.predicted_node_rate_day, 3, locale)}
+                            {formatNumber(predictedDevelopmentRate, 3, locale)}
                         </div>
                     </div>
                     <div className={metricTileClass}>
@@ -1356,6 +1596,9 @@ const RTROptimizerPanel = ({
                                 <ArrowDownRight className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />
                             )}
                             {formatNumber(optimizeResponse?.rtr_equivalent.delta_temp_C, 2, locale)}°C
+                        </div>
+                        <div className={metricMetaClass}>
+                            {locale === 'ko' ? '평소 설정 기준' : 'Against baseline setting'}
                         </div>
                     </div>
                     <div className={metricTileClass}>
@@ -1425,10 +1668,48 @@ const RTROptimizerPanel = ({
                         <div className={metricMetaClass}>
                             {locale === 'ko'
                                 ? `실면적 ${formatNumber(optimizeResponse?.actual_area_projection.yield_kg_day, 1, locale)} kg/일`
-                                : `${formatNumber(optimizeResponse?.actual_area_projection.yield_kg_day, 1, locale)} kg/day @ actual area`}
+                            : `${formatNumber(optimizeResponse?.actual_area_projection.yield_kg_day, 1, locale)} kg/day @ actual area`}
                         </div>
                     </div>
                 </div>
+
+                <section className={sectionPanelClass}>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                            <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.nodeGuideTitle}</h4>
+                        </div>
+                        {nodeGuideRangeLabel ? (
+                            <span className="rounded-full bg-[color:var(--sg-surface-muted)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-text)]">
+                                {copy.nodeGuideRange}: {nodeGuideRangeLabel}
+                            </span>
+                        ) : null}
+                    </div>
+                    {nodeGuideRows.length > 0 ? (
+                        <div className="max-h-[220px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-white/72">
+                            <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
+                                <thead className="sticky top-0 bg-white/95 text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                                    <tr>
+                                        <th className="px-3 py-2">{copy.nodeGuideTemp}</th>
+                                        <th className="px-3 py-2">{copy.nodeGuideNode}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {nodeGuideRows.map((row) => (
+                                        <tr key={row.meanTempC} className="border-t border-[color:var(--sg-outline-soft)]">
+                                            <td className="px-3 py-2">{formatNumber(row.meanTempC, 1, locale)}°C</td>
+                                            <td className="px-3 py-2">{formatNumber(row.nodeRate, 3, locale)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="rounded-[14px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
+                            {copy.nodeGuideWaiting}
+                        </div>
+                    )}
+                </section>
 
                 <div className="flex flex-wrap gap-2">
                     {MODE_ORDER.map((mode) => (
@@ -1762,7 +2043,7 @@ const RTROptimizerPanel = ({
                         {sensitivityRows.map((row) => (
                             <div key={`${row.control}-${row.target}`}>
                                 <div className="mb-1 flex items-center justify-between text-xs text-[color:var(--sg-text)]">
-                                    <span>{getSensitivityControlLabel(row.control, locale)} → {getSensitivityTargetLabel(row.target, locale)}</span>
+                                    <span>{getSensitivityControlLabel(row.control, locale, crop)} → {getSensitivityTargetLabel(row.target, locale, crop)}</span>
                                     <span>{formatNumber(row.elasticity, 2, locale)}</span>
                                 </div>
                                 <div className="h-2 rounded-full bg-[color:var(--sg-surface-muted)]">
@@ -1898,20 +2179,22 @@ const RTROptimizerPanel = ({
                                         const parsed = Number(value);
                                         return Number.isFinite(parsed) ? parsed : undefined;
                                     };
-                                    setCustomScenario(
-                                        hasCustomScenarioDraft
-                                            ? {
-                                                label: customScenarioDraft.label.trim() || defaultCustomLabel,
-                                                day_heating_min_temp_C: parseOptionalNumber(customScenarioDraft.dayHeatingMinTempC),
-                                                night_heating_min_temp_C: parseOptionalNumber(customScenarioDraft.nightHeatingMinTempC),
-                                                day_cooling_target_C: parseOptionalNumber(customScenarioDraft.dayCoolingTargetC),
-                                                night_cooling_target_C: parseOptionalNumber(customScenarioDraft.nightCoolingTargetC),
-                                                vent_bias_C: parseOptionalNumber(customScenarioDraft.ventBiasC),
-                                                screen_bias_pct: parseOptionalNumber(customScenarioDraft.screenBiasPct),
-                                                circulation_fan_pct: parseOptionalNumber(customScenarioDraft.circulationFanPct),
-                                                co2_target_ppm: parseOptionalNumber(customScenarioDraft.co2TargetPpm),
-                                            }
-                                            : null,
+                                    const nextCustomScenario = hasCustomScenarioDraft
+                                        ? {
+                                            label: customScenarioDraft.label.trim() || defaultCustomLabel,
+                                            day_heating_min_temp_C: parseOptionalNumber(customScenarioDraft.dayHeatingMinTempC),
+                                            night_heating_min_temp_C: parseOptionalNumber(customScenarioDraft.nightHeatingMinTempC),
+                                            day_cooling_target_C: parseOptionalNumber(customScenarioDraft.dayCoolingTargetC),
+                                            night_cooling_target_C: parseOptionalNumber(customScenarioDraft.nightCoolingTargetC),
+                                            vent_bias_C: parseOptionalNumber(customScenarioDraft.ventBiasC),
+                                            screen_bias_pct: parseOptionalNumber(customScenarioDraft.screenBiasPct),
+                                            circulation_fan_pct: parseOptionalNumber(customScenarioDraft.circulationFanPct),
+                                            co2_target_ppm: parseOptionalNumber(customScenarioDraft.co2TargetPpm),
+                                        }
+                                        : null;
+                                    setCustomScenario(nextCustomScenario);
+                                    setCustomScenarioDraft(
+                                        buildCustomScenarioDraft(nextCustomScenario, defaultCustomLabel),
                                     );
                                 }}
                                 disabled={!hasCustomScenarioDraft || telemetryOptimizationBlocked}
@@ -1923,17 +2206,7 @@ const RTROptimizerPanel = ({
                                 type="button"
                                 onClick={() => {
                                     setCustomScenario(null);
-                                    setCustomScenarioDraft({
-                                        label: '',
-                                        dayHeatingMinTempC: '',
-                                        nightHeatingMinTempC: '',
-                                        dayCoolingTargetC: '',
-                                        nightCoolingTargetC: '',
-                                        ventBiasC: '',
-                                        screenBiasPct: '',
-                                        circulationFanPct: '',
-                                        co2TargetPpm: '',
-                                    });
+                                    setCustomScenarioDraft(createEmptyCustomScenarioDraft());
                                 }}
                                 className="rounded-full border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-earth)] hover:bg-[color:var(--sg-surface-muted)]"
                             >
@@ -2000,18 +2273,25 @@ const RTROptimizerPanel = ({
                                                         <div className="mt-1 text-[10px] text-[color:var(--sg-text-muted)]">
                                                             {copy.ventBias} {formatNumber(row.vent_bias_C, 2, locale)}°C · {copy.screenBias} {formatNumber(row.screen_bias_pct, 1, locale)}% · {copy.circulationFan} {formatNumber(row.circulation_fan_pct, 0, locale)}%
                                                         </div>
-                                                        {row.risk_flags.length > 0 ? (
-                                                            <div className="mt-1 flex flex-wrap gap-1">
-                                                                {row.risk_flags.slice(0, 2).map((riskFlag, riskIndex) => {
-                                                                    const code = String(riskFlag.code ?? `row-risk-${riskIndex}`);
-                                                                    return (
-                                                                        <span key={`${row.label}-${code}-${riskIndex}`} className="rounded-full bg-[color:var(--sg-surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[color:var(--sg-text)]">
-                                                                            {getRiskFlagTitle(code, locale)}
-                                                                        </span>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        ) : null}
+                                                        {(() => {
+                                                            const visibleRiskFlags = row.risk_flags.filter((riskFlag) => !shouldHideRiskFlag(riskFlag));
+                                                            if (visibleRiskFlags.length === 0) {
+                                                                return null;
+                                                            }
+
+                                                            return (
+                                                                <div className="mt-1 flex flex-wrap gap-1">
+                                                                    {visibleRiskFlags.slice(0, 2).map((riskFlag, riskIndex) => {
+                                                                        const code = String(riskFlag.code ?? `row-risk-${riskIndex}`);
+                                                                        return (
+                                                                            <span key={`${row.label}-${code}-${riskIndex}`} className="rounded-full bg-[color:var(--sg-surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[color:var(--sg-text)]">
+                                                                                {getRiskFlagTitle(code, locale)}
+                                                                            </span>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td className="px-2 py-2">{formatNumber(row.mean_temp_C, 1, locale)}°C</td>
                                                     <td className="px-2 py-2">{formatNumber(row.node_rate_day, 3, locale)}</td>
@@ -2073,7 +2353,15 @@ const RTROptimizerPanel = ({
                     )}
                 </section>
 
-                <RTRCalibrationWorkspace key={crop} crop={crop} onSaved={refreshCalibrationConsumers} />
+                <Suspense
+                    fallback={(
+                        <div className={`${sectionPanelClass} text-xs text-[color:var(--sg-text-muted)]`}>
+                            {locale === 'ko' ? '보정 작업 공간을 불러오는 중입니다.' : 'Loading calibration workspace...'}
+                        </div>
+                    )}
+                >
+                    <RTRCalibrationWorkspace key={crop} crop={crop} onSaved={refreshCalibrationConsumers} />
+                </Suspense>
 
                 <details className="rounded-xl border border-[color:var(--sg-outline-soft)] p-3">
                     <summary className="cursor-pointer list-none text-sm font-semibold text-[color:var(--sg-text-strong)]">
@@ -2102,6 +2390,38 @@ const RTROptimizerPanel = ({
             </div>
         </div>
     );
+};
+
+const RTROptimizerPanelStandalone = (props: RTROptimizerPanelProps) => {
+    const { areaByCrop } = useAreaUnit();
+    const {
+        crop,
+        profile,
+        profileLoading,
+        optimizerEnabled: optimizerEnabledProp,
+        defaultMode: defaultModeProp,
+        telemetryStatus = 'live',
+    } = props;
+    const areaState = areaByCrop[crop];
+    const optimizerEnabled = profileLoading ? false : (profile?.optimizer?.enabled ?? optimizerEnabledProp ?? false);
+    const defaultMode = defaultModeProp ?? profile?.optimizer?.default_mode ?? DEFAULT_OPTIMIZATION_MODE;
+    const optimizerState = useRtrOptimizer({
+        crop,
+        actualAreaM2: areaState.actualAreaM2,
+        actualAreaPyeong: areaState.actualAreaPyeong,
+        actualAreaSource: areaState.source,
+        optimizerEnabled,
+        defaultMode,
+        telemetryStatus,
+    });
+    return <RTROptimizerPanelContent {...props} telemetryStatus={telemetryStatus} optimizerState={optimizerState} uiState={props.uiState} />;
+};
+
+const RTROptimizerPanel = (props: RTROptimizerPanelProps) => {
+    if (props.optimizerState) {
+        return <RTROptimizerPanelContent {...props} telemetryStatus={props.telemetryStatus ?? 'live'} optimizerState={props.optimizerState} uiState={props.uiState} />;
+    }
+    return <RTROptimizerPanelStandalone {...props} />;
 };
 
 export default RTROptimizerPanel;

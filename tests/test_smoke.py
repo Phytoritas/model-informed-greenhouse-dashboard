@@ -494,7 +494,7 @@ def test_live_produce_prices_endpoint_returns_shape(
             "source": {
                 "provider": "KAMIS",
                 "docs_url": "https://www.kamis.or.kr/customer/reference/openapi_list.do",
-                "endpoint": "dailySalesList + periodRetailProductList (retail trend overlay)",
+                "endpoint": "dailySalesList + periodWholesaleProductList (wholesale trend overlay)",
                 "auth_mode": "sample",
                 "fetched_at": "2026-04-03T09:00:00Z",
                 "latest_day": "2026-04-03",
@@ -567,7 +567,7 @@ def test_live_produce_prices_endpoint_returns_shape(
                 },
             },
             "trend": {
-                "market_key": "retail",
+                "market_key": "wholesale",
                 "reference_date": "2026-04-03",
                 "history_days": 14,
                 "forecast_days": 14,
@@ -636,7 +636,7 @@ def test_live_produce_prices_endpoint_returns_shape(
     assert payload["items"][0]["current_price_krw"] == 5196
     assert payload["markets"]["wholesale"]["items"][0]["unit"] == "5kg"
     assert payload["items"][0]["day_over_day_pct"] == -0.7
-    assert payload["trend"]["market_key"] == "retail"
+    assert payload["trend"]["market_key"] == "wholesale"
     assert payload["trend"]["series"][0]["display_name"] == "Tomato"
     assert payload["trend"]["series"][0]["points"][1]["actual_price_krw"] == 4932
     assert payload["trend"]["series"][0]["points"][2]["normal_10y_price_krw"] == 5900

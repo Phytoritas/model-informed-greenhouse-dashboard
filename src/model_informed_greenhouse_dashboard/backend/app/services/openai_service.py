@@ -15,6 +15,11 @@ except ImportError:  # pragma: no cover - exercised only when optional dependenc
 
 
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
+_OPENAI_API_KEY_CANDIDATES = (
+    "OPENAI_API_KEY",
+    "SMARTGROW_OPENAI_API_KEY",
+    "OPENAI_API_KEY_RUNTIME",
+)
 
 _SECTION_ALIASES: dict[str, tuple[str, ...]] = {
     "summary": ("핵심 요약", "요약", "Executive Summary", "Summary"),
@@ -60,8 +65,29 @@ _SECTION_TITLES = {
 }
 
 
+def _is_redacted_or_placeholder_key(value: str) -> bool:
+    normalized = (value or "").strip()
+    if not normalized:
+        return True
+    lowered = normalized.casefold()
+    return (
+        "*" in normalized
+        or lowered in {"changeme", "replace-me", "your-api-key", "your_openai_api_key"}
+    )
+
+
 def _get_api_key() -> Optional[str]:
-    return os.getenv("OPENAI_API_KEY")
+    for key_name in _OPENAI_API_KEY_CANDIDATES:
+        candidate = os.getenv(key_name)
+        if not candidate:
+            continue
+        normalized = candidate.strip()
+        if not normalized:
+            continue
+        if _is_redacted_or_placeholder_key(normalized):
+            continue
+        return normalized
+    return None
 
 
 def _client() -> OpenAI:
@@ -76,7 +102,10 @@ def _client() -> OpenAI:
             "Missing OpenAI API key. Set OPENAI_API_KEY in backend environment."
         )
 
-    return OpenAI()
+    try:
+        return OpenAI(api_key=api_key)
+    except TypeError:  # pragma: no cover - compatibility for patched test doubles
+        return OpenAI()
 
 
 def _generate_text(*, instructions: str, input_data: Any, model: str) -> str:

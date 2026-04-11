@@ -40,6 +40,14 @@ const iconChunkMarkers = [
   'node_modules/lucide-react/',
 ]
 
+const chartChunkMarkers = [
+  'node_modules/recharts/',
+  'node_modules/victory-vendor/',
+  'node_modules/d3-',
+  'node_modules/internmap/',
+  'node_modules/clsx/',
+]
+
 // https://vite.dev/config/
 //
 // NOTE (Windows/OneDrive):
@@ -71,6 +79,10 @@ export default defineConfig({
 
           if (iconChunkMarkers.some((marker) => id.includes(marker))) {
             return 'icon-vendor'
+          }
+
+          if (chartChunkMarkers.some((marker) => id.includes(marker))) {
+            return 'chart-vendor'
           }
 
           if (markdownChunkMarkers.some((marker) => id.includes(`node_modules${marker}`))) {

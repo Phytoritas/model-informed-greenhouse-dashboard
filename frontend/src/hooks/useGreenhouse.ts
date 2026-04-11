@@ -89,8 +89,8 @@ type TelemetryByCrop = Record<CropType, TelemetryState>;
 type AvailabilityByCrop = Record<CropType, SensorFieldAvailability>;
 type TimestampByCrop = Record<CropType, SensorFieldTimestamps>;
 
-const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
-const MAX_HISTORY_POINTS = 288;
+const HISTORY_WINDOW_MS = 72 * 60 * 60 * 1000;
+const MAX_HISTORY_POINTS = 864;
 const STREAM_COMMIT_INTERVAL_MS = 250;
 const STREAM_DELAY_THRESHOLD_MS = 8_000;
 const STREAM_STALE_THRESHOLD_MS = 30_000;
