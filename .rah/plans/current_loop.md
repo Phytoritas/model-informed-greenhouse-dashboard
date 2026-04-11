@@ -1,31 +1,30 @@
 # Current Loop
 
 ## Active State
-- Active product branch: `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`.
-- Active issue: `#104` `[Bug] Restore live refresh responsiveness and overview source-sink sync`.
-- This loop is bounded to telemetry recovery, overview source-sink history correctness, and the non-moving source-sink graph on `/overview`.
+- Active product branch: `fix/106-restore-overview-solution-and-irradiance-live-updates`.
+- Active issue: `#106` `[Bug] Restore overview solution and irradiance live updates`.
+- This loop is a bounded follow-up on top of PR `#105`, scoped to stale Today operating-direction summaries and the non-updating outside irradiance trend on `/overview`.
 
 ## Current Slice
 - Backend:
-  - `/api/overview/signals` uses recent live-created runtime snapshots instead of stale replay timestamps.
-  - `ModelStateStore` now has created-at/source lookup indexes plus WAL and busy-timeout tuning for the overview-history query path.
-  - WebSocket broadcast fan-out is bounded so a slow client cannot hold the simulation loop open.
+  - Open-Meteo shortwave history now has a dedicated 60-second cache TTL instead of sharing the 15-minute weather-outlook TTL.
+  - regression coverage locks the weather-history cache expiry path so the outside irradiance chart can refresh on the existing 60-second frontend polling cadence.
 - Frontend:
-  - inactive-crop RTR optimizer fan-out is suppressed so `/control` no longer saturates the backend in the background.
-  - overview hero metrics prefer live stream values over stale advisor snapshots.
-  - the 3-day source-sink graph overlays live source-sink trail values from stream/metric history instead of showing a flat API-only line.
+  - Today operating direction / TodayBoard auto-analysis now keys off real receive time (`receivedAtTimestamp`) instead of replay timestamps.
+  - advisor auto-refresh also reacts to market-price updates, weather refreshes, and RTR profile metadata changes instead of only price updates.
+  - overlap while an advisor request is already running is suppressed, and the new freshness gate is locked by dedicated unit coverage.
 
 ## Latest Validation
-- The active issue104 branch is locally green on the full ladder:
+- The active issue106 branch is locally green on the full ladder:
   - `npm --prefix frontend run lint`
-  - `npm --prefix frontend run test -- --run`
+  - `npm --prefix frontend run test`
   - `npm --prefix frontend run build`
   - `poetry run ruff check .`
   - `poetry run pytest`
-- Local runtime checks confirmed that `/api/status?crop=Cucumber` returns immediately again and `/api/overview/signals?crop=cucumber&window_hours=72` returns live source-sink points instead of flat zero-only history.
-- No PR is open yet for the current branch.
+- Focused regressions also passed with `npm --prefix frontend run test -- src/utils/advisorAutoRefresh.test.ts src/hooks/useOverviewSignalTrends.test.tsx` and `poetry run pytest tests/test_weather.py`.
+- No PR is open yet for the current issue106 branch; the stacked base remains issue104 / PR #105.
 
 ## Exact Next Step
-1. Keep the diff bounded to issue `#104` and avoid unrelated cleanup.
-2. Commit the validated fix set on `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`.
-3. Open the issue104 PR and move the project item from `Running` to `Validating` once GitHub Actions begin.
+1. Keep the diff bounded to issue `#106` and avoid reopening broader telemetry cleanup.
+2. Commit the validated fix set on `fix/106-restore-overview-solution-and-irradiance-live-updates`.
+3. Push the branch and open a stacked PR against `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync` while PR `#105` remains open.

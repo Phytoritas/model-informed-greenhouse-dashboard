@@ -1,5 +1,5 @@
 {
-  "earliest_restart_point": "Resume from branch `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`, re-read the wakeup packet and current loop, and continue the bounded issue104 bugfix lane until commit and PR are opened.",
+  "earliest_restart_point": "Resume from branch `fix/106-restore-overview-solution-and-irradiance-live-updates`, re-read the wakeup packet and current loop, and continue the bounded issue106 follow-up lane on top of PR #105 until commit and stacked PR are opened.",
   "agents_and_workflow_gate": {
     "status": "pass",
     "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the post-merge harness-sync discipline are satisfied; `main` is clean after issue #84 / #86, and issue #88 is only the bounded docs-sync lane for blueprint/backlog drift."
@@ -25,8 +25,24 @@
     "note": "Issue #104 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --run`, `npm --prefix frontend run build`, `poetry run ruff check .`, and `poetry run pytest`."
   },
   "issue104_pr_validation": {
+    "status": "pass",
+    "note": "PR #105 is open from `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync` to `main`, and the validating GitHub Actions checks have already passed on the current issue104 head."
+  },
+  "issue106_prompt_intake": {
+    "status": "pass",
+    "note": "Issue #106 is bound to branch `fix/106-restore-overview-solution-and-irradiance-live-updates` before non-trivial frontend/backend follow-up writes resumed."
+  },
+  "issue106_followup_slice": {
+    "status": "pass",
+    "note": "Issue #106 keeps the follow-up narrowly scoped to restoring Today operating-direction freshness through advisor auto-refresh gating and restoring outside irradiance trend freshness by giving Open-Meteo shortwave history its own 60-second cache TTL."
+  },
+  "issue106_local_validation": {
+    "status": "pass",
+    "note": "Issue #106 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test`, `npm --prefix frontend run build`, `poetry run ruff check .`, `poetry run pytest`, and `git diff --check`."
+  },
+  "issue106_pr_validation": {
     "status": "in_progress",
-    "note": "No PR is open yet for branch `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`; the next clean GitHub step is commit -> push -> PR."
+    "note": "No PR is open yet for branch `fix/106-restore-overview-solution-and-irradiance-live-updates`; because PR #105 is still open, the next clean GitHub step is commit -> push -> stacked PR against `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`."
   },
   "issue65_prompt_intake": {
     "status": "pass",
@@ -150,7 +166,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "The active product implementation branch is `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`, correctly linked to issue #104 `[Bug] Restore live refresh responsiveness and overview source-sink sync`, and no PR has been opened yet."
+    "note": "The active product implementation branch is `fix/106-restore-overview-solution-and-irradiance-live-updates`, correctly linked to issue #106 `[Bug] Restore overview solution and irradiance live updates`, and it intentionally stacks on top of issue104 / PR #105."
   },
   "issue61_merge_complete": {
     "status": "pass",
