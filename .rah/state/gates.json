@@ -1,5 +1,5 @@
 {
-  "earliest_restart_point": "Resume from branch `fix/106-restore-overview-solution-and-irradiance-live-updates`, re-read the wakeup packet and current loop, and continue the bounded issue106 follow-up lane on top of PR #105 until commit and stacked PR are opened.",
+  "earliest_restart_point": "Resume from branch `fix/106-restore-overview-solution-and-irradiance-live-updates`, re-read the wakeup packet and current loop, and continue the bounded issue106 follow-up lane on top of PRs #105 and #107 while stacked validation is running.",
   "agents_and_workflow_gate": {
     "status": "pass",
     "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the post-merge harness-sync discipline are satisfied; `main` is clean after issue #84 / #86, and issue #88 is only the bounded docs-sync lane for blueprint/backlog drift."
@@ -42,7 +42,7 @@
   },
   "issue106_pr_validation": {
     "status": "in_progress",
-    "note": "No PR is open yet for branch `fix/106-restore-overview-solution-and-irradiance-live-updates`; because PR #105 is still open, the next clean GitHub step is commit -> push -> stacked PR against `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`."
+    "note": "PR #107 is open from `fix/106-restore-overview-solution-and-irradiance-live-updates` to `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`, and issue #106 has already been moved to project status/stage `Validating` while stacked GitHub Actions run."
   },
   "issue65_prompt_intake": {
     "status": "pass",
