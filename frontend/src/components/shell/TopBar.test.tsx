@@ -8,6 +8,8 @@ function renderTopBar(locale: 'ko' | 'en' = 'ko') {
     const onLocaleChange = vi.fn();
     const onCropChange = vi.fn();
     const onAssistantToggle = vi.fn();
+    const onOpenAlerts = vi.fn();
+    const onSearchSubmit = vi.fn();
     const onOpenSettings = vi.fn();
 
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
@@ -24,6 +26,8 @@ function renderTopBar(locale: 'ko' | 'en' = 'ko') {
                 onLocaleChange={onLocaleChange}
                 onCropChange={onCropChange}
                 onAssistantToggle={onAssistantToggle}
+                onOpenAlerts={onOpenAlerts}
+                onSearchSubmit={onSearchSubmit}
                 onOpenSettings={onOpenSettings}
                 assistantOpen={false}
                 getCropLabel={(crop, currentLocale) => (currentLocale === 'ko' ? (crop === 'Cucumber' ? '오이' : '토마토') : crop)}
@@ -31,7 +35,7 @@ function renderTopBar(locale: 'ko' | 'en' = 'ko') {
         </LocaleProvider>,
     );
 
-    return { onLocaleChange, onCropChange, onAssistantToggle, onOpenSettings };
+    return { onLocaleChange, onCropChange, onAssistantToggle, onOpenAlerts, onSearchSubmit, onOpenSettings };
 }
 
 describe('TopBar', () => {
@@ -40,19 +44,24 @@ describe('TopBar', () => {
     });
 
     it('renders Korean search copy and triggers assistant toggle', () => {
-        const { onAssistantToggle, onLocaleChange, onCropChange } = renderTopBar('ko');
+        const { onAssistantToggle, onOpenAlerts, onLocaleChange, onCropChange, onSearchSubmit } = renderTopBar('ko');
 
-        expect(screen.getByRole('heading', { name: '오늘 한눈에' })).toBeTruthy();
-        expect(screen.getByLabelText('동, 작업, 자재를 찾기')).toBeTruthy();
-        expect(screen.getByPlaceholderText('동, 작업, 자재를 찾기')).toBeTruthy();
+        expect(screen.getByRole('heading', { name: '스마트 온실 인공지능 의사결정 플랫폼' })).toBeTruthy();
+        expect(screen.getByLabelText('온실, 시세, 생육 등 현황 확인하기')).toBeTruthy();
+        expect(screen.getByPlaceholderText('온실, 시세, 생육 등 현황 확인하기')).toBeTruthy();
 
         fireEvent.click(screen.getByRole('button', { name: '질문 도우미' }));
+        fireEvent.click(screen.getByRole('button', { name: '긴급 알림' }));
         fireEvent.click(screen.getByRole('button', { name: 'EN' }));
         fireEvent.click(screen.getByRole('button', { name: '오이' }));
+        fireEvent.change(screen.getByLabelText('온실, 시세, 생육 등 현황 확인하기'), { target: { value: '현재 온실 상태 요약' } });
+        fireEvent.keyDown(screen.getByLabelText('온실, 시세, 생육 등 현황 확인하기'), { key: 'Enter' });
 
         expect(onAssistantToggle).toHaveBeenCalledTimes(1);
+        expect(onOpenAlerts).toHaveBeenCalledTimes(1);
         expect(onLocaleChange).toHaveBeenCalledWith('en');
         expect(onCropChange).toHaveBeenCalledWith('Cucumber');
+        expect(onSearchSubmit).toHaveBeenCalledWith('현재 온실 상태 요약');
     });
 
     it('renders English copy for search and controls', () => {

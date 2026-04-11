@@ -65,7 +65,7 @@ def _rounded_output(payload: Mapping[str, Any]) -> dict[str, Any]:
     return rounded
 
 
-def _extract_runtime_inputs(snapshot_record: Mapping[str, Any]) -> RuntimeInputs:
+def extract_runtime_inputs(snapshot_record: Mapping[str, Any]) -> RuntimeInputs:
     normalized_snapshot = snapshot_record.get("normalized_snapshot", snapshot_record)
     state = normalized_snapshot.get("state", {})
     gas_exchange = normalized_snapshot.get("gas_exchange", {})
@@ -346,7 +346,7 @@ def run_bounded_scenario(
 ) -> dict[str, Any]:
     """Run a bounded counterfactual scenario over a stored or live snapshot record."""
     normalized_controls = normalize_control_deltas(controls)
-    inputs = _extract_runtime_inputs(snapshot_record)
+    inputs = extract_runtime_inputs(snapshot_record)
     horizons = [
         int(horizon)
         for horizon in (horizons_hours or DEFAULT_SCENARIO_HORIZONS_HOURS)

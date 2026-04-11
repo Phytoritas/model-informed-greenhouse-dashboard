@@ -2,18 +2,19 @@
 
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
-- topic: `architecture-refactor`
-- sessionId: `model-informed-greenhouse-dashboard#main:post-issue84-merged-baseline`
-- caseId: `case/model-informed-greenhouse-dashboard/main/post-issue84-merged-baseline`
-- issue: `none`
-- branch: `main`
+- topic: `issue-92-overview`
+- sessionId: `model-informed-greenhouse-dashboard#fix-92-overview:validating`
+- caseId: `case/model-informed-greenhouse-dashboard/fix-92-overview/issue-92`
+- issue: `#92`
+- branch: `fix/92-overview`
 
 ## Current State
-- current_stage: `main-post-issue84-merged-baseline`
-- implementation_gate: `post-issue84-merged-baseline`
+- current_stage: `issue92-validating`
+- implementation_gate: `issue92-validating`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `issue65 compact shell -> issue67 compact control summary -> issue69 control copy cleanup -> issue74 residual copy cleanup -> issue80 layout overlap cleanup -> issue82 narrow-rail clipping follow-up -> issue84 control realtime recovery`
-- latest_validation: `issue84 merged on main after a green local ladder and green GitHub Actions Backend/Frontend validation`
+- latest_route_slice: `issue92 overview restoration -> real overview signal history -> routed shell/topbar/search cleanup -> control/overview lane polish -> RTR state persistence hardening`
+- latest_validation: `local ladder is green on fix/92-overview with ruff, pytest, frontend lint, frontend vitest, and frontend build`
+- local_worktree_followup: `the branch is already issue-linked; the remaining step is GitHub workflow completion (commit/push/PR) without widening scope`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -24,15 +25,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#main:post-issue84-merged-baseline")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#fix-92-overview:validating")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "architecture-refactor", "main", "post-issue84-merged-baseline"],
-    topic="architecture-refactor",
+    keywords=["model-informed-greenhouse-dashboard", "issue-92-overview", "fix/92-overview", "validating"],
+    topic="issue-92-overview",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#main:post-issue84-merged-baseline",
+    sessionId="model-informed-greenhouse-dashboard#fix-92-overview:validating",
     caseMode=True,
     depth="standard",
-    contextText="post-merge baseline intake before the next issue-driven loop"
+    contextText="resume the validated issue #92 overview/control recovery branch and complete GitHub workflow hygiene"
 )
 ```
 
@@ -40,8 +41,7 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Treat `main` as the only truthful post-issue84 baseline.
-- Keep issue `#88` bounded to blueprint/backlog sync only, and keep issue `#84` retired.
-- Keep issue `#3` blocked until real grower-approved tomato/cucumber production windows are supplied.
-- Start any unrelated non-trivial change from a fresh issue-based branch.
-- Keep the current route ids, section hashes, `/rtr` compatibility, and API contracts untouched unless a future issue explicitly reopens those seams.
+- Commit the validated issue `#92` slice on `fix/92-overview`.
+- Push the branch and create the PR that includes `Closes #92`.
+- Keep the project item in `Validating` until the remote review/merge step finishes.
+- Do not broaden this branch beyond issue `#92`; open a fresh issue/branch from `main` for any new follow-up.

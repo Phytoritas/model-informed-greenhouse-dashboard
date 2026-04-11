@@ -218,3 +218,85 @@ def test_knowledge_query_endpoint_clamps_limit_and_rejects_empty_query(
 
     assert empty_response.status_code == 400
     assert "query must not be empty" in empty_response.json()["detail"]
+
+
+def test_knowledge_query_endpoint_bootstraps_catalog_when_database_is_empty(
+    monkeypatch,
+) -> None:
+    from model_informed_greenhouse_dashboard.backend.app import main as backend_main
+
+    calls = {"rebuild": 0}
+
+    def _fake_build(_crop):
+        return {
+            "database": {
+                "status": "ready",
+                "document_count": 0,
+                "chunk_count": 0,
+            },
+            "retrieval_surface": {"status": "unavailable"},
+        }
+
+    def _fake_rebuild(_crop):
+        calls["rebuild"] += 1
+        return {
+            "database": {
+                "status": "ready",
+                "document_count": 4,
+                "chunk_count": 120,
+            },
+            "retrieval_surface": {"status": "ready"},
+        }
+
+    def _fake_query_knowledge_database(**kwargs):
+        return {
+            "query_status": "ready",
+            "crop_scope": kwargs.get("crop"),
+            "resolved_scope": kwargs.get("crop"),
+            "query": kwargs.get("query"),
+            "query_mode": "intent_routed_hybrid",
+            "limit": kwargs.get("limit"),
+            "returned_count": 1,
+            "filters": kwargs.get("filters") or {},
+            "applied_filters": {},
+            "routing": {"intent": "general_chat", "sub_intent": None, "rerank_profile": "general", "expanded_terms": []},
+            "results": [
+                {
+                    "chunk_id": 1,
+                    "document_id": 1,
+                    "source_locator": "p1",
+                    "score": 10.0,
+                    "text": "sample",
+                    "chunk_type": "paragraph",
+                    "topic_major": "environment",
+                    "topic_minor": "telemetry",
+                    "document": {
+                        "title": "sample doc",
+                        "filename": "sample.pdf",
+                        "relative_path": "data/sample.pdf",
+                        "asset_family": "manual",
+                        "source_type": "pdf",
+                        "crop_scopes": ["tomato"],
+                    },
+                }
+            ],
+            "database": {"status": "ready"},
+        }
+
+    monkeypatch.setattr(backend_main, "build_knowledge_catalog", _fake_build)
+    monkeypatch.setattr(backend_main, "rebuild_knowledge_catalog", _fake_rebuild)
+    monkeypatch.setattr(backend_main, "query_knowledge_database", _fake_query_knowledge_database)
+
+    client = TestClient(get_app())
+    response = client.post(
+        "/api/knowledge/query",
+        json={"crop": "tomato", "query": "온실 상태", "limit": 3},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["catalog_bootstrapped"] is True
+    assert payload["query_status"] == "ready"
+    assert payload["returned_count"] == 1
+    assert calls["rebuild"] == 1

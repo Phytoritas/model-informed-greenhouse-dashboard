@@ -270,11 +270,12 @@ const TrendChart = ({
     const [selectedKey, setSelectedKey] = useState<string | null>(null);
     const availableSeries = prices.trend.series;
     const unavailableSeries = prices.trend.unavailable_series;
+    const trendMarketLabel = localizeMarketLabel(prices.trend.market_key, locale);
     const copy = locale === 'ko'
         ? {
             unavailable: '현재 주요 품목 목록에 대한 KAMIS 추세선 데이터를 불러올 수 없습니다.',
             title: '최근 2주 실측 vs 평년 추세선',
-            description: `상단 카드는 최신 KAMIS 조사 스냅샷이고, 차트는 최근 ${prices.trend.history_days}일 소매 평균가격 실측과 향후 ${prices.trend.forecast_days}일 평년선(3년·5년·10년)을 겹쳐 보여줍니다.`,
+            description: `상단 카드는 최신 KAMIS 조사 스냅샷이고, 차트는 최근 ${prices.trend.history_days}일 ${trendMarketLabel} 평균가격 실측과 향후 ${prices.trend.forecast_days}일 평년선(3년·5년·10년)을 겹쳐 보여줍니다.`,
             reference: '기준일',
             noData: '데이터 없음',
             actual: '실측 평균',
@@ -292,7 +293,7 @@ const TrendChart = ({
         : {
             unavailable: 'KAMIS trend overlay is unavailable for the current featured produce list.',
             title: '2-week trend vs seasonal normals',
-            description: `Cards above use the latest KAMIS item snapshot. The chart history line uses KAMIS retail average prices for the trailing ${prices.trend.history_days} days, while forward lines use matching calendar dates averaged across the prior 3, 5, and 10 years.`,
+            description: `Cards above use the latest KAMIS item snapshot. The chart history line uses KAMIS ${trendMarketLabel.toLowerCase()} average prices for the trailing ${prices.trend.history_days} days, while forward lines use matching calendar dates averaged across the prior 3, 5, and 10 years.`,
             reference: 'Reference',
             noData: 'No data',
             actual: 'Actual avg',
@@ -484,14 +485,14 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
     const copy = locale === 'ko'
         ? {
             title: '실시간 농산물 가격',
-            subtitle: '소매·도매 스냅샷과 2주 평년 추세선',
+            subtitle: '소매·도매 스냅샷과 2주 추세선',
             loading: '실시간 농산물 가격을 불러오는 중...',
             unavailable: '농산물 가격 패널을 불러올 수 없습니다',
             retail: '소매',
             wholesale: '도매',
             noItems: '현재 선택한 시장에 표시할 주요 품목이 없습니다.',
             trendNoteTitle: '추세선 기준',
-            trendNote: 'KAMIS 계절성 추세선은 현재 소매 평균가격만 제공합니다. 도매 탭에서도 좌측 차트는 소매 기준으로 유지됩니다.',
+            trendNote: 'KAMIS 추세선은 도매 평균가격을 우선 사용하며, 도매 이력이 없으면 소매 평균가격으로 자동 전환됩니다.',
             surveyBasis: '조사 기준',
             featuredCount: '주요 품목 수',
             trendBasis: '차트 기준',
@@ -503,14 +504,14 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
         }
         : {
             title: 'Live Produce Prices',
-            subtitle: 'Retail + wholesale snapshots with 2-week KAMIS seasonal overlays',
+            subtitle: 'Retail + wholesale snapshots with 2-week KAMIS trend overlays',
             loading: 'Loading live produce prices...',
             unavailable: 'Produce price panel is unavailable',
             retail: 'Retail',
             wholesale: 'Wholesale',
             noItems: 'No featured produce items are available for the selected market right now.',
             trendNoteTitle: 'Trend basis',
-            trendNote: 'KAMIS seasonal overlays currently expose retail average prices only. The left chart stays on retail history even when the wholesale tab is selected.',
+            trendNote: 'KAMIS trend overlays prioritize wholesale average prices and automatically fall back to retail when wholesale history is unavailable.',
             surveyBasis: 'Survey basis',
             featuredCount: 'Featured items',
             trendBasis: 'Chart basis',

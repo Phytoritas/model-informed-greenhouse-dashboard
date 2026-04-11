@@ -15,6 +15,7 @@ OPEN_METEO_DOCS_URL = "https://open-meteo.com/en/docs"
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 WEATHER_CACHE_TTL_SECONDS = 15 * 60
 WEATHER_UPSTREAM_TIMEOUT = httpx.Timeout(connect=3.0, read=6.0, write=6.0, pool=6.0)
+WEATHER_HISTORY_HOURS = 72
 
 DAEGU_LOCATION = {
     "name": "Daegu",
@@ -123,6 +124,7 @@ _SEASONAL_FALLBACKS = {
 }
 
 _weather_cache: Dict[str, Any] = {"expires_at": 0.0, "payload": None}
+_weather_history_cache: Dict[str, Any] = {"expires_at": 0.0, "payload": None}
 logger = logging.getLogger(__name__)
 
 
@@ -385,4 +387,65 @@ async def fetch_daegu_weather_outlook(force_refresh: bool = False) -> Dict[str, 
 
     _weather_cache["payload"] = payload
     _weather_cache["expires_at"] = now + WEATHER_CACHE_TTL_SECONDS
+    return payload
+
+
+async def fetch_daegu_shortwave_history(
+    *,
+    hours: int = WEATHER_HISTORY_HOURS,
+    force_refresh: bool = False,
+) -> Dict[str, Any]:
+    """Return actual outside irradiance history for Daegu from Open-Meteo."""
+    now = time.time()
+    cached_payload = _weather_history_cache["payload"]
+    if (
+        not force_refresh
+        and cached_payload is not None
+        and now < float(_weather_history_cache["expires_at"])
+        and int(cached_payload.get("window_hours") or 0) == int(hours)
+    ):
+        return deepcopy(cached_payload)
+
+    params = {
+        "latitude": DAEGU_LOCATION["latitude"],
+        "longitude": DAEGU_LOCATION["longitude"],
+        "timezone": DAEGU_LOCATION["timezone"],
+        "hourly": "shortwave_radiation",
+        "past_hours": max(1, int(hours)),
+        "forecast_hours": 0,
+    }
+
+    async with httpx.AsyncClient(timeout=WEATHER_UPSTREAM_TIMEOUT) as client:
+        response = await client.get(OPEN_METEO_FORECAST_URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+
+    hourly = data.get("hourly") or {}
+    hourly_times = hourly.get("time") or []
+    shortwave_values = hourly.get("shortwave_radiation") or []
+    points = []
+    for timestamp, irradiance in zip(hourly_times, shortwave_values, strict=False):
+        if irradiance is None:
+            continue
+        points.append(
+            {
+                "time": str(timestamp),
+                "shortwave_radiation_w_m2": float(irradiance),
+            }
+        )
+
+    payload = {
+        "location": DAEGU_LOCATION,
+        "source": {
+            "provider": "Open-Meteo",
+            "docs_url": OPEN_METEO_DOCS_URL,
+            "endpoint": OPEN_METEO_FORECAST_URL,
+            "fetched_at": _local_now(now).isoformat(timespec="minutes"),
+        },
+        "window_hours": max(1, int(hours)),
+        "unit": "W/m²",
+        "points": points,
+    }
+    _weather_history_cache["payload"] = deepcopy(payload)
+    _weather_history_cache["expires_at"] = now + WEATHER_CACHE_TTL_SECONDS
     return payload

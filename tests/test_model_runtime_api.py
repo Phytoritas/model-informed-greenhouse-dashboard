@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -210,3 +210,126 @@ def test_model_replay_endpoint_applies_tomato_fruit_thinning(
         payload["events"][0]["sink_demand_after"]
         <= payload["events"][0]["sink_demand_before"]
     )
+
+
+def test_model_state_store_lists_snapshots_since(tmp_path: Path) -> None:
+    store_module = _model_store_module()
+    store = store_module.ModelStateStore(tmp_path / "model_runtime.sqlite3")
+
+    early = store.persist_snapshot(
+        greenhouse_id="cucumber",
+        crop="cucumber",
+        snapshot_time=datetime(2026, 4, 7, 6, 0, tzinfo=UTC),
+        adapter_name="cucumber",
+        adapter_version="1.0.0",
+        normalized_snapshot={"state": {"source_capacity": 10.0, "sink_demand": 6.0}},
+        raw_adapter_state={"RH": 0.72, "u_CO2": 700.0},
+        source="test",
+    )
+    late = store.persist_snapshot(
+        greenhouse_id="cucumber",
+        crop="cucumber",
+        snapshot_time=datetime(2026, 4, 7, 9, 0, tzinfo=UTC),
+        adapter_name="cucumber",
+        adapter_version="1.0.0",
+        normalized_snapshot={"state": {"source_capacity": 11.0, "sink_demand": 7.0}},
+        raw_adapter_state={"RH": 0.71, "u_CO2": 710.0},
+        source="test",
+    )
+
+    records = store.list_snapshots_since(
+        "cucumber",
+        "cucumber",
+        since=datetime(2026, 4, 7, 8, 0, tzinfo=UTC),
+    )
+
+    assert [record["snapshot_id"] for record in records] == [late["snapshot_id"]]
+    assert early["snapshot_id"] not in [record["snapshot_id"] for record in records]
+
+
+def test_overview_signal_endpoint_returns_live_weather_and_model_history(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    backend_main = _backend_main()
+    backend_main.app_state["cucumber"]["adapter"] = None
+    backend_main.app_state["cucumber"]["last_runtime_snapshot_at"] = None
+    store_module = _model_store_module()
+    monkeypatch.setattr(
+        store_module,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+
+    store = store_module.ModelStateStore(tmp_path / "model_runtime.sqlite3")
+    store.persist_snapshot(
+        greenhouse_id="cucumber",
+        crop="cucumber",
+        snapshot_time=datetime.now(UTC) - timedelta(hours=3),
+        adapter_name="cucumber",
+        adapter_version="1.0.0",
+        normalized_snapshot={
+            "state": {
+                "source_capacity": 12.4,
+                "sink_demand": 8.1,
+                "lai": 3.1,
+            },
+            "gas_exchange": {
+                "canopy_net_assimilation_umol_m2_s": 9.2,
+            },
+            "live_observation": {
+                "canopy_temperature_c": 23.4,
+            },
+        },
+        raw_adapter_state={"RH": 0.72, "u_CO2": 720.0},
+        source="test",
+    )
+    store.persist_snapshot(
+        greenhouse_id="cucumber",
+        crop="cucumber",
+        snapshot_time=datetime.now(UTC) - timedelta(hours=1),
+        adapter_name="cucumber",
+        adapter_version="1.0.0",
+        normalized_snapshot={
+            "state": {
+                "source_capacity": 13.0,
+                "sink_demand": 7.8,
+                "lai": 3.2,
+            },
+            "gas_exchange": {
+                "canopy_net_assimilation_umol_m2_s": 9.7,
+            },
+            "live_observation": {
+                "canopy_temperature_c": 23.8,
+            },
+        },
+        raw_adapter_state={"RH": 0.70, "u_CO2": 735.0},
+        source="test",
+    )
+
+    async def fake_shortwave_history(*, hours: int = 72, force_refresh: bool = False):
+        assert hours == 72
+        assert force_refresh is False
+        return {
+            "location": {"name": "Daegu", "country": "South Korea"},
+            "source": {"provider": "Open-Meteo", "docs_url": "https://open-meteo.com/en/docs"},
+            "window_hours": 72,
+            "unit": "W/m²",
+            "points": [
+                {"time": "2026-04-07T09:00:00+09:00", "shortwave_radiation_w_m2": 180.0},
+                {"time": "2026-04-07T10:00:00+09:00", "shortwave_radiation_w_m2": 260.0},
+            ],
+        }
+
+    monkeypatch.setattr(backend_main, "fetch_daegu_shortwave_history", fake_shortwave_history)
+    client = TestClient(get_app())
+
+    response = client.get("/api/overview/signals?crop=cucumber")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["irradiance"]["points"][1]["shortwave_radiation_w_m2"] == 260.0
+    assert payload["source_sink"]["status"] == "ready"
+    assert len(payload["source_sink"]["points"]) == 2
+    assert payload["source_sink"]["points"][0]["source_sink_balance"] > 0.0

@@ -331,6 +331,7 @@ function buildSensitivityResponse(): RtrSensitivityResponse {
 
 describe('useRtrOptimizer', () => {
     beforeEach(() => {
+        window.localStorage.clear();
         fetchMock.mockReset();
         vi.stubGlobal('fetch', fetchMock);
         fetchMock.mockImplementation((input: string | URL) => {
@@ -345,6 +346,7 @@ describe('useRtrOptimizer', () => {
     });
 
     afterEach(() => {
+        window.localStorage.clear();
         vi.unstubAllGlobals();
     });
 
@@ -568,6 +570,57 @@ describe('useRtrOptimizer', () => {
             expect(body.user_actual_area_pyeong).toBe(913.1);
             expect(body.user_actual_area_m2).toBe(3018.52);
         });
+    });
+
+    it('restores persisted RTR manual settings from localStorage on first mount', async () => {
+        window.localStorage.setItem('smartgrow-rtr-optimizer-state-v1', JSON.stringify({
+            Cucumber: {
+                targetNodeDevelopmentPerDay: 0.68,
+                optimizationMode: 'yield_priority',
+                customScenario: {
+                    label: 'saved custom',
+                    day_heating_min_temp_C: 20.1,
+                    vent_bias_C: 0.2,
+                },
+                includeEnergyCost: false,
+                includeCoolingCost: true,
+                includeLaborCost: false,
+                hasManualTarget: true,
+                hasManualMode: true,
+            },
+        }));
+
+        const { result } = renderHook(() =>
+            useRtrOptimizer({
+                crop: 'Cucumber',
+                actualAreaM2: 2809.92,
+                actualAreaPyeong: 850,
+                actualAreaSource: 'server',
+                optimizerEnabled: true,
+                defaultMode: 'balanced',
+            }),
+        );
+
+        await waitFor(() => {
+            expect(result.current.optimizeResponse).not.toBeNull();
+        });
+
+        expect(result.current.targetNodeDevelopmentPerDay).toBe(0.68);
+        expect(result.current.optimizationMode).toBe('yield_priority');
+        expect(result.current.customScenario).toEqual({
+            label: 'saved custom',
+            day_heating_min_temp_C: 20.1,
+            vent_bias_C: 0.2,
+        });
+        expect(result.current.includeEnergyCost).toBe(false);
+        expect(result.current.includeLaborCost).toBe(false);
+
+        const optimizeCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/optimize'));
+        const optimizeBody = JSON.parse(String((optimizeCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+        expect(optimizeBody.target_node_development_per_day).toBe(0.68);
+        expect(optimizeBody.optimization_mode).toBe('yield_priority');
+        expect(optimizeBody.include_energy_cost).toBe(false);
+        expect(optimizeBody.include_labor_cost).toBe(false);
     });
 
     it('blocks optimizer requests when telemetry is stale', async () => {

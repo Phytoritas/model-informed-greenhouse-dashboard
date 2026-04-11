@@ -14,6 +14,7 @@ import type { PromptAdvisorTabKey } from '../components/advisor/advisorTabRegist
 export type PhytoSectionKey =
   | 'overview'
   | 'control'
+  | 'trend'
   | 'crop-work'
   | 'resources'
   | 'alerts'
@@ -46,7 +47,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           path: '/overview',
           label: '오늘 운영',
           shortLabel: '오늘 운영',
-          description: '지금 상태, 오늘 할 일, 주의 알림을 먼저 봅니다.',
+          description: '지금 상태, 오늘 할 일, 확인 필요 항목을 먼저 봅니다.',
           icon: LayoutDashboard,
           workspace: 'command',
           heroTitle: '오늘 운영',
@@ -60,14 +61,14 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
         {
           key: 'control',
           path: '/control',
-          label: '환경 제어',
-          shortLabel: '환경 제어',
-          description: '지금 조치, 온도 전략, 장치 상태를 함께 봅니다.',
+          label: '온실 환경',
+          shortLabel: '온실 환경',
+          description: '추천 제어안과 장치 상태를 함께 봅니다.',
           icon: CircleGauge,
           workspace: 'rtr',
           advisorTab: 'environment',
-          heroTitle: '환경 제어',
-          heroDescription: '추천 제어안과 온도 전략을 한 화면에서 비교합니다.',
+          heroTitle: '온실 환경',
+          heroDescription: '',
           tabs: [
             { id: 'control-action', label: '지금 조치' },
             { id: 'control-strategy', label: '온도 전략' },
@@ -75,15 +76,27 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           ],
         },
         {
+          key: 'trend',
+          path: '/trend',
+          label: '날씨와 시세',
+          shortLabel: '날씨와 시세',
+          description: '날씨와 도매 시세를 바로 확인합니다.',
+          icon: CircleGauge,
+          workspace: 'trend',
+          heroTitle: '날씨와 시세',
+          heroDescription: '',
+          tabs: [],
+        },
+        {
           key: 'crop-work',
           path: '/crop-work',
-          label: '생육작업',
-          shortLabel: '생육작업',
+          label: '작물 상태 및 농작업',
+          shortLabel: '작물·농작업',
           description: '생육 흐름, 작업 우선순위, 수확 흐름을 함께 봅니다.',
           icon: Sprout,
           workspace: 'crop',
           advisorTab: 'physiology',
-          heroTitle: '생육작업',
+          heroTitle: '작물 상태 및 농작업',
           heroDescription: '생육 상태와 작업 흐름을 한 화면에서 정리합니다.',
           tabs: [
             { id: 'crop-work-growth', label: '생육' },
@@ -111,17 +124,17 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
         {
           key: 'alerts',
           path: '/alerts',
-          label: '경보',
-          shortLabel: '경보',
-          description: '긴급, 주의, 처리 이력을 분리해 봅니다.',
+          label: '긴급 알림',
+          shortLabel: '긴급 알림',
+          description: '긴급 알림, 확인 필요, 처리 이력을 분리해 봅니다.',
           icon: Bell,
           workspace: 'alerts',
           advisorTab: 'pesticide',
-          heroTitle: '경보',
-          heroDescription: '바로 확인할 경보와 처리 흐름을 정리합니다.',
+          heroTitle: '긴급 알림',
+          heroDescription: '바로 확인할 긴급 알림과 처리 흐름을 정리합니다.',
           tabs: [
-            { id: 'alerts-urgent', label: '긴급' },
-            { id: 'alerts-warning', label: '주의' },
+            { id: 'alerts-urgent', label: '긴급 알림' },
+            { id: 'alerts-warning', label: '확인 필요' },
             { id: 'alerts-history', label: '처리 이력' },
           ],
         },
@@ -134,11 +147,10 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           icon: MessageCircle,
           workspace: 'knowledge',
           heroTitle: '질문 도우미',
-          heroDescription: '질문, 자료 찾기, 최근 흐름을 한곳에 모았습니다.',
+          heroDescription: '질문과 자료 찾기를 한곳에 모았습니다.',
           tabs: [
             { id: 'assistant-chat', label: '질문' },
             { id: 'assistant-search', label: '자료 찾기' },
-            { id: 'assistant-history', label: '최근 흐름' },
           ],
         },
       ]
@@ -164,17 +176,29 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           path: '/control',
           label: 'Control',
           shortLabel: 'Control',
-          description: 'See live actions, temperature strategy, and device state together.',
+          description: 'See recommendations and device status together.',
           icon: CircleGauge,
           workspace: 'rtr',
           advisorTab: 'environment',
-          heroTitle: 'Environment control',
-          heroDescription: 'Keep recommendation, temperature strategy, and device state in one lane.',
+          heroTitle: 'Control solutions',
+          heroDescription: '',
           tabs: [
             { id: 'control-action', label: 'Now' },
             { id: 'control-strategy', label: 'Temp plan' },
             { id: 'control-devices', label: 'Devices' },
           ],
+        },
+        {
+          key: 'trend',
+          path: '/trend',
+          label: 'Trend',
+          shortLabel: 'Trend',
+          description: 'Track weather and wholesale market trends in a separate lane.',
+          icon: CircleGauge,
+          workspace: 'trend',
+          heroTitle: 'Trend',
+          heroDescription: '',
+          tabs: [],
         },
         {
           key: 'crop-work',
@@ -236,11 +260,10 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           icon: MessageCircle,
           workspace: 'knowledge',
           heroTitle: 'Assistant',
-          heroDescription: 'Keep ask, material search, and recent flow in one place.',
+          heroDescription: 'Keep ask and material search in one place.',
           tabs: [
             { id: 'assistant-chat', label: 'Ask' },
             { id: 'assistant-search', label: 'Materials' },
-            { id: 'assistant-history', label: 'Recent' },
           ],
         },
       ];
@@ -272,6 +295,8 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
       return '/overview';
     case 'rtr':
       return '/control';
+    case 'trend':
+      return '/trend';
     case 'crop':
     case 'advisor':
       return '/crop-work';

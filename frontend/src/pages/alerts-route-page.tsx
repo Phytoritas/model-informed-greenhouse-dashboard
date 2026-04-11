@@ -17,8 +17,6 @@ interface AlertsRoutePageProps {
   primaryTiles: KpiTileData[];
   secondaryTiles: KpiTileData[];
   activePanel?: 'alerts-priority' | 'alerts-stream' | 'alerts-history';
-  tabs: Array<{ id: string; label: string }>;
-  onSelectTab: (tabId: string) => void;
 }
 
 export default function AlertsRoutePage({
@@ -30,30 +28,25 @@ export default function AlertsRoutePage({
   primaryTiles,
   secondaryTiles,
   activePanel = 'alerts-priority',
-  tabs,
-  onSelectTab,
 }: AlertsRoutePageProps) {
   const fallbackItems = items.length
     ? items
     : [{
         id: 'ready',
         severity: 'resolved' as const,
-        title: locale === 'ko' ? '지금 바로 조치할 경보 없음' : 'No active critical alert',
+        title: locale === 'ko' ? '지금 바로 조치할 긴급 알림 없음' : 'No active critical alert',
         body: fallbackAlertBody,
       }];
 
   return (
     <AlertsPage
       locale={locale}
-      tabs={tabs}
-      activeTabId={activePanel === 'alerts-priority' ? 'alerts-urgent' : activePanel === 'alerts-stream' ? 'alerts-warning' : 'alerts-history'}
-      onSelectTab={onSelectTab}
       surface={(
         <Suspense
           fallback={(
             <LoadingSkeleton
-              title={locale === 'ko' ? '경보 센터' : 'Alerts center'}
-              loadingMessage={locale === 'ko' ? '경보 화면을 불러오는 중입니다...' : 'Loading alerts center...'}
+              title={locale === 'ko' ? '긴급 알림 센터' : 'Alerts center'}
+              loadingMessage={locale === 'ko' ? '긴급 알림 화면을 불러오는 중입니다...' : 'Loading alerts center...'}
               minHeightClassName="min-h-[520px]"
             />
           )}

@@ -25,17 +25,17 @@ export default function AlertsCommandCenter({
 }: AlertsCommandCenterProps) {
     const copy = locale === 'ko'
         ? {
-            eyebrow: '경보 요약',
-            title: '긴급과 주의를 바로 가릅니다',
+            eyebrow: '긴급 알림 요약',
+            title: '긴급 알림과 확인 필요를 바로 가릅니다',
             description: '지금 확인할 항목과 처리 이력을 한 화면에서 정리합니다.',
-            critical: '긴급',
-            warning: '주의',
+            critical: '긴급 알림',
+            warning: '확인 필요',
             resolved: '처리 완료',
             next: '다음 확인',
             empty: '현재 바로 조치할 항목은 없습니다. 센서 신선도와 운영 메모만 유지 점검하세요.',
             severity: {
-                critical: '긴급',
-                warning: '주의',
+                critical: '긴급 알림',
+                warning: '확인 필요',
                 info: '운영 메모',
                 resolved: '처리 완료',
             },

@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   Thermometer,
@@ -9,16 +9,23 @@ import {
   Leaf,
 } from 'lucide-react';
 import type { AlertRailItem } from './components/dashboard/AlertRail';
+import type {
+  RTROptimizerCustomScenarioDraft,
+  RTROptimizerUiStateLike,
+} from './components/RTROptimizerPanel';
 import TopBar from './components/shell/TopBar';
 import WorkspaceNav, { type WorkspaceNavItem } from './components/shell/WorkspaceNav';
 import type { PromptAdvisorTabKey } from './components/advisor/advisorTabRegistry';
 import type { RagAssistantOpenRequest } from './components/chat/ragAssistantTypes';
 import AssistantDrawer from './features/assistant/AssistantDrawer';
 import AssistantFab from './features/assistant/AssistantFab';
+import { useAreaUnit } from './context/AreaUnitContext';
 import { useGreenhouse } from './hooks/useGreenhouse';
 import { useAiAssistant } from './hooks/useAiAssistant';
 import { useProducePrices } from './hooks/useProducePrices';
+import { useRtrOptimizer } from './hooks/useRtrOptimizer';
 import { useRtrProfiles } from './hooks/useRtrProfiles';
+import { useOverviewSignalTrends } from './hooks/useOverviewSignalTrends';
 import { useSmartGrowKnowledge } from './hooks/useSmartGrowKnowledge';
 import { useWeatherOutlook } from './hooks/useWeatherOutlook';
 import AppShell from './layout/AppShell';
@@ -32,19 +39,13 @@ import {
   findPhytoSection,
   getSectionPathForAdvisorTab,
 } from './routes/phytosyncSections';
-import AssistantRoutePage from './pages/assistant-route-page';
-import AlertsRoutePage from './pages/alerts-route-page';
-import ControlRoutePage from './pages/control-route-page';
-import CropWorkRoutePage from './pages/crop-work-route-page';
-import OverviewRoutePage from './pages/overview-route-page';
-import ResourcesRoutePage from './pages/resources-route-page';
-import SettingsRoutePage from './pages/settings-route-page';
 import {
   getCropLabel,
   getDashboardSensorCopy,
-  getWeatherLabel,
   NUMERIC_IDEAL_RANGES,
 } from './utils/displayCopy';
+import { deriveSourceSinkBalance } from './utils/derivedRuntimeMetrics';
+import { localizeSmartGrowSurfaceNames } from './utils/smartGrowSurfaceNames';
 import type { KpiTileData } from './components/KpiStrip';
 import {
   buildDataStateSummary,
@@ -56,82 +57,16 @@ import {
 
 const APP_COPY = {
   en: {
-    brandTagline: 'Intelligent Greenhouse Decision Support',
-    systemOnline: 'System Online',
-    askAiAssistant: 'Ask',
-    sensorLive: 'Live',
-    sensorDelayed: 'Delayed',
-    sensorLoading: 'Loading',
-    sensorStale: 'Stale',
-    sensorOffline: 'Offline',
-    sensorMissing: 'Missing',
     sensorReceiving: 'Receiving data',
     sensorUnavailable: 'No live data',
-    sensorUpdated: 'Updated',
-    sensorUpdateDelayed: 'Update delayed',
-    sensorConnectionLost: 'Connection lost',
     sensorDelta: '1h Δ',
     sensorSlope: '6h slope',
-    language: 'Language',
-    advancedModelAnalytics: 'Advanced Model Analytics',
-    yieldForecast: 'Yield Forecast',
-    consultingReport: 'Consulting Report',
-    realTimeEnvironmentalAnalysis: 'Real-time Environmental Analysis',
-    cropStatus: 'Crop Status',
-    growthCycle: 'Growth Cycle',
-    since: 'since',
-    simTime: 'Sim Time',
-    liveProducePrices: 'Live Produce Prices',
-    daeguLiveWeather: 'Daegu Live Weather',
-    rtrStrategy: 'RTR Strategy',
-    smartGrowSurfaceTitle: 'Quick operating tools',
-    advancedModelAnalyticsLoading: 'Advanced Model Analytics module loading...',
-    yieldForecastLoading: 'Yield Forecast module loading...',
-    consultingReportLoading: 'Consulting Report module loading...',
-    smartGrowSurfaceLoading: 'Loading quick operating tools...',
-    realTimeEnvironmentalAnalysisLoading: 'Real-time Environmental Analysis module loading...',
-    liveProducePricesLoading: 'Live Produce Prices module loading...',
-    daeguLiveWeatherLoading: 'Daegu Live Weather module loading...',
-    rtrStrategyLoading: 'RTR Strategy module loading...',
   },
   ko: {
-    sensorLive: '실시간',
-    sensorDelayed: '지연',
-    sensorLoading: '로딩중',
-    sensorStale: '오래됨',
-    sensorOffline: '오프라인',
-    sensorMissing: '미수신',
     sensorReceiving: '데이터 수신 중',
     sensorUnavailable: '실시간 데이터 없음',
-    sensorUpdated: '최근 수집',
-    sensorUpdateDelayed: '갱신 지연',
-    sensorConnectionLost: '연결 끊김',
     sensorDelta: '1h 변화',
     sensorSlope: '6h 기울기',
-    brandTagline: '스마트 온실 의사결정 지원',
-    systemOnline: '시스템 정상',
-    askAiAssistant: '질문하기',
-    language: '언어',
-    advancedModelAnalytics: '고급 모델 분석',
-    yieldForecast: '수확 전망',
-    consultingReport: '컨설팅 리포트',
-    realTimeEnvironmentalAnalysis: '실시간 환경 분석',
-    cropStatus: '작물 상태',
-    growthCycle: '생육 사이클',
-    since: '시작일',
-    simTime: '시뮬레이션 시각',
-    liveProducePrices: '실시간 농산물 가격',
-    daeguLiveWeather: '대구 실시간 날씨',
-    rtrStrategy: 'RTR 전략',
-    smartGrowSurfaceTitle: '바로 실행 도구',
-    advancedModelAnalyticsLoading: '고급 모델 분석 모듈을 불러오는 중...',
-    yieldForecastLoading: '수확 전망 모듈을 불러오는 중...',
-    consultingReportLoading: '컨설팅 리포트 모듈을 불러오는 중...',
-    smartGrowSurfaceLoading: '바로 실행 도구를 불러오는 중...',
-    realTimeEnvironmentalAnalysisLoading: '실시간 환경 분석 모듈을 불러오는 중...',
-    liveProducePricesLoading: '실시간 농산물 가격 모듈을 불러오는 중...',
-    daeguLiveWeatherLoading: '대구 실시간 날씨 모듈을 불러오는 중...',
-    rtrStrategyLoading: 'RTR 전략 모듈을 불러오는 중...',
   },
 } as const;
 
@@ -139,6 +74,98 @@ const AUTO_ANALYSIS_INTERVAL_MS = 30 * 60 * 1000;
 type SensorMetricKey = 'temperature' | 'humidity' | 'co2' | 'light' | 'vpd' | 'stomatalConductance';
 type AssistantPanelId = 'assistant-chat' | 'assistant-search' | 'assistant-history';
 type RagAssistantLaunchRequest = Omit<RagAssistantOpenRequest, 'nonce'>;
+type AssistantChatOpenRequest = {
+  nonce: number;
+  query: string;
+};
+
+type RtrUiStateSnapshot = {
+  customScenarioDraft: RTROptimizerCustomScenarioDraft;
+  targetNodeInputValue: string;
+  isTargetNodeInputActive: boolean;
+};
+
+const RTR_UI_STATE_STORAGE_KEY = 'smartgrow-rtr-ui-state-v1';
+
+const AssistantRoutePage = lazy(() => import('./pages/assistant-route-page'));
+const AlertsRoutePage = lazy(() => import('./pages/alerts-route-page'));
+const ControlRoutePage = lazy(() => import('./pages/control-route-page'));
+const CropWorkRoutePage = lazy(() => import('./pages/crop-work-route-page'));
+const OverviewRoutePage = lazy(() => import('./pages/overview-route-page'));
+const ResourcesRoutePage = lazy(() => import('./pages/resources-route-page'));
+const SettingsRoutePage = lazy(() => import('./pages/settings-route-page'));
+const TrendRoutePage = lazy(() => import('./pages/trend-route-page'));
+
+function createEmptyRtrCustomScenarioDraft(): RTROptimizerCustomScenarioDraft {
+  return {
+    label: '',
+    dayHeatingMinTempC: '',
+    nightHeatingMinTempC: '',
+    dayCoolingTargetC: '',
+    nightCoolingTargetC: '',
+    ventBiasC: '',
+    screenBiasPct: '',
+    circulationFanPct: '',
+    co2TargetPpm: '',
+  };
+}
+
+function createEmptyRtrUiState(): RtrUiStateSnapshot {
+  return {
+    customScenarioDraft: createEmptyRtrCustomScenarioDraft(),
+    targetNodeInputValue: '',
+    isTargetNodeInputActive: false,
+  };
+}
+
+function createInitialRtrUiStateByCrop(): Record<CropType, RtrUiStateSnapshot> {
+  return {
+    Tomato: createEmptyRtrUiState(),
+    Cucumber: createEmptyRtrUiState(),
+  };
+}
+
+function isRtrUiStateSnapshot(value: unknown): value is RtrUiStateSnapshot {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Partial<RtrUiStateSnapshot>;
+  return (
+    typeof candidate.targetNodeInputValue === 'string'
+    && typeof candidate.isTargetNodeInputActive === 'boolean'
+    && !!candidate.customScenarioDraft
+    && typeof candidate.customScenarioDraft === 'object'
+  );
+}
+
+function resolveInitialRtrUiStateByCrop(): Record<CropType, RtrUiStateSnapshot> {
+  if (typeof window === 'undefined') {
+    return createInitialRtrUiStateByCrop();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(RTR_UI_STATE_STORAGE_KEY);
+    if (!raw) {
+      return createInitialRtrUiStateByCrop();
+    }
+    const parsed = JSON.parse(raw) as Partial<Record<CropType, RtrUiStateSnapshot>>;
+    const defaults = createInitialRtrUiStateByCrop();
+    return {
+      Tomato: isRtrUiStateSnapshot(parsed.Tomato) ? parsed.Tomato : defaults.Tomato,
+      Cucumber: isRtrUiStateSnapshot(parsed.Cucumber) ? parsed.Cucumber : defaults.Cucumber,
+    };
+  } catch {
+    return createInitialRtrUiStateByCrop();
+  }
+}
+
+function RouteLoadingFallback() {
+  return (
+    <div className="rounded-[24px] border border-[rgba(34,34,34,0.08)] bg-white px-6 py-8 text-sm font-medium text-[var(--ink-500)] shadow-[0_20px_60px_rgba(34,34,34,0.06)]">
+      화면을 불러오는 중입니다.
+    </div>
+  );
+}
 
 type SensorTrendSummary = {
   trend: 'up' | 'down' | 'stable';
@@ -251,7 +278,7 @@ function normalizeAssistantPanelId(panelId: string | null | undefined): Assistan
       return 'assistant-search';
     case 'ask-history':
     case 'assistant-history':
-      return 'assistant-history';
+      return 'assistant-search';
     default:
       return null;
   }
@@ -269,6 +296,7 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const { locale, setLocale } = useLocale();
+  const { areaByCrop } = useAreaUnit();
   const copy = APP_COPY[locale];
   const sensorCopy = getDashboardSensorCopy(locale);
   const {
@@ -310,12 +338,18 @@ function App() {
     refresh: refreshRtrProfiles,
   } = useRtrProfiles();
   const {
+    signals: overviewSignals,
+    loading: overviewSignalsLoading,
+    error: overviewSignalsError,
+  } = useOverviewSignalTrends(selectedCrop);
+  const {
     summary: smartGrowSummary,
     loading: isSmartGrowLoading,
     error: smartGrowError,
   } = useSmartGrowKnowledge(selectedCrop);
 
   const [assistantSearchRequest, setAssistantSearchRequest] = useState<RagAssistantOpenRequest | null>(null);
+  const [assistantChatRequest, setAssistantChatRequest] = useState<AssistantChatOpenRequest | null>(null);
   const [assistantDrawerOpen, setAssistantDrawerOpen] = useState(false);
   const [assistantDrawerPanel, setAssistantDrawerPanel] = useState<AssistantPanelId>('assistant-chat');
   const [telemetryClock, setTelemetryClock] = useState(() => Date.now());
@@ -511,12 +545,91 @@ function App() {
       fractionDigits: 3,
     },
   ];
-  const selectedCropLabel = getCropLabel(selectedCrop, locale);
-  const selectedRtrProfile = rtrProfilesPayload?.profiles[selectedCrop] ?? null;
-  const optimizerEnabled =
-    selectedRtrProfile?.optimizer?.enabled
+  const [rtrUiStateByCrop, setRtrUiStateByCrop] = useState<Record<CropType, RtrUiStateSnapshot>>(
+    () => resolveInitialRtrUiStateByCrop(),
+  );
+  const tomatoRtrProfile = rtrProfilesPayload?.profiles.Tomato ?? null;
+  const cucumberRtrProfile = rtrProfilesPayload?.profiles.Cucumber ?? null;
+  const tomatoOptimizerEnabled =
+    tomatoRtrProfile?.optimizer?.enabled
     ?? rtrProfilesPayload?.optimizerEnabled
     ?? false;
+  const cucumberOptimizerEnabled =
+    cucumberRtrProfile?.optimizer?.enabled
+    ?? rtrProfilesPayload?.optimizerEnabled
+    ?? false;
+  const tomatoAreaState = areaByCrop.Tomato;
+  const cucumberAreaState = areaByCrop.Cucumber;
+  const tomatoRtrOptimizerState = useRtrOptimizer({
+    crop: 'Tomato',
+    actualAreaM2: tomatoAreaState.actualAreaM2,
+    actualAreaPyeong: tomatoAreaState.actualAreaPyeong,
+    actualAreaSource: tomatoAreaState.source,
+    optimizerEnabled: tomatoOptimizerEnabled,
+    defaultMode: tomatoRtrProfile?.optimizer?.default_mode,
+    telemetryStatus: telemetry.status,
+  });
+  const cucumberRtrOptimizerState = useRtrOptimizer({
+    crop: 'Cucumber',
+    actualAreaM2: cucumberAreaState.actualAreaM2,
+    actualAreaPyeong: cucumberAreaState.actualAreaPyeong,
+    actualAreaSource: cucumberAreaState.source,
+    optimizerEnabled: cucumberOptimizerEnabled,
+    defaultMode: cucumberRtrProfile?.optimizer?.default_mode,
+    telemetryStatus: telemetry.status,
+  });
+  const selectedCropLabel = getCropLabel(selectedCrop, locale);
+  const selectedRtrProfile = selectedCrop === 'Tomato' ? tomatoRtrProfile : cucumberRtrProfile;
+  const optimizerEnabled = selectedCrop === 'Tomato' ? tomatoOptimizerEnabled : cucumberOptimizerEnabled;
+  const selectedRtrUiState = rtrUiStateByCrop[selectedCrop];
+  const updateSelectedRtrUiState = useCallback(
+    (updater: (current: RtrUiStateSnapshot) => RtrUiStateSnapshot) => {
+      setRtrUiStateByCrop((current) => ({
+        ...current,
+        [selectedCrop]: updater(current[selectedCrop]),
+      }));
+    },
+    [selectedCrop],
+  );
+  const rtrOptimizerState = selectedCrop === 'Tomato'
+    ? tomatoRtrOptimizerState
+    : cucumberRtrOptimizerState;
+  const rtrOptimizerUiState = useMemo<RTROptimizerUiStateLike>(() => ({
+    customScenarioDraft: selectedRtrUiState.customScenarioDraft,
+    setCustomScenarioDraft: (value) => {
+      updateSelectedRtrUiState((current) => ({
+        ...current,
+        customScenarioDraft: typeof value === 'function'
+          ? value(current.customScenarioDraft)
+          : value,
+      }));
+    },
+    targetNodeInputValue: selectedRtrUiState.targetNodeInputValue,
+    setTargetNodeInputValue: (value) => {
+      updateSelectedRtrUiState((current) => ({
+        ...current,
+        targetNodeInputValue: typeof value === 'function'
+          ? value(current.targetNodeInputValue)
+          : value,
+      }));
+    },
+    isTargetNodeInputActive: selectedRtrUiState.isTargetNodeInputActive,
+    setIsTargetNodeInputActive: (value) => {
+      updateSelectedRtrUiState((current) => ({
+        ...current,
+        isTargetNodeInputActive: typeof value === 'function'
+          ? value(current.isTargetNodeInputActive)
+          : value,
+      }));
+    },
+  }), [selectedRtrUiState, updateSelectedRtrUiState]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(RTR_UI_STATE_STORAGE_KEY, JSON.stringify(rtrUiStateByCrop));
+    } catch {
+      // Ignore storage failures for local draft persistence.
+    }
+  }, [rtrUiStateByCrop]);
   const telemetryDetail = formatLastCollectedAt(telemetry.lastMessageAt, telemetryClock, locale);
   const runtimeViolations = aiModelRuntime?.constraint_checks?.violated_constraints ?? [];
   const runtimeRecommendedAction =
@@ -529,21 +642,21 @@ function App() {
         fallbackSummary: '오늘 제어 우선순위와 모델 기반 추천을 한 화면에서 정리했습니다.',
         telemetryStale: '센서 갱신이 지연되어 추천안은 보수적으로 보는 것이 좋습니다.',
         telemetryOffline: '실시간 텔레메트리가 끊겨 수동 확인이 필요합니다.',
-        optimizerReady: '환경 제어 비교안과 추천 온도를 바로 비교할 수 있습니다.',
-        optimizerBlocked: '추천 제어안은 기준선 중심으로만 보여줍니다.',
+        optimizerReady: '온실 환경 비교안과 추천 온도를 바로 비교할 수 있습니다.',
+        optimizerBlocked: '추천 제어안은 평소 설정 비교로만 보여줍니다.',
         commandTrayTitle: '오늘 운영 방향',
         commandTrayDescription: '오늘 바로 열어야 할 워크스페이스와 핵심 운영 포인트를 정리했습니다.',
         jumpAdvisor: '생육과 작업 보기',
-        jumpRtr: '환경 제어 보기',
+        jumpRtr: '온실 환경 보기',
         jumpKnowledge: '자료 찾기',
         jumpAlerts: '알림 점검',
         jumpWeather: '날씨와 자원',
         commandCenter: '오늘 한눈에',
         advisor: '재배 도움',
-        rtr: '환경 제어',
+        rtr: '온실 환경',
         crop: '생육 · 작업',
         resources: '자원 · 비용',
-        alerts: '알림 · 경보',
+        alerts: '긴급 알림',
         knowledge: '자료 찾기 · 질문',
         commandDesc: '오늘 상태, 추천 행동, 핵심 제어',
         advisorDesc: '생육, 작업, 양액, 방제 판단',
@@ -552,7 +665,7 @@ function App() {
         resourcesDesc: '에너지, 물, 가격, 비용',
         alertsDesc: '위험, 차단 요인, 조치 로그',
         knowledgeDesc: '자료 찾기와 질문 흐름',
-        alertsWorkspaceTitle: '경보 및 운영 확인',
+        alertsWorkspaceTitle: '긴급 알림 및 운영 확인',
         alertsWorkspaceDescription: '센서 상태, 제약 위반, 운영 리스크를 한곳에서 점검합니다.',
         resourcesTitle: '자원 및 비용',
         resourcesDescription: '날씨, 가격, 에너지, 자원 흐름을 운영 의사결정과 연결합니다.',
@@ -690,9 +803,32 @@ function App() {
     smartGrowSummary,
   ]);
 
+  const handleTopBarSearchSubmit = useCallback((query: string) => {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) {
+      return;
+    }
+    setAssistantChatRequest({
+      nonce: Date.now(),
+      query: normalizedQuery,
+    });
+    if (isAssistantRoute) {
+      setAssistantDrawerOpen(false);
+      setAssistantDrawerPanel('assistant-chat');
+      navigate({ pathname: '/assistant', hash: '#assistant-chat' });
+      return;
+    }
+    openAssistantDrawer('assistant-chat');
+  }, [isAssistantRoute, navigate, openAssistantDrawer, setAssistantChatRequest, setAssistantDrawerOpen, setAssistantDrawerPanel]);
+
   const handleOpenSettings = useCallback(() => {
     setAssistantDrawerOpen(false);
     navigate('/settings');
+  }, [navigate, setAssistantDrawerOpen]);
+
+  const handleOpenAlerts = useCallback(() => {
+    setAssistantDrawerOpen(false);
+    navigate({ pathname: '/alerts', hash: '#alerts-priority' });
   }, [navigate, setAssistantDrawerOpen]);
 
   const handleOpenAdvisorTabs = useCallback((
@@ -719,6 +855,8 @@ function App() {
         return '/overview';
       case 'control':
         return '/control';
+      case 'trend':
+        return '/trend';
       case 'growth':
       case 'crop-work':
         return '/crop-work';
@@ -750,6 +888,16 @@ function App() {
 
     navigate({ pathname: activeSection.path, hash: `#${tabId}` }, { replace: true });
   }, [activeSection.key, activeSection.path, navigate, setSectionTabSelections]);
+
+  const handleWorkspaceActionSelect = useCallback((workspace: string, tabId: string) => {
+    const targetSection = sections.find((section) => section.key === workspace);
+    if (!targetSection) {
+      return;
+    }
+
+    setSectionTabSelections((current) => ({ ...current, [targetSection.key]: tabId }));
+    navigate({ pathname: targetSection.path, hash: `#${tabId}` }, { replace: true });
+  }, [navigate, sections, setSectionTabSelections]);
 
   useEffect(() => {
     if (activeSection.key !== 'assistant') {
@@ -871,8 +1019,9 @@ function App() {
       shortLabel: route.shortLabel,
       description: route.description,
       icon: route.icon,
+      actions: sections.find((section) => section.key === route.key)?.tabs ?? [],
     }))
-  ), [primaryRoutes]);
+  ), [primaryRoutes, sections]);
 
   const heroPrimaryNarrative = runtimeRecommendedAction
     ? (locale === 'ko' ? `지금: ${runtimeRecommendedAction}` : `Now: ${runtimeRecommendedAction}`)
@@ -884,12 +1033,16 @@ function App() {
           ? heroCopy.optimizerReady
           : heroCopy.optimizerBlocked;
 
+  const localizedAdvisorySurfaceNames = smartGrowSummary
+    ? localizeSmartGrowSurfaceNames(smartGrowSummary.advisorySurfaceNames, locale)
+    : [];
+
   const smartGrowHeroSummary = smartGrowSummary
-    ? smartGrowSummary.advisorySurfaceNames.length > 0
+    ? localizedAdvisorySurfaceNames.length > 0
       ? (
           locale === 'ko'
-            ? `바로 열 수 있는 도구 ${smartGrowSummary.advisorySurfaceNames.join(', ')}를 운영 판단과 연결할 수 있습니다.`
-            : `Open ${smartGrowSummary.advisorySurfaceNames.join(', ')} directly from the operating flow.`
+            ? `바로 열 수 있는 도구 ${localizedAdvisorySurfaceNames.join(', ')}를 운영 판단과 연결할 수 있습니다.`
+            : `Open ${localizedAdvisorySurfaceNames.join(', ')} directly from the operating flow.`
         )
       : smartGrowSummary.pendingParsers.length > 0
         ? (
@@ -916,6 +1069,12 @@ function App() {
     smartGrowSummary?.nutrientCorrectionReady ? heroCopy.jumpAdvisor : null,
     heroCopy.jumpKnowledge,
   ].filter((value): value is string => Boolean(value)))).slice(0, 3);
+
+  const derivedSourceSinkBalance = deriveSourceSinkBalance({
+    crop: selectedCrop,
+    currentData,
+    metrics: modelMetrics,
+  });
 
   const alertItems: AlertRailItem[] = [
     ...(telemetry.status === 'offline'
@@ -946,18 +1105,6 @@ function App() {
       body: risk,
     })),
   ];
-  const leadMarketItem = producePrices?.items?.[0] ?? null;
-  const weatherSignal = weather
-    ? `${weather.current.temperature_c.toFixed(1)}°C · ${getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)}`
-    : (locale === 'ko' ? '예보 연결 대기' : 'Forecast pending');
-  const priceSignal = leadMarketItem
-    ? `${leadMarketItem.display_name} ${leadMarketItem.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${locale === 'ko' ? '원' : ' KRW'}`
-    : (locale === 'ko' ? '시장 데이터 대기' : 'Market data pending');
-  const overviewSection = sections.find((section) => section.key === 'overview') ?? sections[0];
-  const controlSection = sections.find((section) => section.key === 'control') ?? sections[0];
-  const cropWorkSection = sections.find((section) => section.key === 'crop-work') ?? sections[0];
-  const resourcesSection = sections.find((section) => section.key === 'resources') ?? sections[0];
-  const alertsSection = sections.find((section) => section.key === 'alerts') ?? sections[0];
   const navStatusLabel = locale === 'ko'
     ? ({
         live: '센서 정상',
@@ -990,15 +1137,14 @@ function App() {
       actionsToday={aiDisplay?.actions_today ?? []}
       actionsWeek={aiDisplay?.actions_week ?? []}
       monitor={aiDisplay?.monitor ?? []}
-      tabs={cropWorkSection.tabs}
-      activeTabId={activePanelId}
-      onSelectTab={handleSectionTabSelect}
+      activePanel={activePanelId === 'crop-work-harvest' ? 'crop-work-harvest' : activePanelId === 'crop-work-work' ? 'crop-work-work' : 'crop-work-growth'}
     />
   );
 
   const resourcesPage = (
     <ResourcesRoutePage
       locale={locale}
+      crop={selectedCrop}
       cropLabel={selectedCropLabel}
       currentData={currentData}
       modelMetrics={modelMetrics}
@@ -1009,8 +1155,6 @@ function App() {
       produceLoading={isProducePricesLoading}
       produceError={producePricesError}
       activePanel={activePanelId === 'resources-market' ? 'resources-market' : activePanelId === 'resources-nutrient' ? 'resources-stock' : 'resources-energy'}
-      tabs={resourcesSection.tabs}
-      onSelectTab={handleSectionTabSelect}
     />
   );
 
@@ -1024,8 +1168,21 @@ function App() {
       primaryTiles={primaryKpiTiles}
       secondaryTiles={secondaryKpiTiles}
       activePanel={activePanelId === 'alerts-history' ? 'alerts-history' : activePanelId === 'alerts-warning' ? 'alerts-stream' : 'alerts-priority'}
-      tabs={alertsSection.tabs}
-      onSelectTab={handleSectionTabSelect}
+    />
+  );
+
+  const trendPage = (
+    <TrendRoutePage
+      locale={locale}
+      crop={selectedCrop}
+      currentData={currentData}
+      modelMetrics={modelMetrics}
+      history={deferredHistory}
+      weather={weather}
+      weatherLoading={isWeatherLoading}
+      weatherError={weatherError}
+      producePrices={producePrices}
+      produceLoading={isProducePricesLoading}
     />
   );
 
@@ -1037,16 +1194,9 @@ function App() {
       panelTabs={assistantSection.tabs}
       onSelectPanel={handleSectionTabSelect}
       summary={smartGrowSummary}
-      actionsNow={aiDisplay?.actions_now ?? []}
-      actionsToday={aiDisplay?.actions_today ?? []}
-      note={heroCopy.knowledgePrompt}
-      signals={[
-        { label: locale === 'ko' ? '\uC13C\uC11C \uC0C1\uD0DC' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary },
-        { label: locale === 'ko' ? '\uC2DC\uC7A5 \uC2E0\uD638' : 'Market', value: priceSignal },
-        { label: locale === 'ko' ? '\uC678\uAE30 \uD750\uB984' : 'Weather', value: weatherSignal },
-      ]}
       activePanel={activePanelId as AssistantPanelId}
       searchRequest={assistantSearchRequest}
+      chatRequest={assistantChatRequest}
       currentData={currentData}
       metrics={deferredModelMetrics}
       forecast={deferredForecast}
@@ -1085,6 +1235,8 @@ function App() {
           onLocaleChange={setLocale}
           onCropChange={setSelectedCrop}
           onAssistantToggle={handleChatToggle}
+          onOpenAlerts={handleOpenAlerts}
+          onSearchSubmit={handleTopBarSearchSubmit}
           onOpenSettings={handleOpenSettings}
           assistantOpen={assistantDrawerOpen}
           getCropLabel={getCropLabel}
@@ -1094,8 +1246,10 @@ function App() {
         <WorkspaceNav
           items={workspaceItems}
           activeWorkspace={activePrimaryRouteKey}
+          activeActionId={activePanelId}
           statusLabel={navStatusLabel}
           onSelect={handleWorkspaceSelect}
+          onSelectAction={handleWorkspaceActionSelect}
         />
       )}
     >
@@ -1104,84 +1258,89 @@ function App() {
         <Route
           path="/overview"
           element={(
-            <OverviewRoutePage
-              locale={locale}
-              telemetryStatus={telemetry.status}
-              telemetryDetail={telemetryDetail}
-              primaryKpiTiles={primaryKpiTiles}
-              secondaryKpiTiles={secondaryKpiTiles}
-              runtimeRecommendedAction={runtimeRecommendedAction ?? selectedRtrProfile?.strategyLabel ?? heroCopy.scenarioReady}
-              heroPrimaryNarrative={heroPrimaryNarrative}
-              heroSummary={heroSummary}
-              heroImportantIssue={heroImportantIssue}
-              heroActions={heroActions}
-              confidence={aiDisplay?.confidence ?? aiModelRuntime?.scenario?.confidence ?? null}
-              modelRuntimeSummary={aiModelRuntime?.summary ?? null}
-              sourceSinkBalance={aiModelRuntime?.state_snapshot.source_sink_balance ?? null}
-              canopyAssimilation={aiModelRuntime?.state_snapshot.canopy_net_assimilation_umol_m2_s ?? currentData.photosynthesis}
-              lai={aiModelRuntime?.state_snapshot.lai ?? modelMetrics.growth.lai}
-              alertItems={alertItems}
-              fallbackAlertBody={heroCopy.telemetryLive}
-              history={deferredHistory}
-              currentData={currentData}
-              modelMetrics={modelMetrics}
-              weather={weather}
-              weatherLoading={isWeatherLoading}
-              producePrices={producePrices}
-              produceLoading={isProducePricesLoading}
-              actionsNow={aiDisplay?.actions_now ?? []}
-              actionsToday={aiDisplay?.actions_today ?? []}
-              actionsWeek={aiDisplay?.actions_week ?? []}
-              monitor={aiDisplay?.monitor ?? []}
-              tabs={overviewSection.tabs}
-              activeTabId={activePanelId}
-              onSelectTab={handleSectionTabSelect}
-              onOpenRtr={() => navigate('/control#control-strategy')}
-              onOpenAdvisor={() => handleOpenAdvisorTabs('environment')}
-              onOpenAssistant={handleChatToggle}
-            />
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <OverviewRoutePage
+                locale={locale}
+                crop={selectedCrop}
+                telemetryStatus={telemetry.status}
+                telemetryDetail={telemetryDetail}
+                primaryKpiTiles={primaryKpiTiles}
+                secondaryKpiTiles={secondaryKpiTiles}
+                runtimeRecommendedAction={runtimeRecommendedAction ?? selectedRtrProfile?.strategyLabel ?? heroCopy.scenarioReady}
+                heroPrimaryNarrative={heroPrimaryNarrative}
+                heroSummary={heroSummary}
+                heroImportantIssue={heroImportantIssue}
+                heroActions={heroActions}
+                confidence={aiDisplay?.confidence ?? aiModelRuntime?.scenario?.confidence ?? null}
+                modelRuntimeSummary={aiModelRuntime?.summary ?? null}
+                sourceSinkBalance={aiModelRuntime?.state_snapshot.source_sink_balance ?? derivedSourceSinkBalance}
+                canopyAssimilation={aiModelRuntime?.state_snapshot.canopy_net_assimilation_umol_m2_s ?? currentData.photosynthesis}
+                lai={aiModelRuntime?.state_snapshot.lai ?? modelMetrics.growth.lai}
+                alertItems={alertItems}
+                fallbackAlertBody={heroCopy.telemetryLive}
+                history={deferredHistory}
+                currentData={currentData}
+                modelMetrics={modelMetrics}
+                overviewSignals={overviewSignals}
+                overviewSignalsLoading={overviewSignalsLoading}
+                overviewSignalsError={overviewSignalsError}
+                weather={weather}
+                weatherLoading={isWeatherLoading}
+                producePrices={producePrices}
+                produceLoading={isProducePricesLoading}
+                actionsNow={aiDisplay?.actions_now ?? []}
+                actionsToday={aiDisplay?.actions_today ?? []}
+                actionsWeek={aiDisplay?.actions_week ?? []}
+                monitor={aiDisplay?.monitor ?? []}
+                rtrProfile={selectedRtrProfile}
+                activeTabId={activePanelId}
+                onOpenRtr={() => navigate('/control#control-strategy')}
+                onOpenAdvisor={() => handleOpenAdvisorTabs('environment')}
+                onOpenAssistant={handleChatToggle}
+              />
+            </Suspense>
           )}
         />
         <Route
           path="/control"
           element={(
-            <ControlRoutePage
-              locale={locale}
-              crop={selectedCrop}
-              controls={controls}
-              onToggle={toggleControl}
-              onSettingsChange={setTempSettings}
-              alertItems={alertItems}
-              fallbackAlertBody={heroCopy.telemetryLive}
-              history={deferredHistory}
-              currentData={currentData}
-              modelMetrics={modelMetrics}
-              weather={weather}
-              weatherLoading={isWeatherLoading}
-              weatherError={weatherError}
-              producePrices={producePrices}
-              produceLoading={isProducePricesLoading}
-              temperatureSettings={controls.settings}
-              profile={selectedRtrProfile}
-              profileLoading={isRtrProfileLoading}
-              profileError={rtrProfileError}
-              optimizerEnabled={optimizerEnabled}
-              defaultMode={selectedRtrProfile?.optimizer?.default_mode}
-              onRefreshProfiles={refreshRtrProfiles}
-              tabs={controlSection.tabs}
-              activeTabId={activePanelId}
-              onSelectTab={handleSectionTabSelect}
-            />
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <ControlRoutePage
+                locale={locale}
+                crop={selectedCrop}
+                controls={controls}
+                onToggle={toggleControl}
+                onSettingsChange={setTempSettings}
+                alertItems={alertItems}
+                fallbackAlertBody={heroCopy.telemetryLive}
+                history={deferredHistory}
+                currentData={currentData}
+                weather={weather}
+                weatherLoading={isWeatherLoading}
+                weatherError={weatherError}
+                temperatureSettings={controls.settings}
+                profile={selectedRtrProfile}
+                profileLoading={isRtrProfileLoading}
+                profileError={rtrProfileError}
+                optimizerEnabled={optimizerEnabled}
+                defaultMode={selectedRtrProfile?.optimizer?.default_mode}
+                onRefreshProfiles={refreshRtrProfiles}
+                optimizerState={rtrOptimizerState}
+                uiState={rtrOptimizerUiState}
+              />
+            </Suspense>
           )}
         />
         <Route path="/rtr" element={<Navigate to={{ pathname: '/control', hash: '#control-strategy' }} replace />} />
-        <Route path="/crop-work" element={cropWorkPage} />
-        <Route path="/resources" element={resourcesPage} />
-        <Route path="/alerts" element={alertsPage} />
-        <Route path="/assistant" element={assistantPage} />
-        <Route path="/settings" element={settingsPage} />
+        <Route path="/trend" element={<Suspense fallback={<RouteLoadingFallback />}>{trendPage}</Suspense>} />
+        <Route path="/crop-work" element={<Suspense fallback={<RouteLoadingFallback />}>{cropWorkPage}</Suspense>} />
+        <Route path="/resources" element={<Suspense fallback={<RouteLoadingFallback />}>{resourcesPage}</Suspense>} />
+        <Route path="/alerts" element={<Suspense fallback={<RouteLoadingFallback />}>{alertsPage}</Suspense>} />
+        <Route path="/assistant" element={<Suspense fallback={<RouteLoadingFallback />}>{assistantPage}</Suspense>} />
+        <Route path="/settings" element={<Suspense fallback={<RouteLoadingFallback />}>{settingsPage}</Suspense>} />
         <Route path="/overview/legacy" element={<Navigate to="/overview" replace />} />
         <Route path="/control/legacy" element={<Navigate to="/control" replace />} />
+        <Route path="/trend/legacy" element={<Navigate to="/trend" replace />} />
         <Route path="/resources/legacy" element={<Navigate to="/resources" replace />} />
         <Route path="/alerts/legacy" element={<Navigate to="/alerts" replace />} />
         <Route path="/growth" element={<Navigate to={{ pathname: '/crop-work', hash: '#crop-work-growth' }} replace />} />
@@ -1196,18 +1355,11 @@ function App() {
         locale={locale}
         crop={selectedCrop}
         cropLabel={selectedCropLabel}
-        panelTabs={assistantSection.tabs}
-        activePanel={assistantDrawerPanel}
-        summary={smartGrowSummary}
-        actionsNow={aiDisplay?.actions_now ?? []}
-        actionsToday={aiDisplay?.actions_today ?? []}
-        note={heroCopy.knowledgePrompt}
-        signals={[
-          { label: locale === 'ko' ? '센서 상태' : 'Telemetry', value: telemetryDetail ?? kpiStatusSummary },
-          { label: locale === 'ko' ? '시장 신호' : 'Market', value: priceSignal },
-          { label: locale === 'ko' ? '외기 흐름' : 'Weather', value: weatherSignal },
-        ]}
-        searchRequest={assistantSearchRequest}
+      panelTabs={assistantSection.tabs}
+      activePanel={assistantDrawerPanel}
+      summary={smartGrowSummary}
+      searchRequest={assistantSearchRequest}
+      chatRequest={assistantChatRequest}
         currentData={currentData}
         metrics={deferredModelMetrics}
         forecast={deferredForecast}

@@ -1,9 +1,9 @@
 # Current Loop
 
 ## Active State
-- `main` is now the truthful post-issue84 merged baseline.
-- Issue `#84` is closed and PR `#85` is merged.
-- Issue `#88` exists only as the blueprint/backlog sync record; it is not a new product implementation lane.
+- Issue `#92` is the active product lane on branch `fix/92-overview`.
+- The branch is in local `Validating` state with a green Python and frontend ladder.
+- The remaining workflow step is commit/push/PR hygiene, not further scope expansion.
 
 ## Latest Delivered Baseline
 - `main` retains the merged issue `#65` routed coral shell baseline:
@@ -33,7 +33,23 @@
   - `artifacts/screenshots/issue84-control-live-no-fallback-final.png`
   - `artifacts/screenshots/issue84-control-early-hydration.png`
 
+## Issue #92 Slice
+- The current issue #92 worktree includes the overview/control restoration and shell cleanup slice:
+  - overview now carries real-data signal history from `/api/overview/signals`, combining 3-day external irradiance and source-sink balance into a dual-axis trend card
+  - RTR runtime snapshots are persisted from the backend simulation loop so the overview trend reflects actual model history instead of frontend fallback math
+  - the routed shell and top bar were reworked around the grower-facing `PhytoSync` header/search flow, section routing, alert/settings actions, and assistant drawer entry points
+  - control/overview/Crop-work/resources/alerts route pages were tightened, legacy dead surfaces were removed, and lazy loading/vendor splitting reduced the main frontend bundle pressure
+  - RTR optimizer draft/committed state now survives section transitions, crop switches, and refreshes through App-owned crop-scoped UI state plus `localStorage`
+  - produce price, search, RAG, and Korean copy follow-ups were integrated into the same issue #92 slice, along with the cucumber photo collage fill on overview
+
+## Latest Validation For Issue #92
+- `poetry run ruff check .`
+- `poetry run pytest`
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend run test`
+- `npm --prefix frontend run build`
+
 ## Exact Next Step
-1. Keep issue `#88` bounded to blueprint/backlog sync and do not reopen issue `#84`.
-2. The only open known product backlog is issue `#3`, and it stays blocked until real grower-approved tomato/cucumber windows are supplied.
-3. Any unrelated follow-up work still starts from a fresh issue/branch on top of `main`.
+1. Commit the validated issue `#92` slice on `fix/92-overview`.
+2. Push the branch and create the PR that includes `Closes #92`.
+3. Keep any new scope outside issue `#92` off this branch; start a fresh issue/branch from `main` for follow-up work.

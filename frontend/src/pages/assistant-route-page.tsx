@@ -26,12 +26,9 @@ interface AssistantRoutePageProps {
   panelTabs: PhytoSectionTab[];
   onSelectPanel: (panelId: string) => void;
   summary: SmartGrowKnowledgeSummary | null;
-  actionsNow: string[];
-  actionsToday: string[];
-  note: string;
-  signals: Array<{ label: string; value: string }>;
   activePanel?: 'assistant-chat' | 'assistant-search' | 'assistant-history';
   searchRequest?: RagAssistantOpenRequest | null;
+  chatRequest?: { query: string; nonce: number } | null;
   currentData: SensorData;
   metrics: AdvancedModelMetrics;
   forecast?: ForecastData | null;
@@ -52,12 +49,9 @@ export default function AssistantRoutePage({
   panelTabs,
   onSelectPanel,
   summary,
-  actionsNow,
-  actionsToday,
-  note,
-  signals,
   activePanel = 'assistant-chat',
   searchRequest = null,
+  chatRequest = null,
   currentData,
   metrics,
   forecast = null,
@@ -85,12 +79,9 @@ export default function AssistantRoutePage({
             crop={crop}
             cropLabel={cropLabel}
             summary={summary}
-            actionsNow={actionsNow}
-            actionsToday={actionsToday}
-            note={note}
-            signals={signals}
             activePanel={activePanel}
             searchRequest={searchRequest}
+            chatRequest={chatRequest}
             currentData={currentData}
             metrics={metrics}
             forecast={forecast}

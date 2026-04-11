@@ -113,7 +113,7 @@ def evaluate_rtr_candidate(
     node_summary = build_node_target_summary(
         optimization_inputs=optimization_inputs,
         raw_adapter_state=context.adapter.dump_state(),
-        current_mean_air_temp_c=float(env["T_air_C"]),
+        current_mean_air_temp_c=float(growth.get("development_reference_temp_C", env["T_air_C"])),
         candidate_mean_air_temp_c=mean_air_temp_c,
     )
     observed_rate_day = float(node_summary["observed_rate_day"])

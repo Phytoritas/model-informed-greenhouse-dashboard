@@ -34,6 +34,81 @@ interface RtrCustomScenarioDraft {
 }
 
 const DEFAULT_MODE: RtrOptimizationMode = 'balanced';
+const RTR_OPTIMIZER_STORAGE_KEY = 'smartgrow-rtr-optimizer-state-v1';
+
+type PersistedRtrOptimizerCropState = {
+    targetNodeDevelopmentPerDay: number | null;
+    optimizationMode: RtrOptimizationMode;
+    customScenario: RtrCustomScenarioDraft | null;
+    includeEnergyCost: boolean;
+    includeCoolingCost: boolean;
+    includeLaborCost: boolean;
+    hasManualTarget: boolean;
+    hasManualMode: boolean;
+};
+
+type PersistedRtrOptimizerStateByCrop = Partial<Record<CropType, PersistedRtrOptimizerCropState>>;
+
+function createDefaultPersistedCropState(defaultMode: RtrOptimizationMode): PersistedRtrOptimizerCropState {
+    return {
+        targetNodeDevelopmentPerDay: null,
+        optimizationMode: defaultMode,
+        customScenario: null,
+        includeEnergyCost: true,
+        includeCoolingCost: true,
+        includeLaborCost: true,
+        hasManualTarget: false,
+        hasManualMode: false,
+    };
+}
+
+function isFiniteOrNull(value: unknown): value is number | null {
+    return value === null || (typeof value === 'number' && Number.isFinite(value));
+}
+
+function isPersistedCropState(
+    value: unknown,
+): value is PersistedRtrOptimizerCropState {
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
+    const candidate = value as Partial<PersistedRtrOptimizerCropState>;
+    return (
+        isFiniteOrNull(candidate.targetNodeDevelopmentPerDay)
+        && typeof candidate.optimizationMode === 'string'
+        && typeof candidate.includeEnergyCost === 'boolean'
+        && typeof candidate.includeCoolingCost === 'boolean'
+        && typeof candidate.includeLaborCost === 'boolean'
+        && typeof candidate.hasManualTarget === 'boolean'
+        && typeof candidate.hasManualMode === 'boolean'
+        && (candidate.customScenario === null || typeof candidate.customScenario === 'object')
+        && candidate.optimizationMode.length > 0
+    );
+}
+
+function resolvePersistedCropState(
+    crop: CropType,
+    defaultMode: RtrOptimizationMode,
+): PersistedRtrOptimizerCropState {
+    const fallback = createDefaultPersistedCropState(defaultMode);
+    if (typeof window === 'undefined') {
+        return fallback;
+    }
+
+    try {
+        const raw = window.localStorage.getItem(RTR_OPTIMIZER_STORAGE_KEY);
+        if (!raw) {
+            return fallback;
+        }
+        const parsed = JSON.parse(raw) as PersistedRtrOptimizerStateByCrop;
+        const candidate = parsed[crop];
+        return isPersistedCropState(candidate)
+            ? { ...fallback, ...candidate }
+            : fallback;
+    } catch {
+        return fallback;
+    }
+}
 
 async function readJson<T>(response: Response): Promise<T> {
     const data = await response.json();
@@ -53,26 +128,42 @@ export const useRtrOptimizer = ({
     defaultMode = DEFAULT_MODE,
     telemetryStatus = 'live',
 }: UseRtrOptimizerOptions) => {
+    const persistedStateRef = useRef<PersistedRtrOptimizerCropState>(
+        resolvePersistedCropState(crop, defaultMode),
+    );
     const [stateResponse, setStateResponse] = useState<RtrStateResponse | null>(null);
     const [optimizeResponse, setOptimizeResponse] = useState<RtrOptimizeResponse | null>(null);
     const [scenarioResponse, setScenarioResponse] = useState<RtrScenarioResponse | null>(null);
     const [sensitivityResponse, setSensitivityResponse] = useState<RtrSensitivityResponse | null>(null);
-    const [targetNodeDevelopmentPerDay, setTargetNodeDevelopmentPerDay] = useState<number | null>(null);
-    const [optimizationModeState, setOptimizationModeState] = useState<RtrOptimizationMode>(defaultMode);
-    const [customScenario, setCustomScenario] = useState<RtrCustomScenarioDraft | null>(null);
-    const [includeEnergyCost, setIncludeEnergyCost] = useState(true);
-    const [includeCoolingCost, setIncludeCoolingCost] = useState(true);
-    const [includeLaborCost, setIncludeLaborCost] = useState(true);
+    const [targetNodeDevelopmentPerDay, setTargetNodeDevelopmentPerDay] = useState<number | null>(
+        () => persistedStateRef.current.targetNodeDevelopmentPerDay,
+    );
+    const [optimizationModeState, setOptimizationModeState] = useState<RtrOptimizationMode>(
+        () => persistedStateRef.current.optimizationMode,
+    );
+    const [customScenario, setCustomScenario] = useState<RtrCustomScenarioDraft | null>(
+        () => persistedStateRef.current.customScenario,
+    );
+    const [includeEnergyCost, setIncludeEnergyCost] = useState(
+        () => persistedStateRef.current.includeEnergyCost,
+    );
+    const [includeCoolingCost, setIncludeCoolingCost] = useState(
+        () => persistedStateRef.current.includeCoolingCost,
+    );
+    const [includeLaborCost, setIncludeLaborCost] = useState(
+        () => persistedStateRef.current.includeLaborCost,
+    );
     const [loadingState, setLoadingState] = useState(true);
     const [loadingOptimize, setLoadingOptimize] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const stateRequestIdRef = useRef(0);
     const optimizeRequestIdRef = useRef(0);
     const defaultModeRef = useRef(defaultMode);
-    const hasManualTargetRef = useRef(false);
-    const hasManualModeRef = useRef(false);
+    const hasManualTargetRef = useRef(persistedStateRef.current.hasManualTarget);
+    const hasManualModeRef = useRef(persistedStateRef.current.hasManualMode);
     const hasSeenAreaPersistenceRef = useRef(false);
     const lastAreaPersistenceSignatureRef = useRef<string | null>(null);
+    const previousCropRef = useRef(crop);
 
     useEffect(() => {
         defaultModeRef.current = defaultMode;
@@ -84,18 +175,23 @@ export const useRtrOptimizer = ({
     }, [crop, greenhouseId]);
 
     useEffect(() => {
+        if (previousCropRef.current === crop) {
+            return;
+        }
+        previousCropRef.current = crop;
+        const persistedState = resolvePersistedCropState(crop, defaultModeRef.current);
         setStateResponse(null);
         setOptimizeResponse(null);
         setScenarioResponse(null);
         setSensitivityResponse(null);
-        setTargetNodeDevelopmentPerDay(null);
-        hasManualTargetRef.current = false;
-        hasManualModeRef.current = false;
-        setOptimizationModeState(defaultModeRef.current);
-        setCustomScenario(null);
-        setIncludeEnergyCost(true);
-        setIncludeCoolingCost(true);
-        setIncludeLaborCost(true);
+        setTargetNodeDevelopmentPerDay(persistedState.targetNodeDevelopmentPerDay);
+        hasManualTargetRef.current = persistedState.hasManualTarget;
+        hasManualModeRef.current = persistedState.hasManualMode;
+        setOptimizationModeState(persistedState.optimizationMode);
+        setCustomScenario(persistedState.customScenario);
+        setIncludeEnergyCost(persistedState.includeEnergyCost);
+        setIncludeCoolingCost(persistedState.includeCoolingCost);
+        setIncludeLaborCost(persistedState.includeLaborCost);
         setLoadingState(true);
         setError(null);
     }, [crop]);
@@ -353,6 +449,38 @@ export const useRtrOptimizer = ({
         hasManualModeRef.current = true;
         setOptimizationModeState(mode);
     }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        try {
+            const raw = window.localStorage.getItem(RTR_OPTIMIZER_STORAGE_KEY);
+            const parsed = raw ? JSON.parse(raw) as PersistedRtrOptimizerStateByCrop : {};
+            parsed[crop] = {
+                targetNodeDevelopmentPerDay: hasManualTargetRef.current ? targetNodeDevelopmentPerDay : null,
+                optimizationMode: optimizationModeState,
+                customScenario,
+                includeEnergyCost,
+                includeCoolingCost,
+                includeLaborCost,
+                hasManualTarget: hasManualTargetRef.current,
+                hasManualMode: hasManualModeRef.current,
+            };
+            window.localStorage.setItem(RTR_OPTIMIZER_STORAGE_KEY, JSON.stringify(parsed));
+        } catch {
+            // Ignore storage failures for local RTR persistence.
+        }
+    }, [
+        crop,
+        customScenario,
+        includeCoolingCost,
+        includeEnergyCost,
+        includeLaborCost,
+        optimizationModeState,
+        targetNodeDevelopmentPerDay,
+    ]);
 
     return {
         stateResponse,

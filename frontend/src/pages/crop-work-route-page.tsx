@@ -20,9 +20,7 @@ interface CropWorkRoutePageProps {
   actionsToday: string[];
   actionsWeek: string[];
   monitor: string[];
-  tabs: Array<{ id: string; label: string }>;
-  activeTabId?: string;
-  onSelectTab: (tabId: string) => void;
+  activePanel?: 'crop-work-growth' | 'crop-work-work' | 'crop-work-harvest';
 }
 
 export default function CropWorkRoutePage({
@@ -36,16 +34,12 @@ export default function CropWorkRoutePage({
   actionsToday,
   actionsWeek,
   monitor,
-  tabs,
-  activeTabId,
-  onSelectTab,
+  activePanel = 'crop-work-growth',
 }: CropWorkRoutePageProps) {
   return (
     <CropWorkPage
       locale={locale}
-      tabs={tabs}
-      activeTabId={activeTabId}
-      onSelectTab={onSelectTab}
+      activeTabId={activePanel}
       cropSummary={<CropDetails crop={crop} currentData={currentData} metrics={modelMetrics} />}
       workBoard={(
         <TodayBoard

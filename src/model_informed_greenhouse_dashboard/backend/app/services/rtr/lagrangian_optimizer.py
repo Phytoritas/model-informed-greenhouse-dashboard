@@ -112,6 +112,8 @@ def _coordination_grid(
 def _prefer_minimum_sufficient(
     trial_eval: Mapping[str, Any],
     best_eval: Mapping[str, Any],
+    *,
+    baseline_mean_temp_c: float,
 ) -> bool:
     trial_objective = float(trial_eval["objective_value"])
     best_objective = float(best_eval["objective_value"])
@@ -120,7 +122,9 @@ def _prefer_minimum_sufficient(
 
     trial_mean = float(trial_eval["controls"]["mean_temp_C"])
     best_mean = float(best_eval["controls"]["mean_temp_C"])
-    if trial_mean >= best_mean - 0.15:
+    trial_deviation = abs(trial_mean - baseline_mean_temp_c)
+    best_deviation = abs(best_mean - baseline_mean_temp_c)
+    if trial_deviation >= best_deviation - 0.05:
         return False
 
     trial_breakdown = trial_eval["objective_breakdown"]
@@ -146,6 +150,7 @@ def _minimum_sufficient_refinement(
     optimization_inputs: RTROptimizationInputs,
     weights: Mapping[str, float],
     thermal_bounds: list[tuple[float, float]],
+    baseline_mean_temp_c: float,
 ) -> tuple[RtrControlCandidate, dict[str, Any]]:
     best_candidate = base_candidate
     refined_eval = best_eval
@@ -182,7 +187,11 @@ def _minimum_sufficient_refinement(
             optimization_inputs=optimization_inputs,
             weights=weights,
         )
-        if _prefer_minimum_sufficient(trial_eval, refined_eval):
+        if _prefer_minimum_sufficient(
+            trial_eval,
+            refined_eval,
+            baseline_mean_temp_c=baseline_mean_temp_c,
+        ):
             best_candidate = trial_candidate
             refined_eval = trial_eval
 
@@ -252,6 +261,13 @@ def optimize_rtr_targets(
         baseline_candidate.day_cooling_target_C,
         baseline_candidate.night_cooling_target_C,
     ]
+    baseline_mean_temp_c = float(
+        (
+            (baseline_candidate.day_heating_min_temp_C * 14.0)
+            + (baseline_candidate.night_heating_min_temp_C * 10.0)
+        )
+        / 24.0
+    )
 
     def _feasibility_objective(vector):
         candidate = _evaluate_control_candidate(
@@ -265,7 +281,8 @@ def optimize_rtr_targets(
             weights=feasible_weights,
         )
         feasibility = candidate["feasibility"]
-        objective = float(candidate["controls"]["mean_temp_C"])
+        candidate_mean_temp_c = float(candidate["controls"]["mean_temp_C"])
+        objective = abs(candidate_mean_temp_c - baseline_mean_temp_c)
         if not feasibility["target_node_hit"]:
             objective += 250.0 * float(candidate["objective_breakdown"]["node_target_penalty"])
         if not feasibility["carbon_margin_positive"]:
@@ -294,7 +311,9 @@ def optimize_rtr_targets(
             optimization_inputs=optimization_inputs,
             weights=final_weights,
         )
-        return float(candidate["objective_value"])
+        candidate_mean_temp_c = float(candidate["controls"]["mean_temp_C"])
+        baseline_tie_break = 0.01 * abs(candidate_mean_temp_c - baseline_mean_temp_c)
+        return float(candidate["objective_value"]) + baseline_tie_break
 
     stage2 = bounded_coordinate_minimize(
         _final_objective,
@@ -320,6 +339,7 @@ def optimize_rtr_targets(
         optimization_inputs=optimization_inputs,
         weights=final_weights,
         thermal_bounds=bounds,
+        baseline_mean_temp_c=baseline_mean_temp_c,
     )
     best_candidate["baseline_targets"] = {
         "day_min_temp_C": round(baseline_candidate.day_heating_min_temp_C, 6),

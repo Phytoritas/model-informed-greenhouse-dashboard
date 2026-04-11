@@ -342,6 +342,38 @@ class ModelStateStore:
 
         return self.load_snapshot(str(row["snapshot_id"]))
 
+    def list_snapshots_since(
+        self,
+        greenhouse_id: str,
+        crop: str,
+        *,
+        since: datetime,
+        limit: int = 500,
+    ) -> list[dict[str, Any]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT snapshot_id
+                FROM crop_model_snapshots
+                WHERE greenhouse_id = ? AND crop = ? AND snapshot_time >= ?
+                ORDER BY snapshot_time ASC, created_at ASC
+                LIMIT ?
+                """,
+                (
+                    greenhouse_id,
+                    crop,
+                    since.isoformat(),
+                    max(1, int(limit)),
+                ),
+            ).fetchall()
+
+        records: list[dict[str, Any]] = []
+        for row in rows:
+            snapshot_record = self.load_snapshot(str(row["snapshot_id"]))
+            if snapshot_record is not None:
+                records.append(snapshot_record)
+        return records
+
     def load_current_state(self, greenhouse_id: str, crop: str) -> dict[str, Any] | None:
         with self._connect() as connection:
             row = connection.execute(

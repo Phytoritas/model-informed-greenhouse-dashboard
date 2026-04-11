@@ -3,7 +3,7 @@
 import copy
 import logging
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
@@ -52,7 +52,7 @@ from .services.rtr_profiles import (
     select_rtr_calibration_days,
     upsert_rtr_good_windows,
 )
-from .services.weather import fetch_daegu_weather_outlook
+from .services.weather import fetch_daegu_shortwave_history, fetch_daegu_weather_outlook
 from .schemas import OpsConfig, CropConfig
 
 class Settings(BaseModel):
@@ -354,6 +354,7 @@ app_state = {
         "crop_config": None,
         "pending_prune_reset": False,
         "rtr_area_settings": {},
+        "last_runtime_snapshot_at": None,
     },
     "cucumber": {
         "simulator": None,
@@ -373,6 +374,7 @@ app_state = {
         "crop_config": None,
         "pending_prune_reset": False,
         "rtr_area_settings": {},
+        "last_runtime_snapshot_at": None,
     },
 }
 
@@ -385,6 +387,7 @@ STEP_FREQUENCIES: Dict[str, Optional[str]] = {
 }
 
 CROPS = ("tomato", "cucumber")
+MODEL_RUNTIME_SNAPSHOT_INTERVAL = timedelta(hours=1)
 
 
 def _default_ops_config() -> Dict[str, float]:
@@ -427,6 +430,42 @@ def _normalize_catalog_crop(crop: Optional[str] = None) -> Optional[str]:
         return None
 
     return _validate_crop(crop)
+
+
+def _should_rebuild_knowledge_catalog(payload: Dict[str, Any]) -> bool:
+    database = payload.get("database") if isinstance(payload, dict) else {}
+    retrieval_surface = payload.get("retrieval_surface") if isinstance(payload, dict) else {}
+    if not isinstance(database, dict):
+        return True
+    if database.get("status") != "ready":
+        return True
+    if int(database.get("document_count") or 0) <= 0:
+        return True
+    if int(database.get("chunk_count") or 0) <= 0:
+        return True
+    if isinstance(retrieval_surface, dict) and retrieval_surface.get("status") == "ready":
+        return False
+    return True
+
+
+def _ensure_knowledge_catalog_ready(
+    crop_scope: Optional[str],
+    *,
+    allow_bootstrap: bool = True,
+) -> tuple[Dict[str, Any], bool]:
+    payload = build_knowledge_catalog(crop_scope)
+    if not allow_bootstrap:
+        return payload, False
+
+    if not _should_rebuild_knowledge_catalog(payload):
+        return payload, False
+
+    logger.info(
+        "Knowledge catalog bootstrap triggered (crop_scope=%s) because retrieval surface was not ready.",
+        crop_scope or "all",
+    )
+    rebuilt_payload = rebuild_knowledge_catalog(crop_scope)
+    return rebuilt_payload, True
 
 
 def _augment_dashboard_with_knowledge_context(
@@ -536,6 +575,66 @@ def _persist_model_snapshot(
         source=source,
         metadata=metadata,
     )
+
+
+def _normalize_snapshot_datetime(value: Any) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if isinstance(value, str) and value:
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    return None
+
+
+def _maybe_persist_runtime_snapshot(
+    crop: str,
+    *,
+    greenhouse_id: Optional[str] = None,
+    source: str = "simulation_stream",
+    snapshot_time: Optional[datetime] = None,
+) -> Dict[str, Any] | None:
+    from .services.model_runtime.model_state_store import ModelStateStore
+
+    crop_state = app_state[crop]
+    adapter = crop_state.get("adapter")
+    if adapter is None:
+        return None
+
+    snapshot_dt = (
+        snapshot_time
+        or getattr(adapter, "_last_datetime", None)
+        or datetime.now(UTC)
+    )
+    snapshot_dt = snapshot_dt if snapshot_dt.tzinfo else snapshot_dt.replace(tzinfo=UTC)
+    last_snapshot_at = crop_state.get("last_runtime_snapshot_at")
+    if (
+        isinstance(last_snapshot_at, datetime)
+        and snapshot_dt >= last_snapshot_at
+        and snapshot_dt - last_snapshot_at < MODEL_RUNTIME_SNAPSHOT_INTERVAL
+    ):
+        return None
+
+    resolved_greenhouse_id = _resolve_greenhouse_id(crop, greenhouse_id)
+    store = ModelStateStore()
+    snapshot_record = _persist_model_snapshot(
+        store=store,
+        crop=crop,
+        greenhouse_id=resolved_greenhouse_id,
+        adapter=adapter,
+        source=source,
+        metadata=_build_live_model_metadata(crop),
+        snapshot_time=snapshot_dt,
+    )
+    store.upsert_current_state(
+        greenhouse_id=resolved_greenhouse_id,
+        crop=crop,
+        latest_snapshot_id=snapshot_record["snapshot_id"],
+    )
+    crop_state["last_runtime_snapshot_at"] = snapshot_dt
+    return snapshot_record
 
 
 def _resolve_runtime_snapshot_record(
@@ -1093,6 +1192,13 @@ def _build_rtr_explanation_payload(
     rtr_equivalent: Dict[str, float],
     crop_specific_insight: Dict[str, Any],
 ) -> Dict[str, Any]:
+    from .services.rtr.node_target_engine import build_development_curve_rows
+
+    crop_name = str(context.canonical_state["crop"]).lower()
+    is_tomato = crop_name == "tomato"
+    development_metric = "truss" if is_tomato else "node"
+    development_scale = 3.0 if is_tomato else 1.0
+
     delta_temp = float(rtr_equivalent["delta_temp_C"])
     reason_tags: list[str] = []
     if delta_temp > 0.05:
@@ -1128,16 +1234,50 @@ def _build_rtr_explanation_payload(
             f"dominant cohort {crop_specific_insight['dominant_cohort_id']}의 sink 부담이 핵심입니다."
         )
 
+    development_label_ko = "화방 진행" if is_tomato else "마디 전개"
     summary = (
-        "목표 마디 전개를 맞추기 위한 최소 충분 온도를 내부 광합성·호흡·에너지 seam으로 다시 계산했습니다."
+        f"목표 {development_label_ko}를 맞추기 위한 최소 적정 온도를 내부 광합성·호흡·에너지 seam으로 다시 계산했습니다."
         if delta_temp >= 0
-        else "현재 source-sink와 비용 조건을 반영하면 baseline보다 더 낮은 충분 온도도 가능합니다."
+        else "현재 source-sink와 비용 조건을 반영하면 평소 설정값보다 더 낮은 적정 온도도 가능합니다."
     )
+
+    baseline_mean_temp_c = float(baseline_candidate["controls"]["mean_temp_C"])
+    optimized_mean_temp_c = float(optimized_candidate["controls"]["mean_temp_C"])
+    raw_adapter_state = context.adapter.dump_state()
+    optimizer_config = context.canonical_state.get("optimizer", {}) or {}
+    default_max_delta = 1.2 if crop_name == "cucumber" else 1.5
+    max_delta_temp_c = float(optimizer_config.get("max_delta_temp_C", default_max_delta))
+    valid_max_temp_c = min(
+        30.0,
+        max(
+            15.0,
+            baseline_mean_temp_c + max_delta_temp_c,
+            optimized_mean_temp_c + 0.3,
+        ),
+    )
+    if is_tomato and bool(raw_adapter_state.get("fr_clamp_to_valid", False)):
+        fr_max_valid = raw_adapter_state.get("fr_T_max_valid")
+        try:
+            valid_max_temp_c = min(valid_max_temp_c, float(fr_max_valid))
+        except (TypeError, ValueError):
+            pass
+
+    temperature_development_rows = build_development_curve_rows(
+        crop=crop_name,
+        raw_adapter_state=raw_adapter_state,
+        min_temp_c=15.0,
+        max_temp_c=valid_max_temp_c,
+        step_c=0.5,
+        development_scale=development_scale,
+    )
+
     return {
         "summary": summary,
         "target_node_development_per_day": float(optimization_inputs.target_node_development_per_day),
-        "baseline_mean_temp_C": float(baseline_candidate["controls"]["mean_temp_C"]),
-        "optimized_mean_temp_C": float(optimized_candidate["controls"]["mean_temp_C"]),
+        "baseline_mean_temp_C": baseline_mean_temp_c,
+        "optimized_mean_temp_C": optimized_mean_temp_c,
+        "development_metric": development_metric,
+        "temperature_development_rows": temperature_development_rows,
         "reason_tags": reason_tags,
         "crop_summary": crop_summary,
         "missing_work_event_warning": (
@@ -1414,6 +1554,7 @@ async def start_simulation(req: StartRequest):
 
     crop_state["df_env"] = df_env
     crop_state["time_step"] = req.time_step
+    crop_state["last_runtime_snapshot_at"] = None
 
     # Calculate timestep duration from data
     if len(df_env) > 1:
@@ -1584,6 +1725,14 @@ async def step_simulation(crop: str = "tomato"):
         except Exception as e:
             logger.error(f"Failed to compute recommendations: {e}")
 
+    _maybe_persist_runtime_snapshot(
+        crop,
+        source="simulation_step",
+        snapshot_time=_normalize_snapshot_datetime(
+            payload.get("state", {}).get("datetime") or payload.get("t")
+        ),
+    )
+
     await manager.broadcast(f"/ws/sim/{crop}", payload)
 
     # Advance index
@@ -1662,6 +1811,14 @@ async def _run_simulation_task(crop: str):
                     payload["recommendations"] = recs
                 except Exception as e:
                     logger.error(f"Failed to compute {crop} recommendations: {e}")
+
+            _maybe_persist_runtime_snapshot(
+                crop,
+                source="simulation_run",
+                snapshot_time=_normalize_snapshot_datetime(
+                    payload.get("state", {}).get("datetime") or payload.get("t")
+                ),
+            )
 
             # Broadcast full payload (already includes /tomato or /cucumber path)
             await manager.broadcast(f"/ws/sim/{crop}", payload)
@@ -1903,11 +2060,18 @@ async def submit_feedback(feedback: Feedback):
 
 
 @app.get("/api/knowledge/status")
-async def get_knowledge_status(crop: Optional[str] = None):
+async def get_knowledge_status(
+    crop: Optional[str] = None,
+    bootstrap: bool = False,
+):
     """Return the phase-1 SmartGrow corpus catalog."""
     try:
         crop_scope = _normalize_catalog_crop(crop)
-        return {"status": "success", **build_knowledge_catalog(crop_scope)}
+        payload, bootstrapped = _ensure_knowledge_catalog_ready(
+            crop_scope,
+            allow_bootstrap=bootstrap,
+        )
+        return {"status": "success", "catalog_bootstrapped": bootstrapped, **payload}
     except Exception as exc:
         logger.error("Knowledge status failed: %s", exc, exc_info=True)
         raise HTTPException(
@@ -1935,8 +2099,10 @@ async def query_knowledge(req: KnowledgeQueryRequest):
     """Query persisted SmartGrow knowledge chunks from the SQLite knowledge DB."""
     try:
         crop_scope = _normalize_catalog_crop(req.crop)
+        _, bootstrapped = _ensure_knowledge_catalog_ready(crop_scope)
         return {
             "status": "success",
+            "catalog_bootstrapped": bootstrapped,
             **query_knowledge_database(
                 crop=crop_scope,
                 query=req.query,
@@ -2520,9 +2686,78 @@ async def get_daegu_weather():
         ) from exc
 
 
+@app.get("/api/overview/signals")
+async def get_overview_signal_trends(
+    crop: str,
+    greenhouse_id: Optional[str] = None,
+    window_hours: int = 72,
+):
+    """Return actual outside irradiance and model source-sink trend points."""
+    from .services.model_runtime.model_state_store import ModelStateStore
+    from .services.model_runtime.scenario_runner import extract_runtime_inputs
+
+    normalized_crop = _validate_crop(crop)
+    resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, greenhouse_id)
+    resolved_window_hours = max(24, min(int(window_hours), 168))
+
+    try:
+        irradiance_history = await fetch_daegu_shortwave_history(hours=resolved_window_hours)
+    except httpx.HTTPError as exc:
+        logger.warning("Overview irradiance history fetch failed: %s", exc)
+        raise HTTPException(
+            status_code=502,
+            detail="실제 외기 일사량을 불러오지 못했습니다.",
+        ) from exc
+
+    _maybe_persist_runtime_snapshot(
+        normalized_crop,
+        greenhouse_id=resolved_greenhouse_id,
+        source="overview_signals",
+    )
+
+    store = ModelStateStore()
+    snapshot_records = store.list_snapshots_since(
+        resolved_greenhouse_id,
+        normalized_crop,
+        since=datetime.now(UTC) - timedelta(hours=resolved_window_hours),
+        limit=max(96, resolved_window_hours * 4),
+    )
+
+    source_sink_points = []
+    for snapshot_record in snapshot_records:
+        snapshot_dt = _normalize_snapshot_datetime(snapshot_record.get("snapshot_time"))
+        if snapshot_dt is None:
+            continue
+        runtime_inputs = extract_runtime_inputs(snapshot_record)
+        source_sink_points.append(
+            {
+                "time": snapshot_dt.isoformat(),
+                "source_sink_balance": round(float(runtime_inputs.source_sink_balance), 6),
+                "source_capacity": round(float(runtime_inputs.source_capacity), 6),
+                "sink_demand": round(float(runtime_inputs.sink_demand), 6),
+            }
+        )
+
+    return {
+        "status": "success",
+        "crop": normalized_crop,
+        "greenhouse_id": resolved_greenhouse_id,
+        "window_hours": resolved_window_hours,
+        "irradiance": irradiance_history,
+        "source_sink": {
+            "source": {
+                "provider": "Model runtime snapshots",
+            },
+            "unit": "index",
+            "status": "ready" if source_sink_points else "model_history_unavailable",
+            "points": source_sink_points,
+        },
+    }
+
+
 @app.get("/api/market/produce")
 async def get_featured_produce_market_prices():
-    """Return curated KAMIS retail/wholesale produce snapshots plus retail trends."""
+    """Return curated KAMIS retail/wholesale produce snapshots plus trend overlays."""
     try:
         payload = await fetch_featured_produce_prices()
         return {"status": "success", **payload}
