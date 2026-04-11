@@ -2,19 +2,19 @@
 
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
-- topic: `issue-92-overview`
-- sessionId: `model-informed-greenhouse-dashboard#fix-92-overview:validating`
-- caseId: `case/model-informed-greenhouse-dashboard/fix-92-overview/issue-92`
-- issue: `#92`
-- branch: `fix/92-overview`
+- topic: `issue-94-runtime-dashboard-followup`
+- sessionId: `model-informed-greenhouse-dashboard#fix-94-runtime-dashboard-followup:validating`
+- caseId: `case/model-informed-greenhouse-dashboard/fix-94-runtime-dashboard-followup/issue-94`
+- issue: `#94`
+- branch: `fix/94-finalize-post-issue92-dashboard-polish-and-precision-runtime-recommendations`
 
 ## Current State
-- current_stage: `issue92-validating`
-- implementation_gate: `issue92-validating`
+- current_stage: `issue94-validating`
+- implementation_gate: `issue94-validating`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `issue92 overview restoration -> real overview signal history -> routed shell/topbar/search cleanup -> control/overview lane polish -> RTR state persistence hardening`
-- latest_validation: `local ladder is green on fix/92-overview with ruff, pytest, frontend lint, frontend vitest, and frontend build`
-- local_worktree_followup: `the branch is already issue-linked; the remaining step is GitHub workflow completion (commit/push/PR) without widening scope`
+- latest_route_slice: `frontend dashboard follow-up polish -> precision ladder model-runtime recommendations -> issue-linked GitHub workflow restoration`
+- latest_validation: `local ladder is green on fix/94 with ruff, pytest, frontend lint, frontend vitest, and frontend build`
+- local_worktree_followup: `PR #95 is open and the local worktree is clean; the remaining step is remote validation and merge completion`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -25,15 +25,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#fix-92-overview:validating")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#fix-94-runtime-dashboard-followup:validating")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "issue-92-overview", "fix/92-overview", "validating"],
-    topic="issue-92-overview",
+    keywords=["model-informed-greenhouse-dashboard", "issue-94-runtime-dashboard-followup", "fix/94", "validating"],
+    topic="issue-94-runtime-dashboard-followup",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#fix-92-overview:validating",
+    sessionId="model-informed-greenhouse-dashboard#fix-94-runtime-dashboard-followup:validating",
     caseMode=True,
     depth="standard",
-    contextText="resume the validated issue #92 overview/control recovery branch and complete GitHub workflow hygiene"
+    contextText="resume issue #94 validating work, verify PR #95, and finish the merge-to-main workflow"
 )
 ```
 
@@ -41,7 +41,6 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Commit the validated issue `#92` slice on `fix/92-overview`.
-- Push the branch and create the PR that includes `Closes #92`.
-- Keep the project item in `Validating` until the remote review/merge step finishes.
-- Do not broaden this branch beyond issue `#92`; open a fresh issue/branch from `main` for any new follow-up.
+- Watch PR `#95` until the remote validation checks pass.
+- Merge PR `#95`, then fast-forward local `main`.
+- Keep new follow-up scope off issue `#94`; start a fresh issue/branch from `main` if more product work appears.
