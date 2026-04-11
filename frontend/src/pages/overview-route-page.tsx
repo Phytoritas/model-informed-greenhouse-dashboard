@@ -38,6 +38,8 @@ interface OverviewRoutePageProps {
   heroImportantIssue: string | null;
   heroActions: string[];
   confidence: number | null | undefined;
+  advisorUpdatedAt?: number | null;
+  advisorRefreshing?: boolean;
   modelRuntimeSummary?: string | null;
   sourceSinkBalance?: number | null;
   canopyAssimilation?: number | null;
@@ -82,6 +84,8 @@ export default function OverviewRoutePage({
   heroImportantIssue,
   heroActions,
   confidence,
+  advisorUpdatedAt = null,
+  advisorRefreshing = false,
   modelRuntimeSummary = null,
   sourceSinkBalance = null,
   canopyAssimilation = null,
@@ -131,6 +135,8 @@ export default function OverviewRoutePage({
           importantIssue={heroImportantIssue}
           actions={heroActions}
           confidence={confidence}
+          advisorUpdatedAt={advisorUpdatedAt}
+          advisorRefreshing={advisorRefreshing}
           telemetryStatus={telemetryStatus}
           telemetryDetail={telemetryDetail}
           modelRuntimeSummary={modelRuntimeSummary}
@@ -201,6 +207,8 @@ export default function OverviewRoutePage({
           actionsToday={actionsToday}
           actionsWeek={actionsWeek}
           monitor={monitor}
+          advisorUpdatedAt={advisorUpdatedAt}
+          advisorRefreshing={advisorRefreshing}
         />
       )}
     />

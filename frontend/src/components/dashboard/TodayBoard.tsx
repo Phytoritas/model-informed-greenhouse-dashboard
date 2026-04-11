@@ -2,12 +2,15 @@ import type { CSSProperties } from 'react';
 import { Activity, CalendarDays, Radar, TimerReset } from 'lucide-react';
 import DashboardCard from '../common/DashboardCard';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { formatLocaleDateTime } from '../../i18n/locale';
 
 interface TodayBoardProps {
     actionsNow: string[];
     actionsToday: string[];
     actionsWeek: string[];
     monitor: string[];
+    advisorUpdatedAt?: number | null;
+    advisorRefreshing?: boolean;
     compact?: boolean;
 }
 
@@ -79,6 +82,8 @@ export default function TodayBoard({
     actionsToday,
     actionsWeek,
     monitor,
+    advisorUpdatedAt = null,
+    advisorRefreshing = false,
     compact = false,
 }: TodayBoardProps) {
     const { locale } = useLocale();
@@ -88,6 +93,8 @@ export default function TodayBoard({
             title: '지금 · 오늘 · 이번주 운영 보드',
             description: '지금 할 일과 지켜볼 항목만 짧게 묶었습니다.',
             leadLabel: '오늘 운영 방향',
+            refreshing: '분석 갱신 중',
+            updated: '분석',
             leadFallback: '기존 환경 설정을 유지하며 작물 상태를 지켜보시길 권장합니다.',
             leadSupport: '즉시 조치, 오늘 조정, 주간 검토, 추가 확인을 한 번에 봅니다.',
             now: '지금',
@@ -104,6 +111,8 @@ export default function TodayBoard({
             title: 'Now · Today · This week',
             description: 'Keep the action queue short and readable.',
             leadLabel: 'Operating direction',
+            refreshing: 'Refreshing',
+            updated: 'Updated',
             leadFallback: 'Holding the current rhythm matters more than forcing a large change.',
             leadSupport: 'Read immediate work, today steering, weekly review, and watch items together.',
             now: 'Now',
@@ -117,6 +126,16 @@ export default function TodayBoard({
         };
 
     const leadMessage = actionsNow[0] ?? actionsToday[0] ?? actionsWeek[0] ?? monitor[0] ?? copy.leadFallback;
+    const advisorFreshnessLabel = advisorRefreshing
+        ? copy.refreshing
+        : advisorUpdatedAt
+            ? `${copy.updated} ${formatLocaleDateTime(locale, advisorUpdatedAt, {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            })}`
+            : null;
     const countTiles = [
         { key: 'now', label: copy.now, value: actionsNow.length, tone: 'sg-tint-green' },
         { key: 'today', label: copy.today, value: actionsToday.length, tone: 'sg-tint-amber' },
@@ -134,8 +153,15 @@ export default function TodayBoard({
         >
             <div className={`grid gap-4 ${compact ? 'xl:grid-cols-1' : 'xl:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]'}`}>
                 <div className="rounded-[26px] bg-[linear-gradient(135deg,rgba(255,251,246,0.98),rgba(248,231,223,0.9))] px-5 py-5" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-                        {copy.leadLabel}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+                            {copy.leadLabel}
+                        </div>
+                        {advisorFreshnessLabel ? (
+                            <div className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-semibold text-[color:var(--sg-text-faint)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                {advisorFreshnessLabel}
+                            </div>
+                        ) : null}
                     </div>
                     <div className="mt-3 text-[clamp(1.35rem,1.05rem+0.6vw,1.9rem)] font-semibold leading-tight tracking-[-0.05em] text-[color:var(--sg-text-strong)]" style={compact ? clampThreeStyle : clampTwoStyle}>
                         {leadMessage}

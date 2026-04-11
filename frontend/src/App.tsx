@@ -326,6 +326,7 @@ function App() {
     aiAnalysis,
     aiDisplay,
     aiModelRuntime,
+    advisorUpdatedAt,
     analyzeData,
     isAnalyzing,
   } = useAiAssistant();
@@ -1416,6 +1417,8 @@ function App() {
                 heroImportantIssue={heroImportantIssue}
                 heroActions={heroActions}
                 confidence={aiDisplay?.confidence ?? aiModelRuntime?.scenario?.confidence ?? null}
+                advisorUpdatedAt={advisorUpdatedAt}
+                advisorRefreshing={isAnalyzing}
                 modelRuntimeSummary={aiModelRuntime?.summary ?? null}
                 sourceSinkBalance={liveSourceSinkBalance}
                 canopyAssimilation={currentData.photosynthesis}

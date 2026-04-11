@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { ArrowRight, CircleAlert, Sparkles } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
+import { formatLocaleDateTime } from '../../i18n/locale';
 import DashboardCard from '../common/DashboardCard';
 import ConfidenceBadge from '../status/ConfidenceBadge';
 import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
@@ -12,6 +13,8 @@ interface HeroControlCardProps {
     importantIssue: string | null;
     actions: string[];
     confidence: number | null | undefined;
+    advisorUpdatedAt?: number | null;
+    advisorRefreshing?: boolean;
     telemetryStatus: 'loading' | 'live' | 'delayed' | 'stale' | 'offline' | 'blocked' | 'provisional';
     telemetryDetail?: string | null;
     modelRuntimeSummary?: string | null;
@@ -75,6 +78,8 @@ export default function HeroControlCard({
     importantIssue,
     actions,
     confidence,
+    advisorUpdatedAt = null,
+    advisorRefreshing = false,
     telemetryStatus,
     telemetryDetail,
     modelRuntimeSummary,
@@ -94,6 +99,8 @@ export default function HeroControlCard({
             next: '다음 메모',
             openRtr: '온도 전략 보기',
             mode: '추천 설정값 비교',
+            refreshing: '분석 갱신 중',
+            updated: '분석',
             summaryFallback: '오늘은 상태를 크게 바꾸기보다 흐름을 단단히 붙잡는 쪽이 유리합니다.',
             primaryAction: '지금 할 일',
             sourceSink: '소스-싱크 균형 지수',
@@ -110,6 +117,8 @@ export default function HeroControlCard({
             next: 'Next notes',
             openRtr: 'Open control strategy',
             mode: 'Current scenario',
+            refreshing: 'Refreshing',
+            updated: 'Updated',
             summaryFallback: 'Hold the working rhythm before forcing a bigger change.',
             primaryAction: 'Do now',
             sourceSink: 'Carbon margin',
@@ -140,6 +149,16 @@ export default function HeroControlCard({
             description: copy.laiMeaning,
         },
     ];
+    const advisorFreshnessLabel = advisorRefreshing
+        ? copy.refreshing
+        : advisorUpdatedAt
+            ? `${copy.updated} ${formatLocaleDateTime(locale, advisorUpdatedAt, {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+            })}`
+            : null;
 
     return (
         <DashboardCard
@@ -163,8 +182,15 @@ export default function HeroControlCard({
                             <Sparkles className="h-3.5 w-3.5" />
                             <span style={clampOneStyle}>{operatingMode}</span>
                         </div>
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                            {copy.mode}
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
+                                {copy.mode}
+                            </div>
+                            {advisorFreshnessLabel ? (
+                                <div className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-semibold text-[color:var(--sg-text-faint)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                                    {advisorFreshnessLabel}
+                                </div>
+                            ) : null}
                         </div>
                     </div>
 
