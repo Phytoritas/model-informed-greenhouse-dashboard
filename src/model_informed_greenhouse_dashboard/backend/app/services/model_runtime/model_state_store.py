@@ -75,6 +75,14 @@ _SCHEMA_STATEMENTS = [
     ON crop_model_snapshots(greenhouse_id, crop, snapshot_time DESC)
     """,
     """
+    CREATE INDEX IF NOT EXISTS idx_crop_model_snapshots_created_lookup
+    ON crop_model_snapshots(greenhouse_id, crop, created_at DESC, snapshot_time DESC)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_crop_model_snapshots_source_created_lookup
+    ON crop_model_snapshots(greenhouse_id, crop, source, created_at DESC, snapshot_time DESC)
+    """,
+    """
     CREATE INDEX IF NOT EXISTS idx_crop_work_events_lookup
     ON crop_work_events(greenhouse_id, crop, event_time DESC)
     """,
@@ -203,6 +211,8 @@ class ModelStateStore:
         connection = sqlite3.connect(self.db_path)
         connection.row_factory = sqlite3.Row
         try:
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute("PRAGMA busy_timeout = 5000")
             yield connection
             connection.commit()
         finally:
@@ -225,6 +235,22 @@ class ModelStateStore:
         return {
             "db_path": str(self.db_path),
             "schema_version": SCHEMA_VERSION,
+        }
+
+    @staticmethod
+    def _snapshot_record_from_row(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "snapshot_id": row["snapshot_id"],
+            "greenhouse_id": row["greenhouse_id"],
+            "crop": row["crop"],
+            "snapshot_time": row["snapshot_time"],
+            "source": row["source"],
+            "adapter_name": row["adapter_name"],
+            "adapter_version": row["adapter_version"],
+            "normalized_snapshot": _load_json(row["normalized_snapshot_json"]),
+            "raw_adapter_state": _load_json(row["raw_adapter_state_json"]),
+            "metadata": _load_json(row["metadata_json"]),
+            "created_at": row["created_at"],
         }
 
     def persist_snapshot(
@@ -310,19 +336,7 @@ class ModelStateStore:
         if row is None:
             return None
 
-        return {
-            "snapshot_id": row["snapshot_id"],
-            "greenhouse_id": row["greenhouse_id"],
-            "crop": row["crop"],
-            "snapshot_time": row["snapshot_time"],
-            "source": row["source"],
-            "adapter_name": row["adapter_name"],
-            "adapter_version": row["adapter_version"],
-            "normalized_snapshot": _load_json(row["normalized_snapshot_json"]),
-            "raw_adapter_state": _load_json(row["raw_adapter_state_json"]),
-            "metadata": _load_json(row["metadata_json"]),
-            "created_at": row["created_at"],
-        }
+        return self._snapshot_record_from_row(row)
 
     def latest_snapshot(self, greenhouse_id: str, crop: str) -> dict[str, Any] | None:
         with self._connect() as connection:
@@ -353,7 +367,9 @@ class ModelStateStore:
         with self._connect() as connection:
             rows = connection.execute(
                 """
-                SELECT snapshot_id
+                SELECT snapshot_id, greenhouse_id, crop, snapshot_time, source,
+                       adapter_name, adapter_version, normalized_snapshot_json,
+                       raw_adapter_state_json, metadata_json, created_at
                 FROM crop_model_snapshots
                 WHERE greenhouse_id = ? AND crop = ? AND snapshot_time >= ?
                 ORDER BY snapshot_time ASC, created_at ASC
@@ -367,12 +383,44 @@ class ModelStateStore:
                 ),
             ).fetchall()
 
-        records: list[dict[str, Any]] = []
-        for row in rows:
-            snapshot_record = self.load_snapshot(str(row["snapshot_id"]))
-            if snapshot_record is not None:
-                records.append(snapshot_record)
-        return records
+        return [self._snapshot_record_from_row(row) for row in rows]
+
+    def list_snapshots_created_since(
+        self,
+        greenhouse_id: str,
+        crop: str,
+        *,
+        since: datetime,
+        limit: int = 500,
+        sources: tuple[str, ...] | list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        params: list[Any] = [greenhouse_id, crop, since.isoformat()]
+        where_clauses = [
+            "greenhouse_id = ?",
+            "crop = ?",
+            "created_at >= ?",
+        ]
+        if sources:
+            placeholders = ", ".join("?" for _ in sources)
+            where_clauses.append(f"source IN ({placeholders})")
+            params.extend(sources)
+        params.append(max(1, int(limit)))
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT snapshot_id, greenhouse_id, crop, snapshot_time, source,
+                       adapter_name, adapter_version, normalized_snapshot_json,
+                       raw_adapter_state_json, metadata_json, created_at
+                FROM crop_model_snapshots
+                WHERE {' AND '.join(where_clauses)}
+                ORDER BY created_at ASC, snapshot_time ASC
+                LIMIT ?
+                """,
+                tuple(params),
+            ).fetchall()
+
+        return [self._snapshot_record_from_row(row) for row in rows]
 
     def load_current_state(self, greenhouse_id: str, crop: str) -> dict[str, Any] | None:
         with self._connect() as connection:

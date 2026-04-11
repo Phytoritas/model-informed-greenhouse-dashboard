@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import pandas as pd
 from fastapi.testclient import TestClient
@@ -90,3 +91,30 @@ def test_broadcast_tolerates_connection_set_changes_mid_iteration() -> None:
 
     assert sent_payloads
     assert passive_socket not in manager.active_connections[path]
+
+
+def test_broadcast_drops_slow_clients_without_blocking_all_peers() -> None:
+    manager = ConnectionManager()
+    path = "/ws/sim/tomato"
+    sent_payloads: list[str] = []
+
+    class FastSocket:
+        async def send_text(self, data: str) -> None:
+            sent_payloads.append(f"fast:{data}")
+
+    class SlowSocket:
+        async def send_text(self, data: str) -> None:
+            await asyncio.sleep(2.0)
+            sent_payloads.append(f"slow:{data}")
+
+    fast_socket = FastSocket()
+    slow_socket = SlowSocket()
+    manager.active_connections[path] = {fast_socket, slow_socket}
+
+    started_at = time.monotonic()
+    asyncio.run(manager.broadcast(path, {"status": "ok"}))
+    elapsed = time.monotonic() - started_at
+
+    assert elapsed < 1.5
+    assert sent_payloads == ['fast:{"status": "ok"}']
+    assert slow_socket not in manager.active_connections[path]

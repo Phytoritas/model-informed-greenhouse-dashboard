@@ -303,6 +303,7 @@ function App() {
     currentData,
     modelMetrics,
     history,
+    metricHistory,
     forecast,
     controls,
     toggleControl,
@@ -561,29 +562,22 @@ function App() {
     cucumberRtrProfile?.optimizer?.enabled
     ?? rtrProfilesPayload?.optimizerEnabled
     ?? false;
-  const tomatoAreaState = areaByCrop.Tomato;
-  const cucumberAreaState = areaByCrop.Cucumber;
-  const tomatoRtrOptimizerState = useRtrOptimizer({
-    crop: 'Tomato',
-    actualAreaM2: tomatoAreaState.actualAreaM2,
-    actualAreaPyeong: tomatoAreaState.actualAreaPyeong,
-    actualAreaSource: tomatoAreaState.source,
-    optimizerEnabled: tomatoOptimizerEnabled,
-    defaultMode: tomatoRtrProfile?.optimizer?.default_mode,
-    telemetryStatus: telemetry.status,
-  });
-  const cucumberRtrOptimizerState = useRtrOptimizer({
-    crop: 'Cucumber',
-    actualAreaM2: cucumberAreaState.actualAreaM2,
-    actualAreaPyeong: cucumberAreaState.actualAreaPyeong,
-    actualAreaSource: cucumberAreaState.source,
-    optimizerEnabled: cucumberOptimizerEnabled,
-    defaultMode: cucumberRtrProfile?.optimizer?.default_mode,
-    telemetryStatus: telemetry.status,
-  });
   const selectedCropLabel = getCropLabel(selectedCrop, locale);
   const selectedRtrProfile = selectedCrop === 'Tomato' ? tomatoRtrProfile : cucumberRtrProfile;
   const optimizerEnabled = selectedCrop === 'Tomato' ? tomatoOptimizerEnabled : cucumberOptimizerEnabled;
+  const selectedAreaState = areaByCrop[selectedCrop];
+  const rtrOptimizerRouteActive = activeSection.key === 'control';
+  const rtrOptimizerState = useRtrOptimizer({
+    crop: selectedCrop,
+    actualAreaM2: selectedAreaState.actualAreaM2,
+    actualAreaPyeong: selectedAreaState.actualAreaPyeong,
+    actualAreaSource: selectedAreaState.source,
+    optimizerEnabled,
+    defaultMode: selectedRtrProfile?.optimizer?.default_mode,
+    telemetryStatus: telemetry.status,
+    active: rtrOptimizerRouteActive,
+    autoRunSupplemental: false,
+  });
   const selectedRtrUiState = rtrUiStateByCrop[selectedCrop];
   const updateSelectedRtrUiState = useCallback(
     (updater: (current: RtrUiStateSnapshot) => RtrUiStateSnapshot) => {
@@ -594,9 +588,6 @@ function App() {
     },
     [selectedCrop],
   );
-  const rtrOptimizerState = selectedCrop === 'Tomato'
-    ? tomatoRtrOptimizerState
-    : cucumberRtrOptimizerState;
   const rtrOptimizerUiState = useMemo<RTROptimizerUiStateLike>(() => ({
     customScenarioDraft: selectedRtrUiState.customScenarioDraft,
     setCustomScenarioDraft: (value) => {
@@ -1092,6 +1083,106 @@ function App() {
     currentData,
     metrics: modelMetrics,
   });
+  const latestMetricHistoryPoint = metricHistory[metricHistory.length - 1];
+  const liveSourceSinkBalance = useMemo(() => {
+    const explicitBalance = latestMetricHistoryPoint?.sourceSinkBalance;
+    if (typeof explicitBalance === 'number' && Number.isFinite(explicitBalance)) {
+      return explicitBalance;
+    }
+    const sourceCapacity = latestMetricHistoryPoint?.sourceCapacity;
+    const sinkDemand = latestMetricHistoryPoint?.sinkDemand;
+    if (
+      typeof sourceCapacity === 'number'
+      && Number.isFinite(sourceCapacity)
+      && typeof sinkDemand === 'number'
+      && Number.isFinite(sinkDemand)
+    ) {
+      return (sourceCapacity - sinkDemand) / Math.max(1, Math.abs(sourceCapacity) + Math.abs(sinkDemand));
+    }
+    return derivedSourceSinkBalance;
+  }, [derivedSourceSinkBalance, latestMetricHistoryPoint]);
+  const liveSourceSinkSeries = useMemo(() => {
+    const series = metricHistory
+      .map((metricPoint) => {
+        const wallClockTimestamp = Number(metricPoint.receivedAtTimestamp ?? metricPoint.timestamp);
+        if (!Number.isFinite(wallClockTimestamp)) {
+          return null;
+        }
+
+        const explicitBalance = metricPoint?.sourceSinkBalance;
+        if (typeof explicitBalance === 'number' && Number.isFinite(explicitBalance)) {
+          return {
+            timestamp: wallClockTimestamp,
+            value: explicitBalance,
+          };
+        }
+        const sourceCapacity = metricPoint?.sourceCapacity;
+        const sinkDemand = metricPoint?.sinkDemand;
+        if (
+          typeof sourceCapacity === 'number'
+          && Number.isFinite(sourceCapacity)
+          && typeof sinkDemand === 'number'
+          && Number.isFinite(sinkDemand)
+        ) {
+          return {
+            timestamp: wallClockTimestamp,
+            value: (sourceCapacity - sinkDemand) / Math.max(1, Math.abs(sourceCapacity) + Math.abs(sinkDemand)),
+          };
+        }
+        const pointMetrics = {
+          ...modelMetrics,
+          growth: {
+            ...modelMetrics.growth,
+            lai: metricPoint.lai,
+            biomass: metricPoint.biomass,
+            growthRate: metricPoint.growthRate,
+            activeTrusses: metricPoint.activeTrusses ?? modelMetrics.growth.activeTrusses,
+            nodeCount: metricPoint.nodeCount ?? modelMetrics.growth.nodeCount,
+          },
+          yield: {
+            ...modelMetrics.yield,
+            predictedWeekly: metricPoint.predictedWeeklyYield,
+            harvestableFruits: metricPoint.harvestableFruits,
+          },
+          energy: {
+            ...modelMetrics.energy,
+            consumption: metricPoint.energyConsumption,
+            loadKw: metricPoint.energyLoadKw,
+            efficiency: metricPoint.energyEfficiency,
+          },
+        };
+
+        return {
+          timestamp: wallClockTimestamp,
+          value: deriveSourceSinkBalance({
+            crop: selectedCrop,
+            currentData: {
+              ...currentData,
+              timestamp: metricPoint.timestamp,
+              receivedAtTimestamp: wallClockTimestamp,
+              photosynthesis: metricPoint.photosynthesis ?? currentData.photosynthesis,
+            },
+            metrics: pointMetrics,
+          }),
+        };
+      })
+      .filter((point): point is { timestamp: number; value: number } => point !== null)
+      .sort((left, right) => left.timestamp - right.timestamp);
+
+    if (series.length > 0) {
+      return series;
+    }
+
+    const currentTimestamp = Number(currentData.receivedAtTimestamp ?? currentData.timestamp);
+    if (!Number.isFinite(currentTimestamp)) {
+      return [];
+    }
+
+    return [{
+      timestamp: currentTimestamp,
+      value: liveSourceSinkBalance,
+    }];
+  }, [currentData, liveSourceSinkBalance, metricHistory, modelMetrics, selectedCrop]);
 
   const alertItems: AlertRailItem[] = [
     ...(telemetry.status === 'offline'
@@ -1291,9 +1382,10 @@ function App() {
                 heroActions={heroActions}
                 confidence={aiDisplay?.confidence ?? aiModelRuntime?.scenario?.confidence ?? null}
                 modelRuntimeSummary={aiModelRuntime?.summary ?? null}
-                sourceSinkBalance={aiModelRuntime?.state_snapshot.source_sink_balance ?? derivedSourceSinkBalance}
-                canopyAssimilation={aiModelRuntime?.state_snapshot.canopy_net_assimilation_umol_m2_s ?? currentData.photosynthesis}
-                lai={aiModelRuntime?.state_snapshot.lai ?? modelMetrics.growth.lai}
+                sourceSinkBalance={liveSourceSinkBalance}
+                canopyAssimilation={currentData.photosynthesis}
+                lai={modelMetrics.growth.lai}
+                liveSourceSinkSeries={liveSourceSinkSeries}
                 alertItems={alertItems}
                 fallbackAlertBody={heroCopy.telemetryLive}
                 history={deferredHistory}

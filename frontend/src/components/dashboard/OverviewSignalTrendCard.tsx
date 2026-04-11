@@ -10,7 +10,8 @@ import {
 } from 'recharts';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { formatLocaleTime } from '../../i18n/locale';
-import type { OverviewSignalsPayload, OverviewSourceSinkPoint } from '../../types';
+import type { OverviewSignalsPayload } from '../../types';
+import { normalizeOverviewSourceSinkBalance } from '../../utils/sourceSinkBalance';
 import ChartFrame from '../charts/ChartFrame';
 import DashboardCard from '../common/DashboardCard';
 
@@ -18,6 +19,10 @@ interface OverviewSignalTrendCardProps {
   signals: OverviewSignalsPayload | null;
   loading: boolean;
   error: string | null;
+  liveSourceSinkSeries?: Array<{
+    timestamp: number;
+    value: number;
+  }>;
 }
 
 interface ChartPoint {
@@ -29,24 +34,6 @@ interface CombinedChartPoint {
   timestamp: number;
   irradiance: number | null;
   sourceSinkBalance: number | null;
-}
-
-function normalizeSourceSinkBalance(point: OverviewSourceSinkPoint): number {
-  const sourceCapacity = Number(point.source_capacity);
-  const sinkDemand = Number(point.sink_demand);
-
-  if (Number.isFinite(sourceCapacity) && Number.isFinite(sinkDemand)) {
-    const normalizedSource = Math.max(0, sourceCapacity);
-    const normalizedSink = Math.max(0, sinkDemand);
-    const denominator = Math.max(normalizedSource + normalizedSink, 1e-9);
-    return (normalizedSource - normalizedSink) / denominator;
-  }
-
-  const rawBalance = Number(point.source_sink_balance);
-  if (!Number.isFinite(rawBalance)) {
-    return 0;
-  }
-  return Math.max(-1, Math.min(1, rawBalance));
 }
 
 function buildChartPoints<T extends { time: string }>(
@@ -87,10 +74,34 @@ function buildCombinedSeries(
   return [...seriesMap.values()].sort((left, right) => left.timestamp - right.timestamp);
 }
 
+function mergeLiveSourceSinkSeries(
+  sourceSinkSeries: ChartPoint[],
+  liveSourceSinkSeries: OverviewSignalTrendCardProps['liveSourceSinkSeries'],
+): ChartPoint[] {
+  if (!liveSourceSinkSeries?.length) {
+    return sourceSinkSeries;
+  }
+
+  const seriesMap = new Map<number, ChartPoint>();
+  sourceSinkSeries.forEach((point) => {
+    seriesMap.set(point.timestamp, point);
+  });
+  liveSourceSinkSeries.forEach((point) => {
+    const timestamp = Number(point.timestamp);
+    const value = Number(point.value);
+    if (!Number.isFinite(timestamp) || !Number.isFinite(value)) {
+      return;
+    }
+    seriesMap.set(timestamp, { timestamp, value });
+  });
+  return [...seriesMap.values()].sort((left, right) => left.timestamp - right.timestamp);
+}
+
 export default function OverviewSignalTrendCard({
   signals,
   loading,
   error,
+  liveSourceSinkSeries = [],
 }: OverviewSignalTrendCardProps) {
   const { locale } = useLocale();
   const irradianceSeries = useMemo(
@@ -98,11 +109,14 @@ export default function OverviewSignalTrendCard({
     [signals],
   );
   const sourceSinkSeries = useMemo(() => (
-    buildChartPoints(
-      signals?.source_sink.points ?? [],
-      (point) => normalizeSourceSinkBalance(point),
+    mergeLiveSourceSinkSeries(
+      buildChartPoints(
+        signals?.source_sink.points ?? [],
+        (point) => normalizeOverviewSourceSinkBalance(point),
+      ),
+      liveSourceSinkSeries,
     )
-  ), [signals]);
+  ), [liveSourceSinkSeries, signals]);
   const combinedSeries = useMemo(
     () => buildCombinedSeries(irradianceSeries, sourceSinkSeries),
     [irradianceSeries, sourceSinkSeries],
@@ -112,7 +126,7 @@ export default function OverviewSignalTrendCard({
     ? {
       eyebrow: '3일 시계열',
       title: '외기 일사량 · 소스-싱크 균형 지수',
-      description: '실제 API와 모델 스냅샷 이력만 표시합니다.',
+      description: '실제 API 이력에 실시간 소스-싱크 추세를 겹쳐 표시합니다.',
       irradiance: '외기 일사량',
       balance: '소스-싱크 균형 지수',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
@@ -126,7 +140,7 @@ export default function OverviewSignalTrendCard({
     : {
       eyebrow: '3-day trend',
       title: 'Outside irradiance · source-sink balance',
-      description: 'Only live API and model snapshot history are shown.',
+      description: 'Live source-sink telemetry is overlaid on the API history.',
       irradiance: 'Outside irradiance',
       balance: 'Source-sink balance',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
