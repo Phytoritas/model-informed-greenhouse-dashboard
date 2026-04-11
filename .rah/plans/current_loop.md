@@ -1,9 +1,9 @@
 # Current Loop
 
 ## Active State
-- `main` is the truthful post-issue96 merged baseline.
-- No active product implementation branch is open in the repository.
-- The only open tracked backlog issue is blocked issue `#3`, which still waits for grower-approved RTR windows.
+- Active implementation branch: `fix/100-fix-sensor-freshness-semantics-and-websocket-delay`.
+- Active issue: `#100` (`[Bug] Fix sensor freshness semantics and websocket delay`).
+- Current bounded scope: split replay timestamp vs transport freshness, detect stalled simulation tasks correctly, and auto-restart stale runtime streams from the frontend health loop.
 
 ## Stable Main Baseline
 - PR `#95` merged issue `#94` into `main` at `ff0a92a`.
@@ -22,5 +22,6 @@
 - `poetry run pytest`
 
 ## Exact Next Step
-1. If working on RTR calibration, unblock issue `#3` with real grower-approved windows before opening its implementation branch.
-2. Otherwise, start the next non-trivial task from a fresh issue-based branch off clean `main`.
+1. Review the issue `#100` diff for regressions, then commit and push the validated backend/frontend recovery fix.
+2. Open a PR with evidence from `poetry run pytest`, `poetry run ruff check .`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, and local WebSocket/runtime smoke.
+3. Keep blocked issue `#3` out of this lane; resume it only from a separate branch when grower-approved RTR windows exist.

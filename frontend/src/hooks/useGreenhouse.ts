@@ -95,6 +95,7 @@ const STREAM_COMMIT_INTERVAL_MS = 250;
 const STREAM_DELAY_THRESHOLD_MS = 8_000;
 const STREAM_STALE_THRESHOLD_MS = 30_000;
 const TELEMETRY_HEALTH_POLL_MS = 2_000;
+const SIMULATION_RECOVERY_BACKOFF_MS = 15_000;
 
 const DEFAULT_SENSOR_FIELD_AVAILABILITY: SensorFieldAvailability = {
     temperature: false,
@@ -192,6 +193,10 @@ export const useGreenhouse = () => {
         Tomato: { status: 'loading', lastMessageAt: null },
         Cucumber: { status: 'loading', lastMessageAt: null },
     });
+    const telemetryStateRef = useRef<TelemetryByCrop>({
+        Tomato: { status: 'loading', lastMessageAt: null },
+        Cucumber: { status: 'loading', lastMessageAt: null },
+    });
     const [sensorFieldAvailabilityByCrop, setSensorFieldAvailabilityByCrop] = useState<AvailabilityByCrop>({
         Tomato: { ...DEFAULT_SENSOR_FIELD_AVAILABILITY },
         Cucumber: { ...DEFAULT_SENSOR_FIELD_AVAILABILITY },
@@ -200,6 +205,7 @@ export const useGreenhouse = () => {
         Tomato: { ...DEFAULT_SENSOR_FIELD_TIMESTAMPS },
         Cucumber: { ...DEFAULT_SENSOR_FIELD_TIMESTAMPS },
     });
+    const [wsConnectionNonce, setWsConnectionNonce] = useState(0);
     const liveStateRef = useRef<{
         currentDataByCrop: NullableByCrop<SensorData>;
         modelMetricsByCrop: NullableByCrop<AdvancedModelMetrics>;
@@ -259,6 +265,113 @@ export const useGreenhouse = () => {
         Tomato: 0.15,
         Cucumber: 0.15,
     });
+    const recoveryAttemptAtRef = useRef<Record<CropType, number>>({
+        Tomato: 0,
+        Cucumber: 0,
+    });
+
+    useEffect(() => {
+        telemetryStateRef.current = telemetryStateByCrop;
+    }, [telemetryStateByCrop]);
+
+    const requestWebSocketReconnect = useCallback((cropType: CropType) => {
+        if (cropType !== selectedCrop) {
+            return;
+        }
+
+        setTelemetryStateByCrop((prev) => ({
+            ...prev,
+            [cropType]: {
+                ...prev[cropType],
+                status: 'loading',
+            },
+        }));
+        setWsConnectionNonce((prev) => prev + 1);
+    }, [selectedCrop]);
+
+    const ensureSimulationRunning = useCallback(async (cropType: CropType) => {
+        recoveryAttemptAtRef.current[cropType] = Date.now();
+        try {
+            const cropKey = cropType.toLowerCase();
+            const statusRes = await fetch(`${API_URL}/status`);
+            if (!statusRes.ok) {
+                throw new Error(`HTTP error! status: ${statusRes.status}`);
+            }
+
+            const statusData = await statusRes.json();
+            const cropStatus = statusData?.greenhouses?.[cropKey];
+            const totalRows = typeof cropStatus?.total_rows === 'number' ? cropStatus.total_rows : 0;
+            const idx = typeof cropStatus?.idx === 'number' ? cropStatus.idx : -1;
+            const isPaused = cropStatus?.status === 'paused' || cropStatus?.paused === true;
+            const isExhausted =
+                cropStatus?.at_end === true ||
+                cropStatus?.status === 'completed' ||
+                (totalRows > 0 && idx >= totalRows - 1) ||
+                (typeof cropStatus?.progress === 'number' && cropStatus.progress >= 99.9);
+            const transportDisconnected =
+                cropType === selectedCrop &&
+                (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN);
+            const needsRestart =
+                !isPaused &&
+                (
+                    !cropStatus ||
+                    cropStatus.status === 'idle' ||
+                    cropStatus.status === 'stopped' ||
+                    cropStatus.status === 'completed' ||
+                    cropStatus.status === 'stalled' ||
+                    cropStatus.status === 'error' ||
+                    cropStatus.status === 'failed' ||
+                    cropStatus.status === 'unknown' ||
+                    cropStatus.status === 'success' ||
+                    cropStatus.status === undefined ||
+                    cropStatus.status === null ||
+                    cropStatus?.task_alive === false ||
+                    isExhausted
+                );
+
+            if (isPaused) {
+                console.log(`Simulation for ${cropType} is paused; skipping auto-restart.`);
+                return;
+            }
+
+            if (!needsRestart) {
+                if (transportDisconnected) {
+                    console.log(`Telemetry transport for ${cropType} is disconnected, reconnecting WebSocket.`);
+                    requestWebSocketReconnect(cropType);
+                }
+                console.log(`Simulation for ${cropType} already active.`);
+                return;
+            }
+
+            console.log(`Simulation for ${cropType} is ${cropStatus?.status ?? 'idle'}, starting...`);
+            setTelemetryStateByCrop((prev) => ({
+                ...prev,
+                [cropType]: {
+                    ...prev[cropType],
+                    status: 'loading',
+                },
+            }));
+
+            const startRes = await fetch(`${API_URL}/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    crop: cropKey,
+                    csv_filename: cropType === 'Tomato' ? 'Tomato_Env.CSV' : 'Cucumber_Env.CSV',
+                    time_step: '10min',
+                }),
+            });
+            if (!startRes.ok) {
+                throw new Error(`HTTP error! status: ${startRes.status}`);
+            }
+            if (transportDisconnected) {
+                requestWebSocketReconnect(cropType);
+            }
+            console.log(`Simulation for ${cropType} started.`);
+        } catch (err) {
+            console.error('Failed to ensure simulation is running:', err);
+        }
+    }, [requestWebSocketReconnect, selectedCrop]);
 
     // Helper to map backend payload to frontend types
     const mapPayloadToData = useCallback((
@@ -348,13 +461,13 @@ export const useGreenhouse = () => {
             stomatalConductance: stomatalConductance.available,
         };
         const fieldTimestamps: SensorFieldTimestamps = {
-            temperature: temperature.available ? ts : previousFieldTimestamps.temperature,
-            humidity: humidity.available ? ts : previousFieldTimestamps.humidity,
-            co2: co2.available ? ts : previousFieldTimestamps.co2,
-            light: light.available ? ts : previousFieldTimestamps.light,
-            vpd: vpd.available ? ts : previousFieldTimestamps.vpd,
+            temperature: temperature.available ? now : previousFieldTimestamps.temperature,
+            humidity: humidity.available ? now : previousFieldTimestamps.humidity,
+            co2: co2.available ? now : previousFieldTimestamps.co2,
+            light: light.available ? now : previousFieldTimestamps.light,
+            vpd: vpd.available ? now : previousFieldTimestamps.vpd,
             stomatalConductance: stomatalConductance.available
-                ? ts
+                ? now
                 : previousFieldTimestamps.stomatalConductance,
         };
 
@@ -525,7 +638,7 @@ export const useGreenhouse = () => {
                 ...prev,
                 [cropAtConnection]: {
                     ...prev[cropAtConnection],
-                    status: prev[cropAtConnection].lastMessageAt === null ? 'loading' : 'stale',
+                    status: 'loading',
                 },
             }));
         };
@@ -631,40 +744,53 @@ export const useGreenhouse = () => {
                 wsRef.current = null;
             }
         };
-    }, [flushCropState, mapPayloadToData, selectedCrop]);
+    }, [flushCropState, mapPayloadToData, selectedCrop, wsConnectionNonce]);
 
     useEffect(() => {
         const timer = window.setInterval(() => {
-            setTelemetryStateByCrop((prev) => {
-                const current = prev[selectedCrop];
-                if (!current || current.status === 'offline' || current.lastMessageAt === null) {
-                    return prev;
-                }
+            const current = telemetryStateRef.current[selectedCrop];
+            if (!current) {
+                return;
+            }
 
+            let shouldRecover = false;
+            let nextStatus = current.status;
+
+            if (current.status === 'offline') {
+                shouldRecover = true;
+            } else if (current.lastMessageAt === null) {
+                shouldRecover = current.status === 'loading';
+            } else {
                 const ageMs = Date.now() - current.lastMessageAt;
-                const nextStatus: TelemetryStatus =
+                nextStatus =
                     ageMs > STREAM_STALE_THRESHOLD_MS
                         ? 'stale'
                         : ageMs > STREAM_DELAY_THRESHOLD_MS
                             ? 'delayed'
                             : 'live';
+                shouldRecover = ageMs > STREAM_STALE_THRESHOLD_MS;
+            }
 
-                if (nextStatus === current.status) {
-                    return prev;
-                }
-
-                return {
+            if (nextStatus !== current.status) {
+                setTelemetryStateByCrop((prev) => ({
                     ...prev,
                     [selectedCrop]: {
-                        ...current,
+                        ...prev[selectedCrop],
                         status: nextStatus,
                     },
-                };
-            });
+                }));
+            }
+
+            if (shouldRecover) {
+                const lastAttemptAt = recoveryAttemptAtRef.current[selectedCrop];
+                if (Date.now() - lastAttemptAt >= SIMULATION_RECOVERY_BACKOFF_MS) {
+                    void ensureSimulationRunning(selectedCrop);
+                }
+            }
         }, TELEMETRY_HEALTH_POLL_MS);
 
         return () => window.clearInterval(timer);
-    }, [selectedCrop]);
+    }, [ensureSimulationRunning, selectedCrop]);
 
     // Restore crop-specific controls when the user switches crop tabs
     useEffect(() => {
@@ -695,49 +821,10 @@ export const useGreenhouse = () => {
         fetchSettings();
     }, [selectedCrop]);
 
-    // Start Simulation on Mount (if not running)
+    // Start simulation for the selected crop on mount and crop changes.
     useEffect(() => {
-        const startSimulation = async () => {
-            try {
-                const cropKey = selectedCrop.toLowerCase();
-
-                // Check status first
-                const statusRes = await fetch(`${API_URL}/status`);
-                if (!statusRes.ok) throw new Error(`HTTP error! status: ${statusRes.status}`);
-                const statusData = await statusRes.json();
-                const cropStatus = statusData?.greenhouses?.[cropKey];
-                const totalRows = typeof cropStatus?.total_rows === 'number' ? cropStatus.total_rows : 0;
-                const idx = typeof cropStatus?.idx === 'number' ? cropStatus.idx : -1;
-                const isExhausted =
-                    cropStatus?.at_end === true ||
-                    cropStatus?.status === 'completed' ||
-                    (totalRows > 0 && idx >= totalRows - 1) ||
-                    (typeof cropStatus?.progress === 'number' && cropStatus.progress >= 99.9);
-
-                if (cropStatus?.status !== 'active' || isExhausted) {
-                    console.log(`Simulation for ${selectedCrop} is idle or exhausted, starting...`);
-                    // Start simulation
-                    const startRes = await fetch(`${API_URL}/start`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            crop: cropKey,
-                            csv_filename: selectedCrop === 'Tomato' ? 'Tomato_Env.CSV' : 'Cucumber_Env.CSV',
-                            time_step: '10min' // Faster simulation
-                        })
-                    });
-                    if (!startRes.ok) throw new Error(`HTTP error! status: ${startRes.status}`);
-                    console.log(`Simulation for ${selectedCrop} started.`);
-                } else {
-                    console.log(`Simulation for ${selectedCrop} already active.`);
-                }
-            } catch (err) {
-                console.error("Failed to start simulation:", err);
-            }
-        };
-
-        startSimulation();
-    }, [selectedCrop]);
+        void ensureSimulationRunning(selectedCrop);
+    }, [ensureSimulationRunning, selectedCrop]);
 
     const toggleControl = useCallback((key: keyof ControlStatus) => {
         setControls(prev => ({ ...prev, [key]: !prev[key] }));
