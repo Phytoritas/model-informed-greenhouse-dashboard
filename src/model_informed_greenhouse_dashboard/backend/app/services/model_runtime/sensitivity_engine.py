@@ -55,6 +55,26 @@ def _scenario_alignment(
     return abs(positive_value - negative_value) <= 1e-9
 
 
+def _nonlinearity_hint(
+    *,
+    baseline_value: float,
+    positive_value: float,
+    negative_value: float,
+    alignment: bool,
+) -> str:
+    positive_delta = abs(positive_value - baseline_value)
+    negative_delta = abs(baseline_value - negative_value)
+    dominant = max(positive_delta, negative_delta, 1e-9)
+    asymmetry = abs(positive_delta - negative_delta) / dominant
+    if not alignment:
+        return "direction_conflict"
+    if asymmetry >= 0.45:
+        return "nonlinear"
+    if asymmetry >= 0.2:
+        return "mild_nonlinear"
+    return "symmetric"
+
+
 def compute_local_sensitivities(
     snapshot_record: Mapping[str, Any],
     *,
@@ -145,6 +165,23 @@ def compute_local_sensitivities(
             positive_value=positive_value,
             negative_value=negative_value,
         )
+        local_confidence = max(
+            0.0,
+            min(
+                0.95,
+                0.54
+                + (0.16 if alignment else 0.0)
+                + (0.15 * float(positive.get("confidence", 0.0)))
+                + (0.15 * float(negative.get("confidence", 0.0))),
+            ),
+        )
+        recommended_sign = (
+            "increase"
+            if direction == "increase"
+            else "decrease"
+            if direction == "decrease"
+            else "hold"
+        )
 
         valid_count += 1
         if alignment:
@@ -162,7 +199,18 @@ def compute_local_sensitivities(
                 "method": "finite_difference",
                 "perturbation_size": requested_step,
                 "scenario_alignment": alignment,
+                "scenario_alignment_score": 1.0 if alignment else 0.0,
                 "bounded_delta": round(positive_value - baseline_value, 6),
+                "positive_response": round(positive_value - baseline_value, 6),
+                "negative_response": round(negative_value - baseline_value, 6),
+                "local_confidence": round(local_confidence, 6),
+                "recommended_sign": recommended_sign,
+                "nonlinearity_hint": _nonlinearity_hint(
+                    baseline_value=baseline_value,
+                    positive_value=positive_value,
+                    negative_value=negative_value,
+                    alignment=alignment,
+                ),
             }
         )
 
