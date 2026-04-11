@@ -228,3 +228,4 @@
 - 2026-04-11: Opened docs issue `#96` on branch `docs/96-sync-issue94-merged-harness-state-on-main` to realign tracked `.rah` state with the merged main baseline without reopening product scope.
 - 2026-04-11: Merged PR `#97` into `main` at `daaef46`, closed docs issue `#96`, and confirmed the repo stayed clean on `main`.
 - 2026-04-11: Opened docs issue `#98` on branch `docs/98-sync-post-issue96-harness-state-on-main` to make tracked `.rah` state stable on clean `main` by pointing it at the blocked issue `#3` backlog instead of the retired docs sync lane.
+- 2026-04-11: Opened bug issue `#100` on branch `fix/100-fix-sensor-freshness-semantics-and-websocket-delay`, fixed transport freshness semantics plus stalled-runtime detection and websocket reconnect handling, pushed commit `ae600ed`, opened PR `#101`, and confirmed GitHub Actions `CI` passed for both push and pull_request while project status moved to `Validating`.

@@ -3,7 +3,8 @@
 ## Active State
 - Active implementation branch: `fix/100-fix-sensor-freshness-semantics-and-websocket-delay`.
 - Active issue: `#100` (`[Bug] Fix sensor freshness semantics and websocket delay`).
-- Current bounded scope: split replay timestamp vs transport freshness, detect stalled simulation tasks correctly, and auto-restart stale runtime streams from the frontend health loop.
+- Active pull request: `#101` (`fix: recover stalled telemetry streams`).
+- Current bounded scope: keep the issue100 lane in `Validating`, with the pushed backend/frontend/runtime-recovery diff waiting only for review and merge.
 
 ## Stable Main Baseline
 - PR `#95` merged issue `#94` into `main` at `ff0a92a`.
@@ -20,8 +21,10 @@
 - `npm --prefix frontend run build`
 - `poetry run ruff check .`
 - `poetry run pytest`
+- GitHub Actions `CI` succeeded for both the `push` and `pull_request` runs on commit `ae600ed`.
+- Local smoke confirmed that `/api/status` returns immediately after single-backend restart, `last_error` clears, and the overview page reconnects the cucumber WebSocket after an offline transition.
 
 ## Exact Next Step
-1. Review the issue `#100` diff for regressions, then commit and push the validated backend/frontend recovery fix.
-2. Open a PR with evidence from `poetry run pytest`, `poetry run ruff check .`, `npm --prefix frontend run lint`, `npm --prefix frontend run build`, and local WebSocket/runtime smoke.
+1. Review and merge PR `#101` once the bounded issue100 runtime-recovery diff is accepted.
+2. After merge, fast-forward local `main`, confirm the merged baseline stays green, and open the small docs sync issue that realigns tracked `.rah` state on main.
 3. Keep blocked issue `#3` out of this lane; resume it only from a separate branch when grower-approved RTR windows exist.
