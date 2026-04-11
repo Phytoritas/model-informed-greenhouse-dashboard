@@ -355,6 +355,9 @@ app_state = {
         "pending_prune_reset": False,
         "rtr_area_settings": {},
         "last_runtime_snapshot_at": None,
+        "last_runtime_tick_at": None,
+        "last_runtime_error": None,
+        "last_runtime_error_at": None,
     },
     "cucumber": {
         "simulator": None,
@@ -375,6 +378,9 @@ app_state = {
         "pending_prune_reset": False,
         "rtr_area_settings": {},
         "last_runtime_snapshot_at": None,
+        "last_runtime_tick_at": None,
+        "last_runtime_error": None,
+        "last_runtime_error_at": None,
     },
 }
 
@@ -388,6 +394,7 @@ STEP_FREQUENCIES: Dict[str, Optional[str]] = {
 
 CROPS = ("tomato", "cucumber")
 MODEL_RUNTIME_SNAPSHOT_INTERVAL = timedelta(hours=1)
+SIMULATION_TASK_STALL_THRESHOLD = timedelta(seconds=8)
 
 
 def _default_ops_config() -> Dict[str, float]:
@@ -587,6 +594,29 @@ def _normalize_snapshot_datetime(value: Any) -> Optional[datetime]:
             return None
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
     return None
+
+
+def _serialize_datetime(value: Optional[datetime]) -> Optional[str]:
+    if not isinstance(value, datetime):
+        return None
+    normalized = value if value.tzinfo else value.replace(tzinfo=UTC)
+    return normalized.isoformat()
+
+
+def _record_runtime_tick(crop: str, *, tick_at: Optional[datetime] = None) -> None:
+    crop_state = app_state[crop]
+    normalized = tick_at or datetime.now(UTC)
+    crop_state["last_runtime_tick_at"] = (
+        normalized if normalized.tzinfo else normalized.replace(tzinfo=UTC)
+    )
+    crop_state["last_runtime_error"] = None
+    crop_state["last_runtime_error_at"] = None
+
+
+def _record_runtime_error(crop: str, exc: Exception | str) -> None:
+    crop_state = app_state[crop]
+    crop_state["last_runtime_error"] = str(exc)
+    crop_state["last_runtime_error_at"] = datetime.now(UTC)
 
 
 def _maybe_persist_runtime_snapshot(
@@ -1555,6 +1585,9 @@ async def start_simulation(req: StartRequest):
     crop_state["df_env"] = df_env
     crop_state["time_step"] = req.time_step
     crop_state["last_runtime_snapshot_at"] = None
+    crop_state["last_runtime_tick_at"] = None
+    crop_state["last_runtime_error"] = None
+    crop_state["last_runtime_error_at"] = None
 
     # Calculate timestep duration from data
     if len(df_env) > 1:
@@ -1734,6 +1767,7 @@ async def step_simulation(crop: str = "tomato"):
     )
 
     await manager.broadcast(f"/ws/sim/{crop}", payload)
+    _record_runtime_tick(crop)
 
     # Advance index
     simulator.idx += 1
@@ -1776,6 +1810,7 @@ async def _run_simulation_task(crop: str):
     crop_state = app_state[crop]
     simulator = crop_state["simulator"]
     logger.info(f"Running full {crop} simulation...")
+    _record_runtime_tick(crop)
 
     try:
         for i in range(simulator.idx, len(simulator.df_env)):
@@ -1785,58 +1820,75 @@ async def _run_simulation_task(crop: str):
 
             # Handle pause
             while simulator.paused:
+                _record_runtime_tick(crop)
                 await asyncio.sleep(0.1)
 
-            # Crop model stepping is CPU-heavy enough to starve the event loop if
-            # we run it inline here. Offload it so API and WebSocket handshakes
-            # remain responsive while the simulation is advancing.
-            payload = await asyncio.to_thread(simulator.step_from_index, i)
-
-            # Store last values for recommendations
-            crop_state["last_irrigation"] = payload.get("irrigation", {})
-            crop_state["last_energy"] = payload.get("energy", {})
-
-            # Real-time recommendations
-            if crop_state.get("decision"):
-                try:
-                    recs = await asyncio.to_thread(
-                        crop_state["decision"].get_recommendations,
-                        payload["kpi"],
-                        payload["state"],
-                        crop_state["last_irrigation"],
-                        crop_state["last_energy"],
-                        payload["env"],
-                        crop_state.get("latest_forecast"),
-                    )
-                    payload["recommendations"] = recs
-                except Exception as e:
-                    logger.error(f"Failed to compute {crop} recommendations: {e}")
-
-            _maybe_persist_runtime_snapshot(
-                crop,
-                source="simulation_run",
-                snapshot_time=_normalize_snapshot_datetime(
-                    payload.get("state", {}).get("datetime") or payload.get("t")
-                ),
-            )
-
-            # Broadcast full payload (already includes /tomato or /cucumber path)
-            await manager.broadcast(f"/ws/sim/{crop}", payload)
-
-            # Schedule forecast periodically (default: every settings.forecast_reschedule_interval_h hours)
             try:
-                steps_per_hour = max(1, int(round(1.0 / max(simulator.dt_hours, 1e-6))))
-                resched_steps = max(1, int(round(steps_per_hour * settings.forecast_reschedule_interval_h)))
-            except Exception:
-                resched_steps = 6  # sensible fallback for 10-min data
-            if i % resched_steps == 0 and i > 0:
-                _schedule_forecast(crop)
-                logger.info(f"{crop} forecast scheduled at step {i} (every {resched_steps} steps)")
+                # Crop model stepping is CPU-heavy enough to starve the event loop if
+                # we run it inline here. Offload it so API and WebSocket handshakes
+                # remain responsive while the simulation is advancing.
+                payload = await asyncio.to_thread(simulator.step_from_index, i)
 
-            # Speed-controlled delay (adjustable via simulator.speed)
-            # Default: 0.1s per step (10 steps/sec) for smooth visualization
-            delay = 0.1 / simulator.speed
-            await asyncio.sleep(delay)
+                # Store last values for recommendations
+                crop_state["last_irrigation"] = payload.get("irrigation", {})
+                crop_state["last_energy"] = payload.get("energy", {})
+
+                # Real-time recommendations
+                if crop_state.get("decision"):
+                    try:
+                        recs = await asyncio.to_thread(
+                            crop_state["decision"].get_recommendations,
+                            payload["kpi"],
+                            payload["state"],
+                            crop_state["last_irrigation"],
+                            crop_state["last_energy"],
+                            payload["env"],
+                            crop_state.get("latest_forecast"),
+                        )
+                        payload["recommendations"] = recs
+                    except Exception as exc:
+                        logger.error("Failed to compute %s recommendations: %s", crop, exc)
+
+                try:
+                    _maybe_persist_runtime_snapshot(
+                        crop,
+                        source="simulation_run",
+                        snapshot_time=_normalize_snapshot_datetime(
+                            payload.get("state", {}).get("datetime") or payload.get("t")
+                        ),
+                    )
+                except Exception as exc:
+                    _record_runtime_error(crop, exc)
+                    logger.error("Failed to persist %s runtime snapshot: %s", crop, exc, exc_info=True)
+
+                # Broadcast full payload (already includes /tomato or /cucumber path)
+                await manager.broadcast(f"/ws/sim/{crop}", payload)
+                _record_runtime_tick(crop)
+
+                # Schedule forecast periodically (default: every settings.forecast_reschedule_interval_h hours)
+                try:
+                    steps_per_hour = max(1, int(round(1.0 / max(simulator.dt_hours, 1e-6))))
+                    resched_steps = max(1, int(round(steps_per_hour * settings.forecast_reschedule_interval_h)))
+                except Exception:
+                    resched_steps = 6  # sensible fallback for 10-min data
+                if i % resched_steps == 0 and i > 0:
+                    try:
+                        _schedule_forecast(crop)
+                        logger.info(f"{crop} forecast scheduled at step {i} (every {resched_steps} steps)")
+                    except Exception as exc:
+                        _record_runtime_error(crop, exc)
+                        logger.error("Failed to schedule %s forecast at step %s: %s", crop, i, exc, exc_info=True)
+
+                # Speed-controlled delay (adjustable via simulator.speed)
+                # Default: 0.1s per step (10 steps/sec) for smooth visualization
+                delay = 0.1 / simulator.speed
+                await asyncio.sleep(delay)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                _record_runtime_error(crop, exc)
+                logger.error("%s simulation step %s failed: %s", crop, i, exc, exc_info=True)
+                await asyncio.sleep(0.25)
 
         if simulator.running and simulator.idx >= len(simulator.df_env) - 1:
             simulator.stop()
@@ -1848,7 +1900,12 @@ async def _run_simulation_task(crop: str):
         logger.info(f"{crop} simulation task was cancelled")
         raise
     except Exception as e:
+        _record_runtime_error(crop, e)
+        simulator.stop()
         logger.error(f"{crop} simulation task error: {e}", exc_info=True)
+    finally:
+        if crop_state.get("sim_task") is asyncio.current_task():
+            crop_state["sim_task"] = None
 
 
 def _schedule_forecast(crop: str):
@@ -1900,6 +1957,7 @@ async def pause_simulation(crop: Optional[str] = None):
             continue
 
         simulator.pause()
+        _record_runtime_tick(crop_name)
         paused_crops.append(crop_name)
 
     if not paused_crops:
@@ -1918,6 +1976,7 @@ async def resume_simulation(crop: Optional[str] = None):
             continue
 
         simulator.resume()
+        _record_runtime_tick(crop_name)
         resumed_crops.append(crop_name)
 
     if not resumed_crops:
@@ -3361,6 +3420,7 @@ async def get_recommendations(crop: Optional[str] = None):
 async def get_status():
     """Get current system status for both greenhouses."""
     status_result = {}
+    now_utc = datetime.now(UTC)
     
     for crop_name in CROPS:
         crop_state = app_state[crop_name]
@@ -3369,8 +3429,27 @@ async def get_status():
             status_result[crop_name] = {"status": "idle"}
         else:
             simulator = crop_state["simulator"]
+            sim_task = crop_state.get("sim_task")
+            task_alive = sim_task is not None and not sim_task.done()
+            is_paused = simulator.running and task_alive and bool(getattr(simulator, "paused", False))
             total_rows = len(simulator.df_env)
             at_end = total_rows > 0 and simulator.idx >= total_rows - 1
+            last_tick_at = crop_state.get("last_runtime_tick_at")
+            last_error = crop_state.get("last_runtime_error")
+            last_error_at = crop_state.get("last_runtime_error_at")
+            is_stalled = (
+                simulator.running
+                and not is_paused
+                and not at_end
+                and (
+                    not task_alive
+                    or (
+                        isinstance(last_tick_at, datetime)
+                        and now_utc - (last_tick_at if last_tick_at.tzinfo else last_tick_at.replace(tzinfo=UTC))
+                        > SIMULATION_TASK_STALL_THRESHOLD
+                    )
+                )
+            )
             if total_rows <= 1:
                 progress = 100.0 if at_end else 0.0
             else:
@@ -3379,8 +3458,19 @@ async def get_status():
                     2,
                 )
 
+            if at_end:
+                status = "completed"
+            elif is_paused:
+                status = "paused"
+            elif is_stalled:
+                status = "stalled"
+            elif simulator.running and task_alive:
+                status = "active"
+            else:
+                status = "stopped"
+
             status_result[crop_name] = {
-                "status": "completed" if at_end else ("active" if simulator.running else "stopped"),
+                "status": status,
                 "running": simulator.running,
                 "at_end": at_end,
                 "idx": simulator.idx,
@@ -3390,6 +3480,11 @@ async def get_status():
                 "dt_minutes": round(crop_state.get("dt_hours", 0) * 60, 3)
                 if crop_state.get("dt_hours")
                 else None,
+                "paused": is_paused,
+                "task_alive": task_alive,
+                "last_tick_at": _serialize_datetime(last_tick_at),
+                "last_error": last_error,
+                "last_error_at": _serialize_datetime(last_error_at),
             }
     
     return {"status": "success", "greenhouses": status_result}

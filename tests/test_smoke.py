@@ -1,4 +1,5 @@
 import asyncio
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -56,6 +57,10 @@ def reset_runtime_state() -> None:
         crop_state["ops_config"] = None
         crop_state["crop_config"] = None
         crop_state["pending_prune_reset"] = False
+        crop_state["last_runtime_snapshot_at"] = None
+        crop_state["last_runtime_tick_at"] = None
+        crop_state["last_runtime_error"] = None
+        crop_state["last_runtime_error_at"] = None
 
     produce_prices_service._produce_price_cache["payload"] = None
     produce_prices_service._produce_price_cache["expires_at"] = 0.0
@@ -103,6 +108,66 @@ def test_status_marks_completed_replays_as_completed() -> None:
     assert tomato["running"] is True
     assert tomato["at_end"] is True
     assert tomato["progress"] == 100.0
+
+
+def test_status_marks_running_simulator_without_live_task_as_stalled() -> None:
+    backend_main = _backend_main()
+
+    class DummySimulator:
+        def __init__(self) -> None:
+            self.running = True
+            self.idx = 4
+            self.df_env = [object()] * 10
+
+    class DoneTask:
+        def done(self) -> bool:
+            return True
+
+    backend_main.app_state["cucumber"]["simulator"] = DummySimulator()
+    backend_main.app_state["cucumber"]["sim_task"] = DoneTask()
+    backend_main.app_state["cucumber"]["last_runtime_tick_at"] = datetime.now(UTC) - timedelta(seconds=30)
+    backend_main.app_state["cucumber"]["last_runtime_error"] = "task exited unexpectedly"
+    backend_main.app_state["cucumber"]["last_runtime_error_at"] = datetime.now(UTC)
+    client = TestClient(get_app())
+
+    response = client.get("/api/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    cucumber = payload["greenhouses"]["cucumber"]
+    assert cucumber["status"] == "stalled"
+    assert cucumber["task_alive"] is False
+    assert cucumber["last_error"] == "task exited unexpectedly"
+    assert cucumber["last_tick_at"] is not None
+
+
+def test_status_keeps_paused_simulation_out_of_stalled_recovery() -> None:
+    backend_main = _backend_main()
+
+    class DummySimulator:
+        def __init__(self) -> None:
+            self.running = True
+            self.paused = True
+            self.idx = 4
+            self.df_env = [object()] * 10
+
+    class LiveTask:
+        def done(self) -> bool:
+            return False
+
+    backend_main.app_state["tomato"]["simulator"] = DummySimulator()
+    backend_main.app_state["tomato"]["sim_task"] = LiveTask()
+    backend_main.app_state["tomato"]["last_runtime_tick_at"] = datetime.now(UTC) - timedelta(minutes=5)
+    client = TestClient(get_app())
+
+    response = client.get("/api/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+    tomato = payload["greenhouses"]["tomato"]
+    assert tomato["status"] == "paused"
+    assert tomato["paused"] is True
+    assert tomato["task_alive"] is True
 
 
 def test_config_contract_loads_from_repo_paths() -> None:
