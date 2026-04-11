@@ -3,13 +3,14 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { formatLocaleTime } from '../../i18n/locale';
-import type { OverviewSignalsPayload } from '../../types';
+import type { OverviewSignalsPayload, OverviewSourceSinkPoint } from '../../types';
 import ChartFrame from '../charts/ChartFrame';
 import DashboardCard from '../common/DashboardCard';
 
@@ -28,6 +29,24 @@ interface CombinedChartPoint {
   timestamp: number;
   irradiance: number | null;
   sourceSinkBalance: number | null;
+}
+
+function normalizeSourceSinkBalance(point: OverviewSourceSinkPoint): number {
+  const sourceCapacity = Number(point.source_capacity);
+  const sinkDemand = Number(point.sink_demand);
+
+  if (Number.isFinite(sourceCapacity) && Number.isFinite(sinkDemand)) {
+    const normalizedSource = Math.max(0, sourceCapacity);
+    const normalizedSink = Math.max(0, sinkDemand);
+    const denominator = Math.max(normalizedSource + normalizedSink, 1e-9);
+    return (normalizedSource - normalizedSink) / denominator;
+  }
+
+  const rawBalance = Number(point.source_sink_balance);
+  if (!Number.isFinite(rawBalance)) {
+    return 0;
+  }
+  return Math.max(-1, Math.min(1, rawBalance));
 }
 
 function buildChartPoints<T extends { time: string }>(
@@ -78,10 +97,12 @@ export default function OverviewSignalTrendCard({
     () => buildChartPoints(signals?.irradiance.points ?? [], (point) => point.shortwave_radiation_w_m2),
     [signals],
   );
-  const sourceSinkSeries = useMemo(
-    () => buildChartPoints(signals?.source_sink.points ?? [], (point) => point.source_sink_balance),
-    [signals],
-  );
+  const sourceSinkSeries = useMemo(() => (
+    buildChartPoints(
+      signals?.source_sink.points ?? [],
+      (point) => normalizeSourceSinkBalance(point),
+    )
+  ), [signals]);
   const combinedSeries = useMemo(
     () => buildCombinedSeries(irradianceSeries, sourceSinkSeries),
     [irradianceSeries, sourceSinkSeries],
@@ -95,7 +116,7 @@ export default function OverviewSignalTrendCard({
       irradiance: '외기 일사량',
       balance: '소스-싱크 균형 지수',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
-      balanceUnit: signals?.source_sink.unit ?? '지수',
+      balanceUnit: signals?.source_sink.unit ?? '정규 지수',
       loading: '실제 3일 추세를 불러오는 중입니다.',
       error: error ?? '실제 추세를 불러오지 못했습니다.',
       empty: '표시할 실제 추세가 아직 없습니다.',
@@ -109,7 +130,7 @@ export default function OverviewSignalTrendCard({
       irradiance: 'Outside irradiance',
       balance: 'Source-sink balance',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
-      balanceUnit: signals?.source_sink.unit ?? 'index',
+      balanceUnit: signals?.source_sink.unit ?? 'normalized index',
       loading: 'Loading the live 3-day trend.',
       error: error ?? 'Failed to load the live trend.',
       empty: 'No live trend is available yet.',
@@ -117,14 +138,17 @@ export default function OverviewSignalTrendCard({
       mergedTitle: 'Outside irradiance and source-sink are shown in one chart.',
     };
 
-  const latestIrradiance = irradianceSeries[irradianceSeries.length - 1] ?? null;
-  const latestSourceSink = sourceSinkSeries[sourceSinkSeries.length - 1] ?? null;
   const hasIrradiance = irradianceSeries.length >= 2;
   const hasSourceSink = sourceSinkSeries.length >= 2;
 
   if (loading && !signals) {
     return (
-      <DashboardCard eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
+      <DashboardCard
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        className="h-full"
+      >
         <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
           {copy.loading}
         </div>
@@ -134,7 +158,12 @@ export default function OverviewSignalTrendCard({
 
   if (error && !signals) {
     return (
-      <DashboardCard eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
+      <DashboardCard
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        className="h-full"
+      >
         <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
           {copy.error}
         </div>
@@ -144,7 +173,12 @@ export default function OverviewSignalTrendCard({
 
   if (!hasIrradiance && !hasSourceSink) {
     return (
-      <DashboardCard eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
+      <DashboardCard
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        className="h-full"
+      >
         <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
           {copy.empty}
         </div>
@@ -157,30 +191,11 @@ export default function OverviewSignalTrendCard({
       eyebrow={copy.eyebrow}
       title={copy.title}
       description={copy.description}
-      contentClassName="flex flex-col gap-4"
-      className="h-full"
+      contentClassName="flex flex-col gap-2"
+      className="h-full !p-4"
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[18px] bg-white/82 px-4 py-3" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
-            {copy.irradiance}
-          </div>
-          <div className="mt-2 text-xl font-semibold leading-none tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
-            {latestIrradiance ? `${latestIrradiance.value.toFixed(1)} ${copy.irradianceUnit}` : '-'}
-          </div>
-        </div>
-        <div className="rounded-[18px] bg-white/82 px-4 py-3" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
-            {copy.balance}
-          </div>
-          <div className="mt-2 text-xl font-semibold leading-none tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
-            {latestSourceSink ? `${latestSourceSink.value.toFixed(3)} ${copy.balanceUnit}` : '-'}
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-[20px] bg-[color:var(--sg-surface-soft)] px-3 py-3" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-        <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] font-semibold tracking-[0.08em] text-[color:var(--sg-text-faint)]">
+      <div className="rounded-[16px] bg-[color:var(--sg-surface-soft)] px-2.5 py-2.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.06em] text-[color:var(--sg-text-faint)]">
           <span>{copy.mergedTitle}</span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-1.5 w-4 rounded-full bg-[#d26a2e]" />
@@ -192,11 +207,11 @@ export default function OverviewSignalTrendCard({
           </span>
         </div>
         {hasIrradiance ? (
-          <ChartFrame minHeight={220} style={{ height: 220 }}>
+          <ChartFrame minHeight={192} style={{ height: 192 }}>
             {({ width, height }) => (
               <LineChart
                 width={Math.max(width, 1)}
-                height={Math.max(height, 220)}
+                height={Math.max(height, 192)}
                 data={combinedSeries}
                 margin={{ top: 8, right: 16, left: -12, bottom: 0 }}
               >
@@ -223,8 +238,10 @@ export default function OverviewSignalTrendCard({
                   tickLine={false}
                   axisLine={false}
                   width={46}
-                  domain={['auto', 'auto']}
+                  domain={[-1, 1]}
+                  ticks={[-1, -0.5, 0, 0.5, 1]}
                 />
+                <ReferenceLine yAxisId="right" y={0} stroke="rgba(123, 93, 78, 0.4)" strokeDasharray="4 4" />
                 <Tooltip
                   labelFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   formatter={(value: number, name: string) => {
@@ -267,12 +284,12 @@ export default function OverviewSignalTrendCard({
             )}
           </ChartFrame>
         ) : (
-          <div className="rounded-[16px] bg-white/78 px-3 py-4 text-sm text-[color:var(--sg-text-muted)]">
+          <div className="rounded-[14px] bg-white/78 px-2.5 py-3 text-[13px] text-[color:var(--sg-text-muted)]">
             {copy.empty}
           </div>
         )}
         {!hasSourceSink ? (
-          <div className="mt-3 rounded-[16px] bg-white/78 px-3 py-3 text-sm text-[color:var(--sg-text-muted)]">
+          <div className="mt-2 rounded-[14px] bg-white/78 px-2.5 py-2.5 text-[12px] leading-4 text-[color:var(--sg-text-muted)]">
             {copy.modelMissing}
           </div>
         ) : null}

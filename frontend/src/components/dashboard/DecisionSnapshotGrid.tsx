@@ -1,304 +1,394 @@
-import type { CSSProperties } from 'react';
 import { CloudSun, Coins, Gauge, Zap } from 'lucide-react';
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { useMemo } from 'react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import type {
-    AdvancedModelMetrics,
-    CropType,
-    ProducePriceTrendSeries,
-    ProducePricesPayload,
-    SensorData,
-    WeatherOutlook,
+  AdvancedModelMetrics,
+  CropType,
+  OverviewSignalsPayload,
+  ProducePriceTrendSeries,
+  ProducePricesPayload,
+  SensorData,
+  WeatherOutlook,
 } from '../../types';
 import { getProduceDisplayName, getWeatherLabel } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import DashboardCard from '../common/DashboardCard';
 
 interface DecisionSnapshotGridProps {
-    crop: CropType;
-    currentData: SensorData;
-    modelMetrics: AdvancedModelMetrics;
-    weather: WeatherOutlook | null;
-    weatherLoading: boolean;
-    producePrices: ProducePricesPayload | null;
-    produceLoading: boolean;
-    history?: SensorData[];
+  crop: CropType;
+  currentData: SensorData;
+  modelMetrics: AdvancedModelMetrics;
+  weather: WeatherOutlook | null;
+  weatherLoading: boolean;
+  producePrices: ProducePricesPayload | null;
+  produceLoading: boolean;
+  history?: SensorData[];
+  overviewSignals?: OverviewSignalsPayload | null;
 }
 
-const clampTwoStyle: CSSProperties = {
-    display: '-webkit-box',
-    overflow: 'hidden',
-    WebkitBoxOrient: 'vertical',
-    WebkitLineClamp: 2,
+type TrendDatum = {
+  label: string;
+  value: number;
 };
 
-const SPARKLINE_WIDTH = 188;
-const SPARKLINE_HEIGHT = 54;
-
 const CROP_KEYWORDS: Record<CropType, string[]> = {
-    Tomato: ['tomato', '토마토', '방울토마토', 'cherry tomato'],
-    Cucumber: ['cucumber', '오이', 'dadagi', 'chuicheong', '다다기', '취청'],
+  Tomato: ['tomato', '방울토마토', '토마토', 'cherry tomato'],
+  Cucumber: ['cucumber', '오이', 'dadagi', 'chuicheong', '다다기', '취청'],
 };
 
 function normalizeText(value: string | undefined): string {
-    return (value ?? '').trim().toLowerCase();
-}
-
-function buildSparklinePath(values: number[]): string {
-    if (values.length < 2) {
-        return '';
-    }
-
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-    const stepX = SPARKLINE_WIDTH / Math.max(values.length - 1, 1);
-
-    return values
-        .map((value, index) => {
-            const x = index * stepX;
-            const y = SPARKLINE_HEIGHT - ((value - min) / range) * SPARKLINE_HEIGHT;
-            return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-        })
-        .join(' ');
-}
-
-function asFiniteSeries(values: Array<number | null | undefined>): number[] {
-    return values.filter((value): value is number => Number.isFinite(value));
+  return (value ?? '').trim().toLowerCase();
 }
 
 function matchesCropSeries(series: ProducePriceTrendSeries, crop: CropType): boolean {
-    const haystack = normalizeText(`${series.display_name} ${series.source_name}`);
-    return CROP_KEYWORDS[crop].some((keyword) => haystack.includes(keyword));
+  const haystack = normalizeText(`${series.display_name} ${series.source_name}`);
+  return CROP_KEYWORDS[crop].some((keyword) => haystack.includes(keyword));
 }
 
 function selectTrendSeriesForCrop(
-    producePrices: ProducePricesPayload | null,
-    crop: CropType,
-    preferredKey: string | null,
+  producePrices: ProducePricesPayload | null,
+  crop: CropType,
+  preferredKey: string | null,
 ): ProducePriceTrendSeries | null {
-    const seriesList = producePrices?.trend.series ?? [];
-    if (seriesList.length === 0) {
-        return null;
-    }
+  const seriesList = producePrices?.trend.series ?? [];
+  if (seriesList.length === 0) {
+    return null;
+  }
 
-    if (preferredKey) {
-        const matchedByKey = seriesList.find((series) => series.key === preferredKey);
-        if (matchedByKey) {
-            return matchedByKey;
-        }
+  if (preferredKey) {
+    const matchedByKey = seriesList.find((series) => series.key === preferredKey);
+    if (matchedByKey) {
+      return matchedByKey;
     }
+  }
 
-    const matchedByCrop = seriesList.find((series) => matchesCropSeries(series, crop));
-    if (matchedByCrop) {
-        return matchedByCrop;
-    }
+  const matchedByCrop = seriesList.find((series) => matchesCropSeries(series, crop));
+  if (matchedByCrop) {
+    return matchedByCrop;
+  }
 
-    return seriesList[0] ?? null;
+  return seriesList[0] ?? null;
 }
 
-function SnapshotTile({
-    icon: Icon,
-    title,
-    headline,
-    body,
-    tone,
-    trendValues,
-    trendLabel,
-    trendWaiting,
-    trendStroke,
+function formatShortHour(value: number, locale: 'ko' | 'en'): string {
+  return new Intl.DateTimeFormat(locale === 'ko' ? 'ko-KR' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(value);
+}
+
+function formatShortDate(value: string, locale: 'ko' | 'en'): string {
+  return new Intl.DateTimeFormat(locale === 'ko' ? 'ko-KR' : 'en-US', {
+    month: 'numeric',
+    day: 'numeric',
+  }).format(new Date(`${value}T00:00:00`));
+}
+
+function downsampleSeries<T>(items: T[], maxPoints: number): T[] {
+  if (items.length <= maxPoints) {
+    return items;
+  }
+
+  const step = Math.ceil(items.length / maxPoints);
+  return items.filter((_, index) => index % step === 0 || index === items.length - 1);
+}
+
+function buildHistoryWindow(history: SensorData[], hours: number): SensorData[] {
+  if (history.length === 0) {
+    return [];
+  }
+  const latestTimestamp = history[history.length - 1]?.timestamp ?? Date.now();
+  const cutoff = latestTimestamp - hours * 60 * 60 * 1000;
+  return history.filter((point) => point.timestamp >= cutoff);
+}
+
+function TrendTile({
+  icon: Icon,
+  title,
+  headline,
+  supporting,
+  seriesLabel,
+  unitLabel,
+  toneClassName,
+  stroke,
+  data,
+  emptyLabel,
 }: {
-    icon: typeof CloudSun;
-    title: string;
-    headline: string;
-    body: string;
-    tone: string;
-    trendValues: number[];
-    trendLabel: string;
-    trendWaiting: string;
-    trendStroke: string;
+  icon: typeof CloudSun;
+  title: string;
+  headline: string;
+  supporting: string;
+  seriesLabel: string;
+  unitLabel: string;
+  toneClassName: string;
+  stroke: string;
+  data: TrendDatum[];
+  emptyLabel: string;
 }) {
-    const sparklinePath = buildSparklinePath(trendValues);
-
-    return (
-        <article className={`flex h-full min-h-[216px] flex-col rounded-[22px] px-4 py-4 ${tone}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-white/84 text-[color:var(--sg-text-strong)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                    <Icon className="h-4 w-4" />
-                </div>
-                <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{title}</div>
-            </div>
-            <div className="mt-3 text-lg font-semibold leading-tight tracking-[-0.04em] text-[color:var(--sg-text-strong)]" style={clampTwoStyle}>
-                {headline}
-            </div>
-            <div className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]" style={clampTwoStyle}>
-                {body}
-            </div>
-
-            <div className="mt-auto pt-3">
-                {sparklinePath ? (
-                    <div className="rounded-[16px] bg-white/82 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <div className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-[color:var(--sg-text-faint)]">
-                            {trendLabel}
-                        </div>
-                        <svg
-                            viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
-                            className="h-14 w-full overflow-visible"
-                            preserveAspectRatio="none"
-                            role="img"
-                            aria-label={`${title} ${trendLabel}`}
-                        >
-                            <path
-                                d={sparklinePath}
-                                fill="none"
-                                stroke={trendStroke}
-                                strokeWidth="2.2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
-                    </div>
-                ) : (
-                    <div className="rounded-[16px] bg-white/72 px-3 py-2 text-[11px] font-medium text-[color:var(--sg-text-muted)]">
-                        {trendWaiting}
-                    </div>
-                )}
-            </div>
-        </article>
-    );
+  return (
+    <article
+      className={`flex min-h-[260px] flex-col rounded-[24px] px-4 py-4 ${toneClassName}`}
+      style={{ boxShadow: 'var(--sg-shadow-card)' }}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-white/84 text-[color:var(--sg-text-strong)]"
+          style={{ boxShadow: 'var(--sg-shadow-card)' }}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{title}</div>
+      </div>
+      <div className="mt-3 text-lg font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
+        {headline}
+      </div>
+      <div className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{supporting}</div>
+      <div className="mt-4 flex items-center justify-between text-[11px] font-semibold tracking-[0.08em] text-[color:var(--sg-text-faint)]">
+        <span>{seriesLabel}</span>
+        <span>{unitLabel}</span>
+      </div>
+      <div className="mt-2 min-h-0 flex-1 rounded-[18px] bg-white/82 px-2 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        {data.length >= 2 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -12 }}>
+              <CartesianGrid stroke="rgba(122,67,52,0.12)" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                minTickGap={20}
+                tick={{ fill: 'var(--sg-text-faint)', fontSize: 11 }}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                width={42}
+                tick={{ fill: 'var(--sg-text-faint)', fontSize: 11 }}
+              />
+              <Tooltip
+                formatter={(value: number) => [`${Number(value).toFixed(1)} ${unitLabel}`, title]}
+                labelFormatter={(label: string) => label}
+                contentStyle={{
+                  borderRadius: '14px',
+                  border: '1px solid rgba(122,67,52,0.12)',
+                  boxShadow: 'var(--sg-shadow-card)',
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={stroke}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm font-medium text-[color:var(--sg-text-muted)]">
+            {emptyLabel}
+          </div>
+        )}
+      </div>
+    </article>
+  );
 }
 
 export default function DecisionSnapshotGrid({
-    crop,
-    currentData,
-    modelMetrics,
-    weather,
-    weatherLoading,
-    producePrices,
-    produceLoading,
-    history = [],
+  crop,
+  currentData,
+  modelMetrics,
+  weather,
+  weatherLoading,
+  producePrices,
+  produceLoading,
+  history = [],
+  overviewSignals = null,
 }: DecisionSnapshotGridProps) {
-    const { locale } = useLocale();
-    const copy = locale === 'ko'
-        ? {
-            eyebrow: '보조 흐름',
-            title: '날씨 · 시세 · 에너지 · 생육',
-            weatherTitle: '외기',
-            marketTitle: '시세',
-            energyTitle: '에너지',
-            cropTitle: '생육',
-            weatherLoading: '예보 수집 중',
-            marketLoading: '도매 시세 대기',
-            marketDelta: '전일 대비',
-            marketBasis: '도매 기준',
-            leadWeather: '오늘 환기 판단 기준',
-            leadMarket: '출하 판단 신호',
-            leadEnergy: '현재 소비와 효율',
-            leadCrop: '엽면적 지수와 광합성 흐름',
-            trendLine: '최근 추세선',
-            trendWaiting: '값 들어오는 중',
-            won: '원',
-        }
-        : {
-            eyebrow: 'Support signals',
-            title: 'Weather · market · energy · crop',
-            weatherTitle: 'Weather',
-            marketTitle: 'Market',
-            energyTitle: 'Energy',
-            cropTitle: 'Crop',
-            weatherLoading: 'Forecast loading',
-            marketLoading: 'Wholesale market loading',
-            marketDelta: 'day over day',
-            marketBasis: 'Wholesale basis',
-            leadWeather: 'Vent and control signal',
-            leadMarket: 'Shipping signal',
-            leadEnergy: 'Current draw and efficiency',
-            leadCrop: 'Canopy and assimilation read',
-            trendLine: 'Recent trend line',
-            trendWaiting: 'Awaiting trend values',
-            won: 'KRW',
-        };
+  const { locale } = useLocale();
+  const copy = locale === 'ko'
+    ? {
+        eyebrow: '보조 흐름',
+        title: '날씨 · 시세 · 에너지 · 생육',
+        description: '외기, 에너지, 생육은 1일 흐름으로 보고, 시세는 최근 1주 흐름으로 봅니다.',
+        weatherTitle: '외기',
+        marketTitle: '시세',
+        energyTitle: '에너지',
+        cropTitle: '생육',
+        outsideSeries: '최근 1일 외기 일사량',
+        marketSeries: '최근 1주 도매 시세',
+        energySeries: '최근 1일 에너지 사용',
+        cropSeries: '최근 1일 광합성 흐름',
+        outsideEmpty: '외기 시계열이 아직 없습니다.',
+        marketEmpty: '시세 시계열이 아직 없습니다.',
+        energyEmpty: '에너지 시계열이 아직 없습니다.',
+        cropEmpty: '생육 시계열이 아직 없습니다.',
+        weatherLoading: '외기 정보 불러오는 중',
+        marketLoading: '도매 시세 대기 중',
+        weatherSupport: '외기 일사량 기준',
+        marketSupport: '도매가격 기준',
+        energySupport: '실시간 에너지 사용량 기준',
+        cropSupport: '광합성 중심 생육 흐름',
+        radiationUnit: 'W/m²',
+        marketUnit: '원',
+        energyUnit: 'kW',
+        cropUnit: 'µmol/m²/s',
+      }
+    : {
+        eyebrow: 'Support signals',
+        title: 'Weather · market · energy · crop',
+        description: 'Weather, energy, and crop use a 1-day window. Market uses a 7-day window.',
+        weatherTitle: 'Outside',
+        marketTitle: 'Market',
+        energyTitle: 'Energy',
+        cropTitle: 'Crop',
+        outsideSeries: 'Last 1-day outside irradiance',
+        marketSeries: 'Last 7-day wholesale prices',
+        energySeries: 'Last 1-day energy use',
+        cropSeries: 'Last 1-day photosynthesis',
+        outsideEmpty: 'Outside trend is not ready yet.',
+        marketEmpty: 'Market trend is not ready yet.',
+        energyEmpty: 'Energy trend is not ready yet.',
+        cropEmpty: 'Crop trend is not ready yet.',
+        weatherLoading: 'Loading weather',
+        marketLoading: 'Loading wholesale prices',
+        weatherSupport: 'Based on outside irradiance',
+        marketSupport: 'Wholesale basis',
+        energySupport: 'Based on live energy use',
+        cropSupport: 'Photosynthesis-led crop trend',
+        radiationUnit: 'W/m²',
+        marketUnit: 'KRW',
+        energyUnit: 'kW',
+        cropUnit: 'µmol/m²/s',
+      };
 
-    const selectedMarket = selectProduceItemForCrop(producePrices, crop, { marketPreference: ['wholesale'] });
-    const leadMarketItem = selectedMarket?.item ?? null;
-    const marketSeries = selectTrendSeriesForCrop(producePrices, crop, leadMarketItem?.key ?? null);
-    const priceLocale = locale === 'ko' ? 'ko-KR' : 'en-US';
-    const weatherHeadline = weatherLoading || !weather
-        ? copy.weatherLoading
-        : `${weather.current.temperature_c.toFixed(1)}°C · ${getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)}`;
-    const localizedWeatherBody = weather
-        ? locale === 'ko'
-            ? `오늘은 ${getWeatherLabel(weather.daily[0]?.weather_code, weather.daily[0]?.weather_label, locale)} 흐름이며 강수 가능성 ${(weather.daily[0]?.precipitation_probability_max_pct ?? 0).toFixed(0)}%, 최대 풍속 ${(weather.daily[0]?.wind_speed_max_kmh ?? 0).toFixed(1)} km/h입니다.`
-            : weather.summary
-        : copy.leadWeather;
-    const marketHeadline = produceLoading || !leadMarketItem
-        ? copy.marketLoading
-        : `${getProduceDisplayName(leadMarketItem.display_name, locale)} ${leadMarketItem.current_price_krw.toLocaleString(priceLocale)}${copy.won}`;
-    const marketDelta = produceLoading || !leadMarketItem
-        ? copy.marketLoading
-        : `${copy.marketBasis} · ${copy.marketDelta} ${leadMarketItem.day_over_day_pct.toFixed(1)}%`;
-    const weatherTrendValues = asFiniteSeries(
-        (weather?.daily ?? []).slice(0, 7).map((day) => day.temperature_max_c),
-    );
-    const marketTrendValues = asFiniteSeries(
-        (marketSeries?.points ?? []).map((point) => point.actual_price_krw),
-    ).slice(-14);
-    const recentHistory = history.slice(-24);
-    const energyTrendValues = asFiniteSeries(recentHistory.map((point) => point.energyUsage));
-    const cropTrendValues = asFiniteSeries(recentHistory.map((point) => point.photosynthesis));
+  const selectedMarket = selectProduceItemForCrop(producePrices, crop, { marketPreference: ['wholesale'] });
+  const marketSeries = selectTrendSeriesForCrop(producePrices, crop, selectedMarket?.item?.key ?? null);
 
-    return (
-        <DashboardCard
-            eyebrow={copy.eyebrow}
-            title={copy.title}
-            description={undefined}
-            contentClassName="overflow-hidden"
-        >
-            <div className="grid gap-3 sm:grid-cols-2 sm:auto-rows-fr">
-                <SnapshotTile
-                    icon={CloudSun}
-                    title={copy.weatherTitle}
-                    headline={weatherHeadline}
-                    body={localizedWeatherBody}
-                    tone="sg-tint-amber"
-                    trendValues={weatherTrendValues}
-                    trendLabel={copy.trendLine}
-                    trendWaiting={copy.trendWaiting}
-                    trendStroke="#2d5d77"
-                />
-                <SnapshotTile
-                    icon={Coins}
-                    title={copy.marketTitle}
-                    headline={marketHeadline}
-                    body={marketDelta || copy.leadMarket}
-                    tone="sg-tint-amber"
-                    trendValues={marketTrendValues}
-                    trendLabel={copy.trendLine}
-                    trendWaiting={copy.trendWaiting}
-                    trendStroke="#9d4125"
-                />
-                <SnapshotTile
-                    icon={Zap}
-                    title={copy.energyTitle}
-                    headline={`${modelMetrics.energy.consumption.toFixed(1)} kW`}
-                    body={`${copy.leadEnergy} · ${modelMetrics.energy.efficiency.toFixed(2)} COP`}
-                    tone="sg-tint-green"
-                    trendValues={energyTrendValues}
-                    trendLabel={copy.trendLine}
-                    trendWaiting={copy.trendWaiting}
-                    trendStroke="#9e4f21"
-                />
-                <SnapshotTile
-                    icon={Gauge}
-                    title={copy.cropTitle}
-                    headline={`LAI ${modelMetrics.growth.lai.toFixed(2)} · ${currentData.photosynthesis.toFixed(1)}`}
-                    body={`${copy.leadCrop} · ${currentData.vpd.toFixed(2)} kPa`}
-                    tone="sg-tint-violet"
-                    trendValues={cropTrendValues}
-                    trendLabel={copy.trendLine}
-                    trendWaiting={copy.trendWaiting}
-                    trendStroke="#7e2c2d"
-                />
-            </div>
-        </DashboardCard>
+  const outsideData = useMemo(() => {
+    const irradiancePoints = overviewSignals?.irradiance.points ?? [];
+    return downsampleSeries(
+      irradiancePoints
+        .slice(-24)
+        .map((point) => ({
+          label: formatShortHour(new Date(point.time).getTime(), locale),
+          value: Number(point.shortwave_radiation_w_m2),
+        }))
+        .filter((point) => Number.isFinite(point.value)),
+      12,
     );
+  }, [locale, overviewSignals]);
+
+  const oneDayHistory = useMemo(() => buildHistoryWindow(history, 24), [history]);
+
+  const energyData = useMemo(() => (
+    downsampleSeries(
+      oneDayHistory
+        .map((point) => ({
+          label: formatShortHour(point.timestamp, locale),
+          value: Number(point.energyUsage),
+        }))
+        .filter((point) => Number.isFinite(point.value)),
+      18,
+    )
+  ), [locale, oneDayHistory]);
+
+  const cropData = useMemo(() => (
+    downsampleSeries(
+      oneDayHistory
+        .map((point) => ({
+          label: formatShortHour(point.timestamp, locale),
+          value: Number(point.photosynthesis),
+        }))
+        .filter((point) => Number.isFinite(point.value)),
+      18,
+    )
+  ), [locale, oneDayHistory]);
+
+  const marketData = (marketSeries?.points ?? [])
+    .filter((point) => point.segment === 'history' && Number.isFinite(point.actual_price_krw))
+    .slice(-7)
+    .map((point) => ({
+      label: formatShortDate(point.date, locale),
+      value: Number(point.actual_price_krw),
+    }));
+
+  const weatherHeadline = weatherLoading || !weather
+    ? copy.weatherLoading
+    : `${weather.current.temperature_c.toFixed(1)}°C · ${getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)}`;
+  const marketHeadline = produceLoading || !selectedMarket?.item
+    ? copy.marketLoading
+    : `${getProduceDisplayName(selectedMarket.item.display_name, locale)} ${selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${copy.marketUnit}`;
+  const energyHeadline = `${modelMetrics.energy.consumption.toFixed(1)} kW · COP ${modelMetrics.energy.efficiency.toFixed(2)}`;
+  const cropHeadline = `광합성 ${currentData.photosynthesis.toFixed(1)} · LAI ${modelMetrics.growth.lai.toFixed(2)}`;
+
+  return (
+    <DashboardCard
+      eyebrow={copy.eyebrow}
+      title={copy.title}
+      description={copy.description}
+      contentClassName="overflow-hidden"
+    >
+      <div className="grid gap-3 xl:grid-cols-2">
+        <TrendTile
+          icon={CloudSun}
+          title={copy.weatherTitle}
+          headline={weatherHeadline}
+          supporting={copy.weatherSupport}
+          seriesLabel={copy.outsideSeries}
+          unitLabel={copy.radiationUnit}
+          toneClassName="sg-tint-amber"
+          stroke="#2d5d77"
+          data={outsideData}
+          emptyLabel={copy.outsideEmpty}
+        />
+        <TrendTile
+          icon={Coins}
+          title={copy.marketTitle}
+          headline={marketHeadline}
+          supporting={copy.marketSupport}
+          seriesLabel={copy.marketSeries}
+          unitLabel={copy.marketUnit}
+          toneClassName="sg-tint-amber"
+          stroke="#9d4125"
+          data={marketData}
+          emptyLabel={copy.marketEmpty}
+        />
+        <TrendTile
+          icon={Zap}
+          title={copy.energyTitle}
+          headline={energyHeadline}
+          supporting={copy.energySupport}
+          seriesLabel={copy.energySeries}
+          unitLabel={copy.energyUnit}
+          toneClassName="sg-tint-green"
+          stroke="#9e4f21"
+          data={energyData}
+          emptyLabel={copy.energyEmpty}
+        />
+        <TrendTile
+          icon={Gauge}
+          title={copy.cropTitle}
+          headline={cropHeadline}
+          supporting={copy.cropSupport}
+          seriesLabel={copy.cropSeries}
+          unitLabel={copy.cropUnit}
+          toneClassName="sg-tint-violet"
+          stroke="#7e2c2d"
+          data={cropData}
+          emptyLabel={copy.cropEmpty}
+        />
+      </div>
+    </DashboardCard>
+  );
 }

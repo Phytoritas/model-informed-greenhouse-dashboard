@@ -29,6 +29,7 @@ interface RtrTrendPoint {
 
 const THREE_DAYS_MS = 72 * 60 * 60 * 1000;
 const MAX_POINTS = 72;
+const RTR_TREND_CARD_HEIGHT_CLASS = 'h-[312px] overflow-hidden !p-4';
 
 function downsampleSeries<T>(series: T[], maxPoints: number): T[] {
   if (series.length <= maxPoints) {
@@ -97,6 +98,7 @@ export default function RtrTrendCard({
   if (trendSeries.length < 2) {
     return (
       <DashboardCard
+        className={RTR_TREND_CARD_HEIGHT_CLASS}
         eyebrow={copy.eyebrow}
         title={copy.title}
         description=""
@@ -110,12 +112,13 @@ export default function RtrTrendCard({
 
   return (
     <DashboardCard
+      className={RTR_TREND_CARD_HEIGHT_CLASS}
       eyebrow={copy.eyebrow}
       title={copy.title}
       description=""
-      contentClassName="flex flex-col gap-3"
+      contentClassName="flex flex-col gap-2"
     >
-      <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold tracking-[0.08em] text-[color:var(--sg-text-faint)]">
+      <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.06em] text-[color:var(--sg-text-faint)]">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-accent-violet)]" />
           {copy.actual}
@@ -126,11 +129,11 @@ export default function RtrTrendCard({
         </span>
       </div>
 
-      <ChartFrame minHeight={180} style={{ height: 180 }}>
+      <ChartFrame minHeight={176} style={{ height: 176 }}>
         {({ width, height }) => (
           <LineChart
             width={Math.max(width, 1)}
-            height={Math.max(height, 180)}
+            height={Math.max(height, 176)}
             data={trendSeries}
             margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
           >

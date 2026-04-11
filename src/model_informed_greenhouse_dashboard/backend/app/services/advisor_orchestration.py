@@ -21,7 +21,10 @@ from .decision import DecisionSupport
 from .knowledge_catalog import build_knowledge_catalog
 from .model_runtime.constraint_engine import CONTROL_SPECS
 from .model_runtime.model_state_store import ModelStateStore
-from .model_runtime.scenario_runner import run_bounded_scenario
+from .model_runtime.scenario_runner import (
+    run_bounded_scenario,
+    run_precision_ladder_scenarios,
+)
 from .model_runtime.sensitivity_engine import compute_local_sensitivities
 from .openai_service import (
     build_advisory_display_payload,
@@ -199,6 +202,15 @@ def _inject_advisor_retrieval_context(
     return dashboard_payload
 
 
+def _inject_model_runtime_context(
+    dashboard: dict[str, Any],
+    model_runtime: dict[str, Any],
+) -> dict[str, Any]:
+    dashboard_payload = deepcopy(dashboard)
+    dashboard_payload["model_runtime"] = model_runtime
+    return dashboard_payload
+
+
 def _coerce_float(value: Any) -> float | None:
     try:
         numeric = float(value)
@@ -344,6 +356,19 @@ def _build_unavailable_model_runtime_payload(
             "status": "insufficient_context",
             "violated_constraints": [],
             "penalties": {},
+        },
+        "recommendation_families": [],
+        "best_actions": [],
+        "control_precision_matrix": {},
+        "operator_view": {
+            "now": [],
+            "today": [],
+            "this_week": [],
+        },
+        "tradeoff_summary": {
+            "yield_vs_energy": [],
+            "yield_vs_disease": [],
+            "yield_vs_source_sink": [],
         },
         "recommendations": [],
         "provenance": {
@@ -807,6 +832,430 @@ def _build_model_runtime_payload(
     baseline_72h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 72)
     baseline_168h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 168)
     baseline_336h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 336)
+
+    sensitivity_rows = {
+        str(row.get("control")): row
+        for row in sensitivity_payload.get("sensitivities", [])
+    }
+
+    def _display_unit(spec: Any) -> str:
+        return "%" if spec.unit == "pct" else str(spec.unit)
+
+    def _format_magnitude(value: float, precision: int) -> str:
+        formatted = f"{abs(float(value)):.{precision}f}"
+        if "." in formatted:
+            formatted = formatted.rstrip("0").rstrip(".")
+        return formatted
+
+    def _step_label(spec: Any, delta_value: float) -> str:
+        sign = "+" if float(delta_value) > 0 else "-"
+        return f"{sign}{_format_magnitude(delta_value, int(spec.display_precision))}{_display_unit(spec)}"
+
+    def _action_label(spec: Any, delta_value: float) -> str:
+        direction = "올리기" if float(delta_value) > 0 else "내리기"
+        return f"{spec.ui_label} {_format_magnitude(delta_value, int(spec.display_precision))}{_display_unit(spec)} {direction}"
+
+    def _current_value(control_name: str) -> float | None:
+        normalized_snapshot = _coerce_dict(snapshot_record.get("normalized_snapshot"))
+        live_snapshot = _coerce_dict(normalized_snapshot.get("live_observation"))
+        raw_adapter_state = _coerce_dict(snapshot_record.get("raw_adapter_state"))
+        if control_name == "co2_setpoint_day":
+            return _coerce_float(raw_adapter_state.get("u_CO2"))
+        if control_name in {"temperature_day", "temperature_night"}:
+            return _coerce_float(live_snapshot.get("canopy_temperature_c"))
+        if control_name == "rh_target":
+            rh_value = _coerce_float(raw_adapter_state.get("RH"))
+            if rh_value is None:
+                return None
+            return round(rh_value * 100.0, 6) if rh_value <= 1.0 else round(rh_value, 6)
+        if control_name == "screen_close":
+            return 0.0
+        return None
+
+    def _has_high_violation(violations: list[dict[str, Any]]) -> bool:
+        return any(str(item.get("severity") or "").lower() == "high" for item in violations)
+
+    def _score_weights() -> dict[str, float]:
+        if tab_name == "environment":
+            return {"objective": 0.26, "yield": 0.2, "source": 0.14, "energy": 0.16, "disease": 0.12, "humidity": 0.07, "confidence": 0.05}
+        if tab_name == "physiology":
+            return {"objective": 0.34, "yield": 0.14, "source": 0.2, "energy": 0.09, "disease": 0.1, "humidity": 0.07, "confidence": 0.06}
+        if tab_name == "harvest_market":
+            return {"objective": 0.16, "yield": 0.4, "source": 0.12, "energy": 0.12, "disease": 0.1, "humidity": 0.05, "confidence": 0.05}
+        return {"objective": 0.24, "yield": 0.28, "source": 0.14, "energy": 0.12, "disease": 0.1, "humidity": 0.06, "confidence": 0.04}
+
+    def _build_step(spec: Any, step_meta: dict[str, Any], comparison: dict[str, Any], sensitivity_row: dict[str, Any]) -> dict[str, Any]:
+        outputs = comparison.get("outputs_by_horizon", {})
+        scenario_24h = outputs.get(24, {})
+        scenario_72h = outputs.get(72, {})
+        scenario_168h = outputs.get(168, {})
+        scenario_336h = outputs.get(336, {})
+        penalties = _coerce_dict(comparison.get("penalties"))
+        confidence = round(float(comparison.get("confidence", 0.0)), 6)
+        yield_delta_24h = round(float(scenario_24h.get("yield_delta_vs_baseline", 0.0)), 6)
+        yield_delta_72h = round(float(scenario_72h.get("yield_delta_vs_baseline", 0.0)), 6)
+        yield_delta_14d = round(float(scenario_336h.get("yield_delta_vs_baseline", 0.0)), 6)
+        canopy_delta_72h = round(float(scenario_72h.get("canopy_A_pred", 0.0)) - float(baseline_72h.get("canopy_A_pred", 0.0)), 6)
+        energy_delta_72h = round(float(scenario_72h.get("energy_delta_vs_baseline", 0.0)), 6)
+        energy_delta_7d = round(float(scenario_168h.get("energy_delta_vs_baseline", 0.0)), 6)
+        humidity_penalty_delta = round(float(penalties.get("humidity_penalty", 0.0)), 6)
+        disease_penalty_delta = round(float(penalties.get("disease_risk_penalty", 0.0)), 6)
+        source_sink_balance_delta = round(float(scenario_72h.get("source_sink_balance_delta", 0.0)), 6)
+        rtr_delta_72h = round(float(scenario_72h.get("rtr_pred", 0.0)) - float(baseline_72h.get("rtr_pred", 0.0)), 6)
+        objective_delta = round(
+            (0.6 * (canopy_delta_72h / max(abs(float(baseline_72h.get("canopy_A_pred", 0.0))), 1.0)))
+            + (0.4 * (yield_delta_72h / max(abs(float(baseline_72h.get("yield_pred", 0.0))), 1.0))),
+            6,
+        )
+        normalized_yield_14d = round(yield_delta_14d / max(abs(float(baseline_336h.get("yield_pred", 0.0))), 1.0), 6)
+        normalized_balance = round(_clamp(source_sink_balance_delta / 0.25, -1.5, 1.5), 6)
+        normalized_energy = max(0.0, round(energy_delta_72h / max(abs(float(baseline_72h.get("energy_cost_pred", 0.0))), 1.0), 6))
+        weights = _score_weights()
+        confidence_penalty = max(0.0, 1.0 - confidence) + float(penalties.get("confidence_penalty", 0.0))
+        scenario_score = round(
+            (weights["objective"] * objective_delta)
+            + (weights["yield"] * normalized_yield_14d)
+            + (weights["source"] * normalized_balance)
+            - (weights["energy"] * normalized_energy)
+            - (weights["disease"] * disease_penalty_delta)
+            - (weights["humidity"] * humidity_penalty_delta)
+            - (weights["confidence"] * confidence_penalty),
+            6,
+        )
+        violations = list(comparison.get("violated_constraints", []))
+        risk_flags: list[str] = []
+        if _has_high_violation(violations):
+            risk_flags.append("제약 초과")
+        elif violations:
+            risk_flags.append("제약 경고")
+        if disease_penalty_delta >= 0.18:
+            risk_flags.append("병해 리스크")
+        if humidity_penalty_delta >= 0.12:
+            risk_flags.append("습도 리스크")
+        if energy_delta_72h > 0:
+            risk_flags.append("에너지 증가")
+        if source_sink_balance_delta < 0:
+            risk_flags.append("균형 약화")
+        if str(sensitivity_row.get("nonlinearity_hint") or "") in {"nonlinear", "direction_conflict"}:
+            risk_flags.append("비선형성 경고")
+        if scenario_score <= 0:
+            risk_flags.append("효과 제한적")
+        dominant_tradeoff = "수량 개선 우세"
+        tradeoff_candidates = [("에너지 증가", max(0.0, energy_delta_72h)), ("습도 리스크", max(0.0, humidity_penalty_delta)), ("병해 리스크", max(0.0, disease_penalty_delta)), ("소스-싱크 약화", max(0.0, -source_sink_balance_delta))]
+        top_tradeoff = max(tradeoff_candidates, key=lambda item: item[1])
+        if top_tradeoff[1] > 1e-9:
+            dominant_tradeoff = top_tradeoff[0]
+        return {
+            "step_label": _step_label(spec, float(step_meta["requested_delta"])),
+            "step_class": step_meta["step_class"],
+            "delta": round(float(step_meta["requested_delta"]), 6),
+            "requested_delta": round(float(step_meta["requested_delta"]), 6),
+            "applied_delta": round(float(comparison.get("applied_delta", 0.0)), 6),
+            "bounded_delta": round(float(comparison.get("bounded_delta", 0.0)), 6),
+            "scenario_score": scenario_score,
+            "objective_delta": objective_delta,
+            "yield_delta_24h": yield_delta_24h,
+            "yield_delta_72h": yield_delta_72h,
+            "yield_delta_14d": yield_delta_14d,
+            "energy_delta": energy_delta_72h,
+            "energy_delta_7d": energy_delta_7d,
+            "humidity_penalty_delta": humidity_penalty_delta,
+            "disease_penalty_delta": disease_penalty_delta,
+            "source_sink_balance_delta": source_sink_balance_delta,
+            "rtr_delta_72h": rtr_delta_72h,
+            "confidence": confidence,
+            "violated_constraints": violations,
+            "risk_flags": risk_flags,
+            "dominant_tradeoff": dominant_tradeoff,
+            "ui_visible": bool(step_meta.get("ui_visible", True)),
+            "is_clamped": bool(comparison.get("is_clamped")),
+            "feasible": scenario_score > 0 and not _has_high_violation(violations),
+        }
+
+    def _build_family(control_name: str) -> dict[str, Any]:
+        spec = CONTROL_SPECS[control_name]
+        sensitivity_row = sensitivity_rows.get(control_name, {})
+        ladder = [
+            {"step_class": "micro", "requested_delta": round(spec.micro_step * sign, 6), "ui_visible": True}
+            for sign in (1.0, -1.0)
+        ] + [
+            {"step_class": "macro", "requested_delta": round(spec.macro_step * sign, 6), "ui_visible": True}
+            for sign in (1.0, -1.0)
+        ]
+        if spec.reference_step:
+            ladder.extend(
+                {"step_class": "reference", "requested_delta": round(spec.reference_step * sign, 6), "ui_visible": False}
+                for sign in (1.0, -1.0)
+            )
+        ladder_payload = run_precision_ladder_scenarios(snapshot_record, control_name, [float(item["requested_delta"]) for item in ladder], horizons_hours=list(_MODEL_RUNTIME_HORIZONS_HOURS))
+        comparisons = {round(float(item.get("requested_delta", 0.0)), 6): item for item in ladder_payload.get("comparisons", [])}
+        steps = [_build_step(spec, item, comparisons[round(float(item["requested_delta"]), 6)], sensitivity_row) for item in ladder if round(float(item["requested_delta"]), 6) in comparisons]
+        steps.sort(key=lambda item: float(item.get("scenario_score", 0.0)), reverse=True)
+        recommended_step = next((item for item in steps if item.get("feasible") and item.get("ui_visible", True)), None)
+        precision_mode = "hold"
+        if recommended_step:
+            same_sign = [item for item in steps if item.get("ui_visible") and (1 if float(item.get("applied_delta", 0.0)) > 0 else -1) == (1 if float(recommended_step.get("applied_delta", 0.0)) > 0 else -1) and item.get("step_class") in {"micro", "macro"}]
+            micro = next((item for item in same_sign if item.get("step_class") == "micro"), None)
+            macro = next((item for item in same_sign if item.get("step_class") == "macro"), None)
+            if not micro or not macro:
+                precision_mode = "micro_preferred" if recommended_step.get("step_class") == "micro" else "macro_preferred"
+            elif float(micro.get("scenario_score", 0.0)) > 0 and float(macro.get("scenario_score", 0.0)) <= 0:
+                precision_mode = "micro_preferred"
+            elif float(macro.get("scenario_score", 0.0)) > float(micro.get("scenario_score", 0.0)) * 1.15:
+                precision_mode = "macro_preferred"
+            elif float(micro.get("scenario_score", 0.0)) >= float(macro.get("scenario_score", 0.0)) * 0.92:
+                precision_mode = "range_preferred"
+            else:
+                precision_mode = "micro_preferred"
+        confidence_adjustment = round(_clamp(0.55 + (0.2 * float(sensitivity_row.get("local_confidence", 0.0))) + (0.15 * float(sensitivity_payload.get("confidence", 0.0))) + (0.1 * float(recommended_step.get("confidence", 0.0)) if recommended_step else 0.0), 0.4, 1.0), 6)
+        feasibility_adjustment = 0.35 if not recommended_step else round(_clamp(1.0 - (0.18 * (float(recommended_step.get("disease_penalty_delta", 0.0)) + float(recommended_step.get("humidity_penalty_delta", 0.0)) + max(0.0, float(recommended_step.get("energy_delta", 0.0))))), 0.45, 1.0), 6)
+        clarity_adjustment = 0.72 if not recommended_step else (1.03 if precision_mode == "range_preferred" else 1.0 if precision_mode == "macro_preferred" else 0.96)
+        family_score = round((float(recommended_step.get("scenario_score", 0.0)) if recommended_step else 0.0) * confidence_adjustment * feasibility_adjustment * clarity_adjustment, 6)
+        diminishing_return = {"is_present": False, "marginal_gain_micro": 0.0, "marginal_gain_macro": 0.0, "marginal_cost_micro": 0.0, "marginal_cost_macro": 0.0, "micro_to_macro_gain_ratio": 0.0, "micro_to_macro_cost_ratio": 0.0, "energy_per_yield_ratio": 0.0}
+        if recommended_step:
+            step_sign = 1 if float(recommended_step.get("applied_delta", 0.0)) > 0 else -1
+            same_sign = [item for item in steps if item.get("ui_visible") and (1 if float(item.get("applied_delta", 0.0)) > 0 else -1) == step_sign and item.get("step_class") in {"micro", "macro"}]
+            micro = next((item for item in same_sign if item.get("step_class") == "micro"), None)
+            macro = next((item for item in same_sign if item.get("step_class") == "macro"), None)
+            if micro and macro:
+                micro_gain = float(micro.get("yield_delta_14d", 0.0))
+                macro_gain = float(macro.get("yield_delta_14d", 0.0)) - micro_gain
+                micro_cost = abs(float(micro.get("energy_delta", 0.0))) + float(micro.get("disease_penalty_delta", 0.0)) + float(micro.get("humidity_penalty_delta", 0.0))
+                macro_cost = abs(float(macro.get("energy_delta", 0.0))) + float(macro.get("disease_penalty_delta", 0.0)) + float(macro.get("humidity_penalty_delta", 0.0)) - micro_cost
+                diminishing_return = {"is_present": (macro_gain / max(abs(micro_gain), 1e-9)) < 0.85 or (macro_cost / max(abs(micro_cost), 1e-9)) > 1.1, "marginal_gain_micro": round(micro_gain, 6), "marginal_gain_macro": round(macro_gain, 6), "marginal_cost_micro": round(micro_cost, 6), "marginal_cost_macro": round(macro_cost, 6), "micro_to_macro_gain_ratio": round(macro_gain / max(abs(micro_gain), 1e-9), 6), "micro_to_macro_cost_ratio": round(macro_cost / max(abs(micro_cost), 1e-9), 6), "energy_per_yield_ratio": round(abs(float(macro.get("energy_delta", 0.0))) / max(abs(float(macro.get("yield_delta_14d", 0.0))), 1e-9), 6)}
+        operator_summary = {"headline": f"{spec.ui_label}은 지금 유지가 안전합니다.", "why": "bounded scenario에서 신뢰 가능한 이득이 확인된 조정 폭이 없습니다.", "watch_out": "현재 조건에서는 큰 조정보다 관측 신호를 더 모으는 편이 안전합니다.", "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(_MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"), "오늘")}
+        if recommended_step:
+            operator_summary = {"headline": f"{spec.ui_label}는 {recommended_step['step_label']} 조정이 가장 유리합니다.", "why": f"14일 예상 수량 {float(recommended_step.get('yield_delta_14d', 0.0)):+.3f}, 72시간 동화량 {float(recommended_step.get('yield_delta_72h', 0.0)):+.3f}, 균형 지수 {float(recommended_step.get('source_sink_balance_delta', 0.0)):+.3f}입니다.", "watch_out": "더 크게 조정하면 추가 이득보다 비용 또는 리스크가 먼저 커질 수 있습니다." if precision_mode == "micro_preferred" else "미세 조정보다 한 단계 더 크게 움직일 때 이득이 더 분명합니다." if precision_mode == "macro_preferred" else "미세 조정과 강한 조정이 모두 유효해 운영 여유 범위가 있습니다." if precision_mode == "range_preferred" else "신뢰 구간 안에서만 조정 강도를 비교해 주세요.", "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(_MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"), "오늘")}
+        recommended_band = None
+        if recommended_step:
+            same_sign_values = [float(item.get("requested_delta", 0.0)) for item in steps if item.get("ui_visible") and (1 if float(item.get("applied_delta", 0.0)) > 0 else -1) == (1 if float(recommended_step.get("applied_delta", 0.0)) > 0 else -1) and item.get("step_class") in {"micro", "macro"}]
+            same_sign_values = sorted(same_sign_values or [float(recommended_step.get("requested_delta", 0.0))])
+            recommended_band = {"start": round(same_sign_values[0], 6), "end": round(same_sign_values[-1], 6), "unit": _display_unit(spec), "best_step": round(float(recommended_step.get("requested_delta", 0.0)), 6)}
+        return {"control": control_name, "label": spec.ui_label, "current_value": _current_value(control_name), "unit": _display_unit(spec), "target_metric": derivative_target, "local_sensitivity": {"derivative": sensitivity_row.get("derivative"), "elasticity": sensitivity_row.get("elasticity"), "trust_region": sensitivity_row.get("trust_region"), "scenario_alignment": sensitivity_row.get("scenario_alignment"), "bounded_delta": sensitivity_row.get("bounded_delta"), "local_confidence": sensitivity_row.get("local_confidence"), "recommended_sign": sensitivity_row.get("recommended_sign"), "nonlinearity_hint": sensitivity_row.get("nonlinearity_hint")}, "steps": steps, "recommended_step": recommended_step, "diminishing_return": diminishing_return, "operator_summary": operator_summary, "action": _action_label(spec, float(recommended_step.get("requested_delta", 0.0))) if recommended_step else f"{spec.ui_label} 유지", "action_short": f"{spec.ui_label} {_step_label(spec, float(recommended_step.get('requested_delta', 0.0)))}" if recommended_step else f"{spec.ui_label} 유지", "action_family": spec.family_name, "recommended_band": recommended_band, "precision_mode": precision_mode, "why_summary": operator_summary["headline"], "why_detail": {"yield_24h": recommended_step.get("yield_delta_24h"), "yield_72h": recommended_step.get("yield_delta_72h"), "yield_14d": recommended_step.get("yield_delta_14d"), "energy": recommended_step.get("energy_delta"), "humidity": recommended_step.get("humidity_penalty_delta"), "disease": recommended_step.get("disease_penalty_delta"), "source_sink": recommended_step.get("source_sink_balance_delta")} if recommended_step else {}, "family_score": family_score, "best_step_score": float(recommended_step.get("scenario_score", 0.0)) if recommended_step else 0.0, "confidence_adjustment": confidence_adjustment, "feasibility_adjustment": feasibility_adjustment, "clarity_adjustment": clarity_adjustment, "time_window": _MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today")}
+
+    recommendation_families = [
+        _build_family(control_name)
+        for control_name in selected_controls
+        if control_name in sensitivity_rows
+    ]
+    recommendation_families.sort(
+        key=lambda family: float(family.get("family_score", 0.0)),
+        reverse=True,
+    )
+    best_actions = [
+        family
+        for family in recommendation_families
+        if family.get("recommended_step") is not None
+    ]
+    runtime_options = [
+        {
+            "action": family.get("action"),
+            "action_short": family.get("action_short"),
+            "action_family": family.get("action_family"),
+            "time_window": family.get("time_window"),
+            "control": family.get("control"),
+            "direction": "increase" if float(family["recommended_step"].get("applied_delta", 0.0)) > 0 else "decrease",
+            "delta": family["recommended_step"].get("applied_delta"),
+            "requested_delta": family["recommended_step"].get("requested_delta"),
+            "unit": family.get("unit"),
+            "score": family.get("family_score"),
+            "expected_yield_delta_24h": family["recommended_step"].get("yield_delta_24h"),
+            "expected_yield_delta_72h": family["recommended_step"].get("yield_delta_72h"),
+            "expected_yield_delta_7d": family["recommended_step"].get("yield_delta_72h"),
+            "expected_yield_delta_14d": family["recommended_step"].get("yield_delta_14d"),
+            "expected_energy_delta": family["recommended_step"].get("energy_delta_7d"),
+            "expected_RTR_delta": family["recommended_step"].get("rtr_delta_72h"),
+            "expected_source_sink_balance_delta": family["recommended_step"].get("source_sink_balance_delta"),
+            "confidence": family["recommended_step"].get("confidence"),
+            "violated_constraints": family["recommended_step"].get("violated_constraints", []),
+            "precision_mode": family.get("precision_mode"),
+            "recommended_band": family.get("recommended_band"),
+        }
+        for family in best_actions[:3]
+    ]
+    recommended_option = runtime_options[0] if runtime_options else None
+    top_levers = [
+        {
+            "control": lever.get("control"),
+            "direction": lever.get("direction"),
+            "derivative": lever.get("derivative"),
+            "elasticity": lever.get("elasticity"),
+            "trust_region": lever.get("trust_region"),
+            "scenario_alignment": lever.get("scenario_alignment"),
+            "bounded_delta": lever.get("bounded_delta"),
+            "local_confidence": lever.get("local_confidence"),
+            "recommended_sign": lever.get("recommended_sign"),
+            "nonlinearity_hint": lever.get("nonlinearity_hint"),
+        }
+        for lever in _top_runtime_levers(sensitivity_payload)
+    ]
+    state = snapshot_record["normalized_snapshot"]["state"]
+    gas_exchange = snapshot_record["normalized_snapshot"]["gas_exchange"]
+    live_observation = snapshot_record["normalized_snapshot"]["live_observation"]
+    baseline_24h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 24)
+    control_precision_matrix = {
+        str(family.get("control")): [
+            {
+                "step_label": step.get("step_label"),
+                "step_class": step.get("step_class"),
+                "requested_delta": step.get("requested_delta"),
+                "applied_delta": step.get("applied_delta"),
+                "scenario_score": step.get("scenario_score"),
+                "feasible": step.get("feasible"),
+                "confidence": step.get("confidence"),
+                "yield_delta_14d": step.get("yield_delta_14d"),
+                "energy_delta": step.get("energy_delta"),
+                "disease_penalty_delta": step.get("disease_penalty_delta"),
+                "humidity_penalty_delta": step.get("humidity_penalty_delta"),
+                "source_sink_balance_delta": step.get("source_sink_balance_delta"),
+                "risk_flags": step.get("risk_flags", []),
+                "ui_visible": step.get("ui_visible", True),
+                "is_clamped": step.get("is_clamped", False),
+            }
+            for step in family.get("steps", [])
+        ]
+        for family in recommendation_families
+    }
+    operator_view = {"now": [], "today": [], "this_week": []}
+    for family in best_actions[:3]:
+        bucket = "today"
+        if family.get("time_window") == "now":
+            bucket = "now"
+        elif family.get("time_window") == "this_week":
+            bucket = "this_week"
+        operator_view[bucket].append(
+            {
+                "control": family.get("control"),
+                "label": family.get("label"),
+                "action": family.get("action"),
+                "action_short": family.get("action_short"),
+                "precision_mode": family.get("precision_mode"),
+                "headline": family.get("operator_summary", {}).get("headline"),
+                "why": family.get("operator_summary", {}).get("why"),
+                "watch_out": family.get("operator_summary", {}).get("watch_out"),
+            }
+        )
+    tradeoff_summary = {
+        "yield_vs_energy": [
+            {
+                "control": family.get("control"),
+                "label": family.get("label"),
+                "action_short": family.get("action_short"),
+                "yield_delta_14d": family["recommended_step"].get("yield_delta_14d"),
+                "energy_delta": family["recommended_step"].get("energy_delta"),
+                "disease_penalty_delta": family["recommended_step"].get("disease_penalty_delta"),
+                "humidity_penalty_delta": family["recommended_step"].get("humidity_penalty_delta"),
+                "source_sink_balance_delta": family["recommended_step"].get("source_sink_balance_delta"),
+            }
+            for family in sorted(best_actions, key=lambda item: float(item["recommended_step"].get("yield_delta_14d", 0.0)) - abs(float(item["recommended_step"].get("energy_delta", 0.0))), reverse=True)[:3]
+        ],
+        "yield_vs_disease": [
+            {
+                "control": family.get("control"),
+                "label": family.get("label"),
+                "action_short": family.get("action_short"),
+                "yield_delta_14d": family["recommended_step"].get("yield_delta_14d"),
+                "energy_delta": family["recommended_step"].get("energy_delta"),
+                "disease_penalty_delta": family["recommended_step"].get("disease_penalty_delta"),
+                "humidity_penalty_delta": family["recommended_step"].get("humidity_penalty_delta"),
+                "source_sink_balance_delta": family["recommended_step"].get("source_sink_balance_delta"),
+            }
+            for family in sorted(best_actions, key=lambda item: float(item["recommended_step"].get("yield_delta_14d", 0.0)) - float(item["recommended_step"].get("disease_penalty_delta", 0.0)), reverse=True)[:3]
+        ],
+        "yield_vs_source_sink": [
+            {
+                "control": family.get("control"),
+                "label": family.get("label"),
+                "action_short": family.get("action_short"),
+                "yield_delta_14d": family["recommended_step"].get("yield_delta_14d"),
+                "energy_delta": family["recommended_step"].get("energy_delta"),
+                "disease_penalty_delta": family["recommended_step"].get("disease_penalty_delta"),
+                "humidity_penalty_delta": family["recommended_step"].get("humidity_penalty_delta"),
+                "source_sink_balance_delta": family["recommended_step"].get("source_sink_balance_delta"),
+            }
+            for family in sorted(best_actions, key=lambda item: float(item["recommended_step"].get("yield_delta_14d", 0.0)) + float(item["recommended_step"].get("source_sink_balance_delta", 0.0)), reverse=True)[:3]
+        ],
+    }
+
+    return {
+        "status": "ready",
+        "summary": "현재 운전점 기준의 편미분과 bounded scenario를 함께 사용해 조정 강도를 비교했습니다.",
+        "state_snapshot": {
+            "crop": crop,
+            "lai": state.get("lai"),
+            "fruit_load": state.get("fruit_load"),
+            "source_capacity": state.get("source_capacity"),
+            "sink_demand": state.get("sink_demand"),
+            "source_sink_balance": baseline_payload.get("runtime_inputs", {}).get("source_sink_balance"),
+            "limiting_factor": baseline_payload.get("runtime_inputs", {}).get("limiting_factor"),
+            "canopy_temperature_c": live_observation.get("canopy_temperature_c"),
+            "canopy_net_assimilation_umol_m2_s": gas_exchange.get("canopy_net_assimilation_umol_m2_s"),
+            "upper_leaf_activity": state.get("upper_leaf_activity"),
+            "middle_leaf_activity": state.get("middle_leaf_activity"),
+            "bottom_leaf_activity": state.get("bottom_leaf_activity"),
+            "observed_signal_score": observed_signal_score,
+            "dashboard_missing_fields": dashboard_missing_fields,
+            "inferred_fields": inferred_fields,
+        },
+        "scenario": {
+            "baseline_outputs": baseline_payload.get("baseline_outputs", []),
+            "options": runtime_options[:3],
+            "recommended": recommended_option,
+            "confidence": baseline_payload.get("confidence"),
+            "baseline_canopy_A_24h": baseline_24h.get("canopy_A_pred"),
+        },
+        "sensitivity": {
+            "target": sensitivity_payload.get("derivative_target"),
+            "analysis_horizon_hours": sensitivity_payload.get("horizon_hours"),
+            "confidence": sensitivity_payload.get("confidence"),
+            "top_levers": top_levers,
+        },
+        "constraint_checks": {
+            "status": "pass" if recommended_option and not recommended_option.get("violated_constraints") else "warning" if recommended_option else "monitoring-first",
+            "violated_constraints": recommended_option.get("violated_constraints", []) if recommended_option else [],
+            "penalties": (
+                {
+                    "energy_cost_penalty": best_actions[0]["recommended_step"].get("energy_delta", 0.0),
+                    "humidity_penalty": best_actions[0]["recommended_step"].get("humidity_penalty_delta", 0.0),
+                    "disease_risk_penalty": best_actions[0]["recommended_step"].get("disease_penalty_delta", 0.0),
+                    "confidence_penalty": max(0.0, 1.0 - float(best_actions[0]["recommended_step"].get("confidence", 0.0))),
+                }
+                if best_actions and best_actions[0].get("recommended_step")
+                else {}
+            ),
+        },
+        "recommendation_families": recommendation_families,
+        "best_actions": [
+            {
+                "action": family.get("action"),
+                "action_short": family.get("action_short"),
+                "action_family": family.get("action_family"),
+                "control": family.get("control"),
+                "recommended_band": family.get("recommended_band"),
+                "precision_mode": family.get("precision_mode"),
+                "why_summary": family.get("why_summary"),
+                "why_detail": family.get("why_detail"),
+                "operator_summary": family.get("operator_summary"),
+                "family_score": family.get("family_score"),
+                "time_window": family.get("time_window"),
+            }
+            for family in best_actions[:3]
+        ],
+        "control_precision_matrix": control_precision_matrix,
+        "operator_view": operator_view,
+        "tradeoff_summary": tradeoff_summary,
+        "recommendations": runtime_options[:3],
+        "provenance": {
+            "source": "dashboard_synthesized_snapshot",
+            "tab_name": tab_name,
+            "selected_controls": selected_controls,
+            "derivative_target": derivative_target,
+            "horizons_hours": list(_MODEL_RUNTIME_HORIZONS_HOURS),
+            "dashboard_missing_fields": dashboard_missing_fields,
+            "inferred_fields": inferred_fields,
+            "recommendations_surface": "legacy",
+        },
+    }
 
     runtime_options: list[dict[str, Any]] = []
     for lever in _top_runtime_levers(sensitivity_payload):
@@ -4086,9 +4535,13 @@ def build_advisor_summary_response(
         tab_name="summary",
     )
     context_completeness = _context_completeness(dashboard)
+    llm_dashboard = _inject_model_runtime_context(
+        _inject_advisor_retrieval_context(dashboard, retrieval_context),
+        model_runtime,
+    )
     text = generate_consulting(
         crop=crop,
-        dashboard=_inject_advisor_retrieval_context(dashboard, retrieval_context),
+        dashboard=llm_dashboard,
         language=language,
     )
     display = build_advisory_display_payload(
@@ -4145,10 +4598,14 @@ def build_advisor_chat_response(
         tab_name="chat",
         messages=messages,
     )
+    llm_dashboard = _inject_model_runtime_context(
+        _inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
+        model_runtime,
+    )
     text = generate_chat_reply(
         crop=crop,
         messages=messages,
-        dashboard=_inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
+        dashboard=llm_dashboard,
         language=language,
     )
     display = build_advisory_display_payload(

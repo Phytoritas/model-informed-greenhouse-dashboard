@@ -85,7 +85,6 @@ export default function HeroControlCard({
 }: HeroControlCardProps) {
     const { locale } = useLocale();
     const primaryAction = actions[0] ?? null;
-    const secondaryNotes = actions.slice(1, 3);
 
     const copy = locale === 'ko'
         ? {
@@ -149,72 +148,72 @@ export default function HeroControlCard({
             title={copy.title}
             description={undefined}
             actions={(
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                     <TelemetryFreshnessChip status={telemetryStatus} detail={telemetryDetail} />
                     <ConfidenceBadge value={confidence} />
                 </div>
             )}
             contentClassName="flex flex-col"
-            className="h-full"
+            className="h-full !p-4"
         >
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(250px,0.7fr)] xl:items-start">
-                <div className="flex min-h-0 flex-col gap-4 rounded-[28px] bg-[linear-gradient(135deg,rgba(255,251,246,0.98),rgba(248,231,223,0.92))] p-5" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-white/84 px-3 py-1.5 text-xs font-semibold text-[color:var(--sg-accent-violet)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <Sparkles className="h-4 w-4" />
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(210px,0.75fr)] xl:items-start">
+                <div className="flex min-h-0 flex-col gap-3 rounded-[24px] bg-[linear-gradient(135deg,rgba(255,251,246,0.98),rgba(248,231,223,0.92))] p-4" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/84 px-2.5 py-1 text-[11px] font-semibold text-[color:var(--sg-accent-violet)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                            <Sparkles className="h-3.5 w-3.5" />
                             <span style={clampOneStyle}>{operatingMode}</span>
                         </div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                             {copy.mode}
                         </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <p className="text-[clamp(1.45rem,1.05rem+0.8vw,2.1rem)] font-semibold leading-tight tracking-[-0.05em] text-[color:var(--sg-text-strong)]" style={clampTwoStyle}>
+                    <div className="space-y-2">
+                        <p className="text-[clamp(1.2rem,0.95rem+0.6vw,1.8rem)] font-semibold leading-tight tracking-[-0.04em] text-[color:var(--sg-text-strong)]" style={clampTwoStyle}>
                             {primaryNarrative}
                         </p>
-                        <p className="text-sm leading-6 text-[color:var(--sg-text-muted)]" style={clampTwoStyle}>
+                        <p className="text-[13px] leading-5 text-[color:var(--sg-text-muted)]" style={clampTwoStyle}>
                             {summary || copy.summaryFallback}
                         </p>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                        <div className="rounded-[22px] bg-white/82 px-4 py-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                    <div className="grid gap-2 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                        <div className="rounded-[18px] bg-white/82 px-3 py-3" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                                 {copy.primaryAction}
                             </div>
-                            <div className="mt-2 text-sm leading-6 text-[color:var(--sg-text-strong)]" style={clampThreeStyle}>
+                            <div className="mt-1.5 text-[13px] leading-5 text-[color:var(--sg-text-strong)]" style={clampThreeStyle}>
                                 {primaryAction ?? copy.summaryFallback}
                             </div>
                         </div>
-                        <div className="rounded-[22px] bg-[color:var(--sg-surface-soft)] px-4 py-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
-                                <CircleAlert className="h-4 w-4 text-[color:var(--sg-accent-amber)]" />
+                        <div className="rounded-[18px] bg-[color:var(--sg-surface-soft)] px-3 py-3" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
+                                <CircleAlert className="h-3.5 w-3.5 text-[color:var(--sg-accent-amber)]" />
                                 {copy.issue}
                             </div>
-                            <div className="mt-2 text-sm leading-6 text-[color:var(--sg-text-strong)]" style={clampThreeStyle}>
+                            <div className="mt-1.5 text-[13px] leading-5 text-[color:var(--sg-text-strong)]" style={clampThreeStyle}>
                                 {importantIssue ?? modelRuntimeSummary ?? copy.summaryFallback}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex min-h-0 flex-col gap-3">
-                    <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                <div className="flex min-h-0 flex-col gap-2">
+                    <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
                         {signalTiles.map((tile) => (
                             <div
                                 key={tile.key}
-                                className="rounded-[22px] bg-white/82 px-4 py-3"
+                                className="rounded-[18px] bg-white/82 px-3 py-2.5"
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                                     {tile.label}
                                 </div>
-                                <div className="mt-2 text-[1.35rem] font-semibold leading-none tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+                                <div className="mt-1.5 text-[1.18rem] font-semibold leading-none tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
                                     {tile.value}
                                 </div>
                                 {tile.description ? (
-                                    <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
+                                    <p className="mt-1 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">
                                         {tile.description}
                                     </p>
                                 ) : null}
@@ -222,29 +221,14 @@ export default function HeroControlCard({
                         ))}
                     </div>
 
-                    {secondaryNotes.length > 0 ? (
-                        <div className="rounded-[22px] bg-[color:var(--sg-surface-soft)] px-4 py-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
-                                {copy.next}
-                            </div>
-                            <div className="mt-2 space-y-2 text-sm leading-6 text-[color:var(--sg-text-strong)]">
-                                {secondaryNotes.map((note) => (
-                                    <div key={note} style={clampOneStyle}>
-                                        {note}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ) : null}
-
                     <button
                         type="button"
                         onClick={onOpenRtr}
-                        className="mt-auto inline-flex w-full items-center justify-between rounded-[22px] bg-[color:var(--sg-accent-violet)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#e04e52]"
+                        className="mt-auto inline-flex w-full items-center justify-between rounded-[18px] bg-[color:var(--sg-accent-violet)] px-3 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#e04e52]"
                         style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                     >
                         <span>{copy.openRtr}</span>
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                 </div>
             </div>
