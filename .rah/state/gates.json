@@ -1,5 +1,5 @@
 {
-  "earliest_restart_point": "Treat `main` as the post-issue84 merged baseline after re-reading the wakeup packet and current loop, keep issue #3 blocked until real grower-approved windows exist, and start any unrelated non-trivial change from a fresh issue/branch instead of resuming a retired delivery loop.",
+  "earliest_restart_point": "Resume from branch `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`, re-read the wakeup packet and current loop, and continue the bounded issue104 bugfix lane until commit and PR are opened.",
   "agents_and_workflow_gate": {
     "status": "pass",
     "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the post-merge harness-sync discipline are satisfied; `main` is clean after issue #84 / #86, and issue #88 is only the bounded docs-sync lane for blueprint/backlog drift."
@@ -11,6 +11,22 @@
   "memento_feedback_gate": {
     "status": "pass",
     "note": "Recall feedback is current for the post-issue84 remaining-work lookup, so the merged baseline now distinguishes solved workflow drift from the still-blocked issue #3 calibration backlog."
+  },
+  "issue104_prompt_intake": {
+    "status": "pass",
+    "note": "Issue #104 is bound to branch `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync` before non-trivial backend/frontend writes resumed."
+  },
+  "issue104_live_refresh_and_source_sink_slice": {
+    "status": "pass",
+    "note": "Issue #104 restores status/websocket responsiveness, filters overview source-sink history to recent live-created snapshots, suppresses inactive-crop RTR optimizer fan-out, and makes the overview hero plus 3-day source-sink graph consume live values instead of stale advisor snapshots or flat zero history."
+  },
+  "issue104_local_validation": {
+    "status": "pass",
+    "note": "Issue #104 is locally green with `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --run`, `npm --prefix frontend run build`, `poetry run ruff check .`, and `poetry run pytest`."
+  },
+  "issue104_pr_validation": {
+    "status": "in_progress",
+    "note": "No PR is open yet for branch `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`; the next clean GitHub step is commit -> push -> PR."
   },
   "issue65_prompt_intake": {
     "status": "pass",
@@ -134,7 +150,7 @@
   },
   "issue_branch_linkage": {
     "status": "pass",
-    "note": "No product implementation branch is active in `.rah`; `main` is the truthful post-issue84 merged baseline, while issue #86 is only the documentation-only harness-sync slice that restores that truth."
+    "note": "The active product implementation branch is `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`, correctly linked to issue #104 `[Bug] Restore live refresh responsiveness and overview source-sink sync`, and no PR has been opened yet."
   },
   "issue61_merge_complete": {
     "status": "pass",

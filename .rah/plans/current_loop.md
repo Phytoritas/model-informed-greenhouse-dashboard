@@ -1,32 +1,31 @@
 # Current Loop
 
 ## Active State
-- `main` is the truthful post-issue100 merged baseline.
-- No active product implementation branch is open in the repository.
-- The only open tracked backlog issue is blocked issue `#3`, which still waits for grower-approved RTR windows.
+- Active product branch: `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`.
+- Active issue: `#104` `[Bug] Restore live refresh responsiveness and overview source-sink sync`.
+- This loop is bounded to telemetry recovery, overview source-sink history correctness, and the non-moving source-sink graph on `/overview`.
 
-## Stable Main Baseline
-- PR `#95` merged issue `#94` into `main` at `ff0a92a`.
-- PR `#97` merged issue `#96` into `main` at `daaef46`.
-- PR `#101` merged issue `#100` into `main` at `6356829`.
-- The merged baseline now includes:
-  - frontend dashboard follow-up polish and the cucumber overview photo asset
-  - precision-ladder advisor recommendations with bounded scenario verification
-  - additive OpenAI-ready runtime payloads and regression tests
-  - sensor freshness based on actual transport receipt time rather than replay timestamps
-  - stalled simulation task detection, paused-state protection, websocket reconnect recovery, and broadcast-set race protection
+## Current Slice
+- Backend:
+  - `/api/overview/signals` uses recent live-created runtime snapshots instead of stale replay timestamps.
+  - `ModelStateStore` now has created-at/source lookup indexes plus WAL and busy-timeout tuning for the overview-history query path.
+  - WebSocket broadcast fan-out is bounded so a slow client cannot hold the simulation loop open.
+- Frontend:
+  - inactive-crop RTR optimizer fan-out is suppressed so `/control` no longer saturates the backend in the background.
+  - overview hero metrics prefer live stream values over stale advisor snapshots.
+  - the 3-day source-sink graph overlays live source-sink trail values from stream/metric history instead of showing a flat API-only line.
 
 ## Latest Validation
-- The merged issue100 branch stayed green on the full ladder:
+- The active issue104 branch is locally green on the full ladder:
   - `npm --prefix frontend run lint`
-  - `npm --prefix frontend run test -- --pool=threads`
+  - `npm --prefix frontend run test -- --run`
   - `npm --prefix frontend run build`
   - `poetry run ruff check .`
   - `poetry run pytest`
-- GitHub Actions `CI` succeeded for both the `push` and `pull_request` runs on commit `a79916b`.
-- Local smoke confirmed that `/api/status` returns immediately after single-backend restart, `last_error` clears, and the overview page reconnects the cucumber WebSocket after an offline transition.
-- This repo does not currently contain `automation/rah.py`, so the docs-sync lane validates control-plane changes by re-reading tracked `.rah` files directly and running `git diff --check`.
+- Local runtime checks confirmed that `/api/status?crop=Cucumber` returns immediately again and `/api/overview/signals?crop=cucumber&window_hours=72` returns live source-sink points instead of flat zero-only history.
+- No PR is open yet for the current branch.
 
 ## Exact Next Step
-1. If working on RTR calibration, unblock issue `#3` with real grower-approved windows before opening its implementation branch.
-2. Otherwise, start the next non-trivial task from a fresh issue-based branch off clean `main`.
+1. Keep the diff bounded to issue `#104` and avoid unrelated cleanup.
+2. Commit the validated fix set on `fix/104-restore-live-refresh-responsiveness-and-overview-source-sink-sync`.
+3. Open the issue104 PR and move the project item from `Running` to `Validating` once GitHub Actions begin.
