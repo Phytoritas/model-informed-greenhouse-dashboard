@@ -1,19 +1,16 @@
 # Current Loop
 
 ## Active State
-- Issue `#94` is the active product lane on branch `fix/94-finalize-post-issue92-dashboard-polish-and-precision-runtime-recommendations`.
-- The branch is in remote `Validating` state through PR `#95`.
-- Local worktree is clean after splitting the validated frontend and backend changes into issue-linked commits.
+- `main` is the truthful post-issue94 merged baseline.
+- Issue `#96` on branch `docs/96-sync-issue94-merged-harness-state-on-main` is only the harness-sync lane.
+- No active product implementation branch is open in the repo state.
 
-## Issue #94 Scope
-- finalize the remaining PhytoSync dashboard follow-up after issue `#92` merged
-- land precision-ladder advisor recommendations over the existing model-runtime surface
-- keep legacy frontend and API surfaces compatible while restoring issue/branch/PR hygiene
-
-## Delivered In This Branch
-- frontend dashboard and route-shell follow-up polish plus the cucumber overview photo asset
-- backend precision recommendation families with micro/macro ladder steps, bounded scenario verification, and OpenAI-ready payloads
-- regression coverage for advisor orchestration, scenario sensitivity, and OpenAI prompt contracts
+## Post-Issue94 Baseline
+- PR `#95` merged issue `#94` into `main` at `ff0a92a`.
+- The merged baseline now includes:
+  - frontend dashboard follow-up polish and the cucumber overview photo asset
+  - precision-ladder advisor recommendations with bounded scenario verification
+  - additive OpenAI-ready runtime payloads and regression tests
 
 ## Latest Validation
 - `npm --prefix frontend run lint`
@@ -23,6 +20,6 @@
 - `poetry run pytest`
 
 ## Exact Next Step
-1. Watch PR `#95` checks until Backend/Frontend validation finishes.
-2. Merge PR `#95` once checks are green.
-3. Fast-forward local `main` to the merged remote baseline and confirm `git status` stays clean.
+1. Merge the docs-only issue `#96` sync slice so the tracked harness files reflect the post-issue94 merged baseline.
+2. Stay on clean `main` after that merge.
+3. Start any new non-trivial work from a fresh issue-based branch off `main`.
