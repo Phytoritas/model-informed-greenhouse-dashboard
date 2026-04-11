@@ -2406,6 +2406,136 @@ def test_build_model_runtime_payload_returns_ranked_runtime_options_for_rich_das
     assert payload["scenario"]["baseline_outputs"]
     assert payload["recommendations"]
     assert payload["scenario"]["recommended"] is not None
+    assert payload["recommendation_families"]
+    assert payload["best_actions"]
+    assert payload["control_precision_matrix"]["co2_setpoint_day"]
+    assert payload["operator_view"]["today"] or payload["operator_view"]["now"]
+    assert payload["tradeoff_summary"]["yield_vs_energy"]
+
+    co2_family = next(
+        family
+        for family in payload["recommendation_families"]
+        if family["control"] == "co2_setpoint_day"
+    )
+    assert co2_family["recommended_step"] is not None
+    assert co2_family["recommended_step"]["step_label"] == "+200ppm"
+    assert co2_family["recommended_step"]["applied_delta"] == pytest.approx(150.0)
+    assert co2_family["precision_mode"] in {
+        "micro_preferred",
+        "macro_preferred",
+        "range_preferred",
+    }
+
+
+def test_build_model_runtime_payload_marks_micro_preferred_when_macro_step_degrades(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_precision_runner = advisor_orchestration.run_precision_ladder_scenarios
+    original_scenario_runner = advisor_orchestration.run_bounded_scenario
+
+    def _fake_precision_runner(snapshot_record, control_name, step_values, *, horizons_hours=None):
+        if control_name != "temperature_day":
+            return original_precision_runner(
+                snapshot_record,
+                control_name,
+                step_values,
+                horizons_hours=horizons_hours,
+            )
+
+        baseline = original_scenario_runner(
+            snapshot_record,
+            controls={},
+            horizons_hours=horizons_hours,
+        )
+        baseline_by_horizon = {
+            int(row["horizon_hours"]): dict(row)
+            for row in baseline["baseline_outputs"]
+        }
+        comparisons = []
+        for requested_delta in step_values:
+            outputs_by_horizon = {}
+            for horizon, base_row in baseline_by_horizon.items():
+                candidate = dict(base_row)
+                if requested_delta == -0.3:
+                    candidate["yield_pred"] = base_row["yield_pred"] + 0.12
+                    candidate["yield_delta_vs_baseline"] = 0.12
+                    candidate["canopy_A_pred"] = base_row["canopy_A_pred"] + 0.08
+                    candidate["energy_cost_pred"] = base_row["energy_cost_pred"] + 0.01
+                    candidate["energy_delta_vs_baseline"] = 0.01
+                    candidate["source_sink_balance_score"] = base_row["source_sink_balance_score"] + 0.04
+                    candidate["source_sink_balance_delta"] = 0.04
+                    candidate["rtr_pred"] = base_row["rtr_pred"] + 0.01
+                elif requested_delta == -0.6:
+                    candidate["yield_pred"] = base_row["yield_pred"] + 0.05
+                    candidate["yield_delta_vs_baseline"] = 0.05
+                    candidate["canopy_A_pred"] = base_row["canopy_A_pred"] + 0.02
+                    candidate["energy_cost_pred"] = base_row["energy_cost_pred"] + 0.04
+                    candidate["energy_delta_vs_baseline"] = 0.04
+                    candidate["source_sink_balance_score"] = base_row["source_sink_balance_score"] + 0.01
+                    candidate["source_sink_balance_delta"] = 0.01
+                    candidate["rtr_pred"] = base_row["rtr_pred"] + 0.005
+                else:
+                    candidate["yield_pred"] = base_row["yield_pred"] - 0.04
+                    candidate["yield_delta_vs_baseline"] = -0.04
+                    candidate["canopy_A_pred"] = base_row["canopy_A_pred"] - 0.03
+                    candidate["energy_cost_pred"] = base_row["energy_cost_pred"] + 0.03
+                    candidate["energy_delta_vs_baseline"] = 0.03
+                    candidate["source_sink_balance_score"] = base_row["source_sink_balance_score"] - 0.02
+                    candidate["source_sink_balance_delta"] = -0.02
+                    candidate["rtr_pred"] = base_row["rtr_pred"] - 0.01
+                outputs_by_horizon[horizon] = candidate
+
+            comparisons.append(
+                {
+                    "control": control_name,
+                    "label": "주간 온도",
+                    "unit": "C",
+                    "requested_delta": requested_delta,
+                    "applied_delta": requested_delta,
+                    "bounded_delta": requested_delta,
+                    "is_clamped": False,
+                    "confidence": 0.88,
+                    "violated_constraints": [],
+                    "penalties": {
+                        "energy_cost_penalty": 0.02 if requested_delta == -0.3 else 0.12 if requested_delta == -0.6 else 0.09,
+                        "humidity_penalty": 0.02 if requested_delta == -0.3 else 0.08 if requested_delta == -0.6 else 0.05,
+                        "disease_risk_penalty": 0.01 if requested_delta == -0.3 else 0.05 if requested_delta == -0.6 else 0.03,
+                        "confidence_penalty": 0.02,
+                    },
+                    "outputs_by_horizon": outputs_by_horizon,
+                    "baseline_by_horizon": baseline_by_horizon,
+                    "scenario": baseline,
+                }
+            )
+
+        return {
+            "control": control_name,
+            "label": "주간 온도",
+            "unit": "C",
+            "baseline": baseline,
+            "baseline_by_horizon": baseline_by_horizon,
+            "comparisons": comparisons,
+        }
+
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "run_precision_ladder_scenarios",
+        _fake_precision_runner,
+    )
+
+    payload = advisor_orchestration._build_model_runtime_payload(
+        crop="tomato",
+        dashboard=_runtime_ready_dashboard(),
+        tab_name="environment",
+    )
+
+    temperature_family = next(
+        family
+        for family in payload["recommendation_families"]
+        if family["control"] == "temperature_day"
+    )
+    assert temperature_family["precision_mode"] == "micro_preferred"
+    assert temperature_family["recommended_step"]["step_label"] == "-0.3C"
 
 
 def test_build_advisor_summary_response_exposes_additive_model_runtime_block(

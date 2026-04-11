@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from .constraint_engine import (
     CONTROL_SPECS,
+    clamp_control_delta,
     evaluate_constraints,
     normalize_control_deltas,
 )
@@ -91,11 +92,14 @@ def extract_runtime_inputs(snapshot_record: Mapping[str, Any]) -> RuntimeInputs:
     )
     snapshot_id = snapshot_record.get("snapshot_id")
 
-    source_capacity = _resolve(
+    source_capacity = max(
+        0.0,
+        _resolve(
         "source_capacity",
         state.get("source_capacity"),
         gas_exchange.get("canopy_gross_assimilation_umol_m2_s"),
         default=0.0,
+        ),
     )
     canopy_assimilation = _resolve(
         "canopy_assimilation",
@@ -103,7 +107,7 @@ def extract_runtime_inputs(snapshot_record: Mapping[str, Any]) -> RuntimeInputs:
         source_capacity * 0.72,
         default=0.0,
     )
-    sink_demand = _resolve("sink_demand", state.get("sink_demand"), default=0.0)
+    sink_demand = max(0.0, _resolve("sink_demand", state.get("sink_demand"), default=0.0))
     fruit_dry_matter_g_m2 = _resolve("fruit_dry_matter", state.get("fruit_dry_matter_g_m2"), default=0.0)
     harvested_fruit_dry_matter_g_m2 = _resolve(
         "harvested_fruit_dry_matter",
@@ -142,6 +146,7 @@ def extract_runtime_inputs(snapshot_record: Mapping[str, Any]) -> RuntimeInputs:
         if source_capacity > 0 or sink_demand > 0
         else 0.0
     )
+    source_sink_balance = _clamp(source_sink_balance, -1.0, 1.0)
 
     return RuntimeInputs(
         crop=crop,
@@ -434,4 +439,74 @@ def run_bounded_scenario(
             "limiting_factor": inputs.limiting_factor,
             "missing_inputs": list(inputs.missing_inputs),
         },
+    }
+
+
+def run_precision_ladder_scenarios(
+    snapshot_record: Mapping[str, Any],
+    control_name: str,
+    step_values: list[float] | tuple[float, ...],
+    *,
+    horizons_hours: list[int] | tuple[int, ...] | None = None,
+) -> dict[str, Any]:
+    if control_name not in CONTROL_SPECS:
+        raise ValueError(f"Unknown control variable: {control_name}")
+
+    spec = CONTROL_SPECS[control_name]
+    requested_steps = [
+        round(float(step_value), 6)
+        for step_value in step_values
+        if abs(float(step_value)) > 0
+    ]
+    if not requested_steps:
+        raise ValueError("At least one non-zero precision ladder step is required.")
+
+    horizons = list(horizons_hours or DEFAULT_SCENARIO_HORIZONS_HOURS)
+    baseline_payload = run_bounded_scenario(
+        snapshot_record,
+        controls={},
+        horizons_hours=horizons,
+    )
+    baseline_by_horizon = {
+        int(row["horizon_hours"]): row
+        for row in baseline_payload.get("baseline_outputs", [])
+    }
+
+    comparisons: list[dict[str, Any]] = []
+    for requested_delta in requested_steps:
+        applied_delta = clamp_control_delta(control_name, requested_delta)
+        scenario_payload = run_bounded_scenario(
+            snapshot_record,
+            controls={control_name: applied_delta},
+            horizons_hours=horizons,
+        )
+        outputs_by_horizon = {
+            int(row["horizon_hours"]): row
+            for row in scenario_payload.get("outputs", [])
+        }
+        comparisons.append(
+            {
+                "control": control_name,
+                "label": spec.ui_label,
+                "unit": spec.unit,
+                "requested_delta": requested_delta,
+                "applied_delta": applied_delta,
+                "bounded_delta": applied_delta,
+                "is_clamped": abs(applied_delta - requested_delta) > 1e-9,
+                "confidence": float(scenario_payload.get("confidence", 0.0)),
+                "violated_constraints": list(scenario_payload.get("violated_constraints", [])),
+                "penalties": dict(scenario_payload.get("penalties", {})),
+                "outputs_by_horizon": outputs_by_horizon,
+                "baseline_by_horizon": baseline_by_horizon,
+                "scenario": scenario_payload,
+            }
+        )
+
+    return {
+        "control": control_name,
+        "label": spec.ui_label,
+        "unit": spec.unit,
+        "baseline": baseline_payload,
+        "baseline_by_horizon": baseline_by_horizon,
+        "comparisons": comparisons,
     }

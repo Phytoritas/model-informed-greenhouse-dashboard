@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from model_informed_greenhouse_dashboard import get_app
@@ -18,6 +19,7 @@ from model_informed_greenhouse_dashboard.backend.app.services.crop_models.tomato
 )
 from model_informed_greenhouse_dashboard.backend.app.services.model_runtime.scenario_runner import (
     run_bounded_scenario,
+    run_precision_ladder_scenarios,
 )
 from model_informed_greenhouse_dashboard.backend.app.services.model_runtime.sensitivity_engine import (
     compute_local_sensitivities,
@@ -148,6 +150,41 @@ def test_compute_local_sensitivities_rejects_step_outside_trust_region() -> None
 
     assert payload["sensitivities"][0]["valid"] is False
     assert payload["sensitivities"][0]["trust_region"]["high"] == 150.0
+
+
+def test_run_precision_ladder_scenarios_tracks_requested_and_bounded_steps() -> None:
+    snapshot_record = _build_snapshot_record(_seed_tomato_adapter(), "tomato")
+
+    payload = run_precision_ladder_scenarios(
+        snapshot_record,
+        "co2_setpoint_day",
+        [100.0, 200.0, -100.0],
+        horizons_hours=[72, 336],
+    )
+
+    requested_deltas = [row["requested_delta"] for row in payload["comparisons"]]
+    assert requested_deltas == [100.0, 200.0, -100.0]
+    assert payload["comparisons"][0]["applied_delta"] == pytest.approx(100.0)
+    assert payload["comparisons"][1]["applied_delta"] == pytest.approx(150.0)
+    assert payload["comparisons"][1]["is_clamped"] is True
+    assert 336 in payload["comparisons"][0]["outputs_by_horizon"]
+
+
+def test_compute_local_sensitivities_exposes_precision_metadata() -> None:
+    snapshot_record = _build_snapshot_record(_seed_tomato_adapter(), "tomato")
+
+    payload = compute_local_sensitivities(
+        snapshot_record,
+        derivative_target="predicted_yield_14d",
+        controls=["co2_setpoint_day"],
+    )
+
+    row = payload["sensitivities"][0]
+    assert row["valid"] is True
+    assert row["local_confidence"] > 0
+    assert row["recommended_sign"] == "increase"
+    assert row["nonlinearity_hint"] in {"symmetric", "mild_nonlinear", "nonlinear"}
+    assert row["positive_response"] > 0
 
 
 def test_model_scenario_endpoint_persists_outputs_and_violations(

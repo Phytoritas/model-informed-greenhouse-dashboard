@@ -147,6 +147,35 @@ def test_openai_helper_includes_knowledge_context_when_present(
     assert "Nutrient recipe workbook" in first_message
 
 
+def test_openai_helper_mentions_precision_runtime_contract_when_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_client = _FakeOpenAI()
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(ai_service, "OpenAI", lambda: fake_client)
+
+    ai_service.generate_chat_reply(
+        crop="tomato",
+        messages=[{"role": "user", "content": "지금 추천을 설명해줘"}],
+        dashboard={
+            "currentData": {},
+            "model_runtime": {
+                "recommendation_families": [{"control": "co2_setpoint_day"}],
+                "best_actions": [{"action": "주간 CO2 100ppm 올리기"}],
+                "control_precision_matrix": {"co2_setpoint_day": []},
+                "operator_view": {"now": [], "today": [], "this_week": []},
+                "tradeoff_summary": {"yield_vs_energy": []},
+            },
+        },
+        language="ko",
+        model="gpt-5.4-mini",
+    )
+
+    prompt = fake_client.responses.calls[0]["input"][0]["content"]
+    assert "control_precision_matrix" in prompt
+    assert "Use only the provided numbers" in prompt
+
+
 def test_build_advisory_display_payload_accepts_locale_aware_korean_headings() -> None:
     payload = ai_service.build_advisory_display_payload(
         (
