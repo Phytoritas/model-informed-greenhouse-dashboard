@@ -2,19 +2,19 @@
 
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
-- topic: `issue102-sync-issue100-merged-harness-state-on-main`
-- sessionId: `model-informed-greenhouse-dashboard#docs-102-sync-issue100-merged-harness-state-on-main`
-- caseId: `case/model-informed-greenhouse-dashboard/docs-102-sync-issue100-merged-harness-state-on-main`
-- active issue: `#102`
-- branch: `docs/102-sync-issue100-merged-harness-state-on-main`
+- topic: `main-clean-issue3-blocked`
+- sessionId: `model-informed-greenhouse-dashboard#main:issue3-blocked`
+- caseId: `case/model-informed-greenhouse-dashboard/main/issue3-blocked`
+- open backlog issue: `#3`
+- branch: `main`
 
 ## Current State
-- current_stage: `issue102-sync-post-issue100-merged-baseline`
-- implementation_gate: `active`
+- current_stage: `main-clean-issue3-blocked`
+- implementation_gate: `blocked`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `PR #101 is merged, local main is fast-forwarded to 6356829, and issue #102 is the docs-only lane that restores a clean post-issue100 restart packet`
-- latest_validation: `merged issue100 branch stayed green locally and on GitHub CI; this docs lane verifies control-plane changes by re-reading tracked .rah files and running git diff --check because automation/rah.py is not present in the repo`
-- local_worktree_followup: `issue #102 should finish by syncing tracked .rah state, pushing the docs branch, and opening the small post-merge control-plane PR`
+- latest_route_slice: `issue94 merged -> issue96 merged -> issue100 merged -> main clean -> blocked RTR calibration backlog remains`
+- latest_validation: `the merged main baseline is green on local validation ladders and issue100 GitHub CI`
+- local_worktree_followup: `main is clean; new work should start from a fresh issue-based branch`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -25,15 +25,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#docs-102-sync-issue100-merged-harness-state-on-main")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#main:issue3-blocked")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "issue102", "post-issue100", "main-baseline", "rah", "harness-sync"],
-    topic="issue102-sync-issue100-merged-harness-state-on-main",
+    keywords=["model-informed-greenhouse-dashboard", "main-clean-issue3-blocked", "main", "issue3", "blocked"],
+    topic="main-clean-issue3-blocked",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#docs-102-sync-issue100-merged-harness-state-on-main",
+    sessionId="model-informed-greenhouse-dashboard#main:issue3-blocked",
     caseMode=True,
     depth="standard",
-    contextText="resume issue #102 and finish the docs-only harness sync for the post-issue100 merged main baseline"
+    contextText="resume from the clean main baseline and decide whether to unblock issue #3 or start a fresh issue-based branch"
 )
 ```
 
@@ -41,6 +41,6 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Update the tracked `.rah` files so they point at the post-issue100 merged `main` baseline instead of the retired validating branch.
-- Re-read the tracked `.rah` files and run `git diff --check`, then commit, push, and open the docs PR for issue `#102`.
+- Unblock issue `#3` only when grower-approved windows are available.
+- For unrelated work, stay on clean `main` and open a new issue/branch first.
 - Keep blocked issue `#3` out of this lane.
