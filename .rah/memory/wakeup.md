@@ -9,12 +9,12 @@
 - branch: `fix/100-fix-sensor-freshness-semantics-and-websocket-delay`
 
 ## Current State
-- current_stage: `issue100-sensor-freshness-runtime-recovery`
-- implementation_gate: `active`
+- current_stage: `issue100-validating-pr101`
+- implementation_gate: `validating`
 - agents_and_workflow_gate: `satisfied`
 - latest_route_slice: `sensor freshness semantics split from replay timestamps, stalled runtime detection added, frontend auto-recovery and websocket reconnect hardened`
-- latest_validation: `backend pytest/ruff and frontend lint/build passed; websocket smoke confirmed live payload delivery after restart`
-- local_worktree_followup: `review the bounded issue100 diff, commit it, push the branch, and open the PR with validation evidence`
+- latest_validation: `backend pytest/ruff and frontend vitest/lint/build passed locally, PR #101 is open, and GitHub CI succeeded on both push and pull_request`
+- local_worktree_followup: `branch is clean; the remaining move is PR #101 review/merge plus the post-merge .rah sync issue on main`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -41,6 +41,6 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Re-run the focused validation after the paused-state and websocket reconnect hardening.
-- If green, commit the issue #100 patch, push the branch, and open a PR with the freshness/runtime recovery evidence.
+- Review and merge PR `#101` if the bounded issue100 diff is accepted.
+- After merge, fast-forward local `main`, re-run the baseline checks if needed, and open the small docs sync issue for tracked `.rah` state.
 - Keep blocked issue `#3` out of this lane.
