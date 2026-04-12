@@ -203,6 +203,11 @@ def _compute_effects(
     rh_distance_after = abs(rh_result - 0.72)
     rh_recovery = _clamp((rh_distance_before - rh_distance_after) / 0.18, -1.0, 1.0)
     heat_relief = _clamp((inputs.canopy_temperature_c - 28.0) / 6.0, 0.0, 1.0)
+    co2_target_ppm = max(300.0, inputs.ambient_co2_ppm + co2_delta)
+    co2_saturation = _clamp((co2_target_ppm - 700.0) / 300.0, 0.0, 1.0)
+    co2_effective_n = co2_n * (1.0 - (0.55 * co2_saturation))
+    co2_high_risk_threshold = 900.0 if inputs.crop == "tomato" else 950.0
+    co2_high_risk = _clamp((co2_target_ppm - co2_high_risk_threshold) / 180.0, 0.0, 1.0)
 
     canopy_a_delta = 0.0
     yield_rate_delta = 0.0
@@ -212,14 +217,18 @@ def _compute_effects(
     energy_rate_delta = 0.0
     rtr_delta = 0.0
 
-    canopy_a_delta += inputs.source_capacity * 0.12 * co2_n * limiting_multiplier * (
+    canopy_a_delta += inputs.source_capacity * 0.12 * co2_effective_n * limiting_multiplier * (
         0.7 + (0.3 * inputs.upper_leaf_activity)
     )
-    yield_rate_delta += inputs.fruit_load * 0.18 * co2_n * (0.55 + max(0.0, sink_pressure))
-    balance_delta += 0.14 * co2_n
-    transpiration_delta -= inputs.transpiration_proxy * 0.05 * co2_n
+    yield_rate_delta += inputs.fruit_load * 0.18 * co2_effective_n * (0.55 + max(0.0, sink_pressure))
+    balance_delta += 0.14 * co2_effective_n
+    transpiration_delta -= inputs.transpiration_proxy * 0.05 * co2_effective_n
     energy_rate_delta += abs(co2_n) * 0.12
-    rtr_delta += 0.01 * co2_n
+    energy_rate_delta += 0.1 * co2_high_risk
+    canopy_a_delta -= inputs.source_capacity * 0.06 * co2_high_risk
+    yield_rate_delta -= inputs.fruit_load * 0.08 * co2_high_risk
+    balance_delta -= 0.08 * co2_high_risk
+    rtr_delta += 0.01 * co2_effective_n
 
     canopy_a_delta += inputs.source_capacity * 0.08 * temp_day_n * temperature_gap * (
         0.6 + (0.4 * inputs.middle_leaf_activity)
@@ -365,6 +374,7 @@ def run_bounded_scenario(
             "canopy_temperature_c": inputs.canopy_temperature_c,
             "rh_fraction": inputs.rh_fraction,
             "source_sink_balance": inputs.source_sink_balance,
+            "ambient_co2_ppm": inputs.ambient_co2_ppm,
             "upper_leaf_activity": inputs.upper_leaf_activity,
             "bottom_leaf_activity": inputs.bottom_leaf_activity,
             "missing_inputs": list(inputs.missing_inputs),

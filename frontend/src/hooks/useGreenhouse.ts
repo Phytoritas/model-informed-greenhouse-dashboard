@@ -171,6 +171,17 @@ async function fetchWithTimeout(
     }
 }
 
+function isReconnectableSocket(socket: WebSocket | null): boolean {
+    if (!socket) {
+        return true;
+    }
+
+    return (
+        socket.readyState === WebSocket.CLOSING
+        || socket.readyState === WebSocket.CLOSED
+    );
+}
+
 export const useGreenhouse = () => {
     const { locale } = useLocale();
     const { areaByCrop } = useAreaUnit();
@@ -305,6 +316,10 @@ export const useGreenhouse = () => {
             return;
         }
 
+        if (!isReconnectableSocket(wsRef.current)) {
+            return;
+        }
+
         setTelemetryStateByCrop((prev) => ({
             ...prev,
             [cropType]: {
@@ -326,7 +341,7 @@ export const useGreenhouse = () => {
             const cropKey = cropType.toLowerCase();
             const transportDisconnected =
                 cropType === selectedCrop &&
-                (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN);
+                isReconnectableSocket(wsRef.current);
 
             if (transportDisconnected) {
                 console.log(`Telemetry transport for ${cropType} is disconnected, reconnecting WebSocket.`);
@@ -405,7 +420,7 @@ export const useGreenhouse = () => {
             if (!startRes.ok) {
                 throw new Error(`HTTP error! status: ${startRes.status}`);
             }
-            if (transportDisconnected) {
+            if (cropType === selectedCrop && isReconnectableSocket(wsRef.current)) {
                 requestWebSocketReconnect(cropType);
             }
             console.log(`Simulation for ${cropType} started.`);
@@ -789,9 +804,11 @@ export const useGreenhouse = () => {
                 window.clearTimeout(pendingTimer);
                 flushCropState(cropAtConnection);
             }
-            if (wsRef.current) {
+            if (ws.readyState < WebSocket.CLOSING) {
                 closedByCleanup = true;
-                wsRef.current.close();
+                ws.close();
+            }
+            if (wsRef.current === ws) {
                 wsRef.current = null;
             }
         };

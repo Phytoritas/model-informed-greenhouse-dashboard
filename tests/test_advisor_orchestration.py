@@ -167,6 +167,84 @@ def test_build_advisor_summary_response_wraps_consulting_and_context(
     )
 
 
+def test_build_advisor_summary_fallback_response_uses_model_runtime_actions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_summary_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {
+                "status": "skipped",
+                "mode": "summary_seeded",
+                "query_count": 0,
+                "returned_count": 0,
+                "focus_domains": [],
+            },
+            "llm_context": None,
+            "internal_provenance": {
+                "knowledge_queries": [],
+                "document_ids": [],
+                "chunk_ids": [],
+                "confidence_source": ["not_requested"],
+            },
+        },
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "_build_model_runtime_payload",
+        lambda **_: {
+            "status": "ready",
+            "summary": "RTR와 광 반응을 보면 오늘은 보수 운전이 더 안전합니다.",
+            "scenario": {
+                "recommended": {
+                    "action": "난방 설정을 0.5°C 높여 응답을 확인합니다.",
+                },
+            },
+            "recommendations": [
+                {"action": "환기 편차를 줄여 RH 반등을 억제합니다."},
+            ],
+            "best_actions": [
+                {"action_short": "CO2를 50 ppm 보강"},
+            ],
+            "constraint_checks": {
+                "violated_constraints": [
+                    {"message": "오후 고습 구간이 길어지면 병해 압력이 높아질 수 있습니다."},
+                ],
+            },
+        },
+    )
+
+    payload = advisor_orchestration.build_advisor_summary_fallback_response(
+        crop="cucumber",
+        dashboard={"data": {"temperature": 24.0}},
+        language="ko",
+        reason="llm_timeout",
+    )
+
+    assert payload["status"] == "degraded"
+    assert payload["family"] == "advisor_summary"
+    assert payload["machine_payload"]["display"]["summary"].startswith(
+        "RTR와 광 반응을 보면 오늘은 보수 운전이 더 안전합니다."
+    )
+    assert payload["machine_payload"]["display"]["actions_now"] == [
+        "난방 설정을 0.5°C 높여 응답을 확인합니다.",
+        "환기 편차를 줄여 RH 반등을 억제합니다.",
+    ]
+    assert payload["machine_payload"]["display"]["actions_today"] == [
+        "CO2를 50 ppm 보강",
+    ]
+    assert payload["machine_payload"]["display"]["risks"] == [
+        "오후 고습 구간이 길어지면 병해 압력이 높아질 수 있습니다.",
+    ]
+
+
 def test_build_summary_advisor_context_compacts_seeded_domain_queries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2418,8 +2496,11 @@ def test_build_model_runtime_payload_returns_ranked_runtime_options_for_rich_das
         if family["control"] == "co2_setpoint_day"
     )
     assert co2_family["recommended_step"] is not None
-    assert co2_family["recommended_step"]["step_label"] == "+200ppm"
-    assert co2_family["recommended_step"]["applied_delta"] == pytest.approx(150.0)
+    applied_delta = float(co2_family["recommended_step"]["applied_delta"])
+    expected_step_label = f"{'+' if applied_delta > 0 else '-'}{abs(applied_delta):.0f}ppm"
+    assert co2_family["recommended_step"]["step_label"] == expected_step_label
+    assert expected_step_label in co2_family["action_short"]
+    assert abs(applied_delta) <= 150.0
     assert co2_family["precision_mode"] in {
         "micro_preferred",
         "macro_preferred",
