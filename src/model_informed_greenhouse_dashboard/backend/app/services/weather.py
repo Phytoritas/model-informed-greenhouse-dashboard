@@ -14,6 +14,7 @@ import httpx
 OPEN_METEO_DOCS_URL = "https://open-meteo.com/en/docs"
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 WEATHER_CACHE_TTL_SECONDS = 15 * 60
+WEATHER_HISTORY_CACHE_TTL_SECONDS = 60
 WEATHER_UPSTREAM_TIMEOUT = httpx.Timeout(connect=3.0, read=6.0, write=6.0, pool=6.0)
 WEATHER_HISTORY_HOURS = 72
 
@@ -410,6 +411,7 @@ async def fetch_daegu_shortwave_history(
         "latitude": DAEGU_LOCATION["latitude"],
         "longitude": DAEGU_LOCATION["longitude"],
         "timezone": DAEGU_LOCATION["timezone"],
+        "current": "shortwave_radiation",
         "hourly": "shortwave_radiation",
         "past_hours": max(1, int(hours)),
         "forecast_hours": 0,
@@ -421,6 +423,7 @@ async def fetch_daegu_shortwave_history(
         data = response.json()
 
     hourly = data.get("hourly") or {}
+    current = data.get("current") or {}
     hourly_times = hourly.get("time") or []
     shortwave_values = hourly.get("shortwave_radiation") or []
     points = []
@@ -433,6 +436,17 @@ async def fetch_daegu_shortwave_history(
                 "shortwave_radiation_w_m2": float(irradiance),
             }
         )
+    current_time = current.get("time")
+    current_shortwave = current.get("shortwave_radiation")
+    if current_time and current_shortwave is not None:
+        current_point = {
+            "time": str(current_time),
+            "shortwave_radiation_w_m2": float(current_shortwave),
+        }
+        if points and points[-1]["time"] == current_point["time"]:
+            points[-1] = current_point
+        else:
+            points.append(current_point)
 
     payload = {
         "location": DAEGU_LOCATION,
@@ -440,12 +454,12 @@ async def fetch_daegu_shortwave_history(
             "provider": "Open-Meteo",
             "docs_url": OPEN_METEO_DOCS_URL,
             "endpoint": OPEN_METEO_FORECAST_URL,
-            "fetched_at": _local_now(now).isoformat(timespec="minutes"),
+            "fetched_at": str(current_time or _local_now(now).isoformat(timespec="minutes")),
         },
         "window_hours": max(1, int(hours)),
         "unit": "W/m²",
         "points": points,
     }
     _weather_history_cache["payload"] = deepcopy(payload)
-    _weather_history_cache["expires_at"] = now + WEATHER_CACHE_TTL_SECONDS
+    _weather_history_cache["expires_at"] = now + WEATHER_HISTORY_CACHE_TTL_SECONDS
     return payload
