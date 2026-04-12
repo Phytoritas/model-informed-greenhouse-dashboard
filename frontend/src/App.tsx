@@ -329,6 +329,7 @@ function App() {
     advisorUpdatedAt,
     analyzeData,
     isAnalyzing,
+    setActiveCrop,
   } = useAiAssistant();
   const {
     weather,
@@ -350,6 +351,7 @@ function App() {
     signals: overviewSignals,
     loading: overviewSignalsLoading,
     error: overviewSignalsError,
+    refreshedAt: overviewSignalsRefreshedAt,
   } = useOverviewSignalTrends(selectedCrop);
   const {
     summary: smartGrowSummary,
@@ -469,6 +471,10 @@ function App() {
     const state = resolveSensorDisplayState(fieldKey, telemetry.status, sensorFieldAvailability);
     return state === 'missing' ? unresolvedSensorValue : value;
   }, [sensorFieldAvailability, telemetry.status, unresolvedSensorValue]);
+
+  useEffect(() => {
+    setActiveCrop(selectedCrop);
+  }, [selectedCrop, setActiveCrop]);
 
   const primaryKpiTiles: KpiTileData[] = [
     {
@@ -956,16 +962,16 @@ function App() {
 
   // Trigger analysis
   const handleAnalyze = useCallback(async (): Promise<'success' | 'failed' | 'skipped'> => {
-    if (!hasTelemetryData || telemetry.status === 'loading' || isAnalyzing) {
+    if (!hasTelemetryData || isAnalyzing) {
       return 'skipped';
     }
 
     const didAnalyze = await analyzeData(
       currentData,
-      modelMetrics,
+      deferredModelMetrics,
       selectedCrop,
-      history,
-      forecast,
+      deferredHistory,
+      deferredForecast,
       producePrices,
       weather,
       rtrProfilesPayload?.profiles[selectedCrop] ?? null,
@@ -988,16 +994,15 @@ function App() {
   }, [
     analyzeData,
     currentData,
-    forecast,
+    deferredForecast,
+    deferredHistory,
+    deferredModelMetrics,
     hasTelemetryData,
-    history,
     isAnalyzing,
-    modelMetrics,
     producePrices,
     rtrProfilesPayload,
     selectedCrop,
     setControlValue,
-    telemetry.status,
     weather,
   ]);
 
@@ -1012,11 +1017,11 @@ function App() {
       marketFetchedAt: producePrices?.source?.fetched_at ?? null,
       weatherFetchedAt: weather?.source?.fetched_at ?? null,
       profilesUpdatedAt: rtrProfilesPayload?.updatedAt ?? null,
-      forecastSignature: buildAdvisorForecastSignature(forecast),
+      forecastSignature: buildAdvisorForecastSignature(deferredForecast),
     };
     const retryAfterTimestamp = autoAnalysisRetryAfterRef.current[selectedCrop];
 
-    if (!latestTelemetryReceivedAt || telemetry.status === 'loading' || isAnalyzing || retryAfterTimestamp > Date.now()) {
+    if (!latestTelemetryReceivedAt || isAnalyzing || retryAfterTimestamp > Date.now()) {
       return;
     }
 
@@ -1025,24 +1030,20 @@ function App() {
       return;
     }
 
-    const timer = setTimeout(() => {
-      void (async () => {
-        const result = await handleAnalyze();
-        if (result === 'success') {
-          lastAutoAnalysisRef.current[selectedCrop] = nextAutoAnalysisState;
-          autoAnalysisRetryAfterRef.current[selectedCrop] = 0;
-          return;
-        }
-        if (result === 'failed') {
-          autoAnalysisRetryAfterRef.current[selectedCrop] = Date.now() + AUTO_ANALYSIS_RETRY_BACKOFF_MS;
-        }
-      })();
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    void (async () => {
+      const result = await handleAnalyze();
+      if (result === 'success') {
+        lastAutoAnalysisRef.current[selectedCrop] = nextAutoAnalysisState;
+        autoAnalysisRetryAfterRef.current[selectedCrop] = 0;
+        return;
+      }
+      if (result === 'failed') {
+        autoAnalysisRetryAfterRef.current[selectedCrop] = Date.now() + AUTO_ANALYSIS_RETRY_BACKOFF_MS;
+      }
+    })();
   }, [
     currentData.receivedAtTimestamp,
-    forecast,
+    deferredForecast,
     handleAnalyze,
     hasTelemetryData,
     history,
@@ -1052,7 +1053,6 @@ function App() {
     selectedCrop,
     telemetryClock,
     telemetry.lastMessageAt,
-    telemetry.status,
     weather,
   ]);
 
@@ -1140,15 +1140,15 @@ function App() {
   const liveSourceSinkSeries = useMemo(() => {
     const series = metricHistory
       .map((metricPoint) => {
-        const wallClockTimestamp = Number(metricPoint.receivedAtTimestamp ?? metricPoint.timestamp);
-        if (!Number.isFinite(wallClockTimestamp)) {
+        const simulationTimestamp = Number(metricPoint.timestamp);
+        if (!Number.isFinite(simulationTimestamp)) {
           return null;
         }
 
         const explicitBalance = metricPoint?.sourceSinkBalance;
         if (typeof explicitBalance === 'number' && Number.isFinite(explicitBalance)) {
           return {
-            timestamp: wallClockTimestamp,
+            timestamp: simulationTimestamp,
             value: explicitBalance,
           };
         }
@@ -1161,7 +1161,7 @@ function App() {
           && Number.isFinite(sinkDemand)
         ) {
           return {
-            timestamp: wallClockTimestamp,
+            timestamp: simulationTimestamp,
             value: (sourceCapacity - sinkDemand) / Math.max(1, Math.abs(sourceCapacity) + Math.abs(sinkDemand)),
           };
         }
@@ -1189,13 +1189,13 @@ function App() {
         };
 
         return {
-          timestamp: wallClockTimestamp,
+          timestamp: simulationTimestamp,
           value: deriveSourceSinkBalance({
             crop: selectedCrop,
             currentData: {
               ...currentData,
               timestamp: metricPoint.timestamp,
-              receivedAtTimestamp: wallClockTimestamp,
+              receivedAtTimestamp: metricPoint.receivedAtTimestamp,
               photosynthesis: metricPoint.photosynthesis ?? currentData.photosynthesis,
             },
             metrics: pointMetrics,
@@ -1209,7 +1209,7 @@ function App() {
       return series;
     }
 
-    const currentTimestamp = Number(currentData.receivedAtTimestamp ?? currentData.timestamp);
+    const currentTimestamp = Number(currentData.timestamp);
     if (!Number.isFinite(currentTimestamp)) {
       return [];
     }
@@ -1432,6 +1432,7 @@ function App() {
                 overviewSignals={overviewSignals}
                 overviewSignalsLoading={overviewSignalsLoading}
                 overviewSignalsError={overviewSignalsError}
+                overviewSignalsRefreshedAt={overviewSignalsRefreshedAt}
                 weather={weather}
                 weatherLoading={isWeatherLoading}
                 producePrices={producePrices}

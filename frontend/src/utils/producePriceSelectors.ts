@@ -17,6 +17,7 @@ export interface SelectedProduceItem {
 
 interface SelectProduceItemOptions {
     marketPreference?: ProduceMarketKey[];
+    enforcePreferredVariant?: boolean;
 }
 
 function normalizeText(value: string | undefined): string {
@@ -41,6 +42,24 @@ function matchesCrop(item: ProducePriceEntry, crop: CropType): boolean {
     return CROP_MATCH_KEYWORDS[crop].some((keyword) => haystack.includes(keyword));
 }
 
+const PREFERRED_VARIANT_KEYWORDS: Record<CropType, string[]> = {
+    Tomato: ['tomato'],
+    Cucumber: ['dadagi', 'baekdadagi'],
+};
+
+const EXCLUDED_VARIANT_KEYWORDS: Record<CropType, string[]> = {
+    Tomato: ['cherry'],
+    Cucumber: ['chuicheong'],
+};
+
+function matchesPreferredVariant(item: ProducePriceEntry, crop: CropType): boolean {
+    const haystack = normalizeText(`${item.display_name ?? ''} ${item.source_name ?? ''}`);
+    if (EXCLUDED_VARIANT_KEYWORDS[crop].some((keyword) => haystack.includes(keyword))) {
+        return false;
+    }
+    return PREFERRED_VARIANT_KEYWORDS[crop].some((keyword) => haystack.includes(keyword));
+}
+
 export function selectProduceItemForCrop(
     prices: ProducePricesPayload | null,
     crop: CropType,
@@ -51,13 +70,27 @@ export function selectProduceItemForCrop(
     }
 
     const marketPreference = options.marketPreference ?? ['wholesale', 'retail'];
+    const enforcePreferredVariant = options.enforcePreferredVariant ?? false;
+    let fallbackMatch: SelectedProduceItem | null = null;
 
     for (const marketKey of marketPreference) {
-        const matched = getMarketItems(prices, marketKey).find((item) => matchesCrop(item, crop));
-        if (matched) {
-            return { item: matched, marketKey };
+        const items = getMarketItems(prices, marketKey);
+        const preferredMatch = items.find((item) => matchesPreferredVariant(item, crop));
+        if (preferredMatch) {
+            return { item: preferredMatch, marketKey };
+        }
+
+        if (!fallbackMatch) {
+            const matched = items.find((item) => matchesCrop(item, crop));
+            if (matched) {
+                fallbackMatch = { item: matched, marketKey };
+            }
         }
     }
 
-    return null;
+    if (enforcePreferredVariant) {
+        return null;
+    }
+
+    return fallbackMatch;
 }

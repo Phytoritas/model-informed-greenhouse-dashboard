@@ -51,6 +51,10 @@ describe('shouldRefreshAdvisorSummary', () => {
         expect(shouldRefreshAdvisorSummary(previous, next)).toBe(true);
     });
 
+    it('uses the one-minute live interval for automatic summary refresh', () => {
+        expect(AUTO_ANALYSIS_INTERVAL_MS).toBe(60_000);
+    });
+
     it('refreshes when market prices were updated', () => {
         const previous = buildState({
             telemetryReceivedAt: 10_000,

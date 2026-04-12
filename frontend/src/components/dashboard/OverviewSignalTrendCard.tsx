@@ -19,6 +19,7 @@ interface OverviewSignalTrendCardProps {
   signals: OverviewSignalsPayload | null;
   loading: boolean;
   error: string | null;
+  refreshedAt?: number | null;
   liveSourceSinkSeries?: Array<{
     timestamp: number;
     value: number;
@@ -101,6 +102,7 @@ export default function OverviewSignalTrendCard({
   signals,
   loading,
   error,
+  refreshedAt = null,
   liveSourceSinkSeries = [],
 }: OverviewSignalTrendCardProps) {
   const { locale } = useLocale();
@@ -125,9 +127,9 @@ export default function OverviewSignalTrendCard({
   const copy = locale === 'ko'
     ? {
       eyebrow: '3일 시계열',
-      title: '외기 일사량 · 소스-싱크 균형 지수',
+      title: '온실 내부 일사량 · 소스-싱크 균형 지수',
       description: '실제 API 이력에 실시간 소스-싱크 추세를 겹쳐 표시합니다.',
-      irradiance: '외기 일사량',
+      irradiance: '온실 내부 일사량',
       balance: '소스-싱크 균형 지수',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
       balanceUnit: signals?.source_sink.unit ?? '정규 지수',
@@ -135,14 +137,15 @@ export default function OverviewSignalTrendCard({
       error: error ?? '실제 추세를 불러오지 못했습니다.',
       empty: '표시할 실제 추세가 아직 없습니다.',
       modelMissing: '모델 스냅샷 이력이 아직 없어 소스-싱크 추세를 표시할 수 없습니다.',
-      mergedTitle: '외기 일사량과 소스-싱크를 한 차트에서 봅니다.',
-      updated: '기준',
+      mergedTitle: '온실 내부 일사량과 소스-싱크를 한 차트에서 봅니다.',
+      updated: '화면 갱신',
+      staleWarning: '최근 갱신 요청이 지연되어 마지막 성공 값을 유지하고 있습니다.',
     }
     : {
       eyebrow: '3-day trend',
-      title: 'Outside irradiance · source-sink balance',
+      title: 'Greenhouse irradiance · source-sink balance',
       description: 'Live source-sink telemetry is overlaid on the API history.',
-      irradiance: 'Outside irradiance',
+      irradiance: 'Greenhouse irradiance',
       balance: 'Source-sink balance',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
       balanceUnit: signals?.source_sink.unit ?? 'normalized index',
@@ -150,10 +153,11 @@ export default function OverviewSignalTrendCard({
       error: error ?? 'Failed to load the live trend.',
       empty: 'No live trend is available yet.',
       modelMissing: 'Model snapshot history is not available yet for the source-sink trend.',
-      mergedTitle: 'Outside irradiance and source-sink are shown in one chart.',
-      updated: 'Updated',
+      mergedTitle: 'Greenhouse irradiance and source-sink are shown in one chart.',
+      updated: 'Refreshed',
+      staleWarning: 'The latest refresh is delayed, so the last successful trend is still shown.',
     };
-  const irradianceUpdatedAt = signals?.irradiance.source.fetched_at ?? null;
+  const irradianceUpdatedAt = refreshedAt ?? signals?.irradiance.source.fetched_at ?? null;
 
   const hasIrradiance = irradianceSeries.length >= 2;
   const hasSourceSink = sourceSinkSeries.length >= 2;
@@ -235,6 +239,11 @@ export default function OverviewSignalTrendCard({
             </span>
           ) : null}
         </div>
+        {error && signals ? (
+          <div className="mb-2 rounded-[12px] bg-white/78 px-2.5 py-2 text-[11px] font-medium leading-4 text-[color:var(--sg-text-muted)]">
+            {copy.staleWarning}
+          </div>
+        ) : null}
         {hasIrradiance ? (
           <ChartFrame minHeight={192} style={{ height: 192 }}>
             {({ width, height }) => (

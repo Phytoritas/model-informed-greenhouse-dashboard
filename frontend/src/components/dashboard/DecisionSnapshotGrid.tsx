@@ -19,7 +19,7 @@ import type {
   SensorData,
   WeatherOutlook,
 } from '../../types';
-import { getProduceDisplayName, getWeatherLabel } from '../../utils/displayCopy';
+import { getWeatherLabel } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import DashboardCard from '../common/DashboardCard';
 
@@ -58,6 +58,7 @@ function selectTrendSeriesForCrop(
   producePrices: ProducePricesPayload | null,
   crop: CropType,
   preferredKey: string | null,
+  strictPreferredKey = false,
 ): ProducePriceTrendSeries | null {
   const seriesList = producePrices?.trend.series ?? [];
   if (seriesList.length === 0) {
@@ -68,6 +69,9 @@ function selectTrendSeriesForCrop(
     const matchedByKey = seriesList.find((series) => series.key === preferredKey);
     if (matchedByKey) {
       return matchedByKey;
+    }
+    if (strictPreferredKey) {
+      return null;
     }
   }
 
@@ -157,48 +161,48 @@ function TrendTile({
         <span>{seriesLabel}</span>
         <span>{unitLabel}</span>
       </div>
-      <div className="mt-2 min-h-0 flex-1 rounded-[18px] bg-white/82 px-2 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-        {data.length >= 2 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -12 }}>
-              <CartesianGrid stroke="rgba(122,67,52,0.12)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                axisLine={false}
-                minTickGap={20}
-                tick={{ fill: 'var(--sg-text-faint)', fontSize: 11 }}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                width={42}
-                tick={{ fill: 'var(--sg-text-faint)', fontSize: 11 }}
-              />
-              <Tooltip
-                formatter={(value: number) => [`${Number(value).toFixed(1)} ${unitLabel}`, title]}
-                labelFormatter={(label: string) => label}
-                contentStyle={{
-                  borderRadius: '14px',
-                  border: '1px solid rgba(122,67,52,0.12)',
-                  boxShadow: 'var(--sg-shadow-card)',
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke={stroke}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm font-medium text-[color:var(--sg-text-muted)]">
+      <div className="relative mt-2 min-h-0 flex-1 rounded-[18px] bg-white/82 px-2 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -12 }}>
+            <CartesianGrid stroke="rgba(122,67,52,0.12)" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              minTickGap={20}
+              tick={{ fill: 'var(--sg-text-faint)', fontSize: 11 }}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              width={42}
+              tick={{ fill: 'var(--sg-text-faint)', fontSize: 11 }}
+            />
+            <Tooltip
+              formatter={(value: number) => [`${Number(value).toFixed(1)} ${unitLabel}`, title]}
+              labelFormatter={(label: string) => label}
+              contentStyle={{
+                borderRadius: '14px',
+                border: '1px solid rgba(122,67,52,0.12)',
+                boxShadow: 'var(--sg-shadow-card)',
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke={stroke}
+              strokeWidth={2.5}
+              isAnimationActive={false}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+        {data.length < 2 ? (
+          <div className="absolute inset-0 flex items-center justify-center rounded-[18px] bg-white/72 text-sm font-medium text-[color:var(--sg-text-muted)]">
             {emptyLabel}
           </div>
-        )}
+        ) : null}
       </div>
     </article>
   );
@@ -272,8 +276,16 @@ export default function DecisionSnapshotGrid({
         cropUnit: 'µmol/m²/s',
       };
 
-  const selectedMarket = selectProduceItemForCrop(producePrices, crop, { marketPreference: ['wholesale'] });
-  const marketSeries = selectTrendSeriesForCrop(producePrices, crop, selectedMarket?.item?.key ?? null);
+  const selectedMarket = selectProduceItemForCrop(producePrices, crop, {
+    marketPreference: ['wholesale'],
+    enforcePreferredVariant: true,
+  });
+  const marketSeries = selectTrendSeriesForCrop(
+    producePrices,
+    crop,
+    selectedMarket?.item?.key ?? null,
+    true,
+  );
 
   const outsideData = useMemo(() => {
     const irradiancePoints = overviewSignals?.irradiance.points ?? [];
@@ -323,12 +335,16 @@ export default function DecisionSnapshotGrid({
       value: Number(point.actual_price_krw),
     }));
 
+  const preferredProduceName = locale === 'ko'
+    ? (crop === 'Cucumber' ? '오이(백다다기)' : '토마토(완숙)')
+    : (crop === 'Cucumber' ? 'Cucumber (Baekdadagi)' : 'Tomato (Ripe)');
+
   const weatherHeadline = weatherLoading || !weather
     ? copy.weatherLoading
     : `${weather.current.temperature_c.toFixed(1)}°C · ${getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)}`;
   const marketHeadline = produceLoading || !selectedMarket?.item
     ? copy.marketLoading
-    : `${getProduceDisplayName(selectedMarket.item.display_name, locale)} ${selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${copy.marketUnit}`;
+    : `${preferredProduceName} ${selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${copy.marketUnit}`;
   const energyHeadline = `${modelMetrics.energy.consumption.toFixed(1)} kW · COP ${modelMetrics.energy.efficiency.toFixed(2)}`;
   const cropHeadline = `광합성 ${currentData.photosynthesis.toFixed(1)} · LAI ${modelMetrics.growth.lai.toFixed(2)}`;
 

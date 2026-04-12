@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import pandas as pd
 
 from model_informed_greenhouse_dashboard import get_app
 from model_informed_greenhouse_dashboard.backend.app.adapters.cucumber import (
@@ -284,12 +285,62 @@ def test_model_state_store_lists_snapshots_by_created_at_and_source(
     assert [record["snapshot_id"] for record in records] == [live["snapshot_id"]]
 
 
-def test_overview_signal_endpoint_returns_live_weather_and_model_history(
+def test_model_state_store_created_since_limit_prefers_latest_snapshots(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    store_module = _model_store_module()
+    store = store_module.ModelStateStore(tmp_path / "model_runtime.sqlite3")
+
+    base_created_at = datetime(2026, 4, 12, 8, 0, tzinfo=UTC)
+    created_ticks = [base_created_at + timedelta(seconds=idx) for idx in range(6)]
+    tick_iter = iter(created_ticks)
+    monkeypatch.setattr(store_module, "_utcnow", lambda: next(tick_iter))
+
+    snapshot_ids: list[str] = []
+    for hour in range(5):
+        record = store.persist_snapshot(
+            greenhouse_id="cucumber",
+            crop="cucumber",
+            snapshot_time=datetime(2021, 2, 23, hour, 0, tzinfo=UTC),
+            adapter_name="cucumber",
+            adapter_version="1.0.0",
+            normalized_snapshot={"state": {"source_capacity": 10.0 + hour, "sink_demand": 7.0}},
+            raw_adapter_state={"RH": 0.7, "u_CO2": 700.0 + hour},
+            source="simulation_run",
+        )
+        snapshot_ids.append(record["snapshot_id"])
+
+    records = store.list_snapshots_created_since(
+        "cucumber",
+        "cucumber",
+        since=base_created_at - timedelta(minutes=1),
+        limit=2,
+        sources=("simulation_run",),
+    )
+
+    # latest 2 by created_at should be selected, but returned in chronological order
+    assert [record["snapshot_id"] for record in records] == snapshot_ids[-2:]
+
+
+def test_overview_signal_endpoint_returns_internal_irradiance_and_model_history(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     backend_main = _backend_main()
     backend_main.app_state["cucumber"]["adapter"] = None
+    backend_main.app_state["cucumber"]["simulator"] = None
+    backend_main.app_state["cucumber"]["dt_hours"] = 1 / 6
+    backend_main.app_state["cucumber"]["df_env"] = pd.DataFrame(
+        {
+            "datetime": [
+                "2026-04-12T09:00:00+09:00",
+                "2026-04-12T09:10:00+09:00",
+                "2026-04-12T09:20:00+09:00",
+            ],
+            "PAR_umol": [410.0, 822.6, 1188.2],
+        }
+    )
     backend_main.app_state["cucumber"]["last_runtime_snapshot_at"] = None
     store_module = _model_store_module()
     monkeypatch.setattr(
@@ -344,21 +395,6 @@ def test_overview_signal_endpoint_returns_live_weather_and_model_history(
         source="simulation_run",
     )
 
-    async def fake_shortwave_history(*, hours: int = 72, force_refresh: bool = False):
-        assert hours == 72
-        assert force_refresh is False
-        return {
-            "location": {"name": "Daegu", "country": "South Korea"},
-            "source": {"provider": "Open-Meteo", "docs_url": "https://open-meteo.com/en/docs"},
-            "window_hours": 72,
-            "unit": "W/m²",
-            "points": [
-                {"time": "2026-04-07T09:00:00+09:00", "shortwave_radiation_w_m2": 180.0},
-                {"time": "2026-04-07T10:00:00+09:00", "shortwave_radiation_w_m2": 260.0},
-            ],
-        }
-
-    monkeypatch.setattr(backend_main, "fetch_daegu_shortwave_history", fake_shortwave_history)
     client = TestClient(get_app())
 
     response = client.get("/api/overview/signals?crop=cucumber")
@@ -366,18 +402,20 @@ def test_overview_signal_endpoint_returns_live_weather_and_model_history(
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "success"
-    assert payload["irradiance"]["points"][1]["shortwave_radiation_w_m2"] == 260.0
+    assert payload["irradiance"]["source"]["provider"] == "Greenhouse internal PAR"
+    assert payload["irradiance"]["points"][-1]["shortwave_radiation_w_m2"] == 260.0
     assert payload["source_sink"]["status"] == "ready"
     assert len(payload["source_sink"]["points"]) == 2
     assert payload["source_sink"]["points"][0]["source_sink_balance"] > 0.0
 
 
-def test_overview_signal_endpoint_uses_recent_live_snapshot_creation_time(
+def test_overview_signal_endpoint_uses_simulation_snapshot_time_axis(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     backend_main = _backend_main()
     backend_main.app_state["cucumber"]["adapter"] = None
+    backend_main.app_state["cucumber"]["simulator"] = None
     backend_main.app_state["cucumber"]["last_runtime_snapshot_at"] = None
     store_module = _model_store_module()
     monkeypatch.setattr(
@@ -425,22 +463,6 @@ def test_overview_signal_endpoint_uses_recent_live_snapshot_creation_time(
         raw_adapter_state={"RH": 0.72, "u_CO2": 700.0},
         source="rtr_state_baseline",
     )
-
-    async def fake_shortwave_history(*, hours: int = 72, force_refresh: bool = False):
-        assert hours == 72
-        assert force_refresh is False
-        return {
-            "location": {"name": "Daegu", "country": "South Korea"},
-            "source": {"provider": "Open-Meteo", "docs_url": "https://open-meteo.com/en/docs"},
-            "window_hours": 72,
-            "unit": "W/m짼",
-            "points": [
-                {"time": "2026-04-07T09:00:00+09:00", "shortwave_radiation_w_m2": 180.0},
-                {"time": "2026-04-07T10:00:00+09:00", "shortwave_radiation_w_m2": 260.0},
-            ],
-        }
-
-    monkeypatch.setattr(backend_main, "fetch_daegu_shortwave_history", fake_shortwave_history)
     client = TestClient(get_app())
 
     response = client.get("/api/overview/signals?crop=cucumber")
@@ -450,4 +472,195 @@ def test_overview_signal_endpoint_uses_recent_live_snapshot_creation_time(
     assert payload["source_sink"]["status"] == "ready"
     assert len(payload["source_sink"]["points"]) == 1
     point_time = datetime.fromisoformat(payload["source_sink"]["points"][0]["time"])
-    assert point_time.year != 2021
+    assert point_time.year == 2021
+
+
+def test_overview_signal_endpoint_uses_internal_irradiance_history(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    backend_main = _backend_main()
+    backend_main.app_state["cucumber"]["adapter"] = None
+    backend_main.app_state["cucumber"]["simulator"] = None
+    backend_main.app_state["cucumber"]["dt_hours"] = 1 / 6
+    backend_main.app_state["cucumber"]["df_env"] = pd.DataFrame(
+        {
+            "datetime": [
+                "2026-04-12T09:00:00+09:00",
+                "2026-04-12T09:10:00+09:00",
+                "2026-04-12T09:20:00+09:00",
+            ],
+            "PAR_umol": [410.0, 520.0, 610.0],
+        }
+    )
+
+    store_module = _model_store_module()
+    monkeypatch.setattr(
+        store_module,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+    client = TestClient(get_app())
+
+    response = client.get("/api/overview/signals?crop=cucumber")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["irradiance"]["source"]["provider"] == "Greenhouse internal PAR"
+    assert len(payload["irradiance"]["points"]) >= 1
+    assert payload["irradiance"]["points"][-1]["shortwave_radiation_w_m2"] > 0
+
+
+def test_start_simulation_skips_restart_when_same_crop_run_is_already_active() -> None:
+    backend_main = _backend_main()
+
+    class DummyTask:
+        @staticmethod
+        def done() -> bool:
+            return False
+
+    class DummySimulator:
+        def __init__(self) -> None:
+            self.running = True
+            self.paused = False
+            self.idx = 5
+            self.df_env = pd.DataFrame(
+                {
+                    "datetime": pd.date_range(
+                        "2026-04-12T00:00:00+09:00",
+                        periods=12,
+                        freq="10min",
+                    )
+                }
+            )
+
+    dummy_simulator = DummySimulator()
+    backend_main.app_state["cucumber"]["simulator"] = dummy_simulator
+    backend_main.app_state["cucumber"]["sim_task"] = DummyTask()
+    backend_main.app_state["cucumber"]["csv_filename"] = "Cucumber_Env.CSV"
+    backend_main.app_state["cucumber"]["time_step"] = "10min"
+    backend_main.app_state["cucumber"]["dt_hours"] = 1 / 6
+    backend_main.app_state["cucumber"]["last_runtime_tick_at"] = None
+
+    client = TestClient(get_app())
+    response = client.post(
+        "/api/start",
+        json={
+            "crop": "cucumber",
+            "csv_filename": "Cucumber_Env.CSV",
+            "time_step": "10min",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "already_running"
+    assert payload["crop"] == "cucumber"
+    assert backend_main.app_state["cucumber"]["simulator"] is dummy_simulator
+
+
+def test_overview_signal_endpoint_uses_active_simulation_datetime_for_internal_irradiance(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    backend_main = _backend_main()
+    backend_main.app_state["cucumber"]["adapter"] = None
+
+    class DummySimulator:
+        def __init__(self) -> None:
+            self.idx = 1
+            self.df_env = pd.DataFrame(
+                {
+                    "datetime": [
+                        "2021-02-23T00:00:00+09:00",
+                        "2021-02-23T00:10:00+09:00",
+                        "2021-02-23T00:20:00+09:00",
+                    ],
+                    "PAR_umol": [120.0, 180.0, 260.0],
+                }
+            )
+
+    backend_main.app_state["cucumber"]["simulator"] = DummySimulator()
+
+    store_module = _model_store_module()
+    monkeypatch.setattr(
+        store_module,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+    backend_main.app_state["cucumber"]["dt_hours"] = 1 / 6
+    client = TestClient(get_app())
+
+    response = client.get("/api/overview/signals?crop=cucumber")
+    assert response.status_code == 200
+    payload = response.json()
+    points = payload["irradiance"]["points"]
+    assert len(points) == 2
+    assert points[-1]["time"].startswith("2021-02-23T00:10:00")
+    assert all(not point["time"].startswith("2021-02-23T00:20:00") for point in points)
+
+
+def test_overview_signal_endpoint_filters_source_sink_to_reference_window_and_sorts(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    backend_main = _backend_main()
+    backend_main.app_state["cucumber"]["adapter"] = None
+
+    class DummySimulator:
+        def __init__(self) -> None:
+            self.idx = 2
+            self.df_env = pd.DataFrame(
+                {
+                    "datetime": [
+                        "2021-02-23T04:00:00+00:00",
+                        "2021-02-23T05:00:00+00:00",
+                        "2021-02-23T06:00:00+00:00",
+                    ]
+                }
+            )
+
+    backend_main.app_state["cucumber"]["simulator"] = DummySimulator()
+    backend_main.app_state["cucumber"]["last_runtime_snapshot_at"] = None
+
+    store_module = _model_store_module()
+    monkeypatch.setattr(
+        store_module,
+        "DEFAULT_MODEL_RUNTIME_DB_PATH",
+        tmp_path / "model_runtime.sqlite3",
+    )
+    store = store_module.ModelStateStore(tmp_path / "model_runtime.sqlite3")
+
+    def _persist(snapshot_time: datetime, source_capacity: float) -> None:
+        store.persist_snapshot(
+            greenhouse_id="cucumber",
+            crop="cucumber",
+            snapshot_time=snapshot_time,
+            adapter_name="cucumber",
+            adapter_version="1.0.0",
+            normalized_snapshot={
+                "state": {
+                    "source_capacity": source_capacity,
+                    "sink_demand": 7.0,
+                    "lai": 3.0,
+                }
+            },
+            raw_adapter_state={"RH": 0.7, "u_CO2": 700.0},
+            source="simulation_run",
+        )
+
+    # In-window, intentionally inserted out of chronological order.
+    _persist(datetime(2021, 2, 23, 6, 0, tzinfo=UTC), 16.0)
+    _persist(datetime(2021, 2, 23, 4, 0, tzinfo=UTC), 14.0)
+    # Out-of-window future point that should be excluded.
+    _persist(datetime(2021, 3, 26, 1, 0, tzinfo=UTC), 30.0)
+    client = TestClient(get_app())
+    response = client.get("/api/overview/signals?crop=cucumber")
+
+    assert response.status_code == 200
+    payload = response.json()
+    points = payload["source_sink"]["points"]
+    assert len(points) == 2
+    assert points[0]["source_capacity"] == 14.0
+    assert points[1]["source_capacity"] == 16.0

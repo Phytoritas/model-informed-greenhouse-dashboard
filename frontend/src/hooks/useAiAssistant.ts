@@ -79,6 +79,11 @@ export const useAiAssistant = () => {
     const [aiError, setAiError] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const requestIdRef = useRef(0);
+    const activeCropRef = useRef<CropType | null>(null);
+
+    const setActiveCrop = useCallback((crop: CropType) => {
+        activeCropRef.current = crop;
+    }, []);
 
     const analyzeData = useCallback(async (
         data: SensorData,
@@ -94,8 +99,6 @@ export const useAiAssistant = () => {
         requestIdRef.current += 1;
         const requestId = requestIdRef.current;
         setIsAnalyzing(true);
-        setAiDisplay(null);
-        setAiModelRuntime(null);
         setAiError(null);
         try {
             const cropKey = crop.toLowerCase();
@@ -127,7 +130,7 @@ export const useAiAssistant = () => {
                 throw new Error(message);
             }
 
-            if (requestId !== requestIdRef.current) {
+            if (requestId !== requestIdRef.current || activeCropRef.current !== null && activeCropRef.current !== crop) {
                 return false;
             }
 
@@ -141,12 +144,10 @@ export const useAiAssistant = () => {
             }
             return true;
         } catch (error) {
-            if (requestId !== requestIdRef.current) {
+            if (requestId !== requestIdRef.current || activeCropRef.current !== null && activeCropRef.current !== crop) {
                 return false;
             }
             const message = error instanceof Error ? error.message : 'unknown_error';
-            setAiDisplay(null);
-            setAiModelRuntime(null);
             setAiError(message);
             setAiAnalysis(
                 locale === 'ko'
@@ -169,5 +170,6 @@ export const useAiAssistant = () => {
         aiError,
         isAnalyzing,
         analyzeData,
+        setActiveCrop,
     };
 };
