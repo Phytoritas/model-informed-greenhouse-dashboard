@@ -2,19 +2,19 @@
 
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
-- topic: `issue106-overview-solution-and-irradiance-live-updates`
-- sessionId: `model-informed-greenhouse-dashboard#fix-106-restore-overview-solution-and-irradiance-live-updates`
-- caseId: `case/model-informed-greenhouse-dashboard/fix-106-restore-overview-solution-and-irradiance-live-updates`
-- active issue: `#106`
-- branch: `fix/106-restore-overview-solution-and-irradiance-live-updates`
+- topic: `main-clean-issue3-blocked`
+- sessionId: `model-informed-greenhouse-dashboard#main:issue3-blocked`
+- caseId: `case/model-informed-greenhouse-dashboard/main/issue3-blocked`
+- open backlog issue: `#3`
+- branch: `main`
 
 ## Current State
-- current_stage: `issue106-overview-solution-and-irradiance-live-updates`
-- implementation_gate: `pass`
+- current_stage: `main-clean-issue3-blocked`
+- implementation_gate: `blocked`
 - agents_and_workflow_gate: `satisfied`
-- latest_route_slice: `issue106 restores Today operating-direction freshness through receivedAt-based advisor auto-refresh gating and restores outside irradiance freshness through a dedicated shortwave-history cache TTL`
-- latest_validation: `local ladder is green on npm lint/test/build plus ruff/pytest for the current issue106 follow-up set, including dedicated advisorAutoRefresh and weather-history regressions`
-- local_worktree_followup: `the branch is committed, pushed, and attached to stacked PR #107 on top of PR #105; next step is to watch remote validation and merge in order`
+- latest_route_slice: `issues 104 and 106 are merged on main, restoring live refresh responsiveness, live source-sink sync, advisor freshness gating, and outside irradiance current-point updates`
+- latest_validation: `issue104 and issue106 stayed green on the local ladders and merged after GitHub Actions Backend/Frontend validation passed`
+- local_worktree_followup: `main is the truthful baseline; docs issue108 only syncs tracked .rah state, and any further product work must start from a fresh issue-based branch`
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -25,15 +25,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#fix-106-restore-overview-solution-and-irradiance-live-updates")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#main:issue3-blocked")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "issue106-overview-solution-and-irradiance-live-updates", "issue106", "overview-solution", "irradiance"],
-    topic="issue106-overview-solution-and-irradiance-live-updates",
+    keywords=["model-informed-greenhouse-dashboard", "main-clean-issue3-blocked", "main", "issue3", "blocked"],
+    topic="main-clean-issue3-blocked",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#fix-106-restore-overview-solution-and-irradiance-live-updates",
+    sessionId="model-informed-greenhouse-dashboard#main:issue3-blocked",
     caseMode=True,
     depth="standard",
-    contextText="resume the active issue106 follow-up branch for overview solution freshness and outside irradiance live updates on top of PR #105"
+    contextText="resume from the clean main baseline after issues 104 and 106 merged, then decide whether to unblock issue #3 or open a fresh issue-based branch"
 )
 ```
 
@@ -41,6 +41,6 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Keep work scoped to issue `#106` while PR `#107` validates on top of PR `#105`.
-- Merge in stack order: issue104 / PR `#105` first, then issue106 / PR `#107`.
-- Split any additional unrelated telemetry/performance work into another fresh issue after the stacked follow-up is merged.
+- Unblock issue `#3` only when grower-approved windows are available.
+- For unrelated follow-up, stay on clean `main` and open a fresh issue/branch first.
+- Do not resume merged issue104 or issue106 delivery branches.
