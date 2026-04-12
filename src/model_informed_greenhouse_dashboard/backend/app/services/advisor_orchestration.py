@@ -945,13 +945,22 @@ def _build_model_runtime_payload(
         top_tradeoff = max(tradeoff_candidates, key=lambda item: item[1])
         if top_tradeoff[1] > 1e-9:
             dominant_tradeoff = top_tradeoff[0]
+        requested_delta = round(float(step_meta["requested_delta"]), 6)
+        applied_delta = round(
+            float(comparison.get("applied_delta", requested_delta)),
+            6,
+        )
+        bounded_delta = round(
+            float(comparison.get("bounded_delta", applied_delta)),
+            6,
+        )
         return {
-            "step_label": _step_label(spec, float(step_meta["requested_delta"])),
+            "step_label": _step_label(spec, applied_delta),
             "step_class": step_meta["step_class"],
-            "delta": round(float(step_meta["requested_delta"]), 6),
-            "requested_delta": round(float(step_meta["requested_delta"]), 6),
-            "applied_delta": round(float(comparison.get("applied_delta", 0.0)), 6),
-            "bounded_delta": round(float(comparison.get("bounded_delta", 0.0)), 6),
+            "delta": applied_delta,
+            "requested_delta": requested_delta,
+            "applied_delta": applied_delta,
+            "bounded_delta": bounded_delta,
             "scenario_score": scenario_score,
             "objective_delta": objective_delta,
             "yield_delta_24h": yield_delta_24h,
@@ -1028,10 +1037,10 @@ def _build_model_runtime_payload(
             operator_summary = {"headline": f"{spec.ui_label}는 {recommended_step['step_label']} 조정이 가장 유리합니다.", "why": f"14일 예상 수량 {float(recommended_step.get('yield_delta_14d', 0.0)):+.3f}, 72시간 동화량 {float(recommended_step.get('yield_delta_72h', 0.0)):+.3f}, 균형 지수 {float(recommended_step.get('source_sink_balance_delta', 0.0)):+.3f}입니다.", "watch_out": "더 크게 조정하면 추가 이득보다 비용 또는 리스크가 먼저 커질 수 있습니다." if precision_mode == "micro_preferred" else "미세 조정보다 한 단계 더 크게 움직일 때 이득이 더 분명합니다." if precision_mode == "macro_preferred" else "미세 조정과 강한 조정이 모두 유효해 운영 여유 범위가 있습니다." if precision_mode == "range_preferred" else "신뢰 구간 안에서만 조정 강도를 비교해 주세요.", "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(_MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"), "오늘")}
         recommended_band = None
         if recommended_step:
-            same_sign_values = [float(item.get("requested_delta", 0.0)) for item in steps if item.get("ui_visible") and (1 if float(item.get("applied_delta", 0.0)) > 0 else -1) == (1 if float(recommended_step.get("applied_delta", 0.0)) > 0 else -1) and item.get("step_class") in {"micro", "macro"}]
-            same_sign_values = sorted(same_sign_values or [float(recommended_step.get("requested_delta", 0.0))])
-            recommended_band = {"start": round(same_sign_values[0], 6), "end": round(same_sign_values[-1], 6), "unit": _display_unit(spec), "best_step": round(float(recommended_step.get("requested_delta", 0.0)), 6)}
-        return {"control": control_name, "label": spec.ui_label, "current_value": _current_value(control_name), "unit": _display_unit(spec), "target_metric": derivative_target, "local_sensitivity": {"derivative": sensitivity_row.get("derivative"), "elasticity": sensitivity_row.get("elasticity"), "trust_region": sensitivity_row.get("trust_region"), "scenario_alignment": sensitivity_row.get("scenario_alignment"), "bounded_delta": sensitivity_row.get("bounded_delta"), "local_confidence": sensitivity_row.get("local_confidence"), "recommended_sign": sensitivity_row.get("recommended_sign"), "nonlinearity_hint": sensitivity_row.get("nonlinearity_hint")}, "steps": steps, "recommended_step": recommended_step, "diminishing_return": diminishing_return, "operator_summary": operator_summary, "action": _action_label(spec, float(recommended_step.get("requested_delta", 0.0))) if recommended_step else f"{spec.ui_label} 유지", "action_short": f"{spec.ui_label} {_step_label(spec, float(recommended_step.get('requested_delta', 0.0)))}" if recommended_step else f"{spec.ui_label} 유지", "action_family": spec.family_name, "recommended_band": recommended_band, "precision_mode": precision_mode, "why_summary": operator_summary["headline"], "why_detail": {"yield_24h": recommended_step.get("yield_delta_24h"), "yield_72h": recommended_step.get("yield_delta_72h"), "yield_14d": recommended_step.get("yield_delta_14d"), "energy": recommended_step.get("energy_delta"), "humidity": recommended_step.get("humidity_penalty_delta"), "disease": recommended_step.get("disease_penalty_delta"), "source_sink": recommended_step.get("source_sink_balance_delta")} if recommended_step else {}, "family_score": family_score, "best_step_score": float(recommended_step.get("scenario_score", 0.0)) if recommended_step else 0.0, "confidence_adjustment": confidence_adjustment, "feasibility_adjustment": feasibility_adjustment, "clarity_adjustment": clarity_adjustment, "time_window": _MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today")}
+            same_sign_values = [float(item.get("applied_delta", 0.0)) for item in steps if item.get("ui_visible") and (1 if float(item.get("applied_delta", 0.0)) > 0 else -1) == (1 if float(recommended_step.get("applied_delta", 0.0)) > 0 else -1) and item.get("step_class") in {"micro", "macro"}]
+            same_sign_values = sorted(same_sign_values or [float(recommended_step.get("applied_delta", 0.0))])
+            recommended_band = {"start": round(same_sign_values[0], 6), "end": round(same_sign_values[-1], 6), "unit": _display_unit(spec), "best_step": round(float(recommended_step.get("applied_delta", 0.0)), 6)}
+        return {"control": control_name, "label": spec.ui_label, "current_value": _current_value(control_name), "unit": _display_unit(spec), "target_metric": derivative_target, "local_sensitivity": {"derivative": sensitivity_row.get("derivative"), "elasticity": sensitivity_row.get("elasticity"), "trust_region": sensitivity_row.get("trust_region"), "scenario_alignment": sensitivity_row.get("scenario_alignment"), "bounded_delta": sensitivity_row.get("bounded_delta"), "local_confidence": sensitivity_row.get("local_confidence"), "recommended_sign": sensitivity_row.get("recommended_sign"), "nonlinearity_hint": sensitivity_row.get("nonlinearity_hint")}, "steps": steps, "recommended_step": recommended_step, "diminishing_return": diminishing_return, "operator_summary": operator_summary, "action": _action_label(spec, float(recommended_step.get("applied_delta", 0.0))) if recommended_step else f"{spec.ui_label} 유지", "action_short": f"{spec.ui_label} {_step_label(spec, float(recommended_step.get('applied_delta', 0.0)))}" if recommended_step else f"{spec.ui_label} 유지", "action_family": spec.family_name, "recommended_band": recommended_band, "precision_mode": precision_mode, "why_summary": operator_summary["headline"], "why_detail": {"yield_24h": recommended_step.get("yield_delta_24h"), "yield_72h": recommended_step.get("yield_delta_72h"), "yield_14d": recommended_step.get("yield_delta_14d"), "energy": recommended_step.get("energy_delta"), "humidity": recommended_step.get("humidity_penalty_delta"), "disease": recommended_step.get("disease_penalty_delta"), "source_sink": recommended_step.get("source_sink_balance_delta")} if recommended_step else {}, "family_score": family_score, "best_step_score": float(recommended_step.get("scenario_score", 0.0)) if recommended_step else 0.0, "confidence_adjustment": confidence_adjustment, "feasibility_adjustment": feasibility_adjustment, "clarity_adjustment": clarity_adjustment, "time_window": _MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today")}
 
     recommendation_families = [
         _build_family(control_name)
@@ -4561,6 +4570,190 @@ def build_advisor_summary_response(
         "text": text,
         "machine_payload": {
             "summary": "SmartGrow advisor summary generated from the live dashboard and crop-scoped local knowledge context.",
+            "domains": domains,
+            "context_completeness": context_completeness,
+            "actions": structured_actions,
+            "missing_data": missing_data,
+            "retrieval_context": retrieval_context.get("summary", {}),
+            "advisory_surfaces": advisory_surfaces,
+            "model_runtime": model_runtime,
+            "display": display,
+            "internal_provenance": _build_internal_provenance(
+                catalog_payload,
+                advisory_surfaces,
+                retrieval_context=retrieval_context,
+            ),
+        },
+    }
+
+
+def _dedupe_nonempty_strings(values: list[Any]) -> list[str]:
+    ordered: list[str] = []
+    for value in values:
+        normalized = str(value or "").strip()
+        if normalized and normalized not in ordered:
+            ordered.append(normalized)
+    return ordered
+
+
+def _build_summary_fallback_markdown(
+    *,
+    language: str,
+    model_runtime: dict[str, Any],
+    reason: str,
+) -> str:
+    locale = "ko" if not language.lower().startswith("en") else "en"
+    scenario = _coerce_dict(model_runtime.get("scenario"))
+    recommended = _coerce_dict(scenario.get("recommended"))
+    recommendations = model_runtime.get("recommendations")
+    recommendation_items = recommendations if isinstance(recommendations, list) else []
+    best_actions = model_runtime.get("best_actions")
+    best_action_items = best_actions if isinstance(best_actions, list) else []
+    constraint_checks = _coerce_dict(model_runtime.get("constraint_checks"))
+    violations = constraint_checks.get("violated_constraints")
+    violation_items = violations if isinstance(violations, list) else []
+
+    summary_text = str(model_runtime.get("summary") or "").strip()
+    if not summary_text:
+        summary_text = (
+            "LLM 응답이 지연되어 모델 기반 요약을 먼저 표시합니다."
+            if locale == "ko"
+            else "The LLM summary is delayed, so the deterministic model summary is shown first."
+        )
+    elif reason == "llm_timeout":
+        summary_text = (
+            f"{summary_text} LLM 응답이 지연되어 모델 기반 요약을 먼저 표시합니다."
+            if locale == "ko"
+            else f"{summary_text} The deterministic model summary is shown first because the LLM response is delayed."
+        )
+
+    actions_now = _dedupe_nonempty_strings([
+        recommended.get("action"),
+        *[
+            item.get("action") or item.get("message")
+            for item in recommendation_items
+            if isinstance(item, dict)
+        ],
+    ])
+    if not actions_now:
+        actions_now = [
+            "현재 제어안을 유지하면서 다음 센서 갱신을 확인합니다."
+            if locale == "ko"
+            else "Hold the current control strategy and confirm the next telemetry update."
+        ]
+
+    actions_today = _dedupe_nonempty_strings([
+        item.get("action_short") or item.get("action")
+        for item in best_action_items
+        if isinstance(item, dict)
+    ])
+    actions_today = [action for action in actions_today if action not in actions_now][:2]
+    if not actions_today and len(actions_now) > 1:
+        actions_today = actions_now[1:3]
+
+    risks = _dedupe_nonempty_strings([
+        item.get("message")
+        for item in violation_items
+        if isinstance(item, dict)
+    ])[:3]
+    monitor = _dedupe_nonempty_strings([
+        (
+            "OpenAI 요약이 복구되면 운영 문장을 다시 확인합니다."
+            if locale == "ko"
+            else "Recheck the operator summary once the OpenAI response recovers."
+        ) if reason == "openai_unavailable" else (
+            "요약 카드가 다시 갱신되면 권장 조치를 최신 상태로 확인합니다."
+            if locale == "ko"
+            else "Recheck the recommendation once the summary card refreshes again."
+        ),
+        (
+            "RTR, 예보, 센서 추세가 같은 방향인지 확인합니다."
+            if locale == "ko"
+            else "Confirm that RTR, forecast, and telemetry trends are aligned."
+        ),
+    ])
+
+    if locale == "ko":
+        risks_block = "\n".join(f"- {risk}" for risk in risks)
+        actions_now_block = "\n".join(f"- {action}" for action in actions_now[:2])
+        actions_today_block = "\n".join(f"- {action}" for action in actions_today)
+        monitor_block = "\n".join(f"- {item}" for item in monitor[:3])
+        return (
+            "## 핵심 요약\n"
+            f"- {summary_text}\n\n"
+            "## 경보 및 위험\n"
+            f"{risks_block}\n\n"
+            "## 권장 조치\n"
+            "### 지금\n"
+            f"{actions_now_block}\n\n"
+            "### 오늘\n"
+            f"{actions_today_block}\n\n"
+            "## 모니터링 체크리스트 (24시간)\n"
+            f"{monitor_block}\n"
+        )
+
+    risks_block = "\n".join(f"- {risk}" for risk in risks)
+    actions_now_block = "\n".join(f"- {action}" for action in actions_now[:2])
+    actions_today_block = "\n".join(f"- {action}" for action in actions_today)
+    monitor_block = "\n".join(f"- {item}" for item in monitor[:3])
+    return (
+        "## Summary\n"
+        f"- {summary_text}\n\n"
+        "## Risks\n"
+        f"{risks_block}\n\n"
+        "## Actions\n"
+        "### Now\n"
+        f"{actions_now_block}\n\n"
+        "### Today\n"
+        f"{actions_today_block}\n\n"
+        "## Monitor\n"
+        f"{monitor_block}\n"
+    )
+
+
+def build_advisor_summary_fallback_response(
+    *,
+    crop: str,
+    dashboard: dict[str, Any],
+    language: str = "ko",
+    reason: str = "openai_unavailable",
+) -> dict[str, Any]:
+    catalog_payload = build_knowledge_catalog(crop)
+    advisory_surfaces = catalog_payload.get("advisory_surfaces", {})
+    missing_data = _collect_missing_data_flags(dashboard)
+    domains = _infer_domains(dashboard, advisory_surfaces)
+    retrieval_context = build_summary_advisor_context(
+        crop=crop,
+        domains=domains,
+    )
+    model_runtime = _build_model_runtime_payload(
+        crop=crop,
+        dashboard=dashboard,
+        tab_name="summary",
+    )
+    context_completeness = _context_completeness(dashboard)
+    text = _build_summary_fallback_markdown(
+        language=language,
+        model_runtime=model_runtime,
+        reason=reason,
+    )
+    display = build_advisory_display_payload(
+        text,
+        language=language,
+        confidence=context_completeness,
+    )
+    structured_actions = [
+        {"title": action, "message": action}
+        for action in [*display.get("actions_now", []), *display.get("actions_today", [])]
+    ]
+
+    return {
+        "status": "degraded",
+        "family": "advisor_summary",
+        "crop": crop,
+        "text": text,
+        "machine_payload": {
+            "summary": "SmartGrow advisor summary fallback generated from deterministic model runtime context.",
             "domains": domains,
             "context_completeness": context_completeness,
             "actions": structured_actions,

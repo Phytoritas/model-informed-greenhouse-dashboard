@@ -6,8 +6,8 @@ function makeItem(overrides: Partial<ProducePriceEntry>): ProducePriceEntry {
     return {
         key: 'item',
         display_name: 'Tomato',
-        source_name: '토마토/토마토',
-        category_name: '채소',
+        source_name: 'Tomato/Tomato',
+        category_name: 'Vegetable',
         market_label: 'Wholesale',
         unit: '10kg',
         latest_day: '2026-04-10',
@@ -22,7 +22,10 @@ function makeItem(overrides: Partial<ProducePriceEntry>): ProducePriceEntry {
     };
 }
 
-function makePayload(wholesaleItems: ProducePriceEntry[], retailItems: ProducePriceEntry[]): ProducePricesPayload {
+function makePayload(
+    wholesaleItems: ProducePriceEntry[],
+    retailItems: ProducePriceEntry[],
+): ProducePricesPayload {
     return {
         source: {
             provider: 'KAMIS',
@@ -61,34 +64,61 @@ function makePayload(wholesaleItems: ProducePriceEntry[], retailItems: ProducePr
 }
 
 describe('selectProduceItemForCrop', () => {
-    it('selects cucumber from wholesale market when requested', () => {
+    it('selects cucumber dadagi variant from wholesale when preferred variant enforcement is enabled', () => {
         const payload = makePayload(
             [
-                makeItem({ key: '321', display_name: 'Tomato', source_name: '토마토/토마토' }),
-                makeItem({ key: '313', display_name: 'Cucumber (Dadagi)', source_name: '오이/다다기계통' }),
+                makeItem({ key: '315', display_name: 'Cucumber (Chuicheong)', source_name: 'Cucumber/Chuicheong' }),
+                makeItem({ key: '313', display_name: 'Cucumber (Dadagi)', source_name: 'Cucumber/Dadagi' }),
             ],
-            [makeItem({ key: '321', display_name: 'Tomato' })],
+            [],
         );
 
-        const selected = selectProduceItemForCrop(payload, 'Cucumber', { marketPreference: ['wholesale'] });
+        const selected = selectProduceItemForCrop(payload, 'Cucumber', {
+            marketPreference: ['wholesale'],
+            enforcePreferredVariant: true,
+        });
+
         expect(selected?.marketKey).toBe('wholesale');
         expect(selected?.item.display_name).toBe('Cucumber (Dadagi)');
     });
 
-    it('returns null when only wholesale is allowed and crop does not exist in wholesale', () => {
+    it('selects ripe tomato over cherry tomato when preferred variant enforcement is enabled', () => {
         const payload = makePayload(
-            [makeItem({ key: '321', display_name: 'Tomato', source_name: '토마토/토마토' })],
-            [makeItem({ key: '313', display_name: 'Cucumber (Dadagi)', source_name: '오이/다다기계통' })],
+            [
+                makeItem({ key: '437', display_name: 'Cherry Tomato', source_name: 'Cherry Tomato' }),
+                makeItem({ key: '321', display_name: 'Tomato', source_name: 'Tomato/Tomato' }),
+            ],
+            [],
         );
 
-        const selected = selectProduceItemForCrop(payload, 'Cucumber', { marketPreference: ['wholesale'] });
+        const selected = selectProduceItemForCrop(payload, 'Tomato', {
+            marketPreference: ['wholesale'],
+            enforcePreferredVariant: true,
+        });
+
+        expect(selected?.marketKey).toBe('wholesale');
+        expect(selected?.item.display_name).toBe('Tomato');
+    });
+
+    it('returns null when preferred cucumber variant is unavailable and enforcement is enabled', () => {
+        const payload = makePayload(
+            [
+                makeItem({ key: '315', display_name: 'Cucumber (Chuicheong)', source_name: 'Cucumber/Chuicheong' }),
+            ],
+            [],
+        );
+
+        const selected = selectProduceItemForCrop(payload, 'Cucumber', {
+            marketPreference: ['wholesale'],
+            enforcePreferredVariant: true,
+        });
         expect(selected).toBeNull();
     });
 
     it('falls back to retail when default market preference is used', () => {
         const payload = makePayload(
-            [makeItem({ key: '321', display_name: 'Tomato', source_name: '토마토/토마토' })],
-            [makeItem({ key: '313', display_name: 'Cucumber (Dadagi)', source_name: '오이/다다기계통' })],
+            [makeItem({ key: '321', display_name: 'Tomato', source_name: 'Tomato/Tomato' })],
+            [makeItem({ key: '313', display_name: 'Cucumber (Dadagi)', source_name: 'Cucumber/Dadagi' })],
         );
 
         const selected = selectProduceItemForCrop(payload, 'Cucumber' satisfies CropType);

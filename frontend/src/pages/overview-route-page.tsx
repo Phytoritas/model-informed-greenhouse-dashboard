@@ -56,6 +56,7 @@ interface OverviewRoutePageProps {
   overviewSignals: OverviewSignalsPayload | null;
   overviewSignalsLoading: boolean;
   overviewSignalsError: string | null;
+  overviewSignalsRefreshedAt?: number | null;
   weather: WeatherOutlook | null;
   weatherLoading: boolean;
   producePrices: ProducePricesPayload | null;
@@ -99,6 +100,7 @@ export default function OverviewRoutePage({
   overviewSignals,
   overviewSignalsLoading,
   overviewSignalsError,
+  overviewSignalsRefreshedAt = null,
   weather,
   weatherLoading,
   producePrices,
@@ -154,6 +156,7 @@ export default function OverviewRoutePage({
           signals={overviewSignals}
           loading={overviewSignalsLoading}
           error={overviewSignalsError}
+          refreshedAt={overviewSignalsRefreshedAt}
           liveSourceSinkSeries={liveSourceSinkSeries}
         />
       )}

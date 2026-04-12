@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
     ProduceMarketKey,
     ProduceMarketSnapshot,
@@ -45,10 +45,59 @@ const normalizeProducePayload = (payload: ProducePricesPayload): ProducePricesPa
     },
 });
 
+const hasRenderableMarketSeries = (payload: ProducePricesPayload): boolean =>
+    payload.trend.series.some((series) => (
+        series.points.filter((point) => point.segment === 'history' && Number.isFinite(point.actual_price_krw)).length >= 2
+    ));
+
+const hasMarketItems = (payload: ProducePricesPayload): boolean =>
+    payload.items.length > 0
+    || payload.markets.retail.items.length > 0
+    || payload.markets.wholesale.items.length > 0;
+
+const mergeWithPreviousPayload = (
+    previous: ProducePricesPayload | null,
+    next: ProducePricesPayload,
+): ProducePricesPayload => {
+    if (!previous) {
+        return next;
+    }
+
+    const nextHasSeries = hasRenderableMarketSeries(next);
+    const previousHasSeries = hasRenderableMarketSeries(previous);
+    const trend = nextHasSeries || !previousHasSeries
+        ? next.trend
+        : {
+            ...next.trend,
+            series: previous.trend.series,
+            unavailable_series: next.trend.unavailable_series.length > 0
+                ? next.trend.unavailable_series
+                : previous.trend.unavailable_series,
+        };
+
+    const nextHasItems = hasMarketItems(next);
+    const previousHasItems = hasMarketItems(previous);
+    if (nextHasItems || !previousHasItems) {
+        return {
+            ...next,
+            trend,
+        };
+    }
+
+    return {
+        ...next,
+        summary: previous.summary,
+        items: previous.items,
+        markets: previous.markets,
+        trend,
+    };
+};
+
 export const useProducePrices = () => {
     const [prices, setPrices] = useState<ProducePricesPayload | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const initialRequestSettledRef = useRef(false);
     const hasPrices = prices !== null;
     const refreshMs = hasPrices ? PRODUCE_PRICE_REFRESH_MS : PRODUCE_PRICE_RECOVERY_REFRESH_MS;
 
@@ -56,9 +105,7 @@ export const useProducePrices = () => {
         let cancelled = false;
 
         const fetchProducePrices = async () => {
-            if (!hasPrices && !cancelled) {
-                setLoading(true);
-            }
+            const isInitialRequest = !initialRequestSettledRef.current;
             const controller = new AbortController();
             const timeoutId = window.setTimeout(() => controller.abort(), PRODUCE_PRICE_REQUEST_TIMEOUT_MS);
             try {
@@ -70,7 +117,10 @@ export const useProducePrices = () => {
                     throw new Error(data?.detail ?? `HTTP ${res.status}`);
                 }
                 if (!cancelled) {
-                    setPrices(normalizeProducePayload(data as ProducePricesPayload));
+                    setPrices((previous) => mergeWithPreviousPayload(
+                        previous,
+                        normalizeProducePayload(data as ProducePricesPayload),
+                    ));
                     setError(null);
                 }
             } catch (err) {
@@ -88,7 +138,8 @@ export const useProducePrices = () => {
                 }
             } finally {
                 window.clearTimeout(timeoutId);
-                if (!cancelled) {
+                if (!cancelled && isInitialRequest) {
+                    initialRequestSettledRef.current = true;
                     setLoading(false);
                 }
             }

@@ -98,9 +98,9 @@ CONTROL_SPECS: dict[str, ControlSpec] = {
         trust_region_high=150.0,
         default_step=50.0,
         unit="ppm",
-        micro_step=100.0,
-        macro_step=200.0,
-        reference_step=None,
+        micro_step=50.0,
+        macro_step=100.0,
+        reference_step=150.0,
         ui_label="주간 CO2",
         display_precision=0,
         family_name="co2_precision",
@@ -223,6 +223,8 @@ def evaluate_constraints(
     resulting_night_temperature = canopy_temperature_c + normalized_controls["temperature_night"]
     resulting_rh_fraction = rh_fraction + (normalized_controls["rh_target"] / 100.0)
     screen_close_delta = normalized_controls["screen_close"]
+    ambient_co2_ppm = _safe_float(runtime_inputs.get("ambient_co2_ppm"), 700.0)
+    resulting_co2_ppm = ambient_co2_ppm + normalized_controls["co2_setpoint_day"]
 
     if resulting_rh_fraction >= 0.87:
         violations.append(
@@ -298,6 +300,24 @@ def evaluate_constraints(
         )
         stress_penalty += 0.16
 
+    if resulting_co2_ppm >= 1050.0:
+        violations.append(
+            ConstraintViolation(
+                code="co2_overdose_risk",
+                severity="medium",
+                message="Resulting CO2 exceeds the bounded high-response band.",
+                control="co2_setpoint_day",
+            )
+        )
+        disease_risk_penalty += 0.14
+        stress_penalty += 0.12
+        confidence_penalty += 0.04
+    elif resulting_co2_ppm >= 920.0:
+        disease_risk_penalty += 0.08
+        stress_penalty += 0.05
+    elif resulting_co2_ppm <= 380.0 and normalized_controls["co2_setpoint_day"] < 0.0:
+        stress_penalty += 0.06
+
     if source_sink_balance <= -0.25 and normalized_controls["screen_close"] > 5.0:
         violations.append(
             ConstraintViolation(
@@ -311,7 +331,11 @@ def evaluate_constraints(
 
     energy_cost_penalty += 0.14 * max(0.0, normalized_controls["temperature_day"] / 1.5)
     energy_cost_penalty += 0.18 * max(0.0, normalized_controls["temperature_night"] / 1.5)
-    energy_cost_penalty += 0.08 * abs(normalized_controls["co2_setpoint_day"] / 150.0)
+    co2_ratio = normalized_controls["co2_setpoint_day"] / 150.0
+    positive_co2_ratio = max(0.0, co2_ratio)
+    energy_cost_penalty += 0.08 * abs(co2_ratio)
+    energy_cost_penalty += 0.06 * (positive_co2_ratio**2)
+    energy_cost_penalty += 0.04 * max(0.0, (resulting_co2_ppm - 900.0) / 200.0)
     energy_cost_penalty -= 0.06 * max(0.0, normalized_controls["screen_close"] / 15.0)
     energy_cost_penalty = _clamp(energy_cost_penalty, 0.0, 1.0)
 

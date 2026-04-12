@@ -300,7 +300,7 @@ if [[ "${DEV}" == "0" ]]; then
 else
   (
     cd "${REPO_ROOT}"
-    "${POETRY_BIN}" run python -m uvicorn model_informed_greenhouse_dashboard.backend.app.main:app --host "${BACKEND_HOST}" --port "${BACKEND_PORT}" --reload
+    "${POETRY_BIN}" run python -m uvicorn model_informed_greenhouse_dashboard.backend.app.main:app --host "${BACKEND_HOST}" --port "${BACKEND_PORT}" --reload --reload-dir "${REPO_ROOT}/src/model_informed_greenhouse_dashboard/backend/app"
   ) &
 fi
 BACKEND_PID=$!

@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     forecast_reschedule_interval_h: int = Field(
         default=1, alias="FORECAST_RESCHEDULE_INTERVAL_H"
     )
+    forecast_min_reschedule_seconds: int = Field(
+        default=20, alias="FORECAST_MIN_RESCHEDULE_SECONDS"
+    )
     forecast_step_interval: int = Field(
         default=6, alias="FORECAST_STEP_INTERVAL"
     )  # Sample every N rows (6 = 1hr for 10-min data)

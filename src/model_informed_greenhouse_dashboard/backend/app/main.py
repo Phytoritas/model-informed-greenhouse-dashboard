@@ -5,6 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,7 @@ from .services.advisor_orchestration import (
     build_environment_advisor_response,
     build_environment_recommendation_response,
     build_harvest_advisor_response,
+    build_advisor_summary_fallback_response,
     build_physiology_advisor_response,
     build_advisor_summary_response,
     build_advisor_tab_response,
@@ -52,7 +54,7 @@ from .services.rtr_profiles import (
     select_rtr_calibration_days,
     upsert_rtr_good_windows,
 )
-from .services.weather import fetch_daegu_shortwave_history, fetch_daegu_weather_outlook
+from .services.weather import fetch_daegu_weather_outlook
 from .schemas import OpsConfig, CropConfig
 
 class Settings(BaseModel):
@@ -350,8 +352,10 @@ app_state = {
         "last_irrigation": None,
         "last_energy": None,
         "latest_forecast": None,
+        "last_forecast_schedule_at": None,
         "ops_config": None,
         "crop_config": None,
+        "csv_filename": None,
         "pending_prune_reset": False,
         "rtr_area_settings": {},
         "last_runtime_snapshot_at": None,
@@ -373,8 +377,10 @@ app_state = {
         "last_irrigation": None,
         "last_energy": None,
         "latest_forecast": None,
+        "last_forecast_schedule_at": None,
         "ops_config": None,
         "crop_config": None,
+        "csv_filename": None,
         "pending_prune_reset": False,
         "rtr_area_settings": {},
         "last_runtime_snapshot_at": None,
@@ -395,11 +401,15 @@ STEP_FREQUENCIES: Dict[str, Optional[str]] = {
 CROPS = ("tomato", "cucumber")
 MODEL_RUNTIME_SNAPSHOT_INTERVAL = timedelta(hours=1)
 SIMULATION_TASK_STALL_THRESHOLD = timedelta(seconds=8)
+FORECAST_MIN_RESCHEDULE_INTERVAL = timedelta(
+    seconds=max(1, int(settings.forecast_min_reschedule_seconds))
+)
 OVERVIEW_LIVE_SOURCE_SINK_SOURCES = (
     "simulation_run",
     "simulation_stream",
     "overview_signals",
 )
+OVERVIEW_SIGNAL_TIMEZONE = ZoneInfo("Asia/Seoul")
 
 
 def _default_ops_config() -> Dict[str, float]:
@@ -599,6 +609,22 @@ def _normalize_snapshot_datetime(value: Any) -> Optional[datetime]:
             return None
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
     return None
+
+
+def _normalize_simulation_datetime(value: Any) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        normalized = value
+    elif isinstance(value, str) and value:
+        try:
+            normalized = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    else:
+        return None
+
+    if normalized.tzinfo is None:
+        return normalized.replace(tzinfo=OVERVIEW_SIGNAL_TIMEZONE)
+    return normalized.astimezone(OVERVIEW_SIGNAL_TIMEZONE)
 
 
 def _serialize_datetime(value: Optional[datetime]) -> Optional[str]:
@@ -1528,6 +1554,40 @@ async def start_simulation(req: StartRequest):
     ops_config = _get_ops_config(req.crop)
     _get_crop_config_store(req.crop)
 
+    # Avoid expensive stop/reload churn when the requested simulation is already live.
+    existing_simulator = crop_state.get("simulator")
+    existing_task = crop_state.get("sim_task")
+    if existing_simulator is not None:
+        total_rows = len(existing_simulator.df_env)
+        at_end = total_rows > 0 and existing_simulator.idx >= total_rows - 1
+        task_alive = existing_task is not None and not existing_task.done()
+        is_paused = bool(getattr(existing_simulator, "paused", False))
+        same_dataset = (
+            crop_state.get("csv_filename") == req.csv_filename
+            and crop_state.get("time_step") == req.time_step
+        )
+        if (
+            existing_simulator.running
+            and task_alive
+            and not is_paused
+            and not at_end
+            and same_dataset
+        ):
+            logger.info(
+                "%s simulation already active for %s (%s); skipping restart",
+                req.crop,
+                req.csv_filename,
+                req.time_step,
+            )
+            _record_runtime_tick(req.crop)
+            return {
+                "status": "already_running",
+                "crop": req.crop,
+                "rows": total_rows,
+                "time_step": crop_state.get("time_step", req.time_step),
+                "dt_minutes": round((crop_state.get("dt_hours") or 0.0) * 60, 3),
+            }
+
     # Stop any running simulation for THIS crop first
     if crop_state["simulator"] is not None:
         import asyncio
@@ -1601,11 +1661,13 @@ async def start_simulation(req: StartRequest):
         )
 
     crop_state["df_env"] = df_env
+    crop_state["csv_filename"] = req.csv_filename
     crop_state["time_step"] = req.time_step
     crop_state["last_runtime_snapshot_at"] = None
     crop_state["last_runtime_tick_at"] = None
     crop_state["last_runtime_error"] = None
     crop_state["last_runtime_error_at"] = None
+    crop_state["last_forecast_schedule_at"] = None
 
     # Calculate timestep duration from data
     if len(df_env) > 1:
@@ -1703,8 +1765,10 @@ async def start_simulation(req: StartRequest):
     # Schedule initial forecast almost immediately to show results quickly
     async def _initial_forecast():
         await asyncio.sleep(0.2)  # tiny delay to ensure simulator has started
-        _schedule_forecast(req.crop)
-        logger.info(f"{req.crop} initial forecast scheduled")
+        if _schedule_forecast(req.crop, force=True):
+            logger.info(f"{req.crop} initial forecast scheduled")
+        else:
+            logger.info(f"{req.crop} initial forecast skipped")
     
     asyncio.create_task(_initial_forecast())
 
@@ -1891,8 +1955,13 @@ async def _run_simulation_task(crop: str):
                     resched_steps = 6  # sensible fallback for 10-min data
                 if i % resched_steps == 0 and i > 0:
                     try:
-                        _schedule_forecast(crop)
-                        logger.info(f"{crop} forecast scheduled at step {i} (every {resched_steps} steps)")
+                        if _schedule_forecast(crop):
+                            logger.info(
+                                "%s forecast scheduled at step %s (every %s steps)",
+                                crop,
+                                i,
+                                resched_steps,
+                            )
                     except Exception as exc:
                         _record_runtime_error(crop, exc)
                         logger.error("Failed to schedule %s forecast at step %s: %s", crop, i, exc, exc_info=True)
@@ -1926,17 +1995,29 @@ async def _run_simulation_task(crop: str):
             crop_state["sim_task"] = None
 
 
-def _schedule_forecast(crop: str):
+def _schedule_forecast(crop: str, *, force: bool = False) -> bool:
     """Schedule a forecast run for specific crop."""
     crop_state = app_state[crop]
     
     if crop_state["simulator"] is None or crop_state["forecaster"] is None:
         logger.warning(f"{crop} forecast skipped - no simulator/forecaster")
-        return
+        return False
 
     simulator = crop_state["simulator"]
     forecaster = crop_state["forecaster"]
     adapter = crop_state["adapter"]
+
+    if not force:
+        now_utc = datetime.now(UTC)
+        last_scheduled_at = crop_state.get("last_forecast_schedule_at")
+        if isinstance(last_scheduled_at, datetime):
+            normalized_last_scheduled_at = (
+                last_scheduled_at
+                if last_scheduled_at.tzinfo is not None
+                else last_scheduled_at.replace(tzinfo=UTC)
+            )
+            if now_utc - normalized_last_scheduled_at < FORECAST_MIN_RESCHEDULE_INTERVAL:
+                return False
 
     # Get future rows (7 days)
     from datetime import timedelta
@@ -1945,7 +2026,7 @@ def _schedule_forecast(crop: str):
     current_idx = simulator.idx
     if current_idx >= len(simulator.df_env):
         logger.warning(f"{crop} forecast skipped - at end of data")
-        return
+        return False
 
     current_dt = pd.to_datetime(simulator.df_env.iloc[current_idx]["datetime"])
     future_end = current_dt + timedelta(days=settings.forecast_window_days)
@@ -1957,12 +2038,14 @@ def _schedule_forecast(crop: str):
 
     if len(future_df) == 0:
         logger.warning(f"{crop} forecast skipped - no future data")
-        return
+        return False
 
     future_rows = future_df.to_dict(orient="records")
 
     logger.info(f"Scheduling {crop} forecast for {len(future_rows)} rows")
     forecaster.schedule(adapter, future_rows)
+    crop_state["last_forecast_schedule_at"] = datetime.now(UTC)
+    return True
 
 
 @app.post("/api/pause")
@@ -2087,7 +2170,7 @@ async def update_crop_config(config: CropConfig, crop: str):
     applied = _apply_crop_config_to_adapter(crop)
     if applied:
         logger.info(f"Applied {crop} crop config update: {config_payload}")
-        _schedule_forecast(crop)
+        _schedule_forecast(crop, force=True)
     else:
         logger.info(f"Queued {crop} crop config update until simulator start: {config_payload}")
 
@@ -2435,58 +2518,37 @@ async def compute_model_sensitivity(req: ModelSensitivityRequest):
 async def advisor_summary(req: AdvisorSummaryRequest):
     """Return a thin SmartGrow advisor summary over live context plus local knowledge."""
     _validate_crop(req.crop)
+    import asyncio
+
+    dashboard_payload = _augment_dashboard_with_knowledge_context(req.crop, req.dashboard)
     try:
-        return build_advisor_summary_response(
+        return await asyncio.wait_for(
+            asyncio.to_thread(
+                build_advisor_summary_response,
+                crop=req.crop,
+                dashboard=dashboard_payload,
+                language=req.language or "ko",
+            ),
+            timeout=12.0,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Advisor summary timed out; returning deterministic fallback.")
+        return await asyncio.to_thread(
+            build_advisor_summary_fallback_response,
             crop=req.crop,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            dashboard=dashboard_payload,
             language=req.language or "ko",
+            reason="llm_timeout",
         )
     except RuntimeError as exc:
         logger.warning("Advisor summary degraded gracefully: %s", exc)
-        fallback_text = (
-            "모델 상담을 잠시 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
-            if (req.language or "ko") == "ko"
-            else "AI advising is temporarily unavailable. Please try again shortly."
+        return await asyncio.to_thread(
+            build_advisor_summary_fallback_response,
+            crop=req.crop,
+            dashboard=dashboard_payload,
+            language=req.language or "ko",
+            reason="openai_unavailable",
         )
-        runtime_summary = (
-            "요약 계산이 중단되어 모델 상태를 함께 보여주지 못했습니다."
-            if (req.language or "ko") == "ko"
-            else "Model runtime details are unavailable because summary generation degraded early."
-        )
-        return {
-            "status": "degraded",
-            "family": "advisor_summary",
-            "crop": req.crop,
-            "text": fallback_text,
-            "machine_payload": {
-                "domains": [],
-                "context_completeness": 0.0,
-                "missing_data": ["openai_unavailable"],
-                "actions": [],
-                "model_runtime": {
-                    "status": "unavailable",
-                    "summary": runtime_summary,
-                    "state_snapshot": {},
-                    "scenario": {"baseline_outputs": [], "options": [], "recommended": None},
-                    "sensitivity": {
-                        "target": None,
-                        "analysis_horizon_hours": None,
-                        "confidence": 0.0,
-                        "top_levers": [],
-                    },
-                    "constraint_checks": {
-                        "status": "unavailable",
-                        "violated_constraints": [],
-                        "penalties": {},
-                    },
-                    "recommendations": [],
-                    "provenance": {
-                        "source": "advisor_summary_fallback",
-                        "reason": "openai_unavailable",
-                    },
-                },
-            },
-        }
     except Exception as exc:
         logger.error("Advisor summary failed: %s", exc, exc_info=True)
         raise HTTPException(
@@ -2523,7 +2585,10 @@ async def advisor_chat(req: AdvisorChatRequest):
     """Return a SmartGrow chat reply with orchestration metadata."""
     _validate_crop(req.crop)
     try:
-        return build_advisor_chat_response(
+        import asyncio
+
+        return await asyncio.to_thread(
+            build_advisor_chat_response,
             crop=req.crop,
             messages=req.messages,
             dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
@@ -2704,7 +2769,10 @@ async def ai_consult(req: AiConsultRequest):
     if req.crop not in ["tomato", "cucumber"]:
         raise HTTPException(status_code=400, detail="crop must be 'tomato' or 'cucumber'")
     try:
-        text = generate_consulting(
+        import asyncio
+
+        text = await asyncio.to_thread(
+            generate_consulting,
             crop=req.crop,
             dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
             language=req.language or "ko",
@@ -2729,7 +2797,10 @@ async def ai_chat(req: AiChatRequest):
     if req.crop not in ["tomato", "cucumber"]:
         raise HTTPException(status_code=400, detail="crop must be 'tomato' or 'cucumber'")
     try:
-        text = generate_chat_reply(
+        import asyncio
+
+        text = await asyncio.to_thread(
+            generate_chat_reply,
             crop=req.crop,
             messages=req.messages,
             dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
@@ -2763,43 +2834,162 @@ async def get_daegu_weather():
         ) from exc
 
 
+def _build_overview_internal_irradiance_history(
+    crop: str,
+    window_hours: int,
+    *,
+    reference_end: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Build irradiance history from internal greenhouse PAR values."""
+    crop_state = app_state[crop]
+    simulator = crop_state.get("simulator")
+    df_env = crop_state.get("df_env")
+    if simulator is not None and getattr(simulator, "df_env", None) is not None:
+        df_env = simulator.df_env
+
+    points: list[Dict[str, Any]] = []
+    try:
+        if df_env is not None and len(df_env) > 0:
+            reference_end_dt = _normalize_simulation_datetime(reference_end) if reference_end else None
+            current_idx = len(df_env) - 1
+            if simulator is not None:
+                current_idx = min(
+                    max(int(getattr(simulator, "idx", current_idx)), 0),
+                    len(df_env) - 1,
+                )
+            elif reference_end_dt is not None and "datetime" in df_env.columns:
+                for idx in range(len(df_env) - 1, -1, -1):
+                    row_dt = _normalize_simulation_datetime(df_env.iloc[idx]["datetime"])
+                    if row_dt is None:
+                        continue
+                    if row_dt <= reference_end_dt:
+                        current_idx = idx
+                        break
+            dt_hours = float(crop_state.get("dt_hours") or 1.0)
+            window_steps = max(1, int(round(window_hours / max(dt_hours, 1e-6))))
+            start_idx = max(0, current_idx - window_steps + 1)
+            window_df = df_env.iloc[start_idx : current_idx + 1]
+            window_start_dt = (
+                reference_end_dt - timedelta(hours=window_hours)
+                if reference_end_dt is not None
+                else None
+            )
+            for row in window_df.itertuples(index=False):
+                ts_value = getattr(row, "datetime", None)
+                par_value = getattr(row, "PAR_umol", None)
+                if ts_value is None or par_value is None:
+                    continue
+                ts_dt = _normalize_simulation_datetime(ts_value)
+                if ts_dt is None:
+                    continue
+                if (
+                    reference_end_dt is not None
+                    and window_start_dt is not None
+                    and (ts_dt < window_start_dt or ts_dt > reference_end_dt)
+                ):
+                    continue
+                try:
+                    par_umol = max(0.0, float(par_value))
+                except (TypeError, ValueError):
+                    continue
+                # Approximate conversion: 1 W/m² PAR ≈ 4.57 µmol m⁻² s⁻¹.
+                shortwave_w_m2 = par_umol / 4.57
+                points.append(
+                    {
+                        "time": ts_dt.isoformat(),
+                        "shortwave_radiation_w_m2": round(shortwave_w_m2, 3),
+                    }
+                )
+    except Exception as exc:
+        logger.warning("%s internal irradiance build failed: %s", crop, exc)
+
+    points.sort(
+        key=lambda point: _normalize_simulation_datetime(point.get("time"))
+        or datetime.min.replace(tzinfo=OVERVIEW_SIGNAL_TIMEZONE)
+    )
+
+    return {
+        "location": {
+            "name": "Greenhouse internal",
+            "country": "South Korea",
+            "timezone": "Asia/Seoul",
+        },
+        "source": {
+            "provider": "Greenhouse internal PAR",
+            "docs_url": "internal://simulator/par-umol",
+            "fetched_at": datetime.now(UTC).isoformat(),
+        },
+        "window_hours": int(window_hours),
+        "unit": "W/m²",
+        "points": points,
+    }
+
+
 @app.get("/api/overview/signals")
 async def get_overview_signal_trends(
     crop: str,
     greenhouse_id: Optional[str] = None,
     window_hours: int = 72,
 ):
-    """Return actual outside irradiance and model source-sink trend points."""
+    """Return greenhouse irradiance and model source-sink trend points."""
+    import asyncio
+
     from .services.model_runtime.model_state_store import ModelStateStore
     from .services.model_runtime.scenario_runner import extract_runtime_inputs
 
     normalized_crop = _validate_crop(crop)
     resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, greenhouse_id)
     resolved_window_hours = max(24, min(int(window_hours), 168))
-
+    reference_end = None
+    crop_state = app_state.get(normalized_crop, {})
+    simulator = crop_state.get("simulator")
     try:
-        irradiance_history = await fetch_daegu_shortwave_history(hours=resolved_window_hours)
-    except httpx.HTTPError as exc:
-        logger.warning("Overview irradiance history fetch failed: %s", exc)
-        raise HTTPException(
-            status_code=502,
-            detail="실제 외기 일사량을 불러오지 못했습니다.",
-        ) from exc
+        import pandas as pd
 
-    _maybe_persist_runtime_snapshot(
+        simulator_df = getattr(simulator, "df_env", None)
+        if simulator is not None and simulator_df is not None and len(simulator_df) > 0:
+            current_idx = min(
+                max(int(getattr(simulator, "idx", 0)), 0),
+                len(simulator_df) - 1,
+            )
+            reference_end = pd.to_datetime(simulator_df.iloc[current_idx]["datetime"]).to_pydatetime()
+    except Exception as exc:
+        logger.warning("Failed to resolve simulation reference datetime for overview signals: %s", exc)
+    reference_end_dt = (
+        _normalize_simulation_datetime(reference_end)
+        if reference_end is not None
+        else None
+    )
+    source_sink_window_start = (
+        reference_end_dt - timedelta(hours=resolved_window_hours)
+        if reference_end_dt is not None
+        else None
+    )
+
+    irradiance_history = _build_overview_internal_irradiance_history(
+        normalized_crop,
+        resolved_window_hours,
+        reference_end=reference_end_dt,
+    )
+
+    await asyncio.to_thread(
+        _maybe_persist_runtime_snapshot,
         normalized_crop,
         greenhouse_id=resolved_greenhouse_id,
         source="overview_signals",
     )
 
-    store = ModelStateStore()
-    snapshot_records = store.list_snapshots_created_since(
-        resolved_greenhouse_id,
-        normalized_crop,
-        since=datetime.now(UTC) - timedelta(hours=resolved_window_hours),
-        limit=max(96, resolved_window_hours * 4),
-        sources=OVERVIEW_LIVE_SOURCE_SINK_SOURCES,
-    )
+    def _load_snapshot_records() -> list[dict[str, Any]]:
+        store = ModelStateStore()
+        return store.list_snapshots_created_since(
+            resolved_greenhouse_id,
+            normalized_crop,
+            since=datetime.now(UTC) - timedelta(hours=resolved_window_hours),
+            limit=max(96, resolved_window_hours * 4),
+            sources=OVERVIEW_LIVE_SOURCE_SINK_SOURCES,
+        )
+
+    snapshot_records = await asyncio.to_thread(_load_snapshot_records)
 
     source_sink_points = []
     for snapshot_record in snapshot_records:
@@ -2811,10 +3001,16 @@ async def get_overview_signal_trends(
         ):
             continue
         snapshot_dt = (
-            _normalize_snapshot_datetime(snapshot_record.get("created_at"))
-            or _normalize_snapshot_datetime(snapshot_record.get("snapshot_time"))
+            _normalize_simulation_datetime(snapshot_record.get("snapshot_time"))
+            or _normalize_simulation_datetime(snapshot_record.get("created_at"))
         )
         if snapshot_dt is None:
+            continue
+        if (
+            source_sink_window_start is not None
+            and reference_end_dt is not None
+            and (snapshot_dt < source_sink_window_start or snapshot_dt > reference_end_dt)
+        ):
             continue
         source_sink_points.append(
             {
@@ -2824,6 +3020,10 @@ async def get_overview_signal_trends(
                 "sink_demand": round(float(runtime_inputs.sink_demand), 6),
             }
         )
+    source_sink_points.sort(
+        key=lambda point: _normalize_simulation_datetime(point["time"])
+        or datetime.min.replace(tzinfo=OVERVIEW_SIGNAL_TIMEZONE)
+    )
 
     return {
         "status": "success",
@@ -3393,7 +3593,7 @@ async def mark_pruning_event(crop: str = "cucumber"):
     adapter.mark_pruned()
 
     # Trigger forecast update
-    _schedule_forecast(crop)
+    _schedule_forecast(crop, force=True)
 
     crop_state["pending_prune_reset"] = False
     return {"status": "success", "crop": crop, "adapter_active": True, "message": "Pruning baseline updated"}

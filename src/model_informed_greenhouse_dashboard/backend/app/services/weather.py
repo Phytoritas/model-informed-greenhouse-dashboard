@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from copy import deepcopy
@@ -13,6 +14,7 @@ import httpx
 
 OPEN_METEO_DOCS_URL = "https://open-meteo.com/en/docs"
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+OPEN_METEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 WEATHER_CACHE_TTL_SECONDS = 15 * 60
 WEATHER_HISTORY_CACHE_TTL_SECONDS = 60
 WEATHER_UPSTREAM_TIMEOUT = httpx.Timeout(connect=3.0, read=6.0, write=6.0, pool=6.0)
@@ -125,7 +127,11 @@ _SEASONAL_FALLBACKS = {
 }
 
 _weather_cache: Dict[str, Any] = {"expires_at": 0.0, "payload": None}
-_weather_history_cache: Dict[str, Any] = {"expires_at": 0.0, "payload": None}
+_weather_history_cache: Dict[str, Any] = {
+    "expires_at": 0.0,
+    "payload": None,
+    "cache_key": None,
+}
 logger = logging.getLogger(__name__)
 
 
@@ -176,6 +182,28 @@ def _local_now(timestamp: float | None = None) -> datetime:
     )
 
 
+def _parse_open_meteo_time(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo(DAEGU_LOCATION["timezone"]))
+    return parsed
+
+
+def _resolve_reference_end(reference_end: datetime | None, now_ts: float) -> datetime:
+    local_now = _local_now(now_ts)
+    if reference_end is None:
+        return local_now
+    normalized = reference_end
+    if normalized.tzinfo is None:
+        normalized = normalized.replace(tzinfo=ZoneInfo(DAEGU_LOCATION["timezone"]))
+    return normalized.astimezone(ZoneInfo(DAEGU_LOCATION["timezone"]))
+
+
 def _seasonal_fallback_profile(now_dt: datetime) -> dict[str, float]:
     if now_dt.month in (12, 1, 2):
         return _SEASONAL_FALLBACKS["winter"]
@@ -196,6 +224,16 @@ def _build_cached_weather_payload(cached_payload: Dict[str, Any]) -> Dict[str, A
         "Live Open-Meteo weather is temporarily unavailable, so the dashboard is "
         "showing the latest cached Daegu outlook until the feed recovers."
     )
+    return payload
+
+
+def _build_cached_shortwave_payload(cached_payload: Dict[str, Any]) -> Dict[str, Any]:
+    payload = deepcopy(cached_payload)
+    source = dict(payload.get("source") or {})
+    source["provider"] = "Open-Meteo cached"
+    source["docs_url"] = OPEN_METEO_DOCS_URL
+    source.setdefault("endpoint", OPEN_METEO_FORECAST_URL)
+    payload["source"] = source
     return payload
 
 
@@ -395,32 +433,86 @@ async def fetch_daegu_shortwave_history(
     *,
     hours: int = WEATHER_HISTORY_HOURS,
     force_refresh: bool = False,
+    reference_end: datetime | None = None,
 ) -> Dict[str, Any]:
     """Return actual outside irradiance history for Daegu from Open-Meteo."""
     now = time.time()
+    resolved_hours = max(1, int(hours))
+    resolved_reference_end = _resolve_reference_end(reference_end, now)
+    reference_bucket = (
+        resolved_reference_end.strftime("%Y-%m-%dT%H:%M")
+        if reference_end is not None
+        else "live"
+    )
+    cache_key = f"{resolved_hours}:{reference_bucket}"
     cached_payload = _weather_history_cache["payload"]
+    cached_key = _weather_history_cache.get("cache_key")
     if (
         not force_refresh
         and cached_payload is not None
         and now < float(_weather_history_cache["expires_at"])
-        and int(cached_payload.get("window_hours") or 0) == int(hours)
+        and int(cached_payload.get("window_hours") or 0) == resolved_hours
+        and (cached_key == cache_key or (cached_key is None and reference_end is None))
     ):
         return deepcopy(cached_payload)
 
-    params = {
-        "latitude": DAEGU_LOCATION["latitude"],
-        "longitude": DAEGU_LOCATION["longitude"],
-        "timezone": DAEGU_LOCATION["timezone"],
-        "current": "shortwave_radiation",
-        "hourly": "shortwave_radiation",
-        "past_hours": max(1, int(hours)),
-        "forecast_hours": 0,
-    }
+    use_archive_endpoint = reference_end is not None and (
+        resolved_reference_end.date() < _local_now(now).date()
+    )
+    window_start = resolved_reference_end - timedelta(hours=resolved_hours)
 
-    async with httpx.AsyncClient(timeout=WEATHER_UPSTREAM_TIMEOUT) as client:
-        response = await client.get(OPEN_METEO_FORECAST_URL, params=params)
-        response.raise_for_status()
-        data = response.json()
+    if use_archive_endpoint:
+        request_url = OPEN_METEO_ARCHIVE_URL
+        params = {
+            "latitude": DAEGU_LOCATION["latitude"],
+            "longitude": DAEGU_LOCATION["longitude"],
+            "timezone": DAEGU_LOCATION["timezone"],
+            "hourly": "shortwave_radiation",
+            "start_date": window_start.date().isoformat(),
+            "end_date": resolved_reference_end.date().isoformat(),
+        }
+    else:
+        request_url = OPEN_METEO_FORECAST_URL
+        params = {
+            "latitude": DAEGU_LOCATION["latitude"],
+            "longitude": DAEGU_LOCATION["longitude"],
+            "timezone": DAEGU_LOCATION["timezone"],
+            "current": "shortwave_radiation",
+            "hourly": "shortwave_radiation",
+            "past_hours": resolved_hours,
+            "forecast_hours": 0,
+        }
+
+    data = None
+    last_error: Exception | None = None
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=WEATHER_UPSTREAM_TIMEOUT) as client:
+                response = await client.get(request_url, params=params)
+                response.raise_for_status()
+                data = response.json()
+            break
+        except httpx.HTTPError as exc:
+            last_error = exc
+            if attempt == 0:
+                # One short retry smooths transient network spikes.
+                await asyncio.sleep(0.25)
+                continue
+
+    if data is None:
+        if cached_payload is not None and cached_payload.get("points"):
+            logger.warning(
+                "Open-Meteo shortwave fetch failed; reusing cached payload: %s",
+                last_error,
+            )
+            payload = _build_cached_shortwave_payload(cached_payload)
+            _weather_history_cache["payload"] = deepcopy(payload)
+            _weather_history_cache["expires_at"] = now + WEATHER_HISTORY_CACHE_TTL_SECONDS
+            _weather_history_cache["cache_key"] = cache_key
+            return payload
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("Open-Meteo shortwave fetch failed with unknown error.")
 
     hourly = data.get("hourly") or {}
     current = data.get("current") or {}
@@ -430,6 +522,13 @@ async def fetch_daegu_shortwave_history(
     for timestamp, irradiance in zip(hourly_times, shortwave_values, strict=False):
         if irradiance is None:
             continue
+        parsed_dt = _parse_open_meteo_time(timestamp)
+        if parsed_dt is None:
+            continue
+        if reference_end is not None and (
+            parsed_dt < window_start or parsed_dt > resolved_reference_end
+        ):
+            continue
         points.append(
             {
                 "time": str(timestamp),
@@ -438,6 +537,17 @@ async def fetch_daegu_shortwave_history(
         )
     current_time = current.get("time")
     current_shortwave = current.get("shortwave_radiation")
+    if (
+        not use_archive_endpoint
+        and current_time
+        and current_shortwave is not None
+    ):
+        parsed_current_dt = _parse_open_meteo_time(current_time)
+        if reference_end is not None and parsed_current_dt is not None and (
+            parsed_current_dt < window_start or parsed_current_dt > resolved_reference_end
+        ):
+            current_time = None
+            current_shortwave = None
     if current_time and current_shortwave is not None:
         current_point = {
             "time": str(current_time),
@@ -448,18 +558,35 @@ async def fetch_daegu_shortwave_history(
         else:
             points.append(current_point)
 
+    if len(points) < 2 and cached_payload is not None and len(cached_payload.get("points") or []) >= 2:
+        logger.warning("Open-Meteo shortwave payload had too few points; reusing cached payload.")
+        payload = _build_cached_shortwave_payload(cached_payload)
+        _weather_history_cache["payload"] = deepcopy(payload)
+        _weather_history_cache["expires_at"] = now + WEATHER_HISTORY_CACHE_TTL_SECONDS
+        _weather_history_cache["cache_key"] = cache_key
+        return payload
+
+    if not points and cached_payload is not None and cached_payload.get("points"):
+        logger.warning("Open-Meteo shortwave payload was empty; reusing cached payload.")
+        payload = _build_cached_shortwave_payload(cached_payload)
+        _weather_history_cache["payload"] = deepcopy(payload)
+        _weather_history_cache["expires_at"] = now + WEATHER_HISTORY_CACHE_TTL_SECONDS
+        _weather_history_cache["cache_key"] = cache_key
+        return payload
+
     payload = {
         "location": DAEGU_LOCATION,
         "source": {
             "provider": "Open-Meteo",
             "docs_url": OPEN_METEO_DOCS_URL,
-            "endpoint": OPEN_METEO_FORECAST_URL,
+            "endpoint": request_url,
             "fetched_at": str(current_time or _local_now(now).isoformat(timespec="minutes")),
         },
-        "window_hours": max(1, int(hours)),
+        "window_hours": resolved_hours,
         "unit": "W/m²",
         "points": points,
     }
     _weather_history_cache["payload"] = deepcopy(payload)
     _weather_history_cache["expires_at"] = now + WEATHER_HISTORY_CACHE_TTL_SECONDS
+    _weather_history_cache["cache_key"] = cache_key
     return payload

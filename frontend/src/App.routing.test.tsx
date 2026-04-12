@@ -137,7 +137,9 @@ const advisorState = {
   },
   aiError: null,
   isAnalyzing: false,
+  advisorUpdatedAt: null,
   analyzeData: vi.fn(),
+  setActiveCrop: vi.fn(),
 }
 
 const cucumberRtrOptimizerState = {
@@ -621,7 +623,7 @@ describe('App routed shell', () => {
     }
   })
 
-  it('uses wall-clock timestamps for the live source-sink overlay series', async () => {
+  it('uses simulation timestamps for the live source-sink overlay series', async () => {
     const originalMetricHistory = greenhouseState.metricHistory
     const simulationTimestamp = Date.parse('2021-02-23T08:00:00Z')
     const wallClockTimestamp = Date.parse('2026-04-09T09:15:00+09:00')
@@ -647,8 +649,8 @@ describe('App routed shell', () => {
 
       const liveSeries = JSON.parse(screen.getByTestId('overview-live-source-sink-series').textContent ?? '[]') as Array<{ timestamp: number; value: number }>
       expect(liveSeries.length).toBeGreaterThan(0)
-      expect(liveSeries[liveSeries.length - 1]?.timestamp).toBe(wallClockTimestamp)
-      expect(liveSeries.some((point) => point.timestamp === simulationTimestamp)).toBe(false)
+      expect(liveSeries[liveSeries.length - 1]?.timestamp).toBe(simulationTimestamp)
+      expect(liveSeries.some((point) => point.timestamp === wallClockTimestamp)).toBe(false)
     } finally {
       greenhouseState.metricHistory = originalMetricHistory
     }
@@ -662,8 +664,10 @@ describe('App routed shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Control' }))
 
-    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
+    })
+    expect(screen.getByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
   }, 15000)
 

@@ -40,7 +40,7 @@ echo [4/5] Starting backend server...
 if "%DEV%"=="0" (
     start "Greenhouse Backend" cmd /k "cd /d ""%REPO_ROOT%"" && poetry run python -m uvicorn model_informed_greenhouse_dashboard.backend.app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT%"
 ) else (
-    start "Greenhouse Backend" cmd /k "cd /d ""%REPO_ROOT%"" && poetry run python -m uvicorn model_informed_greenhouse_dashboard.backend.app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% --reload"
+    start "Greenhouse Backend" cmd /k "cd /d ""%REPO_ROOT%"" && poetry run python -m uvicorn model_informed_greenhouse_dashboard.backend.app.main:app --host %BACKEND_HOST% --port %BACKEND_PORT% --reload --reload-dir src/model_informed_greenhouse_dashboard/backend/app"
 )
 
 timeout /t 3 /nobreak >nul

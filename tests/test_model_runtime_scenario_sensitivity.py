@@ -138,6 +138,34 @@ def test_run_bounded_scenario_positive_co2_improves_tomato_yield() -> None:
     )
 
 
+def test_run_bounded_scenario_high_ambient_co2_reduces_co2_step_gain() -> None:
+    normal_snapshot = _build_snapshot_record(_seed_tomato_adapter(), "tomato")
+    normal_gain_payload = run_bounded_scenario(
+        normal_snapshot,
+        controls={"co2_setpoint_day": 100.0},
+        horizons_hours=[336],
+    )
+
+    high_co2_adapter = _seed_tomato_adapter()
+    high_co2_adapter.model.u_CO2 = 980.0
+    high_co2_adapter.model.Ci = high_co2_adapter.model.u_CO2 * 0.7
+    high_co2_snapshot = _build_snapshot_record(high_co2_adapter, "tomato")
+    high_co2_gain_payload = run_bounded_scenario(
+        high_co2_snapshot,
+        controls={"co2_setpoint_day": 100.0},
+        horizons_hours=[336],
+    )
+
+    assert (
+        high_co2_gain_payload["outputs"][0]["yield_delta_vs_baseline"]
+        < normal_gain_payload["outputs"][0]["yield_delta_vs_baseline"]
+    )
+    assert (
+        high_co2_gain_payload["penalties"]["energy_cost_penalty"]
+        > normal_gain_payload["penalties"]["energy_cost_penalty"]
+    )
+
+
 def test_compute_local_sensitivities_rejects_step_outside_trust_region() -> None:
     snapshot_record = _build_snapshot_record(_seed_tomato_adapter(), "tomato")
 

@@ -414,13 +414,17 @@ class ModelStateStore:
                        raw_adapter_state_json, metadata_json, created_at
                 FROM crop_model_snapshots
                 WHERE {' AND '.join(where_clauses)}
-                ORDER BY created_at ASC, snapshot_time ASC
+                ORDER BY created_at DESC, snapshot_time DESC
                 LIMIT ?
                 """,
                 tuple(params),
             ).fetchall()
 
-        return [self._snapshot_record_from_row(row) for row in rows]
+        # Query the latest N snapshots first, then restore chronological order for charts.
+        return [
+            self._snapshot_record_from_row(row)
+            for row in reversed(rows)
+        ]
 
     def load_current_state(self, greenhouse_id: str, crop: str) -> dict[str, Any] | None:
         with self._connect() as connection:

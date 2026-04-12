@@ -1,6 +1,5 @@
-import { Suspense, lazy } from 'react';
 import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
-import LoadingSkeleton from '../features/common/LoadingSkeleton';
+import WeatherOutlookPanel from '../components/WeatherOutlookPanel';
 import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
@@ -11,8 +10,6 @@ import type {
   WeatherOutlook,
 } from '../types';
 import TrendPage from './trend-page';
-
-const WeatherOutlookPanel = lazy(() => import('../components/WeatherOutlookPanel'));
 
 interface TrendRoutePageProps {
   locale: AppLocale;
@@ -29,7 +26,6 @@ interface TrendRoutePageProps {
 }
 
 export default function TrendRoutePage({
-  locale,
   crop,
   currentData,
   modelMetrics,
@@ -44,21 +40,11 @@ export default function TrendRoutePage({
   return (
     <TrendPage
       weatherSurface={(
-        <Suspense
-          fallback={(
-            <LoadingSkeleton
-              title={locale === 'ko' ? '날씨와 시세' : 'Weather trend'}
-              loadingMessage={locale === 'ko' ? '날씨 흐름을 불러오는 중입니다...' : 'Loading weather trend...'}
-              minHeightClassName="min-h-[320px]"
-            />
-          )}
-        >
-          <WeatherOutlookPanel
-            weather={weather}
-            loading={weatherLoading}
-            error={weatherError}
-          />
-        </Suspense>
+        <WeatherOutlookPanel
+          weather={weather}
+          loading={weatherLoading}
+          error={weatherError}
+        />
       )}
       marketSurface={(
         <DecisionSnapshotGrid
