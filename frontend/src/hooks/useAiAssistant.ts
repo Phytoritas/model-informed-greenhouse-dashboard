@@ -75,6 +75,7 @@ export const useAiAssistant = () => {
     const [aiAnalysis, setAiAnalysis] = useState('');
     const [aiDisplay, setAiDisplay] = useState<AdvisorDisplayPayload | null>(null);
     const [aiModelRuntime, setAiModelRuntime] = useState<ModelRuntimePayload | null>(null);
+    const [advisorUpdatedAt, setAdvisorUpdatedAt] = useState<number | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const requestIdRef = useRef(0);
@@ -127,19 +128,21 @@ export const useAiAssistant = () => {
             }
 
             if (requestId !== requestIdRef.current) {
-                return;
+                return false;
             }
 
             setAiAnalysis(json?.text || '');
             setAiDisplay(json?.machine_payload?.display ?? null);
             setAiModelRuntime(json?.machine_payload?.model_runtime ?? null);
+            setAdvisorUpdatedAt(Date.now());
             setAiError(null);
             if (callback) {
                 callback(extractRecommendationCandidates(json));
             }
+            return true;
         } catch (error) {
             if (requestId !== requestIdRef.current) {
-                return;
+                return false;
             }
             const message = error instanceof Error ? error.message : 'unknown_error';
             setAiDisplay(null);
@@ -150,6 +153,7 @@ export const useAiAssistant = () => {
                     ? `모델 상담을 일시적으로 사용할 수 없습니다.\n원인: ${message}`
                     : `AI consulting is temporarily unavailable. Cause: ${message}`,
             );
+            return false;
         } finally {
             if (requestId === requestIdRef.current) {
                 setIsAnalyzing(false);
@@ -161,6 +165,7 @@ export const useAiAssistant = () => {
         aiAnalysis,
         aiDisplay,
         aiModelRuntime,
+        advisorUpdatedAt,
         aiError,
         isAnalyzing,
         analyzeData,
