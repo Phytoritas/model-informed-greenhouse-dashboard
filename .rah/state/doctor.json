@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-04-10T08:47:58+00:00",
+  "generated_at_utc": "2026-04-11T15:26:08+00:00",
   "root": "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard",
   "profile_hint": "python-service",
   "scaffold_root": "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture",
@@ -52,7 +52,7 @@
     {
       "name": "memento_identity_normalization",
       "status": "warn",
-      "detail": "Unexpected identity format: workspace='model-informed-greenhouse-dashboard', topic='architecture-refactor', sessionId='model-informed-greenhouse-dashboard#main:post-issue84-merged-baseline', caseId='case/model-informed-greenhouse-dashboard/main/post-issue84-merged-baseline'"
+      "detail": "Unexpected identity format: workspace='model-informed-greenhouse-dashboard', topic='issue104-live-refresh-source-sink-sync', sessionId='model-informed-greenhouse-dashboard#fix-104-live-refresh-source-sink-sync', caseId='case/model-informed-greenhouse-dashboard/fix-104-live-refresh-source-sink-sync'"
     },
     {
       "name": "memento_vs_rah_drift",

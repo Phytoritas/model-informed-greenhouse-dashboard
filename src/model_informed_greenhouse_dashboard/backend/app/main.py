@@ -395,6 +395,11 @@ STEP_FREQUENCIES: Dict[str, Optional[str]] = {
 CROPS = ("tomato", "cucumber")
 MODEL_RUNTIME_SNAPSHOT_INTERVAL = timedelta(hours=1)
 SIMULATION_TASK_STALL_THRESHOLD = timedelta(seconds=8)
+OVERVIEW_LIVE_SOURCE_SINK_SOURCES = (
+    "simulation_run",
+    "simulation_stream",
+    "overview_signals",
+)
 
 
 def _default_ops_config() -> Dict[str, float]:
@@ -601,6 +606,19 @@ def _serialize_datetime(value: Optional[datetime]) -> Optional[str]:
         return None
     normalized = value if value.tzinfo else value.replace(tzinfo=UTC)
     return normalized.isoformat()
+
+
+def _is_meaningful_source_sink_snapshot(
+    *,
+    source_capacity: float,
+    sink_demand: float,
+    source_sink_balance: float,
+) -> bool:
+    epsilon = 1e-6
+    return any(
+        abs(metric) > epsilon
+        for metric in (source_capacity, sink_demand, source_sink_balance)
+    )
 
 
 def _record_runtime_tick(crop: str, *, tick_at: Optional[datetime] = None) -> None:
@@ -2775,19 +2793,29 @@ async def get_overview_signal_trends(
     )
 
     store = ModelStateStore()
-    snapshot_records = store.list_snapshots_since(
+    snapshot_records = store.list_snapshots_created_since(
         resolved_greenhouse_id,
         normalized_crop,
         since=datetime.now(UTC) - timedelta(hours=resolved_window_hours),
         limit=max(96, resolved_window_hours * 4),
+        sources=OVERVIEW_LIVE_SOURCE_SINK_SOURCES,
     )
 
     source_sink_points = []
     for snapshot_record in snapshot_records:
-        snapshot_dt = _normalize_snapshot_datetime(snapshot_record.get("snapshot_time"))
+        runtime_inputs = extract_runtime_inputs(snapshot_record)
+        if not _is_meaningful_source_sink_snapshot(
+            source_capacity=float(runtime_inputs.source_capacity),
+            sink_demand=float(runtime_inputs.sink_demand),
+            source_sink_balance=float(runtime_inputs.source_sink_balance),
+        ):
+            continue
+        snapshot_dt = (
+            _normalize_snapshot_datetime(snapshot_record.get("created_at"))
+            or _normalize_snapshot_datetime(snapshot_record.get("snapshot_time"))
+        )
         if snapshot_dt is None:
             continue
-        runtime_inputs = extract_runtime_inputs(snapshot_record)
         source_sink_points.append(
             {
                 "time": snapshot_dt.isoformat(),
@@ -2806,6 +2834,7 @@ async def get_overview_signal_trends(
         "source_sink": {
             "source": {
                 "provider": "Model runtime snapshots",
+                "sources": list(OVERVIEW_LIVE_SOURCE_SINK_SOURCES),
             },
             "unit": "index",
             "status": "ready" if source_sink_points else "model_history_unavailable",

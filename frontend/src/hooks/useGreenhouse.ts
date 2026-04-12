@@ -53,6 +53,9 @@ type BackendState = {
     node_count?: number;
     n_fruits?: number;
     truss_count?: number;
+    source_capacity?: number;
+    sink_demand?: number;
+    source_sink_balance?: number;
 };
 
 type BackendKpi = {
@@ -96,6 +99,8 @@ const STREAM_DELAY_THRESHOLD_MS = 8_000;
 const STREAM_STALE_THRESHOLD_MS = 30_000;
 const TELEMETRY_HEALTH_POLL_MS = 2_000;
 const SIMULATION_RECOVERY_BACKOFF_MS = 15_000;
+const STATUS_REQUEST_TIMEOUT_MS = 4_000;
+const START_REQUEST_TIMEOUT_MS = 8_000;
 
 const DEFAULT_SENSOR_FIELD_AVAILABILITY: SensorFieldAvailability = {
     temperature: false,
@@ -147,6 +152,23 @@ function pickNumericValue(
         value: typeof resolved === 'number' ? resolved : fallback,
         available: typeof resolved === 'number',
     };
+}
+
+async function fetchWithTimeout(
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+    timeoutMs: number,
+): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutHandle = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(input, {
+            ...init,
+            signal: controller.signal,
+        });
+    } finally {
+        window.clearTimeout(timeoutHandle);
+    }
 }
 
 export const useGreenhouse = () => {
@@ -269,6 +291,10 @@ export const useGreenhouse = () => {
         Tomato: 0,
         Cucumber: 0,
     });
+    const recoveryRequestInFlightRef = useRef<Record<CropType, boolean>>({
+        Tomato: false,
+        Cucumber: false,
+    });
 
     useEffect(() => {
         telemetryStateRef.current = telemetryStateByCrop;
@@ -290,10 +316,28 @@ export const useGreenhouse = () => {
     }, [selectedCrop]);
 
     const ensureSimulationRunning = useCallback(async (cropType: CropType) => {
+        if (recoveryRequestInFlightRef.current[cropType]) {
+            return;
+        }
+
+        recoveryRequestInFlightRef.current[cropType] = true;
         recoveryAttemptAtRef.current[cropType] = Date.now();
         try {
             const cropKey = cropType.toLowerCase();
-            const statusRes = await fetch(`${API_URL}/status`);
+            const transportDisconnected =
+                cropType === selectedCrop &&
+                (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN);
+
+            if (transportDisconnected) {
+                console.log(`Telemetry transport for ${cropType} is disconnected, reconnecting WebSocket.`);
+                requestWebSocketReconnect(cropType);
+            }
+
+            const statusRes = await fetchWithTimeout(
+                `${API_URL}/status`,
+                undefined,
+                STATUS_REQUEST_TIMEOUT_MS,
+            );
             if (!statusRes.ok) {
                 throw new Error(`HTTP error! status: ${statusRes.status}`);
             }
@@ -308,9 +352,6 @@ export const useGreenhouse = () => {
                 cropStatus?.status === 'completed' ||
                 (totalRows > 0 && idx >= totalRows - 1) ||
                 (typeof cropStatus?.progress === 'number' && cropStatus.progress >= 99.9);
-            const transportDisconnected =
-                cropType === selectedCrop &&
-                (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN);
             const needsRestart =
                 !isPaused &&
                 (
@@ -335,10 +376,6 @@ export const useGreenhouse = () => {
             }
 
             if (!needsRestart) {
-                if (transportDisconnected) {
-                    console.log(`Telemetry transport for ${cropType} is disconnected, reconnecting WebSocket.`);
-                    requestWebSocketReconnect(cropType);
-                }
                 console.log(`Simulation for ${cropType} already active.`);
                 return;
             }
@@ -352,15 +389,19 @@ export const useGreenhouse = () => {
                 },
             }));
 
-            const startRes = await fetch(`${API_URL}/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    crop: cropKey,
-                    csv_filename: cropType === 'Tomato' ? 'Tomato_Env.CSV' : 'Cucumber_Env.CSV',
-                    time_step: '10min',
-                }),
-            });
+            const startRes = await fetchWithTimeout(
+                `${API_URL}/start`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        crop: cropKey,
+                        csv_filename: cropType === 'Tomato' ? 'Tomato_Env.CSV' : 'Cucumber_Env.CSV',
+                        time_step: '10min',
+                    }),
+                },
+                START_REQUEST_TIMEOUT_MS,
+            );
             if (!startRes.ok) {
                 throw new Error(`HTTP error! status: ${startRes.status}`);
             }
@@ -370,6 +411,8 @@ export const useGreenhouse = () => {
             console.log(`Simulation for ${cropType} started.`);
         } catch (err) {
             console.error('Failed to ensure simulation is running:', err);
+        } finally {
+            recoveryRequestInFlightRef.current[cropType] = false;
         }
     }, [requestWebSocketReconnect, selectedCrop]);
 
@@ -473,6 +516,7 @@ export const useGreenhouse = () => {
 
         const sensor: SensorData = {
             timestamp: ts,
+            receivedAtTimestamp: now,
             temperature: temperature.value,
             canopyTemp: canopyTemp.value,
             humidity: humidity.value,
@@ -538,9 +582,16 @@ export const useGreenhouse = () => {
 
         const metricPoint: MetricHistoryPoint = {
             timestamp: ts,
+            receivedAtTimestamp: now,
             lai: metrics.growth.lai,
             biomass: metrics.growth.biomass,
             growthRate: metrics.growth.growthRate,
+            activeTrusses: metrics.growth.activeTrusses,
+            nodeCount: metrics.growth.nodeCount,
+            sourceCapacity: typeof state.source_capacity === 'number' ? state.source_capacity : undefined,
+            sinkDemand: typeof state.sink_demand === 'number' ? state.sink_demand : undefined,
+            sourceSinkBalance: typeof state.source_sink_balance === 'number' ? state.source_sink_balance : undefined,
+            photosynthesis: sensor.photosynthesis,
             predictedWeeklyYield: metrics.yield.predictedWeekly,
             harvestableFruits: metrics.yield.harvestableFruits,
             energyConsumption: metrics.energy.consumption,

@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LocaleProvider } from './i18n/LocaleProvider'
 import { LOCALE_STORAGE_KEY } from './i18n/locale'
+import type { MetricHistoryPoint } from './types'
+import { deriveSourceSinkBalance } from './utils/derivedRuntimeMetrics'
 
 const greenhouseState = {
   currentData: {
@@ -67,7 +69,7 @@ const greenhouseState = {
       },
     },
   ],
-  metricHistory: [],
+  metricHistory: [] as MetricHistoryPoint[],
   forecast: [],
   controls: {
     settings: {
@@ -398,11 +400,20 @@ vi.mock('./components/shell/WorkspaceNav', () => ({
 vi.mock('./components/dashboard/HeroControlCard', () => ({
   default: ({
     onOpenAdvisor,
+    sourceSinkBalance,
+    canopyAssimilation,
+    lai,
   }: {
     onOpenAdvisor?: () => void
+    sourceSinkBalance?: number | null
+    canopyAssimilation?: number | null
+    lai?: number | null
   }) => (
     <div>
       <div>HeroControlCard</div>
+      <div data-testid="hero-source-sink">{String(sourceSinkBalance ?? '')}</div>
+      <div data-testid="hero-canopy">{String(canopyAssimilation ?? '')}</div>
+      <div data-testid="hero-lai">{String(lai ?? '')}</div>
       <button type="button" onClick={onOpenAdvisor}>Open advisor lane</button>
     </div>
   ),
@@ -482,6 +493,17 @@ vi.mock('./components/SmartGrowSurfacePanel', () => ({
 }))
 vi.mock('./components/WeatherOutlookPanel', () => ({ default: () => <div>WeatherOutlookPanel</div> }))
 vi.mock('./components/ProducePricesPanel', () => ({ default: () => <div>ProducePricesPanel</div> }))
+vi.mock('./components/dashboard/OverviewSignalTrendCard', () => ({
+  default: ({
+    liveSourceSinkSeries,
+  }: {
+    liveSourceSinkSeries?: Array<{ timestamp: number; value: number }>
+  }) => (
+    <div data-testid="overview-live-source-sink-series">
+      {JSON.stringify(liveSourceSinkSeries ?? [])}
+    </div>
+  ),
+}))
 vi.mock('./components/alerts/AlertsCommandCenter', () => ({
   default: ({ activePanel }: { activePanel?: string }) => <div>{`AlertsCommandCenter:${activePanel ?? 'missing'}`}</div>,
 }))
@@ -569,6 +591,67 @@ describe('App routed shell', () => {
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
     expect(screen.queryByRole('button', { name: 'Open assistant fab' })).toBeNull()
+  })
+
+  it('prefers live overview metrics over stale advisor snapshot values', async () => {
+    const originalSnapshot = advisorState.aiModelRuntime.state_snapshot
+    advisorState.aiModelRuntime.state_snapshot = {
+      ...originalSnapshot,
+      source_sink_balance: 0.91,
+      canopy_net_assimilation_umol_m2_s: 9.9,
+      lai: 1.5,
+    }
+
+    try {
+      renderApp('/overview')
+      await waitForElementToBeRemoved(() => screen.queryByText('화면을 불러오는 중입니다.'), { timeout: 5000 })
+
+      const expectedSourceSinkBalance = deriveSourceSinkBalance({
+        crop: 'Cucumber',
+        currentData: greenhouseState.currentData as Parameters<typeof deriveSourceSinkBalance>[0]['currentData'],
+        metrics: greenhouseState.modelMetrics as Parameters<typeof deriveSourceSinkBalance>[0]['metrics'],
+      })
+
+      expect(await screen.findByTestId('hero-source-sink', {}, { timeout: 5000 })).toBeTruthy()
+      expect(screen.getByTestId('hero-source-sink').textContent).toBe(String(expectedSourceSinkBalance))
+      expect(screen.getByTestId('hero-canopy').textContent).toBe(String(greenhouseState.currentData.photosynthesis))
+      expect(screen.getByTestId('hero-lai').textContent).toBe(String(greenhouseState.modelMetrics.growth.lai))
+    } finally {
+      advisorState.aiModelRuntime.state_snapshot = originalSnapshot
+    }
+  })
+
+  it('uses wall-clock timestamps for the live source-sink overlay series', async () => {
+    const originalMetricHistory = greenhouseState.metricHistory
+    const simulationTimestamp = Date.parse('2021-02-23T08:00:00Z')
+    const wallClockTimestamp = Date.parse('2026-04-09T09:15:00+09:00')
+    greenhouseState.metricHistory = [
+      {
+        timestamp: simulationTimestamp,
+        receivedAtTimestamp: wallClockTimestamp,
+        lai: greenhouseState.modelMetrics.growth.lai,
+        biomass: 180,
+        growthRate: 4.2,
+        sourceSinkBalance: 0.37,
+        predictedWeeklyYield: greenhouseState.modelMetrics.yield.predictedWeekly,
+        harvestableFruits: 24,
+        energyConsumption: greenhouseState.modelMetrics.energy.consumption,
+        energyLoadKw: greenhouseState.modelMetrics.energy.consumption,
+        energyEfficiency: greenhouseState.modelMetrics.energy.efficiency,
+      },
+    ]
+
+    try {
+      renderApp('/overview')
+      await waitFor(() => expect(screen.getByTestId('overview-live-source-sink-series')).toBeTruthy())
+
+      const liveSeries = JSON.parse(screen.getByTestId('overview-live-source-sink-series').textContent ?? '[]') as Array<{ timestamp: number; value: number }>
+      expect(liveSeries.length).toBeGreaterThan(0)
+      expect(liveSeries[liveSeries.length - 1]?.timestamp).toBe(wallClockTimestamp)
+      expect(liveSeries.some((point) => point.timestamp === simulationTimestamp)).toBe(false)
+    } finally {
+      greenhouseState.metricHistory = originalMetricHistory
+    }
   })
 
   it('navigates between routed pages from the sidebar', async () => {
