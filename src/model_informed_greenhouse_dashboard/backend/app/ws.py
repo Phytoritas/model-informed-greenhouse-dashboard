@@ -1,10 +1,12 @@
 """WebSocket broadcaster for real-time updates."""
+import asyncio
 import logging
 import json
 from typing import Set, Dict, Any
 from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
+WEBSOCKET_SEND_TIMEOUT_SECONDS = 1.0
 
 
 class ConnectionManager:
@@ -58,17 +60,27 @@ class ConnectionManager:
         except Exception as e:
             logger.error(f"Failed to serialize message: {e}")
             return
-        
-        # Broadcast to all connections
-        dead_connections = set()
+
         current_connections = tuple(self.active_connections.get(path, ()))
-        for websocket in current_connections:
+
+        async def _send(websocket: WebSocket):
             try:
-                await websocket.send_text(data)
+                await asyncio.wait_for(
+                    websocket.send_text(data),
+                    timeout=WEBSOCKET_SEND_TIMEOUT_SECONDS,
+                )
+                return None
             except Exception as e:
                 logger.warning(f"Failed to send to client: {e}")
-                dead_connections.add(websocket)
-        
+                return websocket
+
+        dead_connections = set(
+            filter(
+                None,
+                await asyncio.gather(*(_send(websocket) for websocket in current_connections)),
+            )
+        )
+
         # Clean up dead connections
         for ws in dead_connections:
             self.active_connections[path].discard(ws)
@@ -83,7 +95,6 @@ class ConnectionManager:
             path: WebSocket path
             message: Message dict
         """
-        import asyncio
         try:
             # Try to get the running event loop
             try:

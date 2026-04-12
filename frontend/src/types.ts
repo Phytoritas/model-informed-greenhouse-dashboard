@@ -15,6 +15,7 @@ export type SensorFieldTimestamps = Record<SensorFieldKey, number | null>;
 
 export interface SensorData {
     timestamp: number;
+    receivedAtTimestamp?: number;
     temperature: number;
     canopyTemp: number;
     humidity: number;
@@ -822,9 +823,16 @@ export interface RtrSensitivityResponse {
 
 export interface MetricHistoryPoint {
     timestamp: number;
+    receivedAtTimestamp?: number;
     lai: number;
     biomass: number;
     growthRate: number;
+    activeTrusses?: number;
+    nodeCount?: number;
+    sourceCapacity?: number;
+    sinkDemand?: number;
+    sourceSinkBalance?: number;
+    photosynthesis?: number;
     predictedWeeklyYield: number;
     harvestableFruits: number;
     energyConsumption: number;

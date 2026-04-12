@@ -376,8 +376,29 @@ describe('useRtrOptimizer', () => {
         expect(optimizeCall).toBeTruthy();
         const optimizeBody = JSON.parse(String((optimizeCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
         expect(optimizeBody.crop).toBe('cucumber');
+        expect(optimizeBody.snapshot_id).toBe('snap-001');
         expect(optimizeBody.target_node_development_per_day).toBe(0.73);
         expect(optimizeBody.optimization_mode).toBe('energy_saving');
+    });
+
+    it('stays idle when the optimizer surface is inactive', async () => {
+        const { result } = renderHook(() =>
+            useRtrOptimizer({
+                crop: 'Cucumber',
+                actualAreaM2: 2809.92,
+                actualAreaPyeong: 850,
+                actualAreaSource: 'server',
+                optimizerEnabled: true,
+                active: false,
+            }),
+        );
+
+        await waitFor(() => {
+            expect(result.current.loadingState).toBe(false);
+        });
+
+        expect(result.current.stateResponse).toBeNull();
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('hydrates optimize results before slower scenario and sensitivity responses finish', async () => {
@@ -429,6 +450,37 @@ describe('useRtrOptimizer', () => {
             expect(result.current.scenarioResponse?.scenarios[0]?.mean_temp_C).toBe(19.5);
             expect(result.current.sensitivityResponse?.sensitivities[0]?.control).toBe('temperature_day');
         });
+    });
+
+    it('keeps automatic recompute on the optimize endpoint unless supplemental refresh is requested', async () => {
+        const { result } = renderHook(() =>
+            useRtrOptimizer({
+                crop: 'Cucumber',
+                actualAreaM2: 2809.92,
+                actualAreaPyeong: 850,
+                actualAreaSource: 'server',
+                optimizerEnabled: true,
+                autoRunSupplemental: false,
+            }),
+        );
+
+        await waitFor(() => {
+            expect(result.current.optimizeResponse).not.toBeNull();
+        });
+
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/optimize'))).toBe(true);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/scenario'))).toBe(false);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/sensitivity'))).toBe(false);
+
+        fetchMock.mockClear();
+
+        await act(async () => {
+            await result.current.refreshOptimization();
+        });
+
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/optimize'))).toBe(true);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/scenario'))).toBe(true);
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/rtr/sensitivity'))).toBe(true);
     });
 
     it('does not persist server-hydrated area settings until the user makes a local override', async () => {
