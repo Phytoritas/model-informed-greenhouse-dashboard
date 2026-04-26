@@ -3,7 +3,7 @@
 Source of truth: [`/Phytoritas.md`](../../Phytoritas.md)
 
 ## Baseline
-- Branch baseline: `fix/114-post-issue112-backend-frontend-integration-audit`
+- Branch baseline: `main`
 - Current merged UI baseline: issues `#65`, `#67`, `#69`, `#74`, `#80`, `#82`, `#84`
 - Current control-plane sync baseline: issue `#86`
 
@@ -20,14 +20,15 @@ Source of truth: [`/Phytoritas.md`](../../Phytoritas.md)
 
 ## Current Gate Picture
 - Product shell baseline: passed
-- Backend/frontend integration audit for issue `#114`: in progress
+- Backend/frontend integration audit for issue `#114`: complete
 - Completed issue `#112` repairs: RTR area-settings crop casing, RTR response/calibration crop typing drift, KRW/kWh frontend default drift, and exact/nested disconnected AdvisorTabs lane routes
-- Confirmed issue `#114` repairs: nested `/ask/*` alias routing, boundary-wide crop normalization, advisor tab route metadata alignment, and visible market-price fallback source status
+- Completed issue `#114` repairs: nested `/ask/*` alias routing, boundary-wide crop normalization, advisor tab route metadata alignment, and visible market-price fallback source status
 - Open calibration backlog: issue `#3` remains blocked on real grower-approved windows
-- Validation lock: required before issue `#114` can be reported complete
+- Validation lock: passed locally and in GitHub Actions for PR `#115`
 
 ## Next Restart Point
 - Re-read `AGENTS.md`, `Phytoritas.md`, `.rah/state/status.json`, `.rah/state/gates.json`, `.rah/memory/wakeup.md`, and `.rah/plans/current_loop.md`.
-- Treat issue `#114` and branch `fix/114-post-issue112-backend-frontend-integration-audit` as the active bounded integration lane.
+- Treat issue `#114` as closed and PR `#115` as merged into `main`.
+- Treat docs issue `#116` as the temporary harness-sync lane until this state is merged.
 - Keep issue `#3` blocked until operator-approved production windows are supplied.
 - Do not expand beyond confirmed backend/frontend connection gaps without a new gate update.

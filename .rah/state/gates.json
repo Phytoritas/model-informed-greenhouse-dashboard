@@ -1,5 +1,17 @@
 {
-  "earliest_restart_point": "Resume issue #114 from full validation for the post-issue112 backend/frontend integration repair phase; keep issue #3 blocked until real grower-approved windows exist.",
+  "earliest_restart_point": "Resume from the clean post-issue114 main baseline; keep issue #3 blocked until real grower-approved windows exist.",
+  "issue116_prompt_intake": {
+    "status": "pass",
+    "note": "Docs issue #116 and branch `docs/116-sync-issue114-merged-harness-state-on-main` were created after PR #115 merged so tracked RAH state can stop pointing at the completed issue #114 validation lane."
+  },
+  "issue116_harness_sync": {
+    "status": "in_progress",
+    "note": "This docs-only sync updates the root/mirror blueprint, current loop, wakeup packet, and status/gate state to the post-issue114 merged main baseline."
+  },
+  "issue114_pr_validation": {
+    "status": "pass",
+    "note": "PR #115 merged issue #114 into `main` at `98b278a` after local validation and GitHub Actions Backend/Frontend validation passed; issue #114 is closed and project Status/Stage are Done."
+  },
   "issue114_prompt_intake": {
     "status": "pass",
     "note": "Issue #114 and branch `fix/114-post-issue112-backend-frontend-integration-audit` were created before non-trivial code writes after repo-local AGENTS intake, RAH doctor/status/resume, and Memento context/recall hydration."
