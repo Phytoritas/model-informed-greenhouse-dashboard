@@ -17,6 +17,8 @@ logs/
 !.rah/logs/
 !.rah/logs/activity_log.md
 .rah/logs/*.log
+.rah/helpers/
+.rah/state/deployment.json
 .rah/memory/*.json
 .rah/state/memento_status.json
 

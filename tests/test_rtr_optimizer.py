@@ -2019,13 +2019,15 @@ def test_rtr_calibration_state_and_preview_routes_return_house_scoped_windows(
         assert state_response.status_code == 200
         state_payload = state_response.json()
         assert state_payload["status"] == "success"
-        assert state_payload["crop"] == "Tomato"
+        assert state_payload["crop"] == "tomato"
+        assert state_payload["current_profile"]["crop"] == "Tomato"
         assert state_payload["environment_summary"]["has_environment_history"] is True
         assert state_payload["environment_summary"]["total_days"] == 7
 
         assert preview_response.status_code == 200
         preview_payload = preview_response.json()
         assert preview_payload["status"] == "success"
+        assert preview_payload["crop"] == "tomato"
         assert preview_payload["preview_profile"]["calibration"]["mode"] == "fitted"
         assert preview_payload["selection_summary"]["selection_source"] == "curated-windows"
         assert preview_payload["selection_summary"]["window_count"] == 1
@@ -2074,6 +2076,7 @@ def test_rtr_calibration_save_route_persists_windows_and_refreshes_profile(
         assert save_response.status_code == 200
         save_payload = save_response.json()
         assert save_payload["saved"] is True
+        assert save_payload["crop"] == "cucumber"
         assert save_payload["current_profile"]["calibration"]["mode"] == "fitted"
         assert save_payload["windows"][0]["houseId"] == "house-a"
         assert windows_path.exists()

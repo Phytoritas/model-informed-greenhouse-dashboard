@@ -1,4 +1,5 @@
 export type CropType = 'Tomato' | 'Cucumber';
+export type CropApiKey = Lowercase<CropType>;
 
 export type TelemetryStatus = 'loading' | 'live' | 'delayed' | 'stale' | 'offline';
 export type SensorFieldState = 'live' | 'delayed' | 'stale' | 'offline' | 'missing';
@@ -374,7 +375,7 @@ export interface RtrCalibrationSelectionSummary {
 
 export interface RtrCalibrationStateResponse {
     status: string;
-    crop: CropType;
+    crop: CropApiKey;
     greenhouse_id: string;
     current_profile: RtrProfile;
     windows: RtrCalibrationWindow[];
@@ -385,7 +386,7 @@ export interface RtrCalibrationStateResponse {
 
 export interface RtrCalibrationPreviewResponse {
     status: string;
-    crop: CropType;
+    crop: CropApiKey;
     greenhouse_id: string;
     selection_mode: RtrCalibrationSelectionMode;
     windows: RtrCalibrationWindow[];
@@ -537,7 +538,7 @@ export interface RtrCanonicalState {
 
 export interface RtrStateResponse {
     status: string;
-    crop: CropType;
+    crop: CropApiKey;
     greenhouse_id: string;
     snapshot_id: string;
     canonical_state: RtrCanonicalState;
@@ -703,7 +704,7 @@ export interface RtrControlEffectTrace {
 export interface RtrOptimizeResponse {
     status: string;
     mode: RtrSurfaceMode;
-    crop: CropType;
+    crop: CropApiKey;
     greenhouse_id: string;
     snapshot_id: string;
     baseline: {
@@ -781,7 +782,7 @@ export interface RtrScenarioRow {
 
 export interface RtrScenarioResponse {
     status: string;
-    crop: CropType;
+    crop: CropApiKey;
     greenhouse_id: string;
     snapshot_id: string;
     target_node_development_per_day: number;
@@ -810,7 +811,7 @@ export interface RtrSensitivityEntry {
 export interface RtrSensitivityResponse {
     status: string;
     mode: RtrSurfaceMode;
-    crop: CropType;
+    crop: CropApiKey;
     greenhouse_id: string;
     snapshot_id: string;
     target_horizon: string;

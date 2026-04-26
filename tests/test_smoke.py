@@ -769,6 +769,28 @@ def test_rtr_profiles_endpoint_returns_payload_shape(
     assert payload["profiles"]["Tomato"]["optimizer"]["enabled"] is True
 
 
+def test_rtr_area_settings_accepts_frontend_crop_casing() -> None:
+    client = TestClient(get_app())
+
+    response = client.post(
+        "/api/rtr/area-settings",
+        json={
+            "crop": "Cucumber",
+            "greenhouse_id": "house-a",
+            "user_actual_area_m2": 2975.21,
+            "user_actual_area_pyeong": 900,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "success"
+    assert payload["crop"] == "cucumber"
+    assert payload["greenhouse_id"] == "house-a"
+    assert payload["area_unit_meta"]["actual_area_m2"] == 2975.21
+    assert payload["area_unit_meta"]["actual_area_pyeong"] == pytest.approx(900, abs=0.01)
+
+
 def test_advisor_tab_endpoint_forwards_greenhouse_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

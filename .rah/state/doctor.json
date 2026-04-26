@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-04-12T05:24:13+00:00",
+  "generated_at_utc": "2026-04-26T07:50:47+00:00",
   "root": "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard",
   "profile_hint": "python-service",
   "scaffold_root": "C:\\Users\\yhmoo\\OneDrive\\Phytoritas\\projects\\model-informed-greenhouse-dashboard\\docs\\architecture",
@@ -46,13 +46,13 @@
     },
     {
       "name": "deployment_state",
-      "status": "warn",
-      "detail": "No deployment.json found under .rah/state yet."
+      "status": "pass",
+      "detail": "Deployment state captured in .rah/state/deployment.json"
     },
     {
       "name": "memento_identity_normalization",
-      "status": "warn",
-      "detail": "Unexpected identity format: workspace='model-informed-greenhouse-dashboard', topic='main-clean-issue3-blocked', sessionId='model-informed-greenhouse-dashboard#main:issue3-blocked', caseId='case/model-informed-greenhouse-dashboard/main/issue3-blocked'"
+      "status": "pass",
+      "detail": "workspace/topic/sessionId/caseId look normalized."
     },
     {
       "name": "memento_vs_rah_drift",

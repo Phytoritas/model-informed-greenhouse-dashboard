@@ -3,7 +3,7 @@
 Source of truth: [`/Phytoritas.md`](../../Phytoritas.md)
 
 ## Baseline
-- Branch baseline: `main`
+- Branch baseline: `fix/112-backend-frontend-integration-audit-and-repair`
 - Current merged UI baseline: issues `#65`, `#67`, `#69`, `#74`, `#80`, `#82`, `#84`
 - Current control-plane sync baseline: issue `#86`
 
@@ -20,15 +20,13 @@ Source of truth: [`/Phytoritas.md`](../../Phytoritas.md)
 
 ## Current Gate Picture
 - Product shell baseline: passed
-- Layout overlap and rail clipping follow-ups: passed
-- Control realtime recovery baseline: passed
-- Post-issue84 control-plane sync baseline: passed
+- Backend/frontend integration audit for issue `#112`: in progress
+- Confirmed bounded repairs: RTR area-settings crop casing, RTR response and calibration crop typing drift, KRW/kWh frontend default drift, and exact/nested disconnected AdvisorTabs lane routes
 - Open calibration backlog: issue `#3` remains blocked on real grower-approved windows
-- Local runtime seed rehydration: required on this checkout when doctor reports missing files
-- Validation lock: required for any new bounded slice
+- Validation lock: required before issue `#112` can be reported complete
 
 ## Next Restart Point
 - Re-read `AGENTS.md`, `Phytoritas.md`, `.rah/state/status.json`, `.rah/state/gates.json`, `.rah/memory/wakeup.md`, and `.rah/plans/current_loop.md`.
-- Treat `main` as the post-issue84 baseline.
+- Treat issue `#112` and branch `fix/112-backend-frontend-integration-audit-and-repair` as the active bounded integration lane.
 - Keep issue `#3` blocked until operator-approved production windows are supplied.
-- Start any unrelated non-trivial product change from a fresh issue/branch.
+- Do not expand beyond confirmed backend/frontend connection gaps without a new gate update.
