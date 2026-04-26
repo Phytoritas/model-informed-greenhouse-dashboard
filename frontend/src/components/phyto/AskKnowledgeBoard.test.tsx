@@ -64,5 +64,13 @@ describe('AskKnowledgeBoard', () => {
         expect(screen.getAllByText('Powdery mildew notes').length).toBeGreaterThan(0);
         expect(screen.getByText(/Source location:/)).toBeTruthy();
         expect(screen.queryByRole('button', { name: 'Open full materials lane' })).toBeNull();
+
+        fireEvent.change(
+            screen.getByLabelText('Search Cucumber materials or type a question-shaped query'),
+            { target: { value: 'cucumber cultivation method' } },
+        );
+
+        expect(screen.queryByText('Powdery mildew notes')).toBeNull();
+        expect(screen.getByText('Enter a query and the related material will appear below in this page.')).toBeTruthy();
     });
 });

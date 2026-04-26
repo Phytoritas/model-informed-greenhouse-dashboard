@@ -160,6 +160,13 @@ def test_openai_helper_mentions_precision_runtime_contract_when_present(
         dashboard={
             "currentData": {},
             "model_runtime": {
+                "answer_focus": {
+                    "summary": "주간 CO2 +100ppm 조정은 14일 예상 수량 +17.493으로 계산됨",
+                    "effects": {
+                        "expected_yield_delta_14d": 17.493,
+                        "expected_energy_delta": 0.56,
+                    },
+                },
                 "recommendation_families": [{"control": "co2_setpoint_day"}],
                 "best_actions": [{"action": "주간 CO2 100ppm 올리기"}],
                 "control_precision_matrix": {"co2_setpoint_day": []},
@@ -172,6 +179,8 @@ def test_openai_helper_mentions_precision_runtime_contract_when_present(
     )
 
     prompt = fake_client.responses.calls[0]["input"][0]["content"]
+    assert "answer_focus" in prompt
+    assert "exact calculated effects" in prompt
     assert "control_precision_matrix" in prompt
     assert "Use only the provided numbers" in prompt
 

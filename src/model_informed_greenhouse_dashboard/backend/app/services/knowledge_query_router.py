@@ -161,6 +161,10 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
     },
     "cultivation_work": {
         "keywords": {
+            "cultivation",
+            "grow",
+            "growing",
+            "method",
             "work",
             "task",
             "pruning",
@@ -169,6 +173,14 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "checklist",
             "operation",
             "labor",
+            "재배",
+            "재배방법",
+            "재배법",
+            "재배요령",
+            "생육관리",
+            "키우기",
+            "키우는법",
+            "방법",
             "작업",
             "적엽",
             "유인",
@@ -259,6 +271,31 @@ _ANALYTE_EXPANSIONS = {
     "nh4": "ammonium",
 }
 
+_KOREAN_COMPOUND_TERMS = (
+    "오이",
+    "토마토",
+    "재배방법",
+    "재배법",
+    "재배요령",
+    "생육관리",
+    "키우는법",
+    "재배",
+    "생육",
+    "관리",
+    "방법",
+    "방제",
+    "농약",
+    "병해충",
+    "흰가루병",
+    "흰가루",
+    "온실가루이",
+    "담배가루이",
+    "노균병",
+    "노균",
+    "나방류",
+    "약제",
+)
+
 
 def _normalize_text(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip().lower()
@@ -267,10 +304,24 @@ def _normalize_text(value: Any) -> str:
 def _normalize_tokens(text: str) -> list[str]:
     tokens: list[str] = []
     seen: set[str] = set()
-    for token in _TOKEN_PATTERN.findall(_normalize_text(text)):
+    normalized_text = _normalize_text(text)
+
+    def add_token(token: str) -> None:
         if token and token not in seen:
             seen.add(token)
             tokens.append(token)
+
+    for token in _TOKEN_PATTERN.findall(normalized_text):
+        add_token(token)
+        for compound in _KOREAN_COMPOUND_TERMS:
+            if compound in token:
+                add_token(compound)
+
+    compact_text = normalized_text.replace(" ", "")
+    for compound in _KOREAN_COMPOUND_TERMS:
+        if compound in compact_text:
+            add_token(compound)
+
     return tokens
 
 

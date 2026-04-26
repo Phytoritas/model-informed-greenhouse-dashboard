@@ -66,6 +66,7 @@ export type ModelRuntimeScenarioOption = {
     expected_yield_delta_72h?: number | null;
     expected_yield_delta_7d?: number | null;
     expected_yield_delta_14d?: number | null;
+    expected_canopy_delta_72h?: number | null;
     expected_energy_delta?: number | null;
     expected_RTR_delta?: number | null;
     expected_source_sink_balance_delta?: number | null;
@@ -128,6 +129,36 @@ export type ModelRuntimePayload = {
         penalties?: Record<string, number | string | null | boolean>;
     };
     recommendations: ModelRuntimeScenarioOption[];
+    answer_focus?: {
+        kind?: string | null;
+        computed_by?: string | null;
+        control?: string | null;
+        label?: string | null;
+        requested_delta?: number | null;
+        matched_delta?: number | null;
+        unit?: string | null;
+        step_label?: string | null;
+        action?: string | null;
+        summary?: string | null;
+        effects?: {
+            yield_delta_24h?: number | null;
+            yield_delta_72h?: number | null;
+            yield_delta_7d?: number | null;
+            yield_delta_14d?: number | null;
+            canopy_delta_72h?: number | null;
+            energy_delta?: number | null;
+            energy_delta_7d?: number | null;
+            source_sink_balance_delta?: number | null;
+            rtr_delta_72h?: number | null;
+            humidity_penalty_delta?: number | null;
+            disease_penalty_delta?: number | null;
+        };
+        confidence?: number | null;
+        risk_flags?: string[];
+        violated_constraints?: ModelRuntimeConstraintViolation[];
+        precision_mode?: string | null;
+        matched_user_request?: boolean;
+    } | null;
     provenance?: {
         source?: string;
         tab_name?: string;

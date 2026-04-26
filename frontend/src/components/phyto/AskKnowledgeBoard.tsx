@@ -89,6 +89,7 @@ export default function AskKnowledgeBoard({
         returnedCount,
         resolvedScope,
         runSearch,
+        clear,
     } = useRagAssistant();
 
     useEffect(() => {
@@ -113,6 +114,14 @@ export default function AskKnowledgeBoard({
             query: normalizedQuery,
             limit: 4,
         });
+    }
+
+    function handleQueryInputChange(value: string) {
+        onQueryChange(value);
+        if (lastQuery && value.trim() !== lastQuery) {
+            setActiveIndex(0);
+            clear();
+        }
     }
 
     const resolvedScopeLabel = formatScopeLabel(resolvedScope, locale, cropLabel);
@@ -149,7 +158,7 @@ export default function AskKnowledgeBoard({
                         aria-label={copy.placeholder}
                         placeholder={copy.placeholder}
                         value={query}
-                        onChange={(event) => onQueryChange(event.target.value)}
+                        onChange={(event) => handleQueryInputChange(event.target.value)}
                         onKeyDown={(event) => {
                             if (event.key === 'Enter') {
                                 event.preventDefault();
