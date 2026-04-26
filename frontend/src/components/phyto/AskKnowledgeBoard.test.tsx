@@ -58,7 +58,10 @@ describe('AskKnowledgeBoard', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Find materials' }));
 
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-        expect(await screen.findByText('Powdery mildew notes')).toBeTruthy();
+        expect(screen.getByRole('navigation', { name: 'Table of contents' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: /Page 1/ })).toBeTruthy();
+        await screen.findAllByText('Powdery mildew notes');
+        expect(screen.getAllByText('Powdery mildew notes').length).toBeGreaterThan(0);
         expect(screen.getByText(/Source location:/)).toBeTruthy();
         expect(screen.queryByRole('button', { name: 'Open full materials lane' })).toBeNull();
     });

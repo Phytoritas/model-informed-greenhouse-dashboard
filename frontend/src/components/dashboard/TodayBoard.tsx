@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react';
 import { Activity, CalendarDays, Radar, TimerReset } from 'lucide-react';
-import DashboardCard from '../common/DashboardCard';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { formatLocaleDateTime } from '../../i18n/locale';
+import { cn } from '../../utils/cn';
+import { StatusChip } from '../ui/status-chip';
 
 interface TodayBoardProps {
     actionsNow: string[];
@@ -33,42 +34,44 @@ function CompactListTile({
     items,
     emptyLabel,
     icon: Icon,
-    tone,
+    toneClassName,
+    chipTone,
     compact = false,
 }: {
     title: string;
     items: string[];
     emptyLabel: string;
     icon: typeof Activity;
-    tone: string;
+    toneClassName: string;
+    chipTone: 'normal' | 'growth' | 'stable' | 'warning' | 'critical' | 'muted';
     compact?: boolean;
 }) {
     const visibleItems = items.slice(0, compact ? 1 : 2);
     const itemClampStyle = compact ? clampThreeStyle : undefined;
 
     return (
-        <article className={`rounded-[22px] px-4 py-4 ${tone}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        <article className={cn('sg-panel px-3 py-3', toneClassName)}>
             <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[14px] bg-white/84 text-[color:var(--sg-text-strong)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <Icon className="h-4 w-4" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[var(--sg-radius-sm)] bg-white text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)]">
+                        <Icon className="h-4 w-4" aria-hidden="true" />
                     </div>
-                    <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{title}</div>
-                </div>
-                <div className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-semibold text-[color:var(--sg-text-faint)]">
-                    {items.length}
+                    <div>
+                        <div className="text-sm font-bold text-[color:var(--sg-text-strong)]">{title}</div>
+                        <StatusChip tone={chipTone} className="mt-1 px-2 py-0.5 text-[10px]">{items.length}</StatusChip>
+                    </div>
                 </div>
             </div>
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-2.5 space-y-2">
                 {visibleItems.length > 0 ? (
                     visibleItems.map((item) => (
-                        <div key={item} className="rounded-[18px] bg-white/76 px-3 py-2.5 text-sm leading-6 text-[color:var(--sg-text-strong)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div key={item} className="sg-panel bg-white px-3 py-2 text-sm leading-5 text-[color:var(--sg-text-strong)]">
                             <div style={itemClampStyle}>{item}</div>
                         </div>
                     ))
                 ) : (
-                    <div className="rounded-[18px] bg-white/70 px-3 py-2.5 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                    <div className="sg-panel bg-white px-3 py-2 text-sm leading-5 text-[color:var(--sg-text-muted)]">
                         <div style={itemClampStyle}>{emptyLabel}</div>
                     </div>
                 )}
@@ -136,52 +139,87 @@ export default function TodayBoard({
                 minute: '2-digit',
             })}`
             : null;
-    const countTiles = [
-        { key: 'now', label: copy.now, value: actionsNow.length, tone: 'sg-tint-green' },
-        { key: 'today', label: copy.today, value: actionsToday.length, tone: 'sg-tint-amber' },
-        { key: 'week', label: copy.week, value: actionsWeek.length, tone: 'sg-tint-violet' },
-        { key: 'monitor', label: copy.monitor, value: monitor.length, tone: 'sg-tint-neutral' },
+    const queueTiles = [
+        {
+            key: 'now',
+            label: copy.now,
+            value: actionsNow.length,
+            toneClassName: actionsNow.length ? 'border-[color:var(--sg-color-primary)] bg-[color:var(--sg-color-primary-soft)]' : 'bg-white',
+            chipTone: actionsNow.length ? 'critical' : 'muted',
+            icon: TimerReset,
+            items: actionsNow,
+            emptyLabel: copy.emptyNow,
+        },
+        {
+            key: 'today',
+            label: copy.today,
+            value: actionsToday.length,
+            toneClassName: actionsToday.length ? 'border-[color:var(--sg-accent-amber-soft)] bg-[color:var(--sg-accent-amber-soft)]' : 'bg-white',
+            chipTone: actionsToday.length ? 'warning' : 'muted',
+            icon: CalendarDays,
+            items: actionsToday,
+            emptyLabel: copy.emptyToday,
+        },
+        {
+            key: 'week',
+            label: copy.week,
+            value: actionsWeek.length,
+            toneClassName: actionsWeek.length ? 'border-[color:var(--sg-color-sage)] bg-[color:var(--sg-color-sage-soft)]' : 'bg-white',
+            chipTone: actionsWeek.length ? 'growth' : 'muted',
+            icon: Activity,
+            items: actionsWeek,
+            emptyLabel: copy.emptyWeek,
+        },
+        {
+            key: 'monitor',
+            label: copy.monitor,
+            value: monitor.length,
+            toneClassName: monitor.length ? 'border-[color:var(--sg-color-olive)] bg-[color:var(--sg-color-olive-soft)]' : 'bg-white',
+            chipTone: monitor.length ? 'stable' : 'muted',
+            icon: Radar,
+            items: monitor,
+            emptyLabel: copy.emptyMonitor,
+        },
     ] as const;
 
     return (
-        <DashboardCard
-            eyebrow={copy.eyebrow}
-            title={copy.title}
-            description={copy.description}
-            contentClassName="flex flex-col gap-4"
-            className={compact ? undefined : 'h-full overflow-hidden'}
-        >
-            <div className={`grid gap-4 ${compact ? 'xl:grid-cols-1' : 'xl:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]'}`}>
-                <div className="rounded-[26px] bg-[linear-gradient(135deg,rgba(255,251,246,0.98),rgba(248,231,223,0.9))] px-5 py-5" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-                            {copy.leadLabel}
-                        </div>
-                        {advisorFreshnessLabel ? (
-                            <div className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-semibold text-[color:var(--sg-text-faint)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                                {advisorFreshnessLabel}
-                            </div>
-                        ) : null}
-                    </div>
-                    <div className="mt-3 text-[clamp(1.35rem,1.05rem+0.6vw,1.9rem)] font-semibold leading-tight tracking-[-0.05em] text-[color:var(--sg-text-strong)]" style={compact ? clampThreeStyle : clampTwoStyle}>
-                        {leadMessage}
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={compact ? clampThreeStyle : undefined}>
-                        {copy.leadSupport}
+        <section className={cn('sg-panel bg-[color:var(--sg-surface-raised)] p-3 md:p-4', !compact && 'h-full overflow-hidden')} aria-labelledby="today-board-title">
+            <header className="overview-section-heading">
+                <div>
+                    <p className="sg-eyebrow">{copy.eyebrow}</p>
+                    <h2 id="today-board-title">{copy.title}</h2>
+                    <p className="mt-1 max-w-2xl text-[0.8rem] leading-5 text-[color:var(--sg-text-muted)]">
+                        {copy.description}
                     </p>
                 </div>
+            </header>
 
-                <div className="grid grid-cols-2 gap-3">
-                    {countTiles.map((tile) => (
+            <div className={`mt-3 grid gap-3 ${compact ? 'xl:grid-cols-1' : 'xl:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.9fr)]'}`}>
+                <article className="sg-panel border-[color:var(--sg-color-sage)] bg-[color:var(--sg-color-sage-soft)] px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <StatusChip tone="growth">{copy.leadLabel}</StatusChip>
+                        {advisorFreshnessLabel ? (
+                            <StatusChip tone={advisorRefreshing ? 'warning' : 'stable'} className="px-2 py-0.5 text-[10px]">
+                                {advisorFreshnessLabel}
+                            </StatusChip>
+                        ) : null}
+                    </div>
+                    <div className="mt-3 text-[clamp(1.2rem,1rem+0.5vw,1.7rem)] font-bold leading-tight text-[color:var(--sg-text-strong)]" style={compact ? clampThreeStyle : clampTwoStyle}>
+                        {leadMessage}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={compact ? clampThreeStyle : undefined}>
+                        {copy.leadSupport}
+                    </p>
+                </article>
+
+                <div className="grid grid-cols-2 gap-2">
+                    {queueTiles.map((tile) => (
                         <div
                             key={tile.key}
-                            className={`rounded-[20px] px-4 py-3 ${tile.tone}`}
-                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                            className={cn('sg-panel px-3 py-2.5', tile.toneClassName)}
                         >
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
-                                {tile.label}
-                            </div>
-                            <div className="mt-2 text-2xl font-semibold leading-none tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+                            <StatusChip tone={tile.chipTone} className="px-2 py-0.5 text-[10px]">{tile.label}</StatusChip>
+                            <div className="sg-data-number mt-2 text-2xl font-bold leading-none text-[color:var(--sg-text-strong)]">
                                 {tile.value}
                             </div>
                         </div>
@@ -189,12 +227,20 @@ export default function TodayBoard({
                 </div>
             </div>
 
-            <div className={`grid gap-3 ${compact ? 'md:grid-cols-1 xl:grid-cols-1' : 'md:grid-cols-2 xl:grid-cols-4'}`}>
-                <CompactListTile title={copy.now} items={actionsNow} emptyLabel={copy.emptyNow} icon={TimerReset} tone="sg-tint-green" compact={compact} />
-                <CompactListTile title={copy.today} items={actionsToday} emptyLabel={copy.emptyToday} icon={CalendarDays} tone="sg-tint-amber" compact={compact} />
-                <CompactListTile title={copy.week} items={actionsWeek} emptyLabel={copy.emptyWeek} icon={Activity} tone="sg-tint-violet" compact={compact} />
-                <CompactListTile title={copy.monitor} items={monitor} emptyLabel={copy.emptyMonitor} icon={Radar} tone="sg-tint-neutral" compact={compact} />
+            <div className={`mt-3 grid gap-3 ${compact ? 'md:grid-cols-1 xl:grid-cols-1' : 'md:grid-cols-2 xl:grid-cols-4'}`}>
+                {queueTiles.map((tile) => (
+                    <CompactListTile
+                        key={tile.key}
+                        title={tile.label}
+                        items={tile.items}
+                        emptyLabel={tile.emptyLabel}
+                        icon={tile.icon}
+                        toneClassName={tile.toneClassName}
+                        chipTone={tile.chipTone}
+                        compact={compact}
+                    />
+                ))}
             </div>
-        </DashboardCard>
+        </section>
     );
 }

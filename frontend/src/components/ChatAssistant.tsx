@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { Bot, Send, X } from 'lucide-react';
+import { BookOpen, Leaf, Send, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type {
@@ -185,6 +185,123 @@ function StructuredReply({
     );
 }
 
+function cleanAnswerLine(line: string): string {
+    return line
+        .replace(/^#{1,6}\s*/, '')
+        .replace(/^[-*+]\s*/, '')
+        .replace(/^\d+[.)]\s*/, '')
+        .replace(/\*\*/g, '')
+        .trim();
+}
+
+function buildFarmerAnswer(text: string) {
+    const lines = text
+        .split(/\r?\n+/)
+        .map(cleanAnswerLine)
+        .filter(Boolean);
+    const meaningfulLines = lines.length > 0
+        ? lines
+        : text
+            .split(/(?<=[.!?。！？])\s+/)
+            .map(cleanAnswerLine)
+            .filter(Boolean);
+    const summary = meaningfulLines.slice(0, 2).join(' ').slice(0, 260) || text.slice(0, 260);
+    const actionKeywords = [
+        '확인',
+        '유지',
+        '조정',
+        '올리',
+        '낮추',
+        '환기',
+        '관수',
+        '방제',
+        '살포',
+        '기록',
+        'check',
+        'hold',
+        'increase',
+        'reduce',
+        'monitor',
+        'spray',
+    ];
+    const actions = meaningfulLines
+        .filter((line) => actionKeywords.some((keyword) => line.toLowerCase().includes(keyword)))
+        .slice(0, 4);
+
+    return {
+        summary,
+        actions: actions.length > 0 ? actions : meaningfulLines.slice(1, 5),
+    };
+}
+
+function MarkdownAnswer({ text }: { text: string }) {
+    return (
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+                h2: ({ ...props }) => <h2 className="mb-1 mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
+                h3: ({ ...props }) => <h3 className="mb-1 mt-2 text-xs font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
+                p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                ul: ({ ...props }) => <ul className="mb-2 list-disc space-y-1 pl-5" {...props} />,
+                ol: ({ ...props }) => <ol className="mb-2 list-decimal space-y-1 pl-5" {...props} />,
+                li: ({ ...props }) => <li className="mb-0" {...props} />,
+                strong: ({ ...props }) => <strong className="font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
+                code: ({ ...props }) => <code className="rounded bg-[color:var(--sg-surface-muted)] px-1 py-0.5 text-[color:var(--sg-text-strong)]" {...props} />,
+            }}
+        >
+            {text}
+        </ReactMarkdown>
+    );
+}
+
+function FarmerFriendlyAnswer({
+    text,
+    copy,
+}: {
+    text: string;
+    copy: Record<string, string>;
+}) {
+    const answer = buildFarmerAnswer(text);
+
+    return (
+        <div className="mt-3 space-y-3">
+            <div className="rounded-[22px] bg-[color:var(--sg-color-ivory)] px-3 py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
+                    {copy.farmerSummaryTitle}
+                </div>
+                <p className="mt-1 text-sm leading-6 text-[color:var(--sg-text-strong)]">
+                    {answer.summary}
+                </p>
+            </div>
+            {answer.actions.length > 0 ? (
+                <div className="rounded-[22px] border border-[color:var(--sg-outline-soft)] bg-white/82 px-3 py-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-terracotta)]">
+                        {copy.farmerActionTitle}
+                    </div>
+                    <ol className="mt-2 space-y-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                        {answer.actions.map((action, index) => (
+                            <li key={`${action}-${index}`} className="flex gap-2">
+                                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color:var(--sg-color-sage-soft)] text-[11px] font-semibold text-[color:var(--sg-color-olive)]">
+                                    {index + 1}
+                                </span>
+                                <span>{action}</span>
+                            </li>
+                        ))}
+                    </ol>
+                </div>
+            ) : null}
+            <details className="rounded-[20px] border border-[color:var(--sg-outline-soft)] bg-white/72 px-3 py-2">
+                <summary className="cursor-pointer text-xs font-semibold text-[color:var(--sg-text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]">
+                    {copy.fullAnswerTitle}
+                </summary>
+                <div className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                    <MarkdownAnswer text={text} />
+                </div>
+            </details>
+        </div>
+    );
+}
+
 const ChatAssistant = ({
     isOpen = true,
     onClose,
@@ -209,15 +326,17 @@ const ChatAssistant = ({
     const copy = locale === 'ko'
         ? {
             initialMessage: '안녕하세요. 현재 상태를 해석하고 지금 해야 할 조치를 함께 정리해드리겠습니다.',
-            title: '질문하기',
+            title: '질문 도우미',
+            close: '질문 도우미 닫기',
+            send: '질문 보내기',
             placeholder: '예: 지금 CO2를 100ppm 더 올리면 어떻게 되나요?',
             noResponse: '응답이 없습니다.',
             unknownError: '알 수 없는 오류가 발생했습니다.',
             aiUnavailable: '모델 상담을 사용할 수 없습니다',
-            smartGrowTitle: '바로 열 수 있는 도구',
+            smartGrowTitle: '현장 도구',
             smartGrowLoading: '바로 쓸 수 있는 도구 상태를 불러오는 중...',
             smartGrowUnavailable: '도구 상태를 아직 불러오지 못했습니다.',
-            smartGrowHint: '연결된 화면을 열거나 추천 질문으로 바로 이어서 확인할 수 있습니다.',
+            smartGrowHint: '필요한 자료와 실행 화면을 이어서 확인할 수 있습니다.',
             knowledgeSearch: '자료 찾기',
             runtimeTitle: '예측 모델 분석',
             runtimeReady: '예측 반영',
@@ -238,21 +357,26 @@ const ChatAssistant = ({
             todayTitle: '오늘',
             weekTitle: '이번 주',
             confidenceLabel: '반영 상태',
+            farmerSummaryTitle: '농가용 요약',
+            farmerActionTitle: '작업 순서',
+            fullAnswerTitle: '전체 답변 보기',
             promptPesticide: `${cropLabel} 흰가루병 후보 농약을 요약해줘`,
             promptNutrient: `${cropLabel} 현재 단계 양액 레시피와 경계 조건을 정리해줘`,
             promptCorrection: `${cropLabel} 양액 보정 초안의 수동 검토 경계를 설명해줘`,
         }
         : {
             initialMessage: 'Hello. I can explain the current greenhouse state and turn it into immediate actions.',
-            title: 'Ask',
+            title: 'Question helper',
+            close: 'Close question helper',
+            send: 'Send question',
             placeholder: 'Example: What happens if I raise CO2 by 100 ppm now?',
             noResponse: 'No response.',
             unknownError: 'An unknown error occurred.',
             aiUnavailable: 'AI chat is unavailable',
-            smartGrowTitle: 'Ready-to-open tools',
+            smartGrowTitle: 'Field tools',
             smartGrowLoading: 'Loading the ready-to-open tool state...',
             smartGrowUnavailable: 'Tool status is unavailable.',
-            smartGrowHint: 'Open connected screens or continue with the suggested next questions.',
+            smartGrowHint: 'Open the linked material or move into the connected workflow.',
             knowledgeSearch: 'Find materials',
             runtimeTitle: 'Model runtime',
             runtimeReady: 'Recommendation linked',
@@ -273,6 +397,9 @@ const ChatAssistant = ({
             todayTitle: 'Today',
             weekTitle: 'This week',
             confidenceLabel: 'Readiness',
+            farmerSummaryTitle: 'Grower summary',
+            farmerActionTitle: 'Work order',
+            fullAnswerTitle: 'Show full answer',
             promptPesticide: `Summarize powdery mildew pesticide candidates for ${cropLabel}`,
             promptNutrient: `Summarize the current nutrient recipe and guardrails for ${cropLabel}`,
             promptCorrection: `Explain the manual-review boundary of the nutrient correction draft for ${cropLabel}`,
@@ -345,7 +472,7 @@ const ChatAssistant = ({
         const toneClasses = runtime.status === 'ready'
             ? 'sg-tint-green'
             : runtime.status === 'unavailable'
-                ? 'sg-tint-violet'
+                ? 'sg-tint-rose'
                 : 'sg-tint-amber';
         const badgeClasses = runtime.status === 'ready'
             ? 'bg-white/92 text-[color:var(--sg-accent-success)]'
@@ -392,7 +519,7 @@ const ChatAssistant = ({
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                     {recommendedAction ? (
-                        <span className="rounded-full bg-[color:var(--sg-accent-violet)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
+                        <span className="rounded-full bg-[color:var(--sg-color-olive)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
                             {copy.runtimeRecommended}: {recommendedAction}
                         </span>
                     ) : null}
@@ -529,7 +656,7 @@ const ChatAssistant = ({
             <div className="flex items-center justify-between border-b border-[color:var(--sg-outline-soft)] bg-white/60 p-4 text-[color:var(--sg-text-strong)] backdrop-blur-sm">
                 <div className="flex items-center gap-2">
                     <div className="rounded-2xl bg-white/88 p-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <Bot className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                        <Leaf className="h-5 w-5 text-[color:var(--sg-color-olive)]" />
                     </div>
                     <span className="font-medium">{copy.title}</span>
                 </div>
@@ -537,8 +664,8 @@ const ChatAssistant = ({
                     <button
                         type="button"
                         onClick={onClose}
-                        aria-label={copy.title}
-                        className="rounded-full p-1 transition-colors hover:bg-[color:var(--sg-surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                        aria-label={copy.close}
+                        className="rounded-full p-1 transition-colors hover:bg-[color:var(--sg-surface-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -546,7 +673,8 @@ const ChatAssistant = ({
             </div>
 
             <div className="border-b border-[color:var(--sg-outline-soft)] px-4 py-3 sg-tint-amber">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-accent-violet)]">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
+                    <BookOpen className="h-3.5 w-3.5" />
                     {copy.smartGrowTitle}
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
@@ -563,7 +691,7 @@ const ChatAssistant = ({
                                 key={prompt}
                                 type="button"
                                 onClick={() => setInput(prompt)}
-                                className="rounded-full bg-white/92 px-3 py-1 text-[11px] font-medium text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                                className="rounded-full bg-white/92 px-3 py-1 text-[11px] font-medium text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]"
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 {prompt}
@@ -575,7 +703,7 @@ const ChatAssistant = ({
                     <button
                         type="button"
                         onClick={() => onOpenKnowledgeSearch(knowledgeSearchRequest)}
-                        className="mt-3 rounded-full bg-white/92 px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                        className="mt-3 rounded-full bg-[color:var(--sg-color-primary)] px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-white transition-colors hover:bg-[color:var(--sg-color-terracotta)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]"
                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                     >
                         {copy.knowledgeSearch}
@@ -598,7 +726,7 @@ const ChatAssistant = ({
                         <div
                             className={`max-w-[84%] rounded-3xl p-3 text-sm ${
                                 message.role === 'user'
-                                    ? 'rounded-br-none bg-[color:var(--sg-accent-violet)] text-white'
+                                    ? 'rounded-br-none bg-[color:var(--sg-color-olive)] text-white'
                                     : 'rounded-bl-none bg-white/94 text-[color:var(--sg-text)]'
                             }`}
                             style={message.role === 'user' ? undefined : { boxShadow: 'var(--sg-shadow-card)' }}
@@ -608,21 +736,11 @@ const ChatAssistant = ({
                                     {message.display ? (
                                         <StructuredReply display={message.display} copy={copy} locale={locale} />
                                     ) : null}
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            h2: ({ ...props }) => <h2 className="mb-1 mt-2 text-sm font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
-                                            h3: ({ ...props }) => <h3 className="mb-1 mt-2 text-xs font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
-                                            p: ({ ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                                            ul: ({ ...props }) => <ul className="mb-2 list-disc space-y-1 pl-5" {...props} />,
-                                            ol: ({ ...props }) => <ol className="mb-2 list-decimal space-y-1 pl-5" {...props} />,
-                                            li: ({ ...props }) => <li className="mb-0" {...props} />,
-                                            strong: ({ ...props }) => <strong className="font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
-                                            code: ({ ...props }) => <code className="rounded bg-[color:var(--sg-surface-muted)] px-1 py-0.5 text-[color:var(--sg-text-strong)]" {...props} />,
-                                        }}
-                                    >
-                                        {message.text}
-                                    </ReactMarkdown>
+                                    {message.text.length > 220 || message.text.includes('\n') || message.display ? (
+                                        <FarmerFriendlyAnswer text={message.text} copy={copy} />
+                                    ) : (
+                                        <MarkdownAnswer text={message.text} />
+                                    )}
                                     {message.modelRuntime ? renderRuntimeStrip(message.modelRuntime) : null}
                                 </>
                             ) : (
@@ -640,14 +758,14 @@ const ChatAssistant = ({
                     onChange={(event) => setInput(event.target.value)}
                     onKeyDown={(event) => event.key === 'Enter' && !isSending && handleSend()}
                     placeholder={copy.placeholder}
-                    className="flex-1 rounded-full bg-[color:var(--sg-surface-muted)] px-4 py-2 text-sm text-[color:var(--sg-text-strong)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-accent-violet)]"
+                    className="flex-1 rounded-full bg-[color:var(--sg-surface-muted)] px-4 py-2 text-sm text-[color:var(--sg-text-strong)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-color-primary)]"
                 />
                 <button
                     type="button"
                     onClick={handleSend}
                     disabled={isSending}
-                    aria-label={copy.title}
-                    className="rounded-full bg-[color:var(--sg-accent-violet)] p-2 text-white transition-colors hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)] disabled:opacity-50"
+                    aria-label={copy.send}
+                    className="rounded-full bg-[color:var(--sg-color-primary)] p-2 text-white transition-colors hover:bg-[color:var(--sg-color-terracotta)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)] disabled:opacity-50"
                 >
                     <Send className="h-4 w-4" />
                 </button>

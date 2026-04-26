@@ -10,7 +10,11 @@ export function Sheet({ open = false, children }: SheetProps) {
     if (!open) {
         return null;
     }
-    return <div className="fixed inset-0 z-50 flex justify-end bg-[color:rgba(74,40,31,0.22)]">{children}</div>;
+    return (
+        <div className="fixed inset-0 z-50 flex justify-end bg-[rgba(49,35,24,0.24)] backdrop-blur-[2px]">
+            {children}
+        </div>
+    );
 }
 
 export function SheetContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

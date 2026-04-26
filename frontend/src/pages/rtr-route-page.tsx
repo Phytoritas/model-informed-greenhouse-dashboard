@@ -15,6 +15,7 @@ import type {
 import ControlPanel from '../components/ControlPanel';
 import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
+import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
 import RtrPage from './rtr-page';
 
 const RTROptimizerPanel = lazy(() => import('../components/RTROptimizerPanel'));
@@ -41,6 +42,8 @@ interface RtrRoutePageProps {
   modelMetrics: AdvancedModelMetrics;
   producePrices: ProducePricesPayload | null;
   produceLoading: boolean;
+  optimizerState?: RTROptimizerStateLike;
+  uiState?: RTROptimizerUiStateLike;
 }
 
 export default function RtrRoutePage({
@@ -65,6 +68,8 @@ export default function RtrRoutePage({
   modelMetrics,
   producePrices,
   produceLoading,
+  optimizerState,
+  uiState,
 }: RtrRoutePageProps) {
   return (
     <RtrPage
@@ -95,6 +100,8 @@ export default function RtrRoutePage({
             optimizerEnabled={optimizerEnabled}
             defaultMode={defaultMode}
             onRefreshProfiles={onRefreshProfiles}
+            optimizerState={optimizerState}
+            uiState={uiState}
           />
         </Suspense>
       )}

@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import PageSectionTabs from '../components/phyto/PageSectionTabs';
 import AskSearchPage from '../components/phyto/AskSearchPage';
+import AiCompatibilityPanel from '../components/assistant/AiCompatibilityPanel';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { SmartGrowAdvisorySurfaceSummary, SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
@@ -96,24 +97,37 @@ export default function AssistantRoutePage({
         </div>
       )}
       summaryRail={(
-        <Suspense
-          fallback={(
-            <LoadingSkeleton
-              title={locale === 'ko' ? '바로 실행 도구' : 'Quick operating tools'}
-              loadingMessage={locale === 'ko' ? '운영 도구를 불러오는 중입니다...' : 'Loading quick operating tools...'}
-              minHeightClassName="min-h-[320px]"
-            />
-          )}
-        >
-          <SmartGrowSurfacePanel
+        <div className="space-y-6">
+          <AiCompatibilityPanel
+            locale={locale}
             crop={crop}
-            summary={summary}
-            loading={smartGrowLoading}
-            error={smartGrowError}
-            onOpenSurface={onOpenSurface}
-            layoutMode="compact"
+            currentData={currentData}
+            metrics={metrics}
+            forecast={forecast}
+            history={history}
+            producePrices={producePrices}
+            weather={weather}
+            rtrProfile={rtrProfile}
           />
-        </Suspense>
+          <Suspense
+            fallback={(
+              <LoadingSkeleton
+                title={locale === 'ko' ? '바로 실행 도구' : 'Quick operating tools'}
+                loadingMessage={locale === 'ko' ? '운영 도구를 불러오는 중입니다...' : 'Loading quick operating tools...'}
+                minHeightClassName="min-h-[320px]"
+              />
+            )}
+          >
+            <SmartGrowSurfacePanel
+              crop={crop}
+              summary={summary}
+              loading={smartGrowLoading}
+              error={smartGrowError}
+              onOpenSurface={onOpenSurface}
+              layoutMode="compact"
+            />
+          </Suspense>
+        </div>
       )}
     />
   );
