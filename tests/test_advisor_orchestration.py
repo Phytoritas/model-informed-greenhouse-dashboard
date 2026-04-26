@@ -2782,12 +2782,24 @@ def test_build_advisor_chat_response_keeps_legacy_text_and_adds_runtime_focus(
         language="ko",
     )
 
-    assert payload["text"] == structured_reply
+    assert payload["text"].startswith("## 모델 계산 결과")
+    assert "주간 CO2 +100ppm" in payload["text"]
+    assert "14일 예상 수량" in payload["text"]
+    assert structured_reply in payload["text"]
     assert payload["machine_payload"]["model_runtime"]["status"] == "ready"
     assert (
         payload["machine_payload"]["model_runtime"]["provenance"]["selected_controls"][0]
         == "co2_setpoint_day"
     )
+    answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
+    assert answer_focus["matched_user_request"] is True
+    assert answer_focus["control"] == "co2_setpoint_day"
+    assert answer_focus["matched_delta"] == pytest.approx(100.0)
+    assert answer_focus["effects"]["yield_delta_14d"] == pytest.approx(17.493218)
+    assert answer_focus["effects"]["yield_delta_7d"] != pytest.approx(
+        answer_focus["effects"]["yield_delta_72h"]
+    )
+    assert answer_focus["effects"]["canopy_delta_72h"] > 0
     assert payload["machine_payload"]["display"] == {
         "language": "ko",
         "summary": "지금 CO2를 100 ppm 올리면 2주 수량이 소폭 개선될 가능성이 큽니다.",
@@ -2825,6 +2837,95 @@ def test_build_advisor_chat_response_keeps_legacy_text_and_adds_runtime_focus(
             },
         ],
     }
+
+
+def test_build_advisor_chat_response_uses_latest_user_turn_for_answer_focus(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "generate_chat_reply",
+        lambda **_: "## 핵심 요약\n- 모델 계산값을 확인했습니다.",
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_chat_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {"status": "skipped", "mode": "chat_seeded"},
+            "llm_context": None,
+            "internal_provenance": {
+                "knowledge_queries": [],
+                "document_ids": [],
+                "chunk_ids": [],
+                "confidence_source": ["not_requested"],
+            },
+        },
+    )
+
+    payload = advisor_orchestration.build_advisor_chat_response(
+        crop="tomato",
+        messages=[
+            {"role": "user", "content": "CO2를 100ppm 올리면?"},
+            {"role": "assistant", "content": "모델 계산 결과를 보여드렸습니다."},
+            {"role": "user", "content": "그러면 습도를 5% 낮추면?"},
+        ],
+        dashboard=_runtime_ready_dashboard(),
+        language="ko",
+    )
+
+    answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
+    assert answer_focus["matched_user_request"] is True
+    assert answer_focus["control"] == "rh_target"
+    assert answer_focus["matched_delta"] == pytest.approx(-5.0)
+    assert "습도 -5%" in payload["text"]
+
+
+def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "generate_chat_reply",
+        lambda **_: "## Summary\n- Model values are ready.",
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_chat_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {"status": "skipped", "mode": "chat_seeded"},
+            "llm_context": None,
+            "internal_provenance": {
+                "knowledge_queries": [],
+                "document_ids": [],
+                "chunk_ids": [],
+                "confidence_source": ["not_requested"],
+            },
+        },
+    )
+
+    payload = advisor_orchestration.build_advisor_chat_response(
+        crop="cucumber",
+        messages=[{"role": "user", "content": "What happens if I raise CO2 by 100 ppm?"}],
+        dashboard=_runtime_ready_dashboard(),
+        language="en",
+    )
+
+    answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
+    assert "was calculated by the process-model bounded scenario" in answer_focus["summary"]
+    assert "조정은" not in answer_focus["summary"]
+    assert payload["text"].startswith("## Model-calculated effect")
 
 
 def test_build_environment_recommendation_response_keeps_legacy_keys_and_carries_model_runtime(

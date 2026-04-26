@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import datetime, timezone
 import logging
+import re
 from typing import Any, Optional
 
 from .advisor_context_builder import (
@@ -331,6 +332,166 @@ def _select_runtime_controls(
         if control not in ordered:
             ordered.append(control)
     return ordered
+
+
+def _latest_user_transcript(messages: Optional[list[dict[str, str]]]) -> str:
+    for message in reversed(messages or []):
+        if isinstance(message, dict) and str(message.get("role") or "user") == "user":
+            return str(message.get("content") or "").lower()
+    return ""
+
+
+def _signed_delta_from_text(value: float, text: str) -> float:
+    if value < 0:
+        return value
+    decrease_terms = ("내리", "낮추", "줄이", "감소", "decrease", "reduce", "lower")
+    increase_terms = ("올리", "높", "상향", "증가", "increase", "raise", "up")
+    if any(term in text for term in decrease_terms):
+        return -abs(value)
+    if any(term in text for term in increase_terms):
+        return abs(value)
+    return value
+
+
+def _extract_requested_runtime_delta(
+    *,
+    messages: Optional[list[dict[str, str]]],
+    control_name: str,
+) -> float | None:
+    transcript = _latest_user_transcript(messages)
+    if not transcript:
+        return None
+
+    patterns: tuple[str, ...]
+    if control_name == "co2_setpoint_day":
+        patterns = (
+            r"([+-]?\d+(?:\.\d+)?)\s*(?:ppm|피피엠)",
+            r"(?:co2|이산화탄소)[^\d+-]{0,18}([+-]?\d+(?:\.\d+)?)",
+        )
+    elif control_name in {"temperature_day", "temperature_night"}:
+        patterns = (
+            r"([+-]?\d+(?:\.\d+)?)\s*(?:℃|°c|c|도)",
+            r"(?:온도|temperature|temp)[^\d+-]{0,18}([+-]?\d+(?:\.\d+)?)",
+        )
+    elif control_name in {"rh_target", "screen_close"}:
+        patterns = (
+            r"([+-]?\d+(?:\.\d+)?)\s*(?:%|퍼센트|pct)",
+            r"(?:습도|rh|screen|스크린)[^\d+-]{0,18}([+-]?\d+(?:\.\d+)?)",
+        )
+    else:
+        return None
+
+    for pattern in patterns:
+        match = re.search(pattern, transcript, flags=re.IGNORECASE)
+        if not match:
+            continue
+        numeric = _coerce_float(match.group(1))
+        if numeric is None:
+            continue
+        return _signed_delta_from_text(numeric, transcript)
+
+    return None
+
+
+def _format_signed_delta(value: Any, digits: int = 3) -> str:
+    numeric = _coerce_float(value)
+    if numeric is None:
+        return "추가 데이터 필요"
+    return f"{numeric:+.{digits}f}"
+
+
+def _build_runtime_answer_focus(
+    *,
+    messages: Optional[list[dict[str, str]]],
+    recommendation_families: list[dict[str, Any]],
+    language: str = "ko",
+) -> dict[str, Any] | None:
+    if not recommendation_families:
+        return None
+
+    requested_candidates: list[tuple[dict[str, Any], float | None]] = []
+    fallback_candidates: list[tuple[dict[str, Any], float | None]] = []
+    for family in recommendation_families:
+        requested_delta = _extract_requested_runtime_delta(
+            messages=messages,
+            control_name=str(family.get("control") or ""),
+        )
+        if requested_delta is None:
+            fallback_candidates.append((family, None))
+        else:
+            requested_candidates.append((family, requested_delta))
+
+    for family, requested_delta in [*requested_candidates, *fallback_candidates]:
+        steps = [
+            step
+            for step in family.get("steps", [])
+            if isinstance(step, dict)
+        ]
+        if not steps:
+            continue
+
+        if requested_delta is None:
+            step = family.get("recommended_step")
+        else:
+            step = min(
+                steps,
+                key=lambda item: abs(float(item.get("applied_delta", 0.0)) - requested_delta),
+            )
+        if not isinstance(step, dict):
+            continue
+
+        label = str(family.get("label") or family.get("control") or "control")
+        step_label = str(step.get("step_label") or "")
+        effects = {
+            "yield_delta_24h": step.get("yield_delta_24h"),
+            "yield_delta_72h": step.get("yield_delta_72h"),
+            "yield_delta_7d": step.get("yield_delta_7d"),
+            "yield_delta_14d": step.get("yield_delta_14d"),
+            "canopy_delta_72h": step.get("canopy_delta_72h"),
+            "energy_delta": step.get("energy_delta"),
+            "energy_delta_7d": step.get("energy_delta_7d"),
+            "source_sink_balance_delta": step.get("source_sink_balance_delta"),
+            "rtr_delta_72h": step.get("rtr_delta_72h"),
+            "humidity_penalty_delta": step.get("humidity_penalty_delta"),
+            "disease_penalty_delta": step.get("disease_penalty_delta"),
+        }
+        if language.lower().startswith("en"):
+            summary = (
+                f"{label} {step_label} was calculated by the process-model bounded scenario as "
+                f"14d yield {_format_signed_delta(effects['yield_delta_14d'])}, "
+                f"72h canopy assimilation {_format_signed_delta(effects['canopy_delta_72h'])}, "
+                f"source/sink balance {_format_signed_delta(effects['source_sink_balance_delta'])}, "
+                f"and energy {_format_signed_delta(effects['energy_delta'])}."
+            )
+        else:
+            summary = (
+                f"{label} {step_label} 조정은 process-model bounded scenario에서 "
+                f"14일 예상 수량 {_format_signed_delta(effects['yield_delta_14d'])}, "
+                f"72시간 캐노피 동화량 {_format_signed_delta(effects['canopy_delta_72h'])}, "
+                f"소스-싱크 균형 {_format_signed_delta(effects['source_sink_balance_delta'])}, "
+                f"에너지 {_format_signed_delta(effects['energy_delta'])}로 계산됐습니다."
+            )
+        return {
+            "kind": "model_what_if",
+            "computed_by": "process_model_bounded_scenario",
+            "control": family.get("control"),
+            "label": label,
+            "requested_delta": requested_delta,
+            "matched_delta": step.get("applied_delta"),
+            "unit": family.get("unit"),
+            "step_label": step_label,
+            "action": f"{label} {step_label} 조정",
+            "summary": summary,
+            "effects": effects,
+            "confidence": step.get("confidence"),
+            "risk_flags": step.get("risk_flags", []),
+            "violated_constraints": step.get("violated_constraints", []),
+            "operator_summary": family.get("operator_summary", {}),
+            "precision_mode": family.get("precision_mode"),
+            "matched_user_request": requested_delta is not None,
+        }
+
+    return None
 
 
 def _build_unavailable_model_runtime_payload(
@@ -787,6 +948,7 @@ def _build_model_runtime_payload(
     dashboard: dict[str, Any],
     tab_name: str,
     messages: Optional[list[dict[str, str]]] = None,
+    language: str = "ko",
 ) -> dict[str, Any]:
     snapshot_record, observed_signal_score, dashboard_missing_fields, inferred_fields = (
         _build_dashboard_runtime_snapshot(
@@ -899,6 +1061,7 @@ def _build_model_runtime_payload(
         confidence = round(float(comparison.get("confidence", 0.0)), 6)
         yield_delta_24h = round(float(scenario_24h.get("yield_delta_vs_baseline", 0.0)), 6)
         yield_delta_72h = round(float(scenario_72h.get("yield_delta_vs_baseline", 0.0)), 6)
+        yield_delta_7d = round(float(scenario_168h.get("yield_delta_vs_baseline", 0.0)), 6)
         yield_delta_14d = round(float(scenario_336h.get("yield_delta_vs_baseline", 0.0)), 6)
         canopy_delta_72h = round(float(scenario_72h.get("canopy_A_pred", 0.0)) - float(baseline_72h.get("canopy_A_pred", 0.0)), 6)
         energy_delta_72h = round(float(scenario_72h.get("energy_delta_vs_baseline", 0.0)), 6)
@@ -970,7 +1133,9 @@ def _build_model_runtime_payload(
             "objective_delta": objective_delta,
             "yield_delta_24h": yield_delta_24h,
             "yield_delta_72h": yield_delta_72h,
+            "yield_delta_7d": yield_delta_7d,
             "yield_delta_14d": yield_delta_14d,
+            "canopy_delta_72h": canopy_delta_72h,
             "energy_delta": energy_delta_72h,
             "energy_delta_7d": energy_delta_7d,
             "humidity_penalty_delta": humidity_penalty_delta,
@@ -1039,13 +1204,13 @@ def _build_model_runtime_payload(
                 diminishing_return = {"is_present": (macro_gain / max(abs(micro_gain), 1e-9)) < 0.85 or (macro_cost / max(abs(micro_cost), 1e-9)) > 1.1, "marginal_gain_micro": round(micro_gain, 6), "marginal_gain_macro": round(macro_gain, 6), "marginal_cost_micro": round(micro_cost, 6), "marginal_cost_macro": round(macro_cost, 6), "micro_to_macro_gain_ratio": round(macro_gain / max(abs(micro_gain), 1e-9), 6), "micro_to_macro_cost_ratio": round(macro_cost / max(abs(micro_cost), 1e-9), 6), "energy_per_yield_ratio": round(abs(float(macro.get("energy_delta", 0.0))) / max(abs(float(macro.get("yield_delta_14d", 0.0))), 1e-9), 6)}
         operator_summary = {"headline": f"{spec.ui_label}은 지금 유지가 안전합니다.", "why": "bounded scenario에서 신뢰 가능한 이득이 확인된 조정 폭이 없습니다.", "watch_out": "현재 조건에서는 큰 조정보다 관측 신호를 더 모으는 편이 안전합니다.", "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(_MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"), "오늘")}
         if recommended_step:
-            operator_summary = {"headline": f"{spec.ui_label}는 {recommended_step['step_label']} 조정이 가장 유리합니다.", "why": f"14일 예상 수량 {float(recommended_step.get('yield_delta_14d', 0.0)):+.3f}, 72시간 동화량 {float(recommended_step.get('yield_delta_72h', 0.0)):+.3f}, 균형 지수 {float(recommended_step.get('source_sink_balance_delta', 0.0)):+.3f}입니다.", "watch_out": "더 크게 조정하면 추가 이득보다 비용 또는 리스크가 먼저 커질 수 있습니다." if precision_mode == "micro_preferred" else "미세 조정보다 한 단계 더 크게 움직일 때 이득이 더 분명합니다." if precision_mode == "macro_preferred" else "미세 조정과 강한 조정이 모두 유효해 운영 여유 범위가 있습니다." if precision_mode == "range_preferred" else "신뢰 구간 안에서만 조정 강도를 비교해 주세요.", "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(_MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"), "오늘")}
+            operator_summary = {"headline": f"{spec.ui_label}는 {recommended_step['step_label']} 조정이 가장 유리합니다.", "why": f"14일 예상 수량 {float(recommended_step.get('yield_delta_14d', 0.0)):+.3f}, 72시간 캐노피 동화량 {float(recommended_step.get('canopy_delta_72h', 0.0)):+.3f}, 균형 지수 {float(recommended_step.get('source_sink_balance_delta', 0.0)):+.3f}입니다.", "watch_out": "더 크게 조정하면 추가 이득보다 비용 또는 리스크가 먼저 커질 수 있습니다." if precision_mode == "micro_preferred" else "미세 조정보다 한 단계 더 크게 움직일 때 이득이 더 분명합니다." if precision_mode == "macro_preferred" else "미세 조정과 강한 조정이 모두 유효해 운영 여유 범위가 있습니다." if precision_mode == "range_preferred" else "신뢰 구간 안에서만 조정 강도를 비교해 주세요.", "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(_MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"), "오늘")}
         recommended_band = None
         if recommended_step:
             same_sign_values = [float(item.get("applied_delta", 0.0)) for item in steps if item.get("ui_visible") and (1 if float(item.get("applied_delta", 0.0)) > 0 else -1) == (1 if float(recommended_step.get("applied_delta", 0.0)) > 0 else -1) and item.get("step_class") in {"micro", "macro"}]
             same_sign_values = sorted(same_sign_values or [float(recommended_step.get("applied_delta", 0.0))])
             recommended_band = {"start": round(same_sign_values[0], 6), "end": round(same_sign_values[-1], 6), "unit": _display_unit(spec), "best_step": round(float(recommended_step.get("applied_delta", 0.0)), 6)}
-        return {"control": control_name, "label": spec.ui_label, "current_value": _current_value(control_name), "unit": _display_unit(spec), "target_metric": derivative_target, "local_sensitivity": {"derivative": sensitivity_row.get("derivative"), "elasticity": sensitivity_row.get("elasticity"), "trust_region": sensitivity_row.get("trust_region"), "scenario_alignment": sensitivity_row.get("scenario_alignment"), "bounded_delta": sensitivity_row.get("bounded_delta"), "local_confidence": sensitivity_row.get("local_confidence"), "recommended_sign": sensitivity_row.get("recommended_sign"), "nonlinearity_hint": sensitivity_row.get("nonlinearity_hint")}, "steps": steps, "recommended_step": recommended_step, "diminishing_return": diminishing_return, "operator_summary": operator_summary, "action": _action_label(spec, float(recommended_step.get("applied_delta", 0.0))) if recommended_step else f"{spec.ui_label} 유지", "action_short": f"{spec.ui_label} {_step_label(spec, float(recommended_step.get('applied_delta', 0.0)))}" if recommended_step else f"{spec.ui_label} 유지", "action_family": spec.family_name, "recommended_band": recommended_band, "precision_mode": precision_mode, "why_summary": operator_summary["headline"], "why_detail": {"yield_24h": recommended_step.get("yield_delta_24h"), "yield_72h": recommended_step.get("yield_delta_72h"), "yield_14d": recommended_step.get("yield_delta_14d"), "energy": recommended_step.get("energy_delta"), "humidity": recommended_step.get("humidity_penalty_delta"), "disease": recommended_step.get("disease_penalty_delta"), "source_sink": recommended_step.get("source_sink_balance_delta")} if recommended_step else {}, "family_score": family_score, "best_step_score": float(recommended_step.get("scenario_score", 0.0)) if recommended_step else 0.0, "confidence_adjustment": confidence_adjustment, "feasibility_adjustment": feasibility_adjustment, "clarity_adjustment": clarity_adjustment, "time_window": _MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today")}
+        return {"control": control_name, "label": spec.ui_label, "current_value": _current_value(control_name), "unit": _display_unit(spec), "target_metric": derivative_target, "local_sensitivity": {"derivative": sensitivity_row.get("derivative"), "elasticity": sensitivity_row.get("elasticity"), "trust_region": sensitivity_row.get("trust_region"), "scenario_alignment": sensitivity_row.get("scenario_alignment"), "bounded_delta": sensitivity_row.get("bounded_delta"), "local_confidence": sensitivity_row.get("local_confidence"), "recommended_sign": sensitivity_row.get("recommended_sign"), "nonlinearity_hint": sensitivity_row.get("nonlinearity_hint")}, "steps": steps, "recommended_step": recommended_step, "diminishing_return": diminishing_return, "operator_summary": operator_summary, "action": _action_label(spec, float(recommended_step.get("applied_delta", 0.0))) if recommended_step else f"{spec.ui_label} 유지", "action_short": f"{spec.ui_label} {_step_label(spec, float(recommended_step.get('applied_delta', 0.0)))}" if recommended_step else f"{spec.ui_label} 유지", "action_family": spec.family_name, "recommended_band": recommended_band, "precision_mode": precision_mode, "why_summary": operator_summary["headline"], "why_detail": {"yield_24h": recommended_step.get("yield_delta_24h"), "yield_72h": recommended_step.get("yield_delta_72h"), "yield_7d": recommended_step.get("yield_delta_7d"), "yield_14d": recommended_step.get("yield_delta_14d"), "canopy_72h": recommended_step.get("canopy_delta_72h"), "energy": recommended_step.get("energy_delta"), "humidity": recommended_step.get("humidity_penalty_delta"), "disease": recommended_step.get("disease_penalty_delta"), "source_sink": recommended_step.get("source_sink_balance_delta")} if recommended_step else {}, "family_score": family_score, "best_step_score": float(recommended_step.get("scenario_score", 0.0)) if recommended_step else 0.0, "confidence_adjustment": confidence_adjustment, "feasibility_adjustment": feasibility_adjustment, "clarity_adjustment": clarity_adjustment, "time_window": _MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today")}
 
     recommendation_families = [
         _build_family(control_name)
@@ -1075,8 +1240,9 @@ def _build_model_runtime_payload(
             "score": family.get("family_score"),
             "expected_yield_delta_24h": family["recommended_step"].get("yield_delta_24h"),
             "expected_yield_delta_72h": family["recommended_step"].get("yield_delta_72h"),
-            "expected_yield_delta_7d": family["recommended_step"].get("yield_delta_72h"),
+            "expected_yield_delta_7d": family["recommended_step"].get("yield_delta_7d"),
             "expected_yield_delta_14d": family["recommended_step"].get("yield_delta_14d"),
+            "expected_canopy_delta_72h": family["recommended_step"].get("canopy_delta_72h"),
             "expected_energy_delta": family["recommended_step"].get("energy_delta_7d"),
             "expected_RTR_delta": family["recommended_step"].get("rtr_delta_72h"),
             "expected_source_sink_balance_delta": family["recommended_step"].get("source_sink_balance_delta"),
@@ -1190,6 +1356,11 @@ def _build_model_runtime_payload(
             for family in sorted(best_actions, key=lambda item: float(item["recommended_step"].get("yield_delta_14d", 0.0)) + float(item["recommended_step"].get("source_sink_balance_delta", 0.0)), reverse=True)[:3]
         ],
     }
+    answer_focus = _build_runtime_answer_focus(
+        messages=messages,
+        recommendation_families=recommendation_families,
+        language=language,
+    )
 
     return {
         "status": "ready",
@@ -1258,6 +1429,7 @@ def _build_model_runtime_payload(
         "control_precision_matrix": control_precision_matrix,
         "operator_view": operator_view,
         "tradeoff_summary": tradeoff_summary,
+        "answer_focus": answer_focus,
         "recommendations": runtime_options[:3],
         "provenance": {
             "source": "dashboard_synthesized_snapshot",
@@ -4776,6 +4948,77 @@ def build_advisor_summary_fallback_response(
     }
 
 
+def _build_chat_answer_focus_markdown(
+    *,
+    model_runtime: dict[str, Any],
+    language: str,
+) -> str | None:
+    focus = _coerce_dict(model_runtime.get("answer_focus"))
+    if not focus or not focus.get("matched_user_request"):
+        return None
+
+    effects = _coerce_dict(focus.get("effects"))
+    operator_summary = _coerce_dict(focus.get("operator_summary"))
+    violations = focus.get("violated_constraints")
+    violation_items = violations if isinstance(violations, list) else []
+    confidence = _coerce_float(focus.get("confidence"))
+    locale = "ko" if not language.lower().startswith("en") else "en"
+
+    if locale == "ko":
+        confidence_text = "추가 데이터 필요" if confidence is None else f"{confidence:.0%}"
+        constraint_text = "제약 위반 없음" if not violation_items else f"제약 {len(violation_items)}건 확인 필요"
+        return (
+            "## 모델 계산 결과\n"
+            f"- {focus.get('summary')}\n"
+            f"- 수량 변화: 24시간 {_format_signed_delta(effects.get('yield_delta_24h'))}, "
+            f"72시간 {_format_signed_delta(effects.get('yield_delta_72h'))}, "
+            f"7일 {_format_signed_delta(effects.get('yield_delta_7d'))}, "
+            f"14일 {_format_signed_delta(effects.get('yield_delta_14d'))}.\n"
+            f"- 생리 반응: 72시간 캐노피 동화량 {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
+            f"소스-싱크 균형 {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
+            f"RTR {_format_signed_delta(effects.get('rtr_delta_72h'))}.\n"
+            f"- 비용/리스크: 에너지 {_format_signed_delta(effects.get('energy_delta'))}, "
+            f"습도 패널티 {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
+            f"병해 패널티 {_format_signed_delta(effects.get('disease_penalty_delta'))}; "
+            f"{constraint_text}, 계산 신뢰도 {confidence_text}.\n"
+            f"- 해석: {operator_summary.get('why') or '모델 계산값을 기준으로 효과와 비용을 함께 비교했습니다.'}\n"
+        )
+
+    confidence_text = "missing data" if confidence is None else f"{confidence:.0%}"
+    constraint_text = "no constraint violation" if not violation_items else f"{len(violation_items)} constraint checks need review"
+    return (
+        "## Model-calculated effect\n"
+        f"- {focus.get('summary')}\n"
+        f"- Yield change: 24h {_format_signed_delta(effects.get('yield_delta_24h'))}, "
+        f"72h {_format_signed_delta(effects.get('yield_delta_72h'))}, "
+        f"7d {_format_signed_delta(effects.get('yield_delta_7d'))}, "
+        f"14d {_format_signed_delta(effects.get('yield_delta_14d'))}.\n"
+        f"- Physiology: 72h canopy assimilation {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
+        f"source/sink balance {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
+        f"RTR {_format_signed_delta(effects.get('rtr_delta_72h'))}.\n"
+        f"- Cost/risk: energy {_format_signed_delta(effects.get('energy_delta'))}, "
+        f"humidity penalty {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
+        f"disease penalty {_format_signed_delta(effects.get('disease_penalty_delta'))}; "
+        f"{constraint_text}, confidence {confidence_text}.\n"
+        f"- Interpretation: {operator_summary.get('why') or 'The process model compared effect and operating cost together.'}\n"
+    )
+
+
+def _prepend_chat_answer_focus(
+    *,
+    text: str,
+    model_runtime: dict[str, Any],
+    language: str,
+) -> str:
+    focus_markdown = _build_chat_answer_focus_markdown(
+        model_runtime=model_runtime,
+        language=language,
+    )
+    if not focus_markdown:
+        return text
+    return f"{focus_markdown}\n{text.lstrip()}"
+
+
 def build_advisor_chat_response(
     *,
     crop: str,
@@ -4795,6 +5038,7 @@ def build_advisor_chat_response(
         dashboard=dashboard_payload,
         tab_name="chat",
         messages=messages,
+        language=language,
     )
     llm_dashboard = _inject_model_runtime_context(
         _inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
@@ -4804,6 +5048,11 @@ def build_advisor_chat_response(
         crop=crop,
         messages=messages,
         dashboard=llm_dashboard,
+        language=language,
+    )
+    text = _prepend_chat_answer_focus(
+        text=text,
+        model_runtime=model_runtime,
         language=language,
     )
     display = build_advisory_display_payload(
