@@ -5,7 +5,7 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Current baseline branch: `fix/114-post-issue112-backend-frontend-integration-audit`
+- Current baseline branch: `main`
 - Current merged UI baseline: issues `#65`, `#67`, `#69`, `#74`, `#80`, `#82`, `#84`
 - Current control-plane sync baseline: issue `#86`
 
@@ -18,14 +18,15 @@
 - bounded shell rhythm: `248px` sidebar, `80px` header, `1320px` main canvas
 - preserved product/runtime seams: `/api/models/*`, `/api/advisor/*`, `/api/rtr/*`, weather, market, crop switching, and area-unit projections
 
-## Current Issue #114 Lane
-Issue `#114` is the post-issue112 backend/frontend integration audit. It keeps the already-merged issue `#112` repairs stable and closes the next confirmed connection drifts before broader dashboard work continues.
+## Post-Issue #114 Baseline
+Issue `#114` completed the post-issue112 backend/frontend integration audit. The current `main` baseline keeps the already-merged issue `#112` repairs stable and closes the next confirmed connection drifts.
 
-- active issue: `#114`
-- active branch: `fix/114-post-issue112-backend-frontend-integration-audit`
+- active product issue: none
+- active sync issue: `#116`
+- active sync branch: `docs/116-sync-issue114-merged-harness-state-on-main`
 - completed baseline: issue `#112` repaired RTR area-settings crop casing, RTR response/calibration crop typing drift, KRW/kWh frontend default drift, and exact/nested AdvisorTabs lane routing
-- confirmed backend/frontend gaps: nested `/ask/*` aliases were advertised but not routed, backend crop normalization was route-specific instead of boundary-wide, advisor tab metadata advertised mixed harvest underscore/hyphen routes, and frontend market-price fallback types/UI hid backend degraded source status
-- bounded phase: repair those high-confidence post-issue112 integration drifts, update focused backend/frontend tests, and preserve existing route/API compatibility
+- completed issue `#114` repairs: nested `/ask/*` alias routing, boundary-wide crop normalization, advisor tab route metadata alignment, and visible market-price fallback source status
+- validation baseline: local frontend/backend ladders and GitHub Actions Backend/Frontend checks passed for PR `#115`
 - still blocked separately: issue `#3` remains blocked until real grower-approved RTR windows are supplied
 
 ## Source Of Truth
@@ -92,6 +93,6 @@ Issue `#114` is the post-issue112 backend/frontend integration audit. It keeps t
 - `poetry run pytest`
 
 ## Immediate Next Action
-- Complete issue `#114` phase 1 by reconnecting the confirmed post-issue112 seams and locking them with focused tests.
-- Re-run the repo validation ladder before reporting completion.
+- Complete docs issue `#116` by syncing tracked RAH restart state to the post-issue114 merged `main` baseline.
+- For code changes after this point, open a fresh bounded issue first.
 - Keep issue `#3` blocked unless grower-approved production windows are supplied.
