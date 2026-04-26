@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import CropDetails from '../components/CropDetails';
 import TodayBoard from '../components/dashboard/TodayBoard';
+import ModelRuntimeBridge from '../components/dashboard/ModelRuntimeBridge';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { AppLocale } from '../i18n/locale';
 import type { AdvancedModelMetrics, CropType, ForecastData, SensorData } from '../types';
@@ -21,6 +22,7 @@ interface CropWorkRoutePageProps {
   actionsWeek: string[];
   monitor: string[];
   activePanel?: 'crop-work-growth' | 'crop-work-work' | 'crop-work-harvest';
+  onOpenAssistant: () => void;
 }
 
 export default function CropWorkRoutePage({
@@ -35,6 +37,7 @@ export default function CropWorkRoutePage({
   actionsWeek,
   monitor,
   activePanel = 'crop-work-growth',
+  onOpenAssistant,
 }: CropWorkRoutePageProps) {
   return (
     <CropWorkPage
@@ -64,22 +67,28 @@ export default function CropWorkRoutePage({
         </Suspense>
       )}
       recentWorkSurface={(
-        <Suspense
-          fallback={(
-            <LoadingSkeleton
-              title={locale === 'ko' ? '운영 리포트' : 'Operating report'}
-              loadingMessage={locale === 'ko' ? '운영 리포트를 불러오는 중입니다...' : 'Loading operating report...'}
-              minHeightClassName="min-h-[320px]"
+        <div className="space-y-5">
+          <Suspense
+            fallback={(
+              <LoadingSkeleton
+                title={locale === 'ko' ? '운영 리포트' : 'Operating report'}
+                loadingMessage={locale === 'ko' ? '운영 리포트를 불러오는 중입니다...' : 'Loading operating report...'}
+                minHeightClassName="min-h-[320px]"
+              />
+            )}
+          >
+            <ConsultingReport
+              analysis={aiAnalysis ?? ''}
+              metrics={modelMetrics}
+              currentData={currentData}
+              crop={crop}
             />
-          )}
-        >
-          <ConsultingReport
-            analysis={aiAnalysis ?? ''}
-            metrics={modelMetrics}
-            currentData={currentData}
+          </Suspense>
+          <ModelRuntimeBridge
             crop={crop}
+            onOpenAssistant={onOpenAssistant}
           />
-        </Suspense>
+        </div>
       )}
     />
   );

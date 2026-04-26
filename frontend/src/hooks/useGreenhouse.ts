@@ -11,14 +11,14 @@ import type {
     ForecastData,
     MetricHistoryPoint,
 } from '../types';
-import { API_URL, WS_URL } from '../config';
+import { API_URL, FORECAST_WS_URL, WS_URL } from '../config';
 import { useAreaUnit } from '../context/AreaUnitContext';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
 
 const DEFAULT_TEMP_SETTINGS_BY_CROP: Record<CropType, TemperatureSettings> = {
-    Tomato: { heating: 18, cooling: 26 },
-    Cucumber: { heating: 18, cooling: 26 },
+    Tomato: { heating: 18, cooling: 26, pBand: 4, co2Target: 800, drainTarget: 0.3 },
+    Cucumber: { heating: 18, cooling: 26, pBand: 4, co2Target: 800, drainTarget: 0.3 },
 };
 
 type BackendEnv = {
@@ -80,6 +80,16 @@ type BackendPayload = {
     state?: BackendState;
     kpi?: BackendKpi;
     energy?: BackendEnergy;
+};
+
+type ForecastSocketPayload = ForecastData | {
+    type?: string;
+    daily?: unknown;
+    last?: Record<string, unknown>;
+    total_harvest_kg?: unknown;
+    total_ETc_mm?: unknown;
+    total_energy_kWh?: unknown;
+    message?: string;
 };
 
 type NullableByCrop<T> = Record<CropType, T | null>;
@@ -180,6 +190,32 @@ function isReconnectableSocket(socket: WebSocket | null): boolean {
         socket.readyState === WebSocket.CLOSING
         || socket.readyState === WebSocket.CLOSED
     );
+}
+
+function normalizeForecastPayload(payload: ForecastSocketPayload): ForecastData | null {
+    if (payload.type === 'forecast.error') {
+        if (typeof payload.message === 'string') {
+            console.warn(`Forecast WebSocket error: ${payload.message}`);
+        }
+        return null;
+    }
+
+    if (payload.type !== undefined && payload.type !== 'forecast.snapshot') {
+        return null;
+    }
+
+    if (!Array.isArray(payload.daily)) {
+        return null;
+    }
+
+    return {
+        type: 'forecast.snapshot',
+        daily: payload.daily as ForecastData['daily'],
+        last: payload.last,
+        total_harvest_kg: typeof payload.total_harvest_kg === 'number' ? payload.total_harvest_kg : 0,
+        total_ETc_mm: typeof payload.total_ETc_mm === 'number' ? payload.total_ETc_mm : 0,
+        total_energy_kWh: typeof payload.total_energy_kWh === 'number' ? payload.total_energy_kWh : 0,
+    };
 }
 
 export const useGreenhouse = () => {
@@ -425,6 +461,11 @@ export const useGreenhouse = () => {
             }
             console.log(`Simulation for ${cropType} started.`);
         } catch (err) {
+            const errorName = err instanceof Error ? err.name : '';
+            if (errorName === 'AbortError') {
+                console.warn('Simulation startup request was aborted:', err);
+                return;
+            }
             console.error('Failed to ensure simulation is running:', err);
         } finally {
             recoveryRequestInFlightRef.current[cropType] = false;
@@ -815,6 +856,43 @@ export const useGreenhouse = () => {
     }, [flushCropState, mapPayloadToData, selectedCrop, wsConnectionNonce]);
 
     useEffect(() => {
+        const cropAtConnection = selectedCrop;
+        const cropPath = cropAtConnection.toLowerCase();
+        const ws = new WebSocket(`${FORECAST_WS_URL}/${cropPath}`);
+        let closedByCleanup = false;
+
+        ws.onmessage = (event) => {
+            try {
+                const payload = JSON.parse(event.data) as ForecastSocketPayload;
+                const forecastSnapshot = normalizeForecastPayload(payload);
+                if (!forecastSnapshot) {
+                    return;
+                }
+                setForecastByCrop(prev => ({
+                    ...prev,
+                    [cropAtConnection]: forecastSnapshot,
+                }));
+            } catch (err) {
+                console.error(`Error parsing forecast WS message for ${cropAtConnection}:`, err);
+            }
+        };
+
+        ws.onerror = (error) => {
+            if (closedByCleanup || ws.readyState >= WebSocket.CLOSING) {
+                return;
+            }
+            console.error(`Forecast WebSocket error for ${cropAtConnection}:`, error);
+        };
+
+        return () => {
+            closedByCleanup = true;
+            if (ws.readyState < WebSocket.CLOSING) {
+                ws.close();
+            }
+        };
+    }, [selectedCrop]);
+
+    useEffect(() => {
         const timer = window.setInterval(() => {
             const current = telemetryStateRef.current[selectedCrop];
             if (!current) {
@@ -916,9 +994,9 @@ export const useGreenhouse = () => {
                 body: JSON.stringify({
                     heating_set_C: newSettings.heating,
                     cooling_set_C: newSettings.cooling,
-                    p_band_C: 4.0, // Default
-                    co2_target_ppm: 800, // Default
-                    drain_target_fraction: 0.3 // Default
+                    p_band_C: newSettings.pBand ?? settingsByCropRef.current[selectedCrop].pBand ?? 4.0,
+                    co2_target_ppm: newSettings.co2Target ?? settingsByCropRef.current[selectedCrop].co2Target ?? 800,
+                    drain_target_fraction: newSettings.drainTarget ?? settingsByCropRef.current[selectedCrop].drainTarget ?? 0.3,
                 })
             });
             if (!res.ok) {

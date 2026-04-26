@@ -9,6 +9,7 @@ interface ControlPageProps {
   strategySurface: ReactNode;
   controlActions: ReactNode;
   controlSummary: ReactNode;
+  runtimeSurface?: ReactNode;
 }
 
 export default function ControlPage({
@@ -17,6 +18,7 @@ export default function ControlPage({
   strategySurface,
   controlActions,
   controlSummary,
+  runtimeSurface,
 }: ControlPageProps) {
   const copy = locale === 'ko'
     ? {
@@ -39,6 +41,7 @@ export default function ControlPage({
     >
       {activePanel === 'control-strategy' ? (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          {runtimeSurface ? <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{runtimeSurface}</div> : null}
           <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{controlActions}</div>
           <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{strategySurface}</div>
           <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{controlSummary}</div>
@@ -46,6 +49,7 @@ export default function ControlPage({
       ) : null}
       {activePanel === 'control-devices' ? (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          {runtimeSurface ? <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{runtimeSurface}</div> : null}
           <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{controlSummary}</div>
           <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{controlActions}</div>
         </div>

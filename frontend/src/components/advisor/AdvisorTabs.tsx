@@ -75,6 +75,57 @@ type PesticideProductRow = PesticideRecommendationPayload['product_recommendatio
 type PesticideRotationRow = PesticideRecommendationPayload['rotation_program'][number];
 type PesticideAlternativeRow = NonNullable<PesticideRecommendationPayload['rotation_alternatives']>[number];
 const HANGUL_PATTERN = /[가-힣]/;
+const PESTICIDE_TARGET_PRESETS = [
+    {
+        value: '흰가루병',
+        ko: '흰가루병',
+        en: 'Powdery mildew',
+        hintKo: '잎 표면 흰 가루 반점',
+        hintEn: 'White powdery leaf lesions',
+    },
+    {
+        value: '온실가루이',
+        ko: '온실가루이',
+        en: 'Greenhouse whitefly',
+        hintKo: '잎 뒷면 흡즙 해충',
+        hintEn: 'Sucking pest under leaves',
+    },
+    {
+        value: '담배가루이',
+        ko: '담배가루이',
+        en: 'Tobacco whitefly',
+        hintKo: '고온기 밀도 급증',
+        hintEn: 'Fast buildup in warm periods',
+    },
+    {
+        value: '노균병',
+        ko: '노균병',
+        en: 'Downy mildew',
+        hintKo: '습도 높은 날 확산',
+        hintEn: 'Spreads in humid windows',
+    },
+    {
+        value: '나방',
+        ko: '나방류',
+        en: 'Moth larvae',
+        hintKo: '담배거세미·왕담배나방 포함',
+        hintEn: 'Armyworm and fruitworm group',
+    },
+] as const;
+
+function getPesticidePresetLabel(
+    preset: (typeof PESTICIDE_TARGET_PRESETS)[number],
+    locale: 'ko' | 'en',
+): string {
+    return locale === 'ko' ? preset.ko : preset.en;
+}
+
+function getPesticidePresetHint(
+    preset: (typeof PESTICIDE_TARGET_PRESETS)[number],
+    locale: 'ko' | 'en',
+): string {
+    return locale === 'ko' ? preset.hintKo : preset.hintEn;
+}
 
 function normalizeAdvisorToken(value: string | null | undefined): string {
     return value?.trim().toLowerCase().replace(/[_\s]+/g, '-') ?? '';
@@ -413,6 +464,9 @@ const AdvisorTabs = ({
             empty: '이 탭은 아직 실행하지 않았습니다.',
             error: '실행 실패',
             target: '병해충/병명',
+            targetPresets: '집중 타겟',
+            targetPresetHint: '버튼을 누르면 해당 병해충 기준으로 제품 후보와 교호 주기를 바로 다시 계산합니다.',
+            customTarget: '직접 입력',
             limit: '후보 수',
             stage: '생육 단계',
             medium: '배지',
@@ -518,6 +572,9 @@ const AdvisorTabs = ({
             empty: 'This tab has not been executed yet.',
             error: 'Execution failed',
             target: 'Target',
+            targetPresets: 'Focus target',
+            targetPresetHint: 'Choose a target to recalculate product candidates and rotation cycles immediately.',
+            customTarget: 'Custom target',
             limit: 'Limit',
             stage: 'Stage',
             medium: 'Medium',
@@ -706,8 +763,19 @@ const AdvisorTabs = ({
     }
 
     async function handlePesticideRun() {
+        const target = pesticideTarget.trim() || PESTICIDE_TARGET_PRESETS[0].value;
         try {
-            await runPesticide(pesticideTarget, Number(pesticideLimit) || 5);
+            await runPesticide(target, Number(pesticideLimit) || 5);
+            sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch {
+            // state is already captured in the hook
+        }
+    }
+
+    async function handlePesticidePresetSelect(target: string) {
+        setPesticideTarget(target);
+        try {
+            await runPesticide(target, Number(pesticideLimit) || 5);
             sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch {
             // state is already captured in the hook
@@ -1308,7 +1376,7 @@ const AdvisorTabs = ({
             className="sg-advisor-shell sg-advisor-shell-neutral space-y-6"
         >
             <div
-                className="rounded-[34px] bg-[linear-gradient(135deg,rgba(225,218,255,0.94),rgba(255,255,255,0.92))] px-5 py-5"
+                className="rounded-[34px] bg-[linear-gradient(135deg,var(--sg-color-blush),rgba(255,255,255,0.92))] px-5 py-5"
                 style={{ boxShadow: 'var(--sg-shadow-soft)' }}
             >
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
@@ -1336,6 +1404,19 @@ const AdvisorTabs = ({
                             <span className="sg-advisor-pill">
                                 {completedCount}/{ADVISOR_TAB_REGISTRY.length}
                             </span>
+                            <span className="sg-advisor-pill">
+                                delegate: /api{activeTabEntry.endpoint}
+                            </span>
+                            {activeTabEntry.exactEndpoint ? (
+                                <span className="sg-advisor-pill">
+                                    exact: {activeTabEntry.exactEndpoint}
+                                </span>
+                            ) : null}
+                            {activeTabEntry.publicEndpoint ? (
+                                <span className="sg-advisor-pill">
+                                    public: {activeTabEntry.publicEndpoint}
+                                </span>
+                            ) : null}
                         </div>
                     </div>
                     <div className="space-y-3">
@@ -1412,7 +1493,7 @@ const AdvisorTabs = ({
                                     setShowCorrectionTool(false);
                                 }
                             }}
-                            className={`rounded-[24px] px-4 py-4 text-left transition ${isActive ? 'bg-[linear-gradient(135deg,var(--sg-accent-violet),#6f73cc)] text-white' : 'bg-white/84 text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'}`}
+                            className={`rounded-[24px] px-4 py-4 text-left transition ${isActive ? 'bg-[linear-gradient(135deg,var(--sg-color-primary),var(--sg-color-terracotta))] text-white' : 'bg-white/84 text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'}`}
                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                         >
                             <div className="flex items-start justify-between gap-3">
@@ -1439,16 +1520,59 @@ const AdvisorTabs = ({
             ) : (
                 <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
                     <div
-                        className="rounded-[32px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,248,255,0.95))] p-5"
+                        className="rounded-[32px] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),var(--sg-color-off-white))] p-5"
                         style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                     >
                         {activeTab === 'pesticide' ? (
                             <div className="space-y-4">
+                                <div
+                                    className="rounded-[28px] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-color-ivory)] p-4"
+                                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                >
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <div className="sg-field-label">{copy.targetPresets}</div>
+                                            <p className="mt-1 text-sm leading-relaxed text-[color:var(--sg-text-muted)]">
+                                                {copy.targetPresetHint}
+                                            </p>
+                                        </div>
+                                        <span className="rounded-full bg-[color:var(--sg-color-sage-soft)] px-3 py-1 text-[11px] font-semibold text-[color:var(--sg-color-olive)]">
+                                            {copy.cycle}
+                                        </span>
+                                    </div>
+                                    <div
+                                        role="group"
+                                        aria-label={copy.targetPresets}
+                                        className="mt-4 grid gap-2 sm:grid-cols-2"
+                                    >
+                                        {PESTICIDE_TARGET_PRESETS.map((preset) => {
+                                            const selected = pesticideTarget === preset.value;
+                                            return (
+                                                <button
+                                                    key={preset.value}
+                                                    type="button"
+                                                    aria-pressed={selected}
+                                                    onClick={() => void handlePesticidePresetSelect(preset.value)}
+                                                    disabled={executionState.pesticide.status === 'loading'}
+                                                    className={`rounded-[20px] border px-4 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)] disabled:cursor-not-allowed disabled:opacity-60 ${selected ? 'border-[color:var(--sg-color-olive)] bg-white text-[color:var(--sg-text-strong)]' : 'border-[color:var(--sg-outline-soft)] bg-white/68 text-[color:var(--sg-text-muted)] hover:bg-white'}`}
+                                                >
+                                                    <div className="text-sm font-semibold">
+                                                        {getPesticidePresetLabel(preset, locale)}
+                                                    </div>
+                                                    <div className="mt-1 text-xs leading-5 text-[color:var(--sg-text-faint)]">
+                                                        {getPesticidePresetHint(preset, locale)}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                                 <div>
                                     <label className="sg-field-label">
-                                        {copy.target}
+                                        {copy.customTarget}
                                     </label>
                                     <input
+                                        aria-label={copy.target}
                                         value={pesticideTarget}
                                         onChange={(event) => setPesticideTarget(event.target.value)}
                                         className="sg-field-input"

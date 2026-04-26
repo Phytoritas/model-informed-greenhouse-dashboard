@@ -1,120 +1,154 @@
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import PageCanvas from '../components/layout/PageCanvas';
+import { useLocale } from '../i18n/LocaleProvider';
+import { cn } from '../utils/cn';
 
 interface OverviewPageProps {
-  locale: 'ko' | 'en';
-  metricDeck: ReactNode;
-  heroCard: ReactNode;
-  heroSupplement?: ReactNode;
-  operationsAside?: ReactNode;
-  priorityRail: ReactNode;
-  priorityTrend?: ReactNode;
-  leadAnalytics: ReactNode;
-  sideAnalytics: ReactNode;
-  recentActivity: ReactNode;
+  topNavigation: ReactNode;
+  heroDecisionBrief: ReactNode;
+  liveMetricStrip: ReactNode;
+  todayActionBoard: ReactNode;
+  scenarioOptimizerPreview: ReactNode;
+  modelRuntimeBridge?: ReactNode;
+  weatherMarketKnowledgeBridge: ReactNode;
+  finalCta: ReactNode;
+  footer: ReactNode;
+  dashboardTab?: ReactNode;
+  watchTab?: ReactNode;
   activeTabId?: string;
 }
 
+const OVERVIEW_SECTION_BY_ACTION: Record<string, string> = {
+  'overview-core': 'overview-core',
+  'overview-dashboard': 'overview-dashboard',
+  'overview-watch': 'overview-watch',
+  'scenario-optimizer': 'scenario-optimizer',
+  'backend-runtime-bridge': 'backend-runtime-bridge',
+  'live-overview': 'live-overview',
+  'today-action-board': 'today-action-board',
+};
+
+const OVERVIEW_TAB_IDS = ['overview-core', 'overview-dashboard', 'overview-watch'] as const;
+type OverviewTabId = typeof OVERVIEW_TAB_IDS[number];
+
+function normalizeOverviewTab(tabId: string | undefined): OverviewTabId {
+  return OVERVIEW_TAB_IDS.includes(tabId as OverviewTabId)
+    ? (tabId as OverviewTabId)
+    : 'overview-core';
+}
+
 export default function OverviewPage({
-  locale,
-  metricDeck,
-  heroCard,
-  heroSupplement,
-  operationsAside,
-  priorityRail,
-  priorityTrend,
-  leadAnalytics,
-  sideAnalytics,
-  recentActivity,
+  topNavigation,
+  heroDecisionBrief,
+  liveMetricStrip,
+  todayActionBoard,
+  scenarioOptimizerPreview,
+  modelRuntimeBridge,
+  weatherMarketKnowledgeBridge,
+  finalCta,
+  footer,
+  dashboardTab,
+  watchTab,
   activeTabId,
 }: OverviewPageProps) {
-  const selectedTabId = activeTabId ?? 'overview-core';
-  const showOperationsLane = selectedTabId === 'overview-core';
-  const showDashboardLane = selectedTabId === 'overview-dashboard';
-  const showWatchLane = selectedTabId === 'overview-watch';
-  const operationsAsideHeightClass = 'xl:h-[430px]';
-  const operationsSecondaryRowHeightClass = 'xl:h-[312px]';
+  const location = useLocation();
+  const { locale } = useLocale();
+  const activeTab = normalizeOverviewTab(activeTabId);
+  const tabs = locale === 'ko'
+    ? [
+        { id: 'overview-core' as const, label: 'Command', description: '오늘 의사결정 요약' },
+        { id: 'overview-dashboard' as const, label: 'Dashboard', description: '전체 지표와 추세' },
+        { id: 'overview-watch' as const, label: 'Watch', description: '경보와 런타임 상태' },
+      ]
+    : [
+        { id: 'overview-core' as const, label: 'Command', description: 'Decision brief' },
+        { id: 'overview-dashboard' as const, label: 'Dashboard', description: 'Metrics and trends' },
+        { id: 'overview-watch' as const, label: 'Watch', description: 'Alerts and runtime state' },
+      ];
 
-  const copy = locale === 'ko'
-    ? {
-        title: '오늘 운영',
-        analytics: '대표 흐름',
-        recent: '최근 조치',
+  useEffect(() => {
+    const rawHash = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
+    const activeTargetId = activeTabId && activeTabId !== 'overview-core'
+      ? OVERVIEW_SECTION_BY_ACTION[activeTabId]
+      : null;
+    const targetId = rawHash ? OVERVIEW_SECTION_BY_ACTION[rawHash] : activeTargetId;
+
+    if (!targetId) {
+      return;
+    }
+
+    const scheduleFrame = window.requestAnimationFrame ?? ((callback: FrameRequestCallback) => window.setTimeout(() => callback(performance.now()), 0));
+    const cancelFrame = window.cancelAnimationFrame ?? window.clearTimeout;
+    const frame = scheduleFrame(() => {
+      const target = document.getElementById(targetId);
+      if (!target) {
+        return;
       }
-    : {
-        title: 'Today operations',
-        analytics: 'Main trend',
-        recent: 'Recent actions',
-      };
+
+      if (typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }
+      if (typeof target.focus === 'function') {
+        target.focus({ preventScroll: true });
+      }
+    });
+
+    return () => cancelFrame(frame);
+  }, [activeTabId, location.hash]);
 
   return (
-    <PageCanvas
-      title={copy.title}
-      description=""
-      hideHeader
-    >
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-5 xl:items-start">
-        {showOperationsLane ? (
-          <>
-            <div className="min-h-0 xl:col-span-3 xl:[&>*]:h-full">{heroCard}</div>
-            <div className={`min-h-0 xl:col-span-2 xl:self-start xl:[&>*]:h-full ${operationsAsideHeightClass}`}>
-              {operationsAside ?? priorityRail}
-            </div>
-            {heroSupplement ? (
-              <div className={`min-h-0 xl:col-span-3 xl:self-start xl:[&>*]:h-full ${operationsSecondaryRowHeightClass}`}>
-                {heroSupplement}
+    <PageCanvas title="PhytoSync" description="" hideHeader>
+      <main className="overview-browser-shell">
+        <div className="overview-browser-frame">
+          <div className="overview-frame-body">
+            {topNavigation}
+            <nav className="overview-tab-strip" aria-label={locale === 'ko' ? 'Overview 탭' : 'Overview tabs'}>
+              {tabs.map((tab) => (
+                <a
+                  key={tab.id}
+                  id={`${tab.id}-tab`}
+                  href={`#${tab.id}`}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  aria-controls={`${tab.id}-panel`}
+                  className={cn('overview-tab-link', activeTab === tab.id && 'overview-tab-link-active')}
+                >
+                  <span>{tab.label}</span>
+                  <small>{tab.description}</small>
+                </a>
+              ))}
+            </nav>
+            {activeTab === 'overview-core' ? (
+              <div id="overview-core-panel" role="tabpanel" aria-labelledby="overview-core-tab" className="overview-tab-panel">
+                {heroDecisionBrief}
+                {liveMetricStrip}
+                {todayActionBoard}
+                {scenarioOptimizerPreview}
+                {weatherMarketKnowledgeBridge}
+                {finalCta}
+                {footer}
               </div>
             ) : null}
-            {priorityTrend ? (
-              <div className={`min-h-0 xl:col-span-2 xl:self-start xl:[&>*]:h-full ${operationsSecondaryRowHeightClass}`}>
-                {priorityTrend}
-              </div>
+            {activeTab === 'overview-dashboard' ? (
+              <section id="overview-dashboard" tabIndex={-1} role="tabpanel" className="overview-tab-panel scroll-mt-24" aria-labelledby="overview-dashboard-tab">
+                {dashboardTab ?? (
+                  <>
+                    {liveMetricStrip}
+                    {modelRuntimeBridge}
+                  </>
+                )}
+              </section>
             ) : null}
-            <div className="min-h-0 xl:col-span-5">
-              <div className="flex h-full min-h-0 flex-col gap-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-                  {copy.recent}
-                </div>
-                <div className="min-h-0">{recentActivity}</div>
-              </div>
-            </div>
-          </>
-        ) : null}
-        {showDashboardLane ? (
-          <>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:col-span-5 xl:grid-cols-6">
-              {metricDeck}
-            </div>
-            <div className="min-h-0 xl:col-span-3">
-              <div className="flex h-full min-h-0 flex-col gap-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-                  {copy.analytics}
-                </div>
-                <div className="min-h-0">{leadAnalytics}</div>
-              </div>
-            </div>
-            <div className="min-h-0 xl:col-span-2">{sideAnalytics}</div>
-          </>
-        ) : null}
-        {showWatchLane ? (
-          <>
-            <div className="min-h-0 xl:col-span-5">
-              <div className="min-h-0">{priorityRail}</div>
-            </div>
-            <div className="min-h-0 xl:col-span-5">
-              <div className="flex h-full min-h-0 flex-col gap-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-                  {copy.recent}
-                </div>
-                <div className="min-h-0">{recentActivity}</div>
-              </div>
-            </div>
-          </>
-        ) : null}
-        {!showOperationsLane && !showDashboardLane && !showWatchLane ? (
-          <div className="min-h-0 xl:col-span-5">{heroCard}</div>
-        ) : null}
-      </div>
+            {activeTab === 'overview-watch' ? (
+              <section id="overview-watch" tabIndex={-1} role="tabpanel" className="overview-tab-panel scroll-mt-24" aria-labelledby="overview-watch-tab">
+                {watchTab ?? modelRuntimeBridge}
+              </section>
+            ) : null}
+          </div>
+        </div>
+      </main>
     </PageCanvas>
   );
 }

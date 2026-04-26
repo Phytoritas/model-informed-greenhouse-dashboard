@@ -1,12 +1,24 @@
 {
-  "earliest_restart_point": "Resume from the clean post-issue114 main baseline; keep issue #3 blocked until real grower-approved windows exist.",
+  "earliest_restart_point": "Resume from issue #118 branch after re-reading AGENTS.md, Phytoritas.md, docs/design/codex_image_based_greenhouse_ui_prompt.md, .rah/memory/wakeup.md, and .rah/plans/current_loop.md.",
+  "issue118_prompt_intake": {
+    "status": "pass",
+    "note": "Issue #118 and branch `feat/118-redesign-overview-decision-dashboard-ui-system` were created before non-trivial frontend writes after repo-local AGENTS intake, RAH status checks, and Memento context/recall hydration."
+  },
+  "issue118_implementation_gate": {
+    "status": "pass",
+    "note": "Implementation is bounded to the image-informed `/overview` landing/UI-system redesign and preserves existing optimizer, weather, market, knowledge, and backend/API data flows."
+  },
+  "issue118_validation_gate": {
+    "status": "pass",
+    "note": "Local validation passed with `npm run --prefix frontend lint`, `npm run --prefix frontend test` (37 files, 155 tests), `npm run --prefix frontend build`, `git diff --check`, Playwright review on port 4178, refreshed Overview Command/Watch screenshots, and focused AskKnowledgeBoard/AdvisorTabs pesticide checks."
+  },
   "issue116_prompt_intake": {
     "status": "pass",
     "note": "Docs issue #116 and branch `docs/116-sync-issue114-merged-harness-state-on-main` were created after PR #115 merged so tracked RAH state can stop pointing at the completed issue #114 validation lane."
   },
   "issue116_harness_sync": {
-    "status": "in_progress",
-    "note": "This docs-only sync updates the root/mirror blueprint, current loop, wakeup packet, and status/gate state to the post-issue114 merged main baseline."
+    "status": "pass",
+    "note": "Docs-only issue #116 sync is superseded by active issue #118 state; current loop, wakeup packet, and status/gate state now resume from the overview UI redesign branch."
   },
   "issue114_pr_validation": {
     "status": "pass",
@@ -467,5 +479,13 @@
   "issue57_pr_validation": {
     "status": "pass",
     "note": "PR #58 merged issue #57 into `main` at `1d0c24ff432aec8403b9a9e2e1673bc5752c8889` after GitHub Actions Backend/Frontend validation both passed on runs `24188663087` and `24188664697`."
+  },
+  "issue118_watch_visual_pass": {
+    "status": "pass",
+    "note": "Overview Watch was restyled onto the current ivory/sage/tomato sg-panel system, the overview tab strip no longer overlays tab content, zero-count alert buckets render neutral, and frontend validation plus Watch screenshots passed locally."
+  },
+  "issue118_assistant_and_protection_pass": {
+    "status": "pass",
+    "note": "Assistant/Ask now uses the current warm UI system, knowledge search renders book-like result pages with a clickable table of contents, AI replies show farmer-friendly summaries before full markdown, and pesticide recommendations can be recalculated from common focus-target buttons."
   }
 }

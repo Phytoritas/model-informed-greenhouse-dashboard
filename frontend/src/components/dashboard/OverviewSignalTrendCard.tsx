@@ -20,6 +20,7 @@ interface OverviewSignalTrendCardProps {
   loading: boolean;
   error: string | null;
   refreshedAt?: number | null;
+  fillHeight?: boolean;
   liveSourceSinkSeries?: Array<{
     timestamp: number;
     value: number;
@@ -103,6 +104,7 @@ export default function OverviewSignalTrendCard({
   loading,
   error,
   refreshedAt = null,
+  fillHeight = true,
   liveSourceSinkSeries = [],
 }: OverviewSignalTrendCardProps) {
   const { locale } = useLocale();
@@ -161,6 +163,8 @@ export default function OverviewSignalTrendCard({
 
   const hasIrradiance = irradianceSeries.length >= 2;
   const hasSourceSink = sourceSinkSeries.length >= 2;
+  const cardClassName = fillHeight ? 'h-full' : undefined;
+  const chartCardClassName = fillHeight ? 'h-full !p-4' : '!p-4';
 
   if (loading && !signals) {
     return (
@@ -168,7 +172,7 @@ export default function OverviewSignalTrendCard({
         eyebrow={copy.eyebrow}
         title={copy.title}
         description={copy.description}
-        className="h-full"
+        className={cardClassName}
       >
         <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
           {copy.loading}
@@ -183,7 +187,7 @@ export default function OverviewSignalTrendCard({
         eyebrow={copy.eyebrow}
         title={copy.title}
         description={copy.description}
-        className="h-full"
+        className={cardClassName}
       >
         <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
           {copy.error}
@@ -198,7 +202,7 @@ export default function OverviewSignalTrendCard({
         eyebrow={copy.eyebrow}
         title={copy.title}
         description={copy.description}
-        className="h-full"
+        className={cardClassName}
       >
         <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
           {copy.empty}
@@ -213,7 +217,7 @@ export default function OverviewSignalTrendCard({
       title={copy.title}
       description={copy.description}
       contentClassName="flex flex-col gap-2"
-      className="h-full !p-4"
+      className={chartCardClassName}
     >
       <div className="rounded-[16px] bg-[color:var(--sg-surface-soft)] px-2.5 py-2.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[10px] font-semibold tracking-[0.06em] text-[color:var(--sg-text-faint)]">
