@@ -23,13 +23,13 @@ function ReportMetricTile({
     label: string;
     value: string;
     detail: string;
-    tone: 'neutral' | 'green' | 'amber' | 'blue';
+    tone: 'neutral' | 'green' | 'amber' | 'olive';
 }) {
     const toneClass = {
         neutral: 'bg-white/86',
         green: 'bg-[color:var(--sg-tint-green)]',
         amber: 'bg-[color:var(--sg-tint-amber)]',
-        blue: 'bg-[color:var(--sg-tint-blue)]',
+        olive: 'bg-[color:var(--sg-color-olive-soft)]',
     }[tone];
 
     return (
@@ -59,7 +59,7 @@ function MemoSignal({
     return (
         <div className="rounded-[22px] bg-white/84 px-4 py-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
             <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
-                <Icon className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                <Icon className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                 <span>{title}</span>
             </div>
             <p className="mt-2 text-sm leading-7 text-[color:var(--sg-text-muted)]">{body}</p>
@@ -141,9 +141,9 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
             eyebrow={copy.title}
             title={cropLabel}
             description={copy.description}
-            className="sg-tint-violet"
+            className="sg-tint-rose"
             actions={(
-                <div className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-violet)] shadow-[var(--sg-shadow-card)]">
+                <div className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)]">
                     {copy.liveHint}
                 </div>
             )}
@@ -151,7 +151,7 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
             <div className="space-y-4">
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
                     <article
-                        className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(225,218,255,0.96),rgba(255,255,255,0.9))] px-6 py-6"
+                        className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(255,231,225,0.96),rgba(250,247,242,0.92),rgba(232,241,226,0.82))] px-6 py-6"
                         style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                     >
                         <div className="absolute -right-10 -top-8 h-36 w-36 rounded-full bg-white/18 blur-3xl" />
@@ -162,7 +162,7 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
                                         className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
                                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
-                                        <FileText className="h-6 w-6 text-[color:var(--sg-accent-violet)]" />
+                                        <FileText className="h-6 w-6 text-[color:var(--sg-color-olive)]" />
                                     </div>
                                     <div>
                                         <div className="sg-eyebrow">{copy.executiveSummary}</div>
@@ -171,7 +171,7 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
                                         </div>
                                     </div>
                                 </div>
-                                <div className="rounded-full bg-white/84 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-violet)] shadow-[var(--sg-shadow-card)]">
+                                <div className="rounded-full bg-white/84 px-4 py-2 text-xs font-semibold text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)]">
                                     {copy.operatorLead}
                                 </div>
                             </div>
@@ -214,7 +214,7 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
                             label={copy.photosynthesis}
                             value={currentData.photosynthesis.toFixed(1)}
                             detail={`${copy.vpd} ${currentData.vpd.toFixed(2)} kPa`}
-                            tone="blue"
+                            tone="olive"
                         />
                         <ReportMetricTile
                             label={copy.hourlyCost}
@@ -228,7 +228,7 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
                     <article className="rounded-[30px] bg-[color:var(--sg-tint-neutral)] px-5 py-5 shadow-[var(--sg-shadow-card)]">
                         <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                            <Sparkles className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                            <Sparkles className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                             <h4 className="text-sm font-semibold uppercase tracking-[0.16em]">
                                 {copy.operatorMemo}
                             </h4>
@@ -242,7 +242,7 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
 
                     <div className="rounded-[30px] bg-white/88 px-5 py-5 shadow-[var(--sg-shadow-card)]">
                         <div className="mb-4 flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                            <Sparkles className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                            <Sparkles className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                             <h4 className="text-sm font-semibold uppercase tracking-[0.16em]">
                                 {copy.aiNotes}
                             </h4>

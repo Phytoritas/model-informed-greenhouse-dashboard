@@ -9,6 +9,7 @@ interface ControlPageProps {
   strategySurface: ReactNode;
   controlActions: ReactNode;
   controlSummary: ReactNode;
+  environmentAdvisorSurface?: ReactNode;
   runtimeSurface?: ReactNode;
 }
 
@@ -18,6 +19,7 @@ export default function ControlPage({
   strategySurface,
   controlActions,
   controlSummary,
+  environmentAdvisorSurface = null,
   runtimeSurface,
 }: ControlPageProps) {
   const copy = locale === 'ko'
@@ -28,7 +30,7 @@ export default function ControlPage({
       }
     : {
         eyebrow: 'PhytoSync',
-        title: 'Control Solutions',
+        title: 'Climate Solutions',
         description: '',
       };
 
@@ -45,6 +47,7 @@ export default function ControlPage({
           <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{controlActions}</div>
           <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{strategySurface}</div>
           <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{controlSummary}</div>
+          {environmentAdvisorSurface ? <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{environmentAdvisorSurface}</div> : null}
         </div>
       ) : null}
       {activePanel === 'control-devices' ? (

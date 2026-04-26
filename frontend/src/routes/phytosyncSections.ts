@@ -76,7 +76,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           heroTitle: '온실 환경',
           heroDescription: '',
           tabs: [
-            { id: 'control-strategy', label: '추천 제어안' },
+            { id: 'control-strategy', label: '환경 솔루션' },
             { id: 'control-devices', label: '장치 상태' },
           ],
         },
@@ -162,16 +162,16 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
         {
           key: 'alerts',
           path: '/alerts',
-          label: '긴급 알림',
-          shortLabel: '긴급 알림',
-          description: '긴급 알림, 확인 필요, 처리 이력을 나눠 봅니다.',
+          label: '방제·알림',
+          shortLabel: '방제·알림',
+          description: '농약 솔루션, 확인 필요, 처리 이력을 나눠 봅니다.',
           icon: Bell,
           workspace: 'alerts',
           advisorTab: 'pesticide',
-          heroTitle: '긴급 알림',
-          heroDescription: '바로 확인할 경보와 처리 이력을 함께 정리합니다.',
+          heroTitle: '방제·알림',
+          heroDescription: '병해충·농약 검토와 긴급 알림을 함께 정리합니다.',
           tabs: [
-            { id: 'alerts-urgent', label: '긴급 알림' },
+            { id: 'alerts-protection', label: '농약 솔루션' },
             { id: 'alerts-warning', label: '확인 필요' },
             { id: 'alerts-history', label: '처리 이력' },
           ],
@@ -233,7 +233,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           heroTitle: 'Control solutions',
           heroDescription: '',
           tabs: [
-            { id: 'control-strategy', label: 'Recommended control' },
+            { id: 'control-strategy', label: 'Climate solutions' },
             { id: 'control-devices', label: 'Devices' },
           ],
         },
@@ -319,16 +319,16 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
         {
           key: 'alerts',
           path: '/alerts',
-          label: 'Alerts',
-          shortLabel: 'Alerts',
-          description: 'Separate urgent warnings, watch items, and history.',
+          label: 'Protection',
+          shortLabel: 'Protection',
+          description: 'Separate pesticide solutions, watch items, and history.',
           icon: Bell,
           workspace: 'alerts',
           advisorTab: 'pesticide',
-          heroTitle: 'Alerts',
-          heroDescription: 'Keep the current warning queue and history in one page.',
+          heroTitle: 'Protection',
+          heroDescription: 'Keep pesticide review, warning queue, and history in one page.',
           tabs: [
-            { id: 'alerts-urgent', label: 'Urgent' },
+            { id: 'alerts-protection', label: 'Pesticide solution' },
             { id: 'alerts-warning', label: 'Watch' },
             { id: 'alerts-history', label: 'History' },
           ],
@@ -408,17 +408,17 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
 export function getSectionPathForAdvisorTab(tab: PromptAdvisorTabKey): string {
   switch (tab) {
     case 'nutrient':
-      return '/nutrient';
+      return '/resources#resources-nutrient';
     case 'pesticide':
-      return '/protection';
+      return '/alerts#alerts-protection';
     case 'harvest_market':
-      return '/harvest';
+      return '/crop-work#crop-work-harvest';
     case 'environment':
-      return '/growth#environment';
+      return '/control#control-strategy';
     case 'work':
-      return '/growth#work';
+      return '/crop-work#crop-work-work';
     case 'physiology':
     default:
-      return '/growth#physiology';
+      return '/crop-work#crop-work-growth';
   }
 }

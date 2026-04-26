@@ -26,6 +26,7 @@ import { useProducePrices } from './hooks/useProducePrices';
 import { useRtrOptimizer } from './hooks/useRtrOptimizer';
 import { useRtrProfiles } from './hooks/useRtrProfiles';
 import { useOverviewSignalTrends } from './hooks/useOverviewSignalTrends';
+import { formatLegacyRecommendation, useLegacyRecommendations } from './hooks/useLegacyRecommendations';
 import { useSmartGrowKnowledge } from './hooks/useSmartGrowKnowledge';
 import { useWeatherOutlook } from './hooks/useWeatherOutlook';
 import AppShell from './layout/AppShell';
@@ -361,6 +362,9 @@ function App() {
     loading: isSmartGrowLoading,
     error: smartGrowError,
   } = useSmartGrowKnowledge(selectedCrop);
+  const {
+    recommendations: legacyRecommendations,
+  } = useLegacyRecommendations(selectedCrop);
 
   const [assistantSearchRequest, setAssistantSearchRequest] = useState<RagAssistantOpenRequest | null>(null);
   const [assistantChatRequest, setAssistantChatRequest] = useState<AssistantChatOpenRequest | null>(null);
@@ -550,7 +554,7 @@ function App() {
       trend: vpdTrend.trend,
       trendDetail: vpdState === 'missing' ? '' : buildTrendDetail(vpdTrend, sensorCopy.vpd.unit, 2),
       icon: Activity,
-      color: 'bg-purple-500',
+      color: 'bg-[color:var(--sg-color-olive)]',
       lastReceived: buildFieldAgeLabel('vpd'),
       fractionDigits: 2,
     },
@@ -845,7 +849,7 @@ function App() {
 
   const handleOpenAlerts = useCallback(() => {
     setAssistantDrawerOpen(false);
-    navigate({ pathname: '/alerts', hash: '#alerts-priority' });
+    navigate({ pathname: '/alerts', hash: '#alerts-protection' });
   }, [navigate, setAssistantDrawerOpen]);
 
   const handleOpenAdvisorTabs = useCallback((
@@ -900,9 +904,24 @@ function App() {
 
   const handleWorkspaceSelect = useCallback((workspace: string) => {
     setAssistantDrawerOpen(false);
+    if (activeSectionTabId) {
+      setSectionTabSelections((current) => (
+        current[activeSection.key] === activeSectionTabId
+          ? current
+          : { ...current, [activeSection.key]: activeSectionTabId }
+      ));
+    }
     const nextRoute = primaryRoutes.find((route) => route.key === workspace);
     navigate(nextRoute?.path ?? resolveRoutePath(workspace));
-  }, [navigate, primaryRoutes, resolveRoutePath, setAssistantDrawerOpen]);
+  }, [
+    activeSection.key,
+    activeSectionTabId,
+    navigate,
+    primaryRoutes,
+    resolveRoutePath,
+    setAssistantDrawerOpen,
+    setSectionTabSelections,
+  ]);
 
   const handleSectionTabSelect = useCallback((tabId: string) => {
     setSectionTabSelections((current) => ({ ...current, [activeSection.key]: tabId }));
@@ -917,11 +936,6 @@ function App() {
     }
 
     setSectionTabSelections((current) => ({ ...current, [targetSection.key]: tabId }));
-
-    if (workspace === 'control') {
-      navigate(targetSection.path, { replace: true });
-      return;
-    }
 
     navigate({ pathname: targetSection.path, hash: `#${tabId}` }, { replace: true });
   }, [navigate, sections, setSectionTabSelections]);
@@ -1122,6 +1136,18 @@ function App() {
     smartGrowSummary?.nutrientCorrectionReady ? heroCopy.jumpAdvisor : null,
     heroCopy.jumpKnowledge,
   ].filter((value): value is string => Boolean(value)))).slice(0, 3);
+  const legacyRecommendationMessages = useMemo(() => (
+    legacyRecommendations
+      .map(formatLegacyRecommendation)
+      .filter((value): value is string => Boolean(value))
+  ), [legacyRecommendations]);
+  const commandActionsNow = aiDisplay?.actions_now?.length
+    ? aiDisplay.actions_now
+    : legacyRecommendationMessages.slice(0, 2);
+  const commandActionsToday = Array.from(new Set([
+    ...(aiDisplay?.actions_today ?? []),
+    ...legacyRecommendationMessages.slice(0, 3),
+  ])).slice(0, 4);
 
   const derivedSourceSinkBalance = deriveSourceSinkBalance({
     crop: selectedCrop,
@@ -1284,10 +1310,15 @@ function App() {
       crop={selectedCrop}
       currentData={currentData}
       modelMetrics={deferredModelMetrics}
+      history={deferredHistory}
       forecast={deferredForecast}
+      summary={smartGrowSummary}
+      producePrices={producePrices}
+      weather={weather}
+      rtrProfile={selectedRtrProfile}
       aiAnalysis={aiAnalysis}
-      actionsNow={aiDisplay?.actions_now ?? []}
-      actionsToday={aiDisplay?.actions_today ?? []}
+      actionsNow={commandActionsNow}
+      actionsToday={commandActionsToday}
       actionsWeek={aiDisplay?.actions_week ?? []}
       monitor={aiDisplay?.monitor ?? []}
       activePanel={activePanelId === 'crop-work-harvest' ? 'crop-work-harvest' : activePanelId === 'crop-work-work' ? 'crop-work-work' : 'crop-work-growth'}
@@ -1302,13 +1333,17 @@ function App() {
       cropLabel={selectedCropLabel}
       currentData={currentData}
       modelMetrics={modelMetrics}
+      history={deferredHistory}
+      forecast={deferredForecast}
+      summary={smartGrowSummary}
       weather={weather}
       weatherLoading={isWeatherLoading}
       weatherError={weatherError}
       producePrices={producePrices}
+      rtrProfile={selectedRtrProfile}
       produceLoading={isProducePricesLoading}
       produceError={producePricesError}
-      activePanel={activePanelId === 'resources-market' ? 'resources-market' : activePanelId === 'resources-nutrient' ? 'resources-stock' : 'resources-energy'}
+      activePanel={activePanelId === 'resources-market' ? 'resources-market' : activePanelId === 'resources-nutrient' ? 'resources-nutrient' : 'resources-energy'}
     />
   );
 
@@ -1317,11 +1352,20 @@ function App() {
       locale={locale}
       items={alertItems}
       fallbackAlertBody={heroCopy.telemetryLive}
+      crop={selectedCrop}
+      summary={smartGrowSummary}
+      currentData={currentData}
+      metrics={deferredModelMetrics}
+      history={deferredHistory}
+      forecast={deferredForecast}
+      producePrices={producePrices}
+      weather={weather}
+      rtrProfile={selectedRtrProfile}
       telemetryStatus={telemetry.status}
       statusSummary={kpiStatusSummary}
       primaryTiles={primaryKpiTiles}
       secondaryTiles={secondaryKpiTiles}
-      activePanel={activePanelId === 'alerts-history' ? 'alerts-history' : activePanelId === 'alerts-warning' ? 'alerts-stream' : 'alerts-priority'}
+      activePanel={activePanelId === 'alerts-history' ? 'alerts-history' : activePanelId === 'alerts-warning' ? 'alerts-stream' : 'alerts-protection'}
     />
   );
 
@@ -1542,8 +1586,8 @@ function App() {
         knowledgeSummary={smartGrowSummary}
         knowledgeLoading={isSmartGrowLoading}
         knowledgeError={smartGrowError}
-        actionsNow={aiDisplay?.actions_now ?? []}
-        actionsToday={aiDisplay?.actions_today ?? []}
+        actionsNow={commandActionsNow}
+        actionsToday={commandActionsToday}
         actionsWeek={aiDisplay?.actions_week ?? []}
         monitor={aiDisplay?.monitor ?? []}
         rtrProfile={selectedRtrProfile}
@@ -1647,10 +1691,14 @@ function App() {
                 controls={controls}
                 onToggle={toggleControl}
                 onSettingsChange={setTempSettings}
+                summary={smartGrowSummary}
                 alertItems={alertItems}
                 fallbackAlertBody={heroCopy.telemetryLive}
                 history={deferredHistory}
                 currentData={currentData}
+                modelMetrics={deferredModelMetrics}
+                forecast={deferredForecast}
+                producePrices={producePrices}
                 weather={weather}
                 weatherLoading={isWeatherLoading}
                 weatherError={weatherError}

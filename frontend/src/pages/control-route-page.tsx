@@ -1,8 +1,11 @@
 import { Suspense, lazy } from 'react';
 import type { AppLocale } from '../i18n/locale';
 import type {
+  AdvancedModelMetrics,
   ControlStatus,
   CropType,
+  ForecastData,
+  ProducePricesPayload,
   RtrOptimizationMode,
   RtrProfile,
   SensorData,
@@ -14,7 +17,9 @@ import type { AlertRailItem } from '../components/dashboard/AlertRail';
 import AlertRail from '../components/dashboard/AlertRail';
 import SimulationRuntimePanel from '../components/dashboard/SimulationRuntimePanel';
 import ControlPanel from '../components/ControlPanel';
+import AdvisorTabs from '../components/advisor/AdvisorTabs';
 import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
+import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import ControlPage, { type ControlPagePanelId } from './control-page';
 
@@ -29,10 +34,14 @@ interface ControlRoutePageProps {
   controls: ControlStatus;
   onToggle: (key: keyof ControlStatus) => void;
   onSettingsChange: (settings: TemperatureSettings) => void;
+  summary?: SmartGrowKnowledgeSummary | null;
   alertItems: AlertRailItem[];
   fallbackAlertBody: string;
   history: SensorData[];
   currentData: SensorData;
+  modelMetrics: AdvancedModelMetrics;
+  forecast?: ForecastData | null;
+  producePrices?: ProducePricesPayload | null;
   weather: WeatherOutlook | null;
   weatherLoading: boolean;
   weatherError: string | null;
@@ -56,10 +65,14 @@ export default function ControlRoutePage({
   controls,
   onToggle,
   onSettingsChange,
+  summary = null,
   alertItems,
   fallbackAlertBody,
   history,
   currentData,
+  modelMetrics,
+  forecast = null,
+  producePrices = null,
   weather,
   weatherLoading,
   weatherError,
@@ -90,8 +103,8 @@ export default function ControlRoutePage({
         <Suspense
           fallback={(
             <LoadingSkeleton
-              title={locale === 'ko' ? '추천 제어안' : 'Recommended control'}
-              loadingMessage={locale === 'ko' ? '추천 제어안을 불러오는 중입니다...' : 'Loading recommended control...'}
+              title={locale === 'ko' ? '환경 솔루션' : 'Climate solutions'}
+              loadingMessage={locale === 'ko' ? '환경 솔루션을 불러오는 중입니다...' : 'Loading climate solutions...'}
               minHeightClassName="min-h-[304px]"
             />
           )}
@@ -125,6 +138,24 @@ export default function ControlRoutePage({
         />
       )}
       controlActions={<AlertRail items={fallbackAlerts} compact />}
+      environmentAdvisorSurface={(
+        <AdvisorTabs
+          key={`${crop}-environment`}
+          crop={crop}
+          summary={summary}
+          currentData={currentData}
+          metrics={modelMetrics}
+          history={history}
+          forecast={forecast}
+          producePrices={producePrices}
+          weather={weather}
+          rtrProfile={profile}
+          isOpen
+          initialTab="environment"
+          onClose={() => undefined}
+          showCloseAction={false}
+        />
+      )}
       runtimeSurface={(
         <SimulationRuntimePanel
           locale={locale}

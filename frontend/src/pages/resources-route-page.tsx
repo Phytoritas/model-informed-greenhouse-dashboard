@@ -1,10 +1,13 @@
 import { Suspense, lazy } from 'react';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
+import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
   CropType,
+  ForecastData,
   ProducePricesPayload,
+  RtrProfile,
   SensorData,
   WeatherOutlook,
 } from '../types';
@@ -18,13 +21,17 @@ interface ResourcesRoutePageProps {
   cropLabel: string;
   currentData: SensorData;
   modelMetrics: AdvancedModelMetrics;
+  history?: SensorData[];
+  forecast?: ForecastData | null;
+  summary?: SmartGrowKnowledgeSummary | null;
   weather: WeatherOutlook | null;
   weatherLoading: boolean;
   weatherError: string | null;
   producePrices: ProducePricesPayload | null;
+  rtrProfile?: RtrProfile | null;
   produceLoading: boolean;
   produceError: string | null;
-  activePanel?: 'resources-energy' | 'resources-market' | 'resources-stock';
+  activePanel?: 'resources-nutrient' | 'resources-energy' | 'resources-market';
 }
 
 export default function ResourcesRoutePage({
@@ -33,10 +40,14 @@ export default function ResourcesRoutePage({
   cropLabel,
   currentData,
   modelMetrics,
+  history = [],
+  forecast = null,
+  summary = null,
   weather,
   weatherLoading,
   weatherError,
   producePrices,
+  rtrProfile = null,
   produceLoading,
   produceError,
   activePanel = 'resources-energy',
@@ -60,10 +71,14 @@ export default function ResourcesRoutePage({
             cropLabel={cropLabel}
             currentData={currentData}
             modelMetrics={modelMetrics}
+            history={history}
+            forecast={forecast}
+            summary={summary}
             weather={weather}
             weatherLoading={weatherLoading}
             weatherError={weatherError}
             producePrices={producePrices}
+            rtrProfile={rtrProfile}
             produceLoading={produceLoading}
             produceError={produceError}
             activePanel={activePanel}

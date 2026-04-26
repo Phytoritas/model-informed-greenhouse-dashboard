@@ -60,7 +60,7 @@ function WorkspaceButton({
         'group flex w-full items-center gap-3 rounded-[24px] px-4 py-3 text-left transition-all',
         active
           ? 'bg-[color:var(--sg-surface-strong)] text-[color:var(--sg-text-strong)]'
-          : 'text-[color:var(--sg-text-muted)] hover:bg-white/60 hover:text-[color:var(--sg-text-strong)]',
+          : 'text-[color:var(--sg-text-muted)] hover:bg-[color:var(--sg-surface-warm)] hover:text-[color:var(--sg-text-strong)]',
         compact ? 'w-[92px] shrink-0 justify-center rounded-[20px] px-3 py-2.5' : '',
       )}
       style={active ? { boxShadow: 'var(--sg-shadow-soft)' } : undefined}
@@ -68,7 +68,7 @@ function WorkspaceButton({
       <span
         className={cn(
           'flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px]',
-          active ? 'bg-[color:var(--sg-accent-violet-soft)] text-[color:var(--sg-accent-violet)]' : 'bg-white/75 text-[color:var(--sg-text-muted)]',
+          active ? 'bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary)]' : 'bg-[color:var(--sg-surface-raised)] text-[color:var(--sg-text-muted)]',
         )}
       >
         <Icon className="h-5 w-5" />
@@ -131,7 +131,7 @@ export default function WorkspaceNav({
     <>
       <Sidebar className="hidden min-h-[calc(100vh-8rem)] lg:block">
         <SidebarHeader>
-          <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{copy.brand}</div>
+          <div className="sg-eyebrow text-[color:var(--sg-color-primary)]">{copy.brand}</div>
           <div className="mt-2 text-xl font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">{activeItem?.label}</div>
         </SidebarHeader>
         <nav className="space-y-2">
@@ -144,7 +144,7 @@ export default function WorkspaceNav({
               />
               {item.key === activeWorkspace && expandedWorkspace === item.key && item.actions?.length ? (
                 <div
-                  className="grid w-full gap-2 rounded-[18px] bg-white/75 p-2"
+                  className="grid w-full gap-2 rounded-[var(--sg-radius-lg)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] p-2"
                   style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                   {item.actions.map((action) => (
@@ -156,8 +156,8 @@ export default function WorkspaceNav({
                       className={cn(
                         'rounded-full px-3 py-2 text-xs font-semibold transition',
                         activeActionId === action.id
-                          ? 'bg-[color:var(--sg-accent-violet)] text-white'
-                          : 'bg-white/80 text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]',
+                          ? 'bg-[color:var(--sg-color-primary)] text-white'
+                          : 'bg-[color:var(--sg-surface-raised)] text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]',
                       )}
                     >
                       {action.label}
@@ -197,8 +197,8 @@ export default function WorkspaceNav({
                 className={cn(
                   'rounded-full px-3 py-2 text-xs font-semibold transition',
                   activeActionId === action.id
-                    ? 'bg-[color:var(--sg-accent-violet)] text-white'
-                    : 'bg-white text-[color:var(--sg-text-muted)]',
+                    ? 'bg-[color:var(--sg-color-primary)] text-white'
+                    : 'bg-[color:var(--sg-surface-raised)] text-[color:var(--sg-text-muted)]',
                 )}
               >
                 {action.label}

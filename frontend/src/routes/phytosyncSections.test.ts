@@ -55,7 +55,7 @@ describe('phytosyncSections', () => {
     expect(control?.path).toBe('/control');
     expect(control?.workspace).toBe('rtr');
     expect(control?.advisorTab).toBe('environment');
-    expect(control?.tabs.map((tab) => tab.label)).toEqual(['추천 제어안', '장치 상태']);
+    expect(control?.tabs.map((tab) => tab.label)).toEqual(['환경 솔루션', '장치 상태']);
 
     expect(rtr?.path).toBe('/rtr');
     expect(rtr?.workspace).toBe('rtr');
@@ -86,7 +86,7 @@ describe('phytosyncSections', () => {
     expect(settings?.workspace).toBe('settings');
 
     expect(enOverview?.tabs.map((tab) => tab.label)).toEqual(['Operations', 'Dashboard', 'Watch']);
-    expect(enControl?.tabs.map((tab) => tab.label)).toEqual(['Recommended control', 'Devices']);
+    expect(enControl?.tabs.map((tab) => tab.label)).toEqual(['Climate solutions', 'Devices']);
     expect(enRtr?.tabs.map((tab) => tab.label)).toEqual(['Strategy', 'Sensitivity', 'Area']);
     expect(enScenarios?.tabs.map((tab) => tab.label)).toEqual(['Process what-if', 'RTR scenario']);
     expect(enTrend?.tabs).toEqual([]);
@@ -118,11 +118,11 @@ describe('phytosyncSections', () => {
     expect(getDefaultSectionPathForWorkspace('knowledge')).toBe('/assistant');
     expect(getDefaultSectionPathForWorkspace('settings')).toBe('/settings');
 
-    expect(getSectionPathForAdvisorTab('environment')).toBe('/growth#environment');
-    expect(getSectionPathForAdvisorTab('physiology')).toBe('/growth#physiology');
-    expect(getSectionPathForAdvisorTab('work')).toBe('/growth#work');
-    expect(getSectionPathForAdvisorTab('nutrient')).toBe('/nutrient');
-    expect(getSectionPathForAdvisorTab('pesticide')).toBe('/protection');
-    expect(getSectionPathForAdvisorTab('harvest_market')).toBe('/harvest');
+    expect(getSectionPathForAdvisorTab('environment')).toBe('/control#control-strategy');
+    expect(getSectionPathForAdvisorTab('physiology')).toBe('/crop-work#crop-work-growth');
+    expect(getSectionPathForAdvisorTab('work')).toBe('/crop-work#crop-work-work');
+    expect(getSectionPathForAdvisorTab('nutrient')).toBe('/resources#resources-nutrient');
+    expect(getSectionPathForAdvisorTab('pesticide')).toBe('/alerts#alerts-protection');
+    expect(getSectionPathForAdvisorTab('harvest_market')).toBe('/crop-work#crop-work-harvest');
   });
 });

@@ -276,6 +276,21 @@ vi.mock('./hooks/useOverviewSignalTrends', () => ({
   }),
 }))
 
+vi.mock('./hooks/useLegacyRecommendations', () => ({
+  useLegacyRecommendations: () => ({
+    recommendations: [
+      { message: 'Use deterministic crop recommendation from /api/recommendations.' },
+    ],
+    payload: null,
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  }),
+  formatLegacyRecommendation: (recommendation: { action?: string; message?: string; title?: string }) => (
+    recommendation.action ?? recommendation.message ?? recommendation.title ?? ''
+  ),
+}))
+
 vi.mock('./hooks/useRtrProfiles', () => ({
   useRtrProfiles: () => ({
     profiles: {
@@ -689,13 +704,13 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
     })
     expect(await screen.findByText('RTROptimizerPanel', {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Climate' }).getAttribute('aria-current')).toBe('page')
   }, 15000)
 
   it('keeps RTR state outside route-local control pages', async () => {
@@ -709,7 +724,7 @@ describe('App routed shell', () => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
   })
@@ -726,7 +741,7 @@ describe('App routed shell', () => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
   })
@@ -818,7 +833,7 @@ describe('App routed shell', () => {
     expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-current')).toBe('step')
-    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Climate' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {
@@ -837,26 +852,43 @@ describe('App routed shell', () => {
     renderApp('/control')
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
 
     fireEvent.click(screen.getByRole('button', { name: 'Open assistant fab' }))
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
   })
 
   it('keeps resources and alerts as dedicated pages instead of overview fallbacks', async () => {
     renderApp('/resources')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
-    expect(await screen.findByText('ResourcesCommandCenter:resources-stock')).toBeTruthy()
+    expect(await screen.findByText('ResourcesCommandCenter:resources-nutrient')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Alerts' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Protection' }))
 
-    expect(await screen.findByText('AlertsCommandCenter:alerts-priority')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
-    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
+    expect(await screen.findByText('AlertsCommandCenter:alerts-protection')).toBeTruthy()
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Protection')
+    expect(screen.getByRole('button', { name: 'Protection' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('hydrates direct hash tab selections before restoring a workspace from the sidebar', async () => {
+    renderApp('/resources#resources-market')
+
+    expect(await screen.findByText('ResourcesCommandCenter:resources-market')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Action:resources-market' }).getAttribute('aria-current')).toBe('step')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
+
+    expect(await screen.findByText('ResourcesCommandCenter:resources-market')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Action:resources-market' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps trend as a dedicated page separated from control', async () => {
@@ -894,11 +926,11 @@ describe('App routed shell', () => {
   })
 
   it.each([
-    ['/control/legacy', 'Control Solutions'],
+    ['/control/legacy', 'Climate Solutions'],
     ['/trend/legacy', 'Trend'],
     ['/rtr', 'RTR Optimizer'],
     ['/resources/legacy', 'Resources'],
-    ['/alerts/legacy', 'Alerts'],
+    ['/alerts/legacy', 'Protection'],
   ])('redirects %s to the canonical routed page', async (path, heading) => {
     renderApp(path)
 
@@ -946,10 +978,10 @@ describe('App routed shell', () => {
   it('opens the protection advisor lane through the live advisor tab surface', async () => {
     renderApp('/protection')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Protection')
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('pesticide')
-    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Protection' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('keeps nested growth advisor aliases on the live advisor tab surface', async () => {

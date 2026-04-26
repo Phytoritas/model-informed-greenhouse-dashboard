@@ -4,6 +4,7 @@ import PageCanvas from '../components/layout/PageCanvas';
 interface CropWorkPageProps {
   locale: 'ko' | 'en';
   cropSummary: ReactNode;
+  advisorSurface?: ReactNode;
   workBoard: ReactNode;
   forecastSurface: ReactNode;
   recentWorkSurface: ReactNode;
@@ -13,6 +14,7 @@ interface CropWorkPageProps {
 export default function CropWorkPage({
   locale,
   cropSummary,
+  advisorSurface = null,
   workBoard,
   forecastSurface,
   recentWorkSurface,
@@ -45,23 +47,27 @@ export default function CropWorkPage({
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
         {showGrowth ? (
           <>
-            <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{cropSummary}</div>
+            <div className="min-h-0 xl:col-span-5 [&>*]:h-full">{cropSummary}</div>
+            <div className="min-h-0 xl:col-span-7 [&>*]:h-full">{advisorSurface}</div>
             <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{workBoard}</div>
+            <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{recentWorkSurface}</div>
             <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{forecastSurface}</div>
           </>
         ) : null}
         {showWork ? (
           <>
             <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{workBoard}</div>
-            <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{recentWorkSurface}</div>
+            <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{advisorSurface}</div>
             <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{cropSummary}</div>
+            <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{recentWorkSurface}</div>
           </>
         ) : null}
         {showHarvest ? (
           <>
-            <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{recentWorkSurface}</div>
+            <div className="min-h-0 xl:col-span-8 [&>*]:h-full">{advisorSurface}</div>
             <div className="min-h-0 xl:col-span-4 [&>*]:h-full">{workBoard}</div>
             <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{forecastSurface}</div>
+            <div className="min-h-0 xl:col-span-12 [&>*]:h-full">{recentWorkSurface}</div>
           </>
         ) : null}
         {!showGrowth && !showWork && !showHarvest ? (

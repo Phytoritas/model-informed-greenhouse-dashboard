@@ -3,8 +3,18 @@ import CropDetails from '../components/CropDetails';
 import TodayBoard from '../components/dashboard/TodayBoard';
 import ModelRuntimeBridge from '../components/dashboard/ModelRuntimeBridge';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
+import AdvisorTabs from '../components/advisor/AdvisorTabs';
+import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
-import type { AdvancedModelMetrics, CropType, ForecastData, SensorData } from '../types';
+import type {
+  AdvancedModelMetrics,
+  CropType,
+  ForecastData,
+  ProducePricesPayload,
+  RtrProfile,
+  SensorData,
+  WeatherOutlook,
+} from '../types';
 import CropWorkPage from './crop-work-page';
 
 const ForecastPanel = lazy(() => import('../components/ForecastPanel'));
@@ -15,7 +25,12 @@ interface CropWorkRoutePageProps {
   crop: CropType;
   currentData: SensorData;
   modelMetrics: AdvancedModelMetrics;
+  history?: SensorData[];
   forecast: ForecastData | null;
+  summary?: SmartGrowKnowledgeSummary | null;
+  producePrices?: ProducePricesPayload | null;
+  weather?: WeatherOutlook | null;
+  rtrProfile?: RtrProfile | null;
   aiAnalysis: string | null;
   actionsNow: string[];
   actionsToday: string[];
@@ -30,7 +45,12 @@ export default function CropWorkRoutePage({
   crop,
   currentData,
   modelMetrics,
+  history = [],
   forecast,
+  summary = null,
+  producePrices = null,
+  weather = null,
+  rtrProfile = null,
   aiAnalysis,
   actionsNow,
   actionsToday,
@@ -39,11 +59,36 @@ export default function CropWorkRoutePage({
   activePanel = 'crop-work-growth',
   onOpenAssistant,
 }: CropWorkRoutePageProps) {
+  const advisorInitialTab = activePanel === 'crop-work-work'
+    ? 'work'
+    : activePanel === 'crop-work-harvest'
+      ? 'harvest_market'
+      : 'physiology';
+  const advisorSurface = (
+    <AdvisorTabs
+      key={`${crop}-${advisorInitialTab}`}
+      crop={crop}
+      summary={summary}
+      currentData={currentData}
+      metrics={modelMetrics}
+      history={history}
+      forecast={forecast}
+      producePrices={producePrices}
+      weather={weather}
+      rtrProfile={rtrProfile}
+      isOpen
+      initialTab={advisorInitialTab}
+      onClose={onOpenAssistant}
+      showCloseAction={false}
+    />
+  );
+
   return (
     <CropWorkPage
       locale={locale}
       activeTabId={activePanel}
       cropSummary={<CropDetails crop={crop} currentData={currentData} metrics={modelMetrics} />}
+      advisorSurface={advisorSurface}
       workBoard={(
         <TodayBoard
           actionsNow={actionsNow}

@@ -22,8 +22,8 @@ const AdvisorActionTimeline = ({
 }: AdvisorActionTimelineProps) => {
     const buckets = [
         { key: 'now', label: labels.now, items: actions?.now ?? [], tone: 'sg-tint-green' },
-        { key: 'today', label: labels.today, items: actions?.today ?? [], tone: 'sg-tint-blue' },
-        { key: 'next3d', label: labels.next3d, items: actions?.next_3d ?? [], tone: 'sg-tint-violet' },
+        { key: 'today', label: labels.today, items: actions?.today ?? [], tone: 'sg-tint-neutral' },
+        { key: 'next3d', label: labels.next3d, items: actions?.next_3d ?? [], tone: 'sg-tint-amber' },
     ] as const;
     const leadBucket = buckets[0];
     const supportingBuckets = buckets.slice(1);

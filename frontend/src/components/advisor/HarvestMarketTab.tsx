@@ -132,7 +132,7 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
     if (props.status !== 'error' && analysis) {
         return (
             <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
-                <div className="sg-advisor-shell sg-advisor-shell-violet space-y-4">
+                <div className="sg-advisor-shell sg-advisor-shell-amber space-y-4">
                     <div>
                         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                             {copy.title}

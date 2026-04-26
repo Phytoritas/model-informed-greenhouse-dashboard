@@ -402,22 +402,14 @@
   .sg-advisor-shell {
     position: relative;
     overflow: hidden;
-    border-radius: 30px;
+    border: 1px solid var(--sg-outline-soft);
+    border-radius: var(--sg-radius-xl);
     padding: 1.25rem;
     box-shadow: var(--sg-shadow-card);
   }
 
   .sg-advisor-shell::after {
-    content: "";
-    position: absolute;
-    right: -2.2rem;
-    bottom: -2.8rem;
-    width: 8.5rem;
-    height: 8.5rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.22);
-    filter: blur(28px);
-    pointer-events: none;
+    content: none;
   }
 
   .sg-advisor-shell-green {
@@ -434,10 +426,6 @@
 
   .sg-advisor-shell-rose {
     background: var(--sg-tint-rose);
-  }
-
-  .sg-advisor-shell-violet {
-    background: var(--sg-tint-violet);
   }
 
   .sg-advisor-shell-neutral {

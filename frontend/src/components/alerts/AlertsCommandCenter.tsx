@@ -1,27 +1,56 @@
-import type { TelemetryStatus } from '../../types';
+import type {
+    AdvancedModelMetrics,
+    CropType,
+    ForecastData,
+    ProducePricesPayload,
+    RtrProfile,
+    SensorData,
+    TelemetryStatus,
+    WeatherOutlook,
+} from '../../types';
+import type { SmartGrowKnowledgeSummary } from '../../hooks/useSmartGrowKnowledge';
 import type { KpiTileData } from '../KpiStrip';
 import DashboardCard from '../common/DashboardCard';
+import AdvisorTabs from '../advisor/AdvisorTabs';
 import AlertRail, { type AlertRailItem } from '../dashboard/AlertRail';
 import LiveMetricStrip from '../dashboard/LiveMetricStrip';
 
 interface AlertsCommandCenterProps {
     locale: 'ko' | 'en';
     items: AlertRailItem[];
+    crop: CropType;
+    summary?: SmartGrowKnowledgeSummary | null;
+    currentData: SensorData;
+    metrics: AdvancedModelMetrics;
+    history?: SensorData[];
+    forecast?: ForecastData | null;
+    producePrices?: ProducePricesPayload | null;
+    weather?: WeatherOutlook | null;
+    rtrProfile?: RtrProfile | null;
     telemetryStatus: TelemetryStatus;
     statusSummary: string;
     primaryTiles: KpiTileData[];
     secondaryTiles: KpiTileData[];
-    activePanel?: 'alerts-priority' | 'alerts-stream' | 'alerts-history';
+    activePanel?: 'alerts-protection' | 'alerts-stream' | 'alerts-history';
 }
 
 export default function AlertsCommandCenter({
     locale,
     items,
+    crop,
+    summary = null,
+    currentData,
+    metrics,
+    history = [],
+    forecast = null,
+    producePrices = null,
+    weather = null,
+    rtrProfile = null,
     telemetryStatus,
     statusSummary,
     primaryTiles,
     secondaryTiles,
-    activePanel = 'alerts-priority',
+    activePanel = 'alerts-protection',
 }: AlertsCommandCenterProps) {
     const copy = locale === 'ko'
         ? {
@@ -122,7 +151,27 @@ export default function AlertsCommandCenter({
                 </div>
             </DashboardCard>
 
-            {activePanel === 'alerts-priority' ? <AlertRail items={items} /> : null}
+            {activePanel === 'alerts-protection' ? (
+                <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)]">
+                    <AdvisorTabs
+                        key={`${crop}-pesticide`}
+                        crop={crop}
+                        summary={summary}
+                        currentData={currentData}
+                        metrics={metrics}
+                        history={history}
+                        forecast={forecast}
+                        producePrices={producePrices}
+                        weather={weather}
+                        rtrProfile={rtrProfile}
+                        isOpen
+                        initialTab="pesticide"
+                        onClose={() => undefined}
+                        showCloseAction={false}
+                    />
+                    <AlertRail items={items} compact />
+                </div>
+            ) : null}
             {activePanel === 'alerts-stream' ? (
                 <LiveMetricStrip
                     statusSummary={statusSummary}

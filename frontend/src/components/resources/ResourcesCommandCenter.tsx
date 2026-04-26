@@ -2,15 +2,19 @@ import { Suspense, lazy } from 'react';
 import type {
     AdvancedModelMetrics,
     CropType,
+    ForecastData,
     ProducePricesPayload,
+    RtrProfile,
     SensorData,
     WeatherOutlook,
 } from '../../types';
 import { getProduceDisplayName } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
+import type { SmartGrowKnowledgeSummary } from '../../hooks/useSmartGrowKnowledge';
 import DashboardCard from '../common/DashboardCard';
 import DecisionSnapshotGrid from '../dashboard/DecisionSnapshotGrid';
 import WeatherOutlookPanel from '../WeatherOutlookPanel';
+import AdvisorTabs from '../advisor/AdvisorTabs';
 import LoadingSkeleton from '../../features/common/LoadingSkeleton';
 
 const ProducePricesPanel = lazy(() => import('../ProducePricesPanel'));
@@ -21,13 +25,17 @@ interface ResourcesCommandCenterProps {
     cropLabel: string;
     currentData: SensorData;
     modelMetrics: AdvancedModelMetrics;
+    history?: SensorData[];
+    forecast?: ForecastData | null;
+    summary?: SmartGrowKnowledgeSummary | null;
     weather: WeatherOutlook | null;
     weatherLoading: boolean;
     weatherError: string | null;
     producePrices: ProducePricesPayload | null;
+    rtrProfile?: RtrProfile | null;
     produceLoading: boolean;
     produceError: string | null;
-    activePanel?: 'resources-energy' | 'resources-market' | 'resources-stock';
+    activePanel?: 'resources-nutrient' | 'resources-energy' | 'resources-market';
 }
 
 export default function ResourcesCommandCenter({
@@ -36,10 +44,14 @@ export default function ResourcesCommandCenter({
     cropLabel,
     currentData,
     modelMetrics,
+    history = [],
+    forecast = null,
+    summary = null,
     weather,
     weatherLoading,
     weatherError,
     producePrices,
+    rtrProfile = null,
     produceLoading,
     produceError,
     activePanel = 'resources-energy',
@@ -91,7 +103,7 @@ export default function ResourcesCommandCenter({
             label: copy.energy,
             value: energyValue,
             detail: `${copy.energyDetail} · ${copy.unitCost} ${modelMetrics.energy.costPrediction.toFixed(2)}`,
-            toneClass: 'sg-tint-violet',
+            toneClass: 'sg-tint-rose',
         },
         {
             label: copy.weather,
@@ -179,15 +191,23 @@ export default function ResourcesCommandCenter({
                 </Suspense>
             ) : null}
 
-            {activePanel === 'resources-stock' ? (
-                <DecisionSnapshotGrid
+            {activePanel === 'resources-nutrient' ? (
+                <AdvisorTabs
+                    key={`${crop}-nutrient`}
                     crop={crop}
+                    summary={summary}
                     currentData={currentData}
-                    modelMetrics={modelMetrics}
-                    weather={weather}
-                    weatherLoading={weatherLoading}
+                    metrics={modelMetrics}
+                    history={history}
+                    forecast={forecast}
                     producePrices={producePrices}
-                    produceLoading={produceLoading}
+                    weather={weather}
+                    rtrProfile={rtrProfile}
+                    isOpen
+                    initialTab="nutrient"
+                    initialCorrectionToolOpen
+                    onClose={() => undefined}
+                    showCloseAction={false}
                 />
             ) : null}
         </div>
