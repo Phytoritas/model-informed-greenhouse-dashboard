@@ -1,62 +1,64 @@
 # System Brief
 
 ## Problem
-The repository already has a functional FastAPI backend and a Vite frontend, but several backend/frontend connection seams drifted after the routed-shell work.
-The active issue is not a visual redesign; it is contract alignment between frontend hooks/routes and backend API behavior.
+Issue `#112` closed the first backend/frontend integration repair phase. A post-merge audit found smaller but concrete drifts where route helpers, backend crop handling, advisor metadata, and market fallback presentation no longer described the same contract.
 
 ## Goal
-Repair issue `#112` so that:
-- frontend calls use the backend's lowercase crop contract for RTR persistence
-- RTR response typing reflects backend payloads instead of pretending all crop fields are UI `CropType`
-- RTR calibration responses expose lowercase API crop keys while preserving title-case profile display fields inside profile objects
-- frontend fallback energy-cost calculations use the same KRW/kWh unit as backend settings
-- the existing advisor tab backend integration is reachable through exact and nested app routes
+Repair issue `#114` so that:
+- nested `/ask/*` compatibility links reach the assistant instead of falling through to overview
+- backend route handlers normalize crop keys consistently before runtime state lookup or service calls
+- advisor tab metadata uses one canonical frontend/backend route vocabulary for landed tabs
+- the backend market-price fallback contract is represented in frontend types and visible UI state
+- issue `#112` repairs stay preserved
 
 ## Primary Actors
-- greenhouse operator who needs direct page navigation and clear operating lanes
-- frontend hooks that call backend simulation, RTR, advisor, knowledge, weather, and market endpoints
+- greenhouse operator who expects old assistant links and advisor lanes to stay navigable
+- frontend route shell and hooks that call backend simulation, RTR, advisor, knowledge, weather, and market endpoints
 - FastAPI backend route handlers that own runtime state and response payloads
-- route shell that decides whether advisor backend surfaces are reachable or dead code
+- SmartGrow catalog/orchestration metadata that may be consumed by UI or assistant tooling
 - `.rah` harness state that must describe the active issue truth
 
 ## Source-To-Target Mapping
 | Source surface | Target direction | Notes |
 |---|---|---|
-| `frontend/src/hooks/useRtrOptimizer.ts` area persistence | POST lowercase `crop` to `/api/rtr/area-settings` | all other RTR request payloads already use `cropKey` |
-| `src/.../backend/app/main.py` area-settings route | tolerate frontend-style crop casing at this boundary | keeps old local UI state from failing silently |
-| `frontend/src/types.ts` RTR response crop fields | type backend RTR crop fields as lowercase API keys | avoids latent type drift |
-| `src/.../backend/app/main.py` RTR calibration routes | return lowercase API crop keys for state/preview/save envelopes | profile payloads can still keep title-case profile labels |
-| `frontend/src/hooks/useGreenhouse.ts` cost fallback | KRW/kWh default aligned with backend `GET /api/settings` | prevents unit jump before settings load |
-| `frontend/src/App.tsx` advisor compatibility routes | render `AdvisorLaneRoutePage` for exact and nested advisor aliases | makes `AdvisorTabs` API calls reachable |
+| `frontend/src/App.tsx` `/ask` route | register `/ask/*` redirect to `/assistant` | preserves `ask-chat`, `ask-search`, and nested legacy links |
+| `src/.../backend/app/main.py` crop validator | normalize `strip().lower()` once and use returned crop keys | keeps valid title-case/whitespace inputs from producing inconsistent state lookups |
+| `frontend/src/components/advisor/advisorTabRegistry.ts` | expose the canonical advisor tab endpoint map | avoids duplicate planned-tab route maps in hooks |
+| `frontend/src/hooks/useSmartGrowAdvisor.ts` | execute planned tabs from registry endpoints | locks harvest-market to the public hyphenated route |
+| `src/.../advisor_orchestration.py` | advertise `/api/advisor/tab/harvest-market` for harvest-market | underscore remains accepted through tab normalization |
+| `src/.../knowledge_catalog.py` | add delegate routes for quick tools and canonical harvest-market route | catalog metadata now matches frontend execution routes |
+| `frontend/src/types.ts` and `ProducePricesPanel.tsx` | model and display `auth_mode="fallback"` with reason/status | degraded fallback payloads no longer look like normal live KAMIS data |
 
 ## Target Module Boundary
-- `api_contract`: `backend/app/main.py`, `frontend/src/config.ts`, `frontend/src/types.ts`
-- `runtime_hooks`: `useGreenhouse.ts`, `useRtrOptimizer.ts`, `useSmartGrowAdvisor.ts`
-- `advisor_route_access`: `App.tsx`, `phytosyncSections.ts`, `advisor-lane-route-page.tsx`, `AdvisorTabs.tsx`
-- `tests`: `useRtrOptimizer.test.tsx`, `useGreenhouse.test.tsx`, `App.routing.test.tsx`, backend smoke/RTR tests
+- `api_contract`: `backend/app/main.py`, `frontend/src/types.ts`
+- `route_compatibility`: `frontend/src/App.tsx`, `frontend/src/App.routing.test.tsx`
+- `advisor_route_metadata`: `advisorTabRegistry.ts`, `useSmartGrowAdvisor.ts`, `advisor_orchestration.py`, `knowledge_catalog.py`
+- `market_fallback_ui`: `ProducePricesPanel.tsx`, `ProducePricesPanel.test.tsx`, `useProducePrices.ts`
+- `tests`: focused frontend route/hook/component tests and backend smoke/advisory/RTR/model-runtime tests
 
 ## Contract Targets
-- `/api/rtr/area-settings` accepts saved area overrides from frontend area-unit state and returns lowercase `crop`.
-- `/api/rtr/state|optimize|scenario|sensitivity|calibration-state|calibration-preview|calibration-save` response crop fields are treated as backend API crop keys.
-- `cost_per_kwh` is interpreted as KRW/kWh across backend defaults and frontend fallback calculations.
-- `/growth`, `/growth/*`, `/nutrient`, `/nutrient/*`, `/protection`, `/protection/*`, `/harvest`, and `/harvest/*` expose advisor lane tabs instead of bypassing them.
-- Existing `/ask#...`, `/rtr`, and `/legacy` redirects remain preserved.
+- `/ask`, `/ask/search`, and `/ask/history` redirect to `/assistant` while preserving hash intent.
+- `/api/knowledge/status`, `/api/advisor/tab/*`, `/api/overview/signals`, `/api/rtr/state`, and related backend surfaces accept valid title-case/whitespace crop inputs and operate on normalized lowercase crop keys.
+- `/api/advisor/tab/harvest-market` is the canonical advertised public harvest-market route; `/api/advisor/tab/harvest_market` remains accepted as an alias.
+- SmartGrow catalog entries expose `delegate_route` values that match the tab execution surface.
+- `ProducePricesPayload.source.auth_mode` includes `fallback`, and the UI shows fallback/degraded source status with the backend reason.
 
 ## Major Risks
-1. Fixing advisor routes can accidentally break old compatibility expectations if `/ask`, `/rtr`, or `/legacy` redirects are touched.
-2. Changing RTR crop response typing can expose existing test fixtures that used UI crop names for backend payloads.
-3. Backend tolerance for uppercase crop inputs should stay narrow and not hide invalid crop names.
-4. Full response-model hardening is larger than this phase and should not be mixed into the bounded repair.
+1. Broad crop normalization can introduce hidden behavior changes if a handler validates but still uses raw crop strings.
+2. Advisor route metadata must keep existing direct endpoint compatibility while clarifying tab delegate routes.
+3. Produce fallback UI should not imply live KAMIS data when the backend deliberately returned cached/sample fallback.
+4. Generated API-client or response-model work is larger than this phase and should not be mixed into the bounded repair.
 
 ## Current Bounded Delivery Slice
-- update architecture/control-plane state to issue `#112`
-- patch RTR area-settings crop casing on frontend and backend
-- align RTR response crop typing, calibration envelopes, and focused fixtures
-- align frontend fallback energy-cost unit with backend settings
-- reconnect exact and nested advisor lane routes and add route regressions
+- update architecture/control-plane state to issue `#114`
+- patch `/ask/*` route compatibility
+- centralize backend crop normalization and assign normalized values before state access
+- align advisor registry/hook/catalog/orchestration route metadata
+- extend produce price fallback frontend typing and source-status display
+- add focused frontend/backend regression coverage
 
 ## Deferred Until Later Phases
-- response models for every large backend payload
-- a complete generated OpenAPI-to-TypeScript contract
-- wiring quick control toggles to real backend actuator endpoints
-- replacing `alert()`-style local error handling in legacy crop config components
+- generated OpenAPI-to-TypeScript client
+- complete FastAPI response-model hardening
+- real actuator quick-control endpoints and rollback-aware mutation state
+- backend-provided simulation default dataset/timestep endpoint

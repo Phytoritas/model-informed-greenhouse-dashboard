@@ -84,6 +84,11 @@ def _normalize_tab_name(tab_name: str) -> str:
     return normalized
 
 
+def _public_tab_entrypoint(tab_name: str) -> str:
+    public_tab_name = "harvest-market" if tab_name == "harvest_market" else tab_name
+    return f"/api/advisor/tab/{public_tab_name}"
+
+
 def _context_has_value(value: Any) -> bool:
     if value is None:
         return False
@@ -5073,7 +5078,7 @@ def build_advisor_tab_response(
 
     payload["tab_name"] = normalized_tab
     payload["orchestration"] = {
-        "entrypoint": f"/api/advisor/tab/{normalized_tab}",
+        "entrypoint": _public_tab_entrypoint(normalized_tab),
         "available_tabs": list(_LANDED_TABS),
     }
     return payload

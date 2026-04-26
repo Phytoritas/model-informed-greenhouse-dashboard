@@ -1,33 +1,36 @@
 # Current Loop
 
 ## Active State
-- Issue `#112` is the active bounded backend/frontend integration repair lane.
-- Active branch: `fix/112-backend-frontend-integration-audit-and-repair`.
-- The only open tracked backlog issue is blocked issue `#3`, which still waits for grower-approved RTR windows.
-- The post-issue106 `main` baseline remains the preserved product/runtime baseline.
+- Issue `#114` is the active bounded post-issue112 backend/frontend integration repair lane.
+- Active branch: `fix/114-post-issue112-backend-frontend-integration-audit`.
+- Issue `#112` is complete and merged into `main`; its RTR crop casing, RTR crop typing, KRW/kWh fallback, and AdvisorTabs lane regressions are preservation constraints.
+- The blocked calibration backlog remains issue `#3`, waiting for grower-approved RTR windows.
 
 ## Stable Main Baseline
-- PR `#105` merged issue `#104` into `main` at `854ef7c`.
-- PR `#107` merged issue `#106` into `main` at `032df2e`.
-- The merged baseline now includes:
-  - live refresh responsiveness restored across status polling, websocket recovery, and runtime snapshot reads
-  - overview hero metrics plus the 3-day source-sink surfaces consuming live values instead of stale advisor snapshots or flat zero history
-  - Today operating-direction auto-refresh keyed off live receive time with market, weather, and RTR profile freshness gating
-  - outside irradiance history appending the live shortwave point and exposing visible freshness labels on overview trend surfaces
+- PR `#113` merged issue `#112` into `main` at `079e373`.
+- The merged baseline includes:
+  - RTR area-settings crop casing repair and backend tolerance
+  - RTR response/calibration crop key alignment
+  - KRW/kWh frontend fallback alignment with backend settings
+  - exact and nested `/growth`, `/nutrient`, `/protection`, and `/harvest` advisor lane access
+  - full local and GitHub CI validation for the issue `#112` slice
+
+## Current Repair Slice
+- `/ask/*` aliases now redirect to `/assistant` while preserving hash intent.
+- Backend crop validation now normalizes valid title-case/whitespace crop inputs and route handlers use normalized crop keys before state/service access.
+- SmartGrow advisor route metadata now uses canonical `/api/advisor/tab/harvest-market` for the public harvest-market route while keeping underscore alias acceptance.
+- Frontend advisor planned-tab execution now reads route paths from the advisor tab registry source of truth.
+- Produce-price fallback payloads now expose `auth_mode="fallback"` and fallback reason/status in frontend types and visible source-status UI.
 
 ## Latest Validation
-- Issue `#112` is green on the full local ladder after the reviewer follow-up fixes:
-  - `npm --prefix frontend run lint`
-  - `npm --prefix frontend run test`
-  - `npm --prefix frontend run build`
-  - `poetry run ruff check .`
-  - `poetry run pytest`
-- Focused regressions also passed with `npm --prefix frontend run test -- src/App.routing.test.tsx src/hooks/useRtrCalibration.test.tsx` and `poetry run pytest tests/test_rtr_optimizer.py -k "rtr_calibration_state_and_preview_routes_return_house_scoped_windows or rtr_calibration_save_route_persists_windows_and_refreshes_profile"`.
-- `git diff --check` passed with line-ending warnings only.
-- RAH restart packet revalidation uses `automation/rah.py doctor|status|resume` after tracked `.rah` files are updated.
+- Focused frontend regression run passed:
+  - `npm --prefix frontend run test -- App.routing.test.tsx ProducePricesPanel.test.tsx useSmartGrowAdvisor.test.tsx useSmartGrowKnowledge.test.tsx`
+- Focused backend regression run passed:
+  - `poetry run pytest tests/test_smoke.py::test_knowledge_status_endpoint_returns_crop_scoped_catalog tests/test_smoke.py::test_advisor_tab_endpoint_forwards_greenhouse_id tests/test_advisory.py::test_knowledge_catalog_exposes_advisory_surfaces tests/test_advisor_orchestration.py::test_build_advisor_tab_response_lands_harvest_market_with_dashboard_context tests/test_model_runtime_api.py::test_overview_signal_endpoint_returns_internal_irradiance_and_model_history tests/test_rtr_optimizer.py::test_rtr_state_route_returns_canonical_shape`
+- Full validation ladder is still required before PR packaging.
 
 ## Exact Next Step
-1. Finalize issue `#112`: review the clean diff, commit, push, and open a PR with `Closes #112`.
-2. Keep deferred API-client, response-model, actuator-control, and CSV allowlist work out of this issue.
-3. Re-run validation only if the final PR packaging changes code or tracked RAH state.
-4. Keep issue `#3` blocked until real grower-approved windows exist.
+1. Run the full repo validation ladder.
+2. Run `git diff --check` and RAH `doctor|status|resume`.
+3. Record Memento feedback/reflect for issue `#114`.
+4. Commit, push, open PR with `Closes #114`, and merge only after validation passes.

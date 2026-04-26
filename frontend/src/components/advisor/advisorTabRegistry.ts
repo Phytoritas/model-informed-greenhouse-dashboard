@@ -21,50 +21,60 @@ export interface AdvisorTabRegistryEntry {
     label: string;
     icon: LucideIcon;
     endpoint: string;
-    kind: 'actionable' | 'pending';
+    kind: 'actionable' | 'on-demand';
 }
+
+export const ADVISOR_TAB_ENDPOINTS = {
+    environment: '/advisor/tab/environment',
+    physiology: '/advisor/tab/physiology',
+    work: '/advisor/tab/work',
+    pesticide: '/advisor/tab/pesticide',
+    nutrient: '/advisor/tab/nutrient',
+    correction: '/advisor/tab/correction',
+    harvest_market: '/advisor/tab/harvest-market',
+} as const;
 
 export const ADVISOR_TAB_REGISTRY: AdvisorTabRegistryEntry[] = [
     {
         key: 'environment',
         label: 'Environment',
         icon: Sun,
-        endpoint: '/advisor/tab/environment',
-        kind: 'pending',
+        endpoint: ADVISOR_TAB_ENDPOINTS.environment,
+        kind: 'on-demand',
     },
     {
         key: 'physiology',
         label: 'Physiology',
         icon: Leaf,
-        endpoint: '/advisor/tab/physiology',
-        kind: 'pending',
+        endpoint: ADVISOR_TAB_ENDPOINTS.physiology,
+        kind: 'on-demand',
     },
     {
         key: 'work',
         label: 'Work',
         icon: Sprout,
-        endpoint: '/advisor/tab/work',
-        kind: 'pending',
+        endpoint: ADVISOR_TAB_ENDPOINTS.work,
+        kind: 'on-demand',
     },
     {
         key: 'pesticide',
         label: 'Pesticide',
         icon: ShieldCheck,
-        endpoint: '/advisor/tab/pesticide',
+        endpoint: ADVISOR_TAB_ENDPOINTS.pesticide,
         kind: 'actionable',
     },
     {
         key: 'nutrient',
         label: 'Nutrient',
         icon: FlaskConical,
-        endpoint: '/advisor/tab/nutrient',
+        endpoint: ADVISOR_TAB_ENDPOINTS.nutrient,
         kind: 'actionable',
     },
     {
         key: 'harvest_market',
         label: 'Harvest & Market',
         icon: Activity,
-        endpoint: '/advisor/tab/harvest-market',
-        kind: 'pending',
+        endpoint: ADVISOR_TAB_ENDPOINTS.harvest_market,
+        kind: 'on-demand',
     },
 ];

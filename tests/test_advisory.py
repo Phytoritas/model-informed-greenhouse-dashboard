@@ -722,6 +722,7 @@ def test_knowledge_catalog_exposes_advisory_surfaces(synthetic_knowledge_assets)
         == "/api/advisor/tab/physiology"
     )
     assert payload["advisory_surfaces"]["pesticide"]["route"] == "/api/pesticides/recommend"
+    assert payload["advisory_surfaces"]["pesticide"]["delegate_route"] == "/api/advisor/tab/pesticide"
     assert payload["advisory_surfaces"]["pesticide"]["coverage"]["target_names"]
     assert payload["advisory_surfaces"]["pesticide"]["coverage"]["registration_status_counts"]
     assert (
@@ -732,10 +733,15 @@ def test_knowledge_catalog_exposes_advisory_surfaces(synthetic_knowledge_assets)
         "워크북 기준 농약 후보는 바로 조회할 수 있지만, 실제 사용 전에는 제품 라벨과 등록 여부를 최종 확인하세요."
     ]
     assert payload["advisory_surfaces"]["nutrient"]["route"] == "/api/nutrients/recommend"
+    assert payload["advisory_surfaces"]["nutrient"]["delegate_route"] == "/api/advisor/tab/nutrient"
     assert payload["advisory_surfaces"]["nutrient"]["coverage"]["stages"]
     assert (
         payload["advisory_surfaces"]["nutrient_correction"]["route"]
         == "/api/nutrients/correction"
+    )
+    assert (
+        payload["advisory_surfaces"]["nutrient_correction"]["delegate_route"]
+        == "/api/advisor/tab/correction"
     )
     assert payload["advisory_surfaces"]["nutrient_correction"]["coverage"]["source_water_analytes"]
     assert (
@@ -768,8 +774,11 @@ def test_knowledge_catalog_exposes_advisory_surfaces(synthetic_knowledge_assets)
     assert payload["advisory_surfaces"]["harvest"]["route"] == "/api/advisor/harvest"
     assert (
         payload["advisory_surfaces"]["harvest"]["delegate_route"]
-        == "/api/advisor/tab/harvest_market"
+        == "/api/advisor/tab/harvest-market"
     )
+    assert payload["advisory_surfaces"]["harvest"]["accepted_aliases"] == [
+        "/api/advisor/tab/harvest_market"
+    ]
 
 
 def test_crop_knowledge_context_includes_deterministic_advisory_summary(synthetic_knowledge_assets) -> None:

@@ -1099,6 +1099,7 @@ def test_build_advisor_tab_response_lands_harvest_market_with_dashboard_context(
     assert payload["status"] == "success"
     assert payload["family"] == "advisor_tab"
     assert payload["tab_name"] == "harvest_market"
+    assert payload["orchestration"]["entrypoint"] == "/api/advisor/tab/harvest-market"
     assert payload["available_tabs"] == [
         "environment",
         "physiology",

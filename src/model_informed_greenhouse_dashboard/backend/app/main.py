@@ -433,11 +433,16 @@ def _default_crop_config(crop: str) -> Dict[str, int]:
     }
 
 
-def _validate_crop(crop: str) -> str:
-    if crop not in CROPS:
+def _normalize_crop_key(crop: str) -> str:
+    normalized_crop = crop.strip().lower() if isinstance(crop, str) else ""
+    if normalized_crop not in CROPS:
         raise HTTPException(status_code=400, detail="crop must be 'tomato' or 'cucumber'")
 
-    return crop
+    return normalized_crop
+
+
+def _validate_crop(crop: str) -> str:
+    return _normalize_crop_key(crop)
 
 
 def _target_crops(crop: Optional[str] = None) -> list[str]:
@@ -448,10 +453,14 @@ def _target_crops(crop: Optional[str] = None) -> list[str]:
 
 
 def _normalize_catalog_crop(crop: Optional[str] = None) -> Optional[str]:
-    if crop in (None, "", "all"):
+    if crop is None:
         return None
 
-    return _validate_crop(crop)
+    normalized_crop = crop.strip().lower()
+    if normalized_crop in ("", "all"):
+        return None
+
+    return _validate_crop(normalized_crop)
 
 
 def _should_rebuild_knowledge_catalog(payload: Dict[str, Any]) -> bool:
@@ -1539,7 +1548,8 @@ class StartRequest(BaseModel):
 @app.post("/api/start")
 async def start_simulation(req: StartRequest):
     """Start simulation for specified crop (independent per greenhouse)."""
-    logger.info(f"Starting simulation for {req.crop} greenhouse with {req.csv_filename}")
+    crop = _validate_crop(req.crop)
+    logger.info(f"Starting simulation for {crop} greenhouse with {req.csv_filename}")
     from .adapters.cucumber import CucumberAdapter
     from .adapters.tomato import TomatoAdapter
     from .services.decision import DecisionSupport
@@ -1547,12 +1557,9 @@ async def start_simulation(req: StartRequest):
     from .services.ingest import BatchIngestor
     from .services.simulator import Simulator
 
-    # Validate crop type
-    _validate_crop(req.crop)
-
-    crop_state = app_state[req.crop]
-    ops_config = _get_ops_config(req.crop)
-    _get_crop_config_store(req.crop)
+    crop_state = app_state[crop]
+    ops_config = _get_ops_config(crop)
+    _get_crop_config_store(crop)
 
     # Avoid expensive stop/reload churn when the requested simulation is already live.
     existing_simulator = crop_state.get("simulator")
@@ -1575,14 +1582,14 @@ async def start_simulation(req: StartRequest):
         ):
             logger.info(
                 "%s simulation already active for %s (%s); skipping restart",
-                req.crop,
+                crop,
                 req.csv_filename,
                 req.time_step,
             )
-            _record_runtime_tick(req.crop)
+            _record_runtime_tick(crop)
             return {
                 "status": "already_running",
-                "crop": req.crop,
+                "crop": crop,
                 "rows": total_rows,
                 "time_step": crop_state.get("time_step", req.time_step),
                 "dt_minutes": round((crop_state.get("dt_hours") or 0.0) * 60, 3),
@@ -1592,21 +1599,21 @@ async def start_simulation(req: StartRequest):
     if crop_state["simulator"] is not None:
         import asyncio
 
-        logger.info(f"Stopping previous {req.crop} simulation...")
+        logger.info(f"Stopping previous {crop} simulation...")
         crop_state["simulator"].stop()
         
         # Cancel running simulation task
         if crop_state["sim_task"] and not crop_state["sim_task"].done():
-            logger.info(f"Cancelling previous {req.crop} simulation task...")
+            logger.info(f"Cancelling previous {crop} simulation task...")
             crop_state["sim_task"].cancel()
             try:
                 await crop_state["sim_task"]
             except asyncio.CancelledError:
-                logger.info(f"Previous {req.crop} simulation task cancelled cleanly")
+                logger.info(f"Previous {crop} simulation task cancelled cleanly")
             except Exception as exc:
                 logger.warning(
                     "Previous %s simulation task raised during cancellation: %s",
-                    req.crop,
+                    crop,
                     exc,
                 )
             finally:
@@ -1696,9 +1703,9 @@ async def start_simulation(req: StartRequest):
  
     # Initialize adapter
     area_m2 = greenhouse_config["greenhouse"]["area_m2"]
-    crop_config = greenhouse_config["crops"][req.crop]
+    crop_config = greenhouse_config["crops"][crop]
 
-    if req.crop == "tomato":
+    if crop == "tomato":
         adapter = TomatoAdapter(
             area_m2=area_m2, plant_density=crop_config["plant_density_per_m2"]
         )
@@ -1708,19 +1715,19 @@ async def start_simulation(req: StartRequest):
         )
 
     crop_state["adapter"] = adapter
-    _apply_crop_config_to_adapter(req.crop)
-    if req.crop == "cucumber" and crop_state.get("pending_prune_reset"):
+    _apply_crop_config_to_adapter(crop)
+    if crop == "cucumber" and crop_state.get("pending_prune_reset"):
         adapter.mark_pruned()
         crop_state["pending_prune_reset"] = False
 
     # Initialize decision support system
-    decision_support = DecisionSupport(crop_type=req.crop)
+    decision_support = DecisionSupport(crop_type=crop)
     crop_state["decision"] = decision_support
 
     # Initialize simulator with irrigation and energy services
     simulator = Simulator(
         adapter=adapter,
-        broadcaster=lambda path, payload: manager.broadcast_sync(f"{path}/{req.crop}", payload),
+        broadcaster=lambda path, payload: manager.broadcast_sync(f"{path}/{crop}", payload),
         df_env=df_env,
         irrigation_advisor=crop_state["irrigation"],
         energy_estimator=crop_state["energy"],
@@ -1738,14 +1745,14 @@ async def start_simulation(req: StartRequest):
         if payload.get("type") == "forecast.snapshot":
             crop_state["latest_forecast"] = payload
         # Broadcast to WebSocket
-        manager.broadcast_sync(f"{path}/{req.crop}", payload)
+        manager.broadcast_sync(f"{path}/{crop}", payload)
 
     forecaster = BranchForecaster(
         broadcaster=_handle_forecast_broadcast,
         area_m2=area_m2,
         window_days=settings.forecast_window_days,
         forecast_step_interval=forecast_step_interval,
-        crop_name=req.crop,
+        crop_name=crop,
     )
     crop_state["forecaster"] = forecaster
 
@@ -1753,28 +1760,28 @@ async def start_simulation(req: StartRequest):
     crop_state["irrigation"].reset_daily()
     crop_state["energy"].reset_daily()
 
-    logger.info(f"{req.crop} simulation initialized with {len(df_env)} rows")
+    logger.info(f"{crop} simulation initialized with {len(df_env)} rows")
 
     # Auto-start simulation for real-time streaming
     simulator.start()
     import asyncio
 
-    crop_state["sim_task"] = asyncio.create_task(_run_simulation_task(req.crop))
-    logger.info(f"{req.crop} real-time simulation started")
+    crop_state["sim_task"] = asyncio.create_task(_run_simulation_task(crop))
+    logger.info(f"{crop} real-time simulation started")
     
     # Schedule initial forecast almost immediately to show results quickly
     async def _initial_forecast():
         await asyncio.sleep(0.2)  # tiny delay to ensure simulator has started
-        if _schedule_forecast(req.crop, force=True):
-            logger.info(f"{req.crop} initial forecast scheduled")
+        if _schedule_forecast(crop, force=True):
+            logger.info(f"{crop} initial forecast scheduled")
         else:
-            logger.info(f"{req.crop} initial forecast skipped")
+            logger.info(f"{crop} initial forecast skipped")
     
     asyncio.create_task(_initial_forecast())
 
     return {
         "status": "success",
-        "crop": req.crop,
+        "crop": crop,
         "rows": len(df_env),
         "date_range": {
             "start": str(df_env["datetime"].min()),
@@ -1788,7 +1795,7 @@ async def start_simulation(req: StartRequest):
 @app.post("/api/step")
 async def step_simulation(crop: str = "tomato"):
     """Execute one simulation step."""
-    _validate_crop(crop)
+    crop = _validate_crop(crop)
     crop_state = app_state[crop]
     if crop_state["simulator"] is None:
         raise HTTPException(
@@ -2162,7 +2169,7 @@ async def update_ops_config(config: OpsConfig, crop: Optional[str] = None):
 @app.post("/api/config/crop")
 async def update_crop_config(config: CropConfig, crop: str):
     """Update crop-specific configuration."""
-    _validate_crop(crop)
+    crop = _validate_crop(crop)
 
     crop_config = _get_crop_config_store(crop)
     config_payload = config.model_dump(exclude_none=True)
@@ -2188,8 +2195,7 @@ async def update_crop_config(config: CropConfig, crop: str):
 @app.post("/api/settings")
 async def update_settings(settings: Settings, crop: str = "tomato"):
     """Update financial settings for a crop."""
-    if crop not in ["tomato", "cucumber"]:
-        raise HTTPException(status_code=400, detail="Invalid crop")
+    crop = _validate_crop(crop)
     
     crop_state = app_state[crop]
     if crop_state["decision"]:
@@ -2202,8 +2208,7 @@ async def update_settings(settings: Settings, crop: str = "tomato"):
 @app.get("/api/settings")
 async def get_settings(crop: str = "tomato"):
     """Get current financial settings."""
-    if crop not in ["tomato", "cucumber"]:
-        raise HTTPException(status_code=400, detail="Invalid crop")
+    crop = _validate_crop(crop)
     
     crop_state = app_state[crop]
     if crop_state["decision"]:
@@ -2232,6 +2237,8 @@ async def get_knowledge_status(
             allow_bootstrap=bootstrap,
         )
         return {"status": "success", "catalog_bootstrapped": bootstrapped, **payload}
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Knowledge status failed: %s", exc, exc_info=True)
         raise HTTPException(
@@ -2246,6 +2253,8 @@ async def reindex_knowledge(crop: Optional[str] = None):
     try:
         crop_scope = _normalize_catalog_crop(crop)
         return {"status": "success", **rebuild_knowledge_catalog(crop_scope)}
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Knowledge reindex failed: %s", exc, exc_info=True)
         raise HTTPException(
@@ -2517,15 +2526,15 @@ async def compute_model_sensitivity(req: ModelSensitivityRequest):
 @app.post("/api/advisor/summary")
 async def advisor_summary(req: AdvisorSummaryRequest):
     """Return a thin SmartGrow advisor summary over live context plus local knowledge."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     import asyncio
 
-    dashboard_payload = _augment_dashboard_with_knowledge_context(req.crop, req.dashboard)
+    dashboard_payload = _augment_dashboard_with_knowledge_context(crop, req.dashboard)
     try:
         return await asyncio.wait_for(
             asyncio.to_thread(
                 build_advisor_summary_response,
-                crop=req.crop,
+                crop=crop,
                 dashboard=dashboard_payload,
                 language=req.language or "ko",
             ),
@@ -2535,7 +2544,7 @@ async def advisor_summary(req: AdvisorSummaryRequest):
         logger.warning("Advisor summary timed out; returning deterministic fallback.")
         return await asyncio.to_thread(
             build_advisor_summary_fallback_response,
-            crop=req.crop,
+            crop=crop,
             dashboard=dashboard_payload,
             language=req.language or "ko",
             reason="llm_timeout",
@@ -2544,7 +2553,7 @@ async def advisor_summary(req: AdvisorSummaryRequest):
         logger.warning("Advisor summary degraded gracefully: %s", exc)
         return await asyncio.to_thread(
             build_advisor_summary_fallback_response,
-            crop=req.crop,
+            crop=crop,
             dashboard=dashboard_payload,
             language=req.language or "ko",
             reason="openai_unavailable",
@@ -2560,17 +2569,17 @@ async def advisor_summary(req: AdvisorSummaryRequest):
 @app.post("/api/advisor/tab/{tab_name}")
 async def advisor_tab(tab_name: str, req: AdvisorTabRequest):
     """Return a tab-specific SmartGrow advisor payload."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     try:
         return build_advisor_tab_response(
             tab_name=tab_name,
-            crop=req.crop,
+            crop=crop,
             greenhouse_id=req.greenhouse_id,
             target=req.target,
             limit=req.limit,
             stage=req.stage,
             medium=req.medium,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
             source_water_mmol_l=req.source_water_mmol_l,
             drain_water_mmol_l=req.drain_water_mmol_l,
             working_solution_volume_l=req.working_solution_volume_l,
@@ -2583,15 +2592,15 @@ async def advisor_tab(tab_name: str, req: AdvisorTabRequest):
 @app.post("/api/advisor/chat")
 async def advisor_chat(req: AdvisorChatRequest):
     """Return a SmartGrow chat reply with orchestration metadata."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     try:
         import asyncio
 
         return await asyncio.to_thread(
             build_advisor_chat_response,
-            crop=req.crop,
+            crop=crop,
             messages=req.messages,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
             language=req.language or "ko",
         )
     except RuntimeError as exc:
@@ -2609,7 +2618,7 @@ async def advisor_chat(req: AdvisorChatRequest):
         return {
             "status": "degraded",
             "family": "advisor_chat",
-            "crop": req.crop,
+            "crop": crop,
             "text": fallback_text,
             "machine_payload": {
                 "domains": [],
@@ -2650,12 +2659,12 @@ async def advisor_chat(req: AdvisorChatRequest):
 @app.post("/api/advisor/environment")
 async def advisor_environment(req: AdvisorSurfaceRequest):
     """Return the additive environment advisor surface with the exact directive route."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     try:
         return build_environment_advisor_response(
-            crop=req.crop,
+            crop=crop,
             greenhouse_id=req.greenhouse_id,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -2664,12 +2673,12 @@ async def advisor_environment(req: AdvisorSurfaceRequest):
 @app.post("/api/advisor/physiology")
 async def advisor_physiology(req: AdvisorSurfaceRequest):
     """Return the additive physiology advisor surface with the exact directive route."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     try:
         return build_physiology_advisor_response(
-            crop=req.crop,
+            crop=crop,
             greenhouse_id=req.greenhouse_id,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -2678,12 +2687,12 @@ async def advisor_physiology(req: AdvisorSurfaceRequest):
 @app.post("/api/advisor/work-tradeoff")
 async def advisor_work_tradeoff(req: AdvisorSurfaceRequest):
     """Return the work-tradeoff advisor contract over persisted work-event compare outputs."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     try:
         return build_work_tradeoff_advisor_response(
-            crop=req.crop,
+            crop=crop,
             greenhouse_id=req.greenhouse_id,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -2692,12 +2701,12 @@ async def advisor_work_tradeoff(req: AdvisorSurfaceRequest):
 @app.post("/api/advisor/harvest")
 async def advisor_harvest(req: AdvisorSurfaceRequest):
     """Return the additive harvest advisor surface with the exact directive route."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     try:
         return build_harvest_advisor_response(
-            crop=req.crop,
+            crop=crop,
             greenhouse_id=req.greenhouse_id,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -2706,11 +2715,11 @@ async def advisor_harvest(req: AdvisorSurfaceRequest):
 @app.post("/api/environment/recommend")
 async def recommend_environment_controls(req: EnvironmentRecommendationRequest):
     """Return deterministic environment-control guidance from the live dashboard."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     try:
         return build_environment_recommendation_response(
-            crop=req.crop,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            crop=crop,
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -2719,11 +2728,11 @@ async def recommend_environment_controls(req: EnvironmentRecommendationRequest):
 @app.post("/api/work/recommend")
 async def recommend_cultivation_work(req: WorkRecommendationRequest):
     """Return deterministic cultivation-work guidance from the live dashboard."""
-    _validate_crop(req.crop)
+    crop = _validate_crop(req.crop)
     try:
         return build_work_recommendation_response(
-            crop=req.crop,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            crop=crop,
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -2732,8 +2741,9 @@ async def recommend_cultivation_work(req: WorkRecommendationRequest):
 @app.post("/api/pesticides/recommend")
 async def recommend_pesticide_products(req: PesticideRecommendationRequest):
     """Return deterministic pesticide candidates from the SmartGrow workbook."""
+    crop = _validate_crop(req.crop)
     return build_pesticide_recommendation_response(
-        crop=req.crop,
+        crop=crop,
         target=req.target,
         limit=req.limit,
     )
@@ -2742,8 +2752,9 @@ async def recommend_pesticide_products(req: PesticideRecommendationRequest):
 @app.post("/api/nutrients/recommend")
 async def recommend_nutrient_program(req: NutrientRecommendationRequest):
     """Return deterministic nutrient recipe lookup from the SmartGrow workbook."""
+    crop = _validate_crop(req.crop)
     return build_nutrient_recommendation_response(
-        crop=req.crop,
+        crop=crop,
         stage=req.stage,
         medium=req.medium,
     )
@@ -2752,8 +2763,9 @@ async def recommend_nutrient_program(req: NutrientRecommendationRequest):
 @app.post("/api/nutrients/correction")
 async def recommend_nutrient_correction_draft(req: NutrientCorrectionRequest):
     """Return a deterministic nutrient correction draft from workbook baselines."""
+    crop = _validate_crop(req.crop)
     return build_nutrient_correction_response(
-        crop=req.crop,
+        crop=crop,
         stage=req.stage,
         medium=req.medium,
         source_water_mmol_l=req.source_water_mmol_l,
@@ -2766,15 +2778,14 @@ async def recommend_nutrient_correction_draft(req: NutrientCorrectionRequest):
 @app.post("/api/ai/consult")
 async def ai_consult(req: AiConsultRequest):
     """Generate consulting content using OpenAI."""
-    if req.crop not in ["tomato", "cucumber"]:
-        raise HTTPException(status_code=400, detail="crop must be 'tomato' or 'cucumber'")
+    crop = _validate_crop(req.crop)
     try:
         import asyncio
 
         text = await asyncio.to_thread(
             generate_consulting,
-            crop=req.crop,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            crop=crop,
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
             language=req.language or "ko",
         )
         return {"status": "success", "text": text}
@@ -2794,16 +2805,15 @@ async def ai_consult(req: AiConsultRequest):
 @app.post("/api/ai/chat")
 async def ai_chat(req: AiChatRequest):
     """Chat endpoint using OpenAI."""
-    if req.crop not in ["tomato", "cucumber"]:
-        raise HTTPException(status_code=400, detail="crop must be 'tomato' or 'cucumber'")
+    crop = _validate_crop(req.crop)
     try:
         import asyncio
 
         text = await asyncio.to_thread(
             generate_chat_reply,
-            crop=req.crop,
+            crop=crop,
             messages=req.messages,
-            dashboard=_augment_dashboard_with_knowledge_context(req.crop, req.dashboard),
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
             language=req.language or "ko",
         )
         return {"status": "success", "text": text}
@@ -3461,7 +3471,7 @@ async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
 @app.post("/api/rtr/area-settings")
 async def save_rtr_area_settings(req: RTRAreaSettingsRequest):
     """Persist actual-area overrides for RTR projections per crop/greenhouse."""
-    crop = _validate_crop(req.crop.lower() if req.crop not in CROPS else req.crop)
+    crop = _validate_crop(req.crop)
     greenhouse_id = _resolve_greenhouse_id(crop, req.greenhouse_id)
     area_meta = _resolve_rtr_area_meta(
         crop,
@@ -3484,7 +3494,7 @@ async def save_rtr_area_settings(req: RTRAreaSettingsRequest):
 @app.get("/api/rtr/calibration-state")
 async def get_rtr_calibration_state(crop: str, greenhouse_id: Optional[str] = None):
     """Return the current RTR calibration windows and profile for a crop/house."""
-    normalized_crop = _validate_crop(crop.lower() if crop not in CROPS else crop)
+    normalized_crop = _validate_crop(crop)
     resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, greenhouse_id)
     profiles_payload = load_rtr_profiles()
     windows_payload = load_rtr_good_windows()
@@ -3510,7 +3520,7 @@ async def get_rtr_calibration_state(crop: str, greenhouse_id: Optional[str] = No
 @app.post("/api/rtr/calibration-preview")
 async def preview_rtr_calibration(req: RTRCalibrationPreviewRequest):
     """Preview an RTR calibration fit using user-entered good-production windows."""
-    normalized_crop = _validate_crop(req.crop.lower() if req.crop not in CROPS else req.crop)
+    normalized_crop = _validate_crop(req.crop)
     resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, req.greenhouse_id)
     profiles_payload = load_rtr_profiles()
     scoped_windows = _serialize_rtr_calibration_windows(
@@ -3530,7 +3540,7 @@ async def preview_rtr_calibration(req: RTRCalibrationPreviewRequest):
 @app.post("/api/rtr/calibration-save")
 async def save_rtr_calibration(req: RTRCalibrationSaveRequest):
     """Persist RTR calibration windows and refresh the crop RTR profile."""
-    normalized_crop = _validate_crop(req.crop.lower() if req.crop not in CROPS else req.crop)
+    normalized_crop = _validate_crop(req.crop)
     resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, req.greenhouse_id)
     crop_key = _get_rtr_profile_crop_key(normalized_crop)
     incoming_windows = [window.model_dump(exclude_none=True) for window in req.windows]
@@ -3574,7 +3584,8 @@ async def save_rtr_calibration(req: RTRCalibrationSaveRequest):
 @app.post("/api/crop/prune")
 async def mark_pruning_event(crop: str = "cucumber"):
     """Mark manual pruning event for cucumber."""
-    if crop not in ["cucumber"]:
+    crop = _validate_crop(crop)
+    if crop != "cucumber":
         raise HTTPException(status_code=400, detail="Pruning action is only available for cucumber")
 
     crop_state = app_state[crop]
@@ -3602,7 +3613,7 @@ async def mark_pruning_event(crop: str = "cucumber"):
 @app.get("/api/config/crop")
 async def get_crop_config(crop: str):
     """Get current crop configuration."""
-    _validate_crop(crop)
+    crop = _validate_crop(crop)
     return _serialize_crop_config(crop)
 
 
@@ -3611,7 +3622,7 @@ async def get_recommendations(crop: Optional[str] = None):
     """Get AI-based crop management recommendations for one or both crops."""
     result = {}
     
-    crops_to_check = [crop] if crop in ["tomato", "cucumber"] else ["tomato", "cucumber"]
+    crops_to_check = _target_crops(crop)
     
     for crop_name in crops_to_check:
         crop_state = app_state[crop_name]
@@ -3722,8 +3733,7 @@ async def get_status():
 @app.get("/api/forecast/{crop}")
 async def get_forecast(crop: str):
     """Get latest forecast for a crop."""
-    if crop not in ["tomato", "cucumber"]:
-        raise HTTPException(status_code=400, detail="crop must be 'tomato' or 'cucumber'")
+    crop = _validate_crop(crop)
     
     crop_state = app_state[crop]
     

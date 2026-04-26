@@ -178,7 +178,7 @@ export interface OverviewSignalsPayload {
 }
 
 export type ProducePriceDirection = 'up' | 'down' | 'flat';
-export type ProducePriceAuthMode = 'sample' | 'configured';
+export type ProducePriceAuthMode = 'sample' | 'configured' | 'fallback';
 export type ProduceMarketKey = 'retail' | 'wholesale';
 
 export interface ProducePriceEntry {
@@ -242,6 +242,8 @@ export interface ProducePricesPayload {
         auth_mode: ProducePriceAuthMode;
         fetched_at: string;
         latest_day: string;
+        status?: string;
+        fallback_reason?: string | null;
     };
     summary: string;
     items: ProducePriceEntry[];
