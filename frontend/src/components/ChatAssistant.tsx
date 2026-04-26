@@ -80,6 +80,17 @@ function formatRuntimeValue(
     return `${value.toFixed(digits)}${unit}`;
 }
 
+function formatSignedRuntimeValue(
+    value: number | null | undefined,
+    digits = 3,
+    unit = '',
+) {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+        return '-';
+    }
+    return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}${unit}`;
+}
+
 function localizeDirection(direction: string | null | undefined, locale: 'ko' | 'en'): string {
     if (direction === 'increase') {
         return locale === 'ko' ? '올리기' : 'Increase';
@@ -350,6 +361,11 @@ const ChatAssistant = ({
             runtimeBalance: '공급/수요 균형',
             runtimeCanopyA: '캐노피 동화량',
             runtimeLimiting: '병목',
+            runtimeEffectTitle: '모델 계산 효과',
+            runtimeYieldEffect: '수량 변화',
+            runtimePhysiologyEffect: '생리 반응',
+            runtimeCostRiskEffect: '비용/리스크',
+            runtimeConfidence: '계산 신뢰도',
             summaryTitle: '한줄 요약',
             risksTitle: '주의할 점',
             monitorTitle: '모니터링',
@@ -390,6 +406,11 @@ const ChatAssistant = ({
             runtimeBalance: 'Source/sink balance',
             runtimeCanopyA: 'Canopy assimilation',
             runtimeLimiting: 'Bottleneck',
+            runtimeEffectTitle: 'Model-calculated effect',
+            runtimeYieldEffect: 'Yield change',
+            runtimePhysiologyEffect: 'Physiology',
+            runtimeCostRiskEffect: 'Cost/risk',
+            runtimeConfidence: 'Confidence',
             summaryTitle: 'Summary',
             risksTitle: 'Risks',
             monitorTitle: 'Monitor',
@@ -464,6 +485,8 @@ const ChatAssistant = ({
             ?? runtime.recommendations?.[0]?.action
             ?? null;
         const violations = runtime.constraint_checks?.violated_constraints ?? [];
+        const answerFocus = runtime.answer_focus?.matched_user_request ? runtime.answer_focus : null;
+        const focusEffects = answerFocus?.effects ?? {};
         const statusLabel = runtime.status === 'ready'
             ? copy.runtimeReady
             : runtime.status === 'unavailable'
@@ -517,6 +540,46 @@ const ChatAssistant = ({
                         <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">{state.limiting_factor ?? '-'}</div>
                     </div>
                 </div>
+                {answerFocus ? (
+                    <div className="mt-3 rounded-[20px] border border-[color:var(--sg-outline-soft)] bg-white/88 px-3 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-terracotta)]">
+                                {copy.runtimeEffectTitle}
+                            </div>
+                            <span className="rounded-full bg-[color:var(--sg-color-sage-soft)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--sg-color-olive)]">
+                                {answerFocus.step_label ?? answerFocus.action ?? copy.runtimeRecommended}
+                            </span>
+                        </div>
+                        {answerFocus.summary ? (
+                            <p className="mt-2 text-xs leading-relaxed text-[color:var(--sg-text-strong)]">
+                                {answerFocus.summary}
+                            </p>
+                        ) : null}
+                        <div className="mt-3 grid gap-2 text-[11px] text-[color:var(--sg-text-muted)] sm:grid-cols-3">
+                            <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
+                                <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeYieldEffect}</div>
+                                <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
+                                    14d {formatSignedRuntimeValue(focusEffects.yield_delta_14d)}
+                                </div>
+                                <div className="mt-0.5 tabular-nums">72h {formatSignedRuntimeValue(focusEffects.yield_delta_72h)}</div>
+                            </div>
+                            <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
+                                <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimePhysiologyEffect}</div>
+                                <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
+                                    A {formatSignedRuntimeValue(focusEffects.canopy_delta_72h)}
+                                </div>
+                                <div className="mt-0.5 tabular-nums">S/S {formatSignedRuntimeValue(focusEffects.source_sink_balance_delta)}</div>
+                            </div>
+                            <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
+                                <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeCostRiskEffect}</div>
+                                <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
+                                    E {formatSignedRuntimeValue(focusEffects.energy_delta)}
+                                </div>
+                                <div className="mt-0.5 tabular-nums">{copy.runtimeConfidence} {answerFocus.confidence === null || answerFocus.confidence === undefined ? '-' : `${Math.round(answerFocus.confidence * 100)}%`}</div>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                     {recommendedAction ? (
                         <span className="rounded-full bg-[color:var(--sg-color-olive)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
@@ -736,12 +799,12 @@ const ChatAssistant = ({
                                     {message.display ? (
                                         <StructuredReply display={message.display} copy={copy} locale={locale} />
                                     ) : null}
+                                    {message.modelRuntime ? renderRuntimeStrip(message.modelRuntime) : null}
                                     {message.text.length > 220 || message.text.includes('\n') || message.display ? (
                                         <FarmerFriendlyAnswer text={message.text} copy={copy} />
                                     ) : (
                                         <MarkdownAnswer text={message.text} />
                                     )}
-                                    {message.modelRuntime ? renderRuntimeStrip(message.modelRuntime) : null}
                                 </>
                             ) : (
                                 message.text

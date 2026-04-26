@@ -13,6 +13,9 @@ from model_informed_greenhouse_dashboard.backend.app.services.knowledge_catalog 
 from model_informed_greenhouse_dashboard.backend.app.services.workbook_normalization import (
     clear_workbook_preview_cache,
 )
+from model_informed_greenhouse_dashboard.backend.app.services.knowledge_query_router import (
+    route_knowledge_query,
+)
 
 
 def setup_function() -> None:
@@ -128,6 +131,48 @@ def test_query_knowledge_database_keeps_symptom_and_work_queries_broad_enough(
     assert work_payload["routing"]["intent"] == "cultivation_work"
     assert work_payload["applied_filters"]["source_types"] == ["pdf"]
     assert "topic_major" not in work_payload["applied_filters"]
+
+
+def test_query_knowledge_database_routes_cucumber_cultivation_terms_away_from_pesticides(
+    synthetic_knowledge_assets,
+) -> None:
+    rebuild_knowledge_catalog("cucumber")
+
+    route = route_knowledge_query("오이재배방법")
+    assert route["intent"] == "cultivation_work"
+    assert route["search_filters"]["source_types"] == ["pdf"]
+    assert {"오이", "재배", "방법"}.issubset(set(route["query_terms"]))
+
+    payload = knowledge_database.query_knowledge_database(
+        crop="cucumber",
+        query="오이재배방법",
+        limit=4,
+    )
+    short_payload = knowledge_database.query_knowledge_database(
+        crop="cucumber",
+        query="오이 방법",
+        limit=4,
+    )
+    pesticide_payload = knowledge_database.query_knowledge_database(
+        crop="cucumber",
+        query="오이 방제 방법",
+        limit=4,
+    )
+
+    assert payload["routing"]["intent"] == "cultivation_work"
+    assert payload["applied_filters"]["source_types"] == ["pdf"]
+    assert payload["returned_count"] >= 1
+    assert all(
+        result["document"]["asset_family"] != "pesticide_workbook"
+        for result in payload["results"]
+    )
+
+    assert short_payload["routing"]["intent"] == "cultivation_work"
+    assert short_payload["results"]
+    assert short_payload["results"][0]["document"]["asset_family"] != "pesticide_workbook"
+
+    assert pesticide_payload["routing"]["intent"] == "disease_pest"
+    assert pesticide_payload["applied_filters"]["source_types"] == ["pdf", "xlsx"]
 
 
 def test_query_knowledge_database_database_missing_still_reports_routing(
