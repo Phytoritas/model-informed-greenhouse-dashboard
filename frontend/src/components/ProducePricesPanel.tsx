@@ -161,6 +161,40 @@ const buildProduceSummary = (
     return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} snapshot of ${market.items.length} featured greenhouse produce items in the ${marketLabel.toLowerCase()} market. Cards show the live ${marketLabel.toLowerCase()} survey, while the chart keeps the ${localizeMarketLabel(prices.trend.market_key, locale).toLowerCase()} average-price history and forward seasonal normals from KAMIS.`;
 };
 
+const getSourceHealthCopy = (
+    prices: ProducePricesPayload,
+    locale: AppLocale,
+): { label: string; detail: string; degraded: boolean } => {
+    if (prices.source.auth_mode === 'fallback') {
+        const reason = prices.source.fallback_reason ?? prices.source.status ?? 'live_source_unavailable';
+        return {
+            label: locale === 'ko' ? '대체 스냅샷' : 'Fallback snapshot',
+            detail: locale === 'ko'
+                ? `KAMIS 실시간 요청이 저하되어 캐시/샘플 스냅샷을 표시합니다: ${reason}`
+                : `Live KAMIS request degraded, so cached or sample prices are shown: ${reason}`,
+            degraded: true,
+        };
+    }
+
+    if (prices.source.auth_mode === 'sample') {
+        return {
+            label: locale === 'ko' ? '샘플 데이터' : 'Sample data',
+            detail: locale === 'ko'
+                ? 'KAMIS 인증 정보가 없어 샘플 가격 스냅샷을 표시합니다.'
+                : 'KAMIS credentials are not configured, so sample prices are shown.',
+            degraded: false,
+        };
+    }
+
+    return {
+        label: locale === 'ko' ? '실시간 연결' : 'Live connection',
+        detail: locale === 'ko'
+            ? 'KAMIS 인증 연결로 최신 가격 스냅샷을 표시합니다.'
+            : 'Latest price snapshot is served from the configured KAMIS connection.',
+        degraded: false,
+    };
+};
+
 const ComparisonChip = ({
     label,
     price,
@@ -501,6 +535,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             livePulse: '시장 펄스',
             currentSelection: '현재 선택',
             sourceLabel: '데이터 소스',
+            sourceStatus: '소스 상태',
         }
         : {
             title: 'Live Produce Prices',
@@ -520,6 +555,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             livePulse: 'Market pulse',
             currentSelection: 'Current selection',
             sourceLabel: 'Data source',
+            sourceStatus: 'Source status',
         };
 
     const activeMarketKey: ProduceMarketKey | null = prices
@@ -533,6 +569,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
         : null;
     const activeMarket = prices && activeMarketKey ? prices.markets[activeMarketKey] : null;
     const leadMarketItem = activeMarket?.items?.[0] ?? null;
+    const sourceHealth = prices ? getSourceHealthCopy(prices, locale) : null;
 
     return (
         <DashboardCard
@@ -542,7 +579,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             className="sg-tint-amber"
             actions={(
                 <div className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-amber)] shadow-[var(--sg-shadow-card)]">
-                    KAMIS
+                    {sourceHealth?.label ?? 'KAMIS'}
                 </div>
             )}
         >
@@ -601,7 +638,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                     ))}
                                 </div>
 
-                                <div className="grid gap-3 md:grid-cols-3">
+                                <div className="grid gap-3 md:grid-cols-4">
                                     <MarketMetaTile
                                         label={copy.currentSelection}
                                         value={localizeMarketLabel(activeMarket.market_label, locale)}
@@ -617,7 +654,17 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                         value={String(activeMarket.items.length)}
                                         detail={leadMarketItem ? getProduceDisplayName(leadMarketItem.display_name, locale) : copy.noItems}
                                     />
+                                    <MarketMetaTile
+                                        label={copy.sourceStatus}
+                                        value={sourceHealth?.label ?? prices.source.provider}
+                                        detail={sourceHealth?.detail ?? prices.source.provider}
+                                    />
                                 </div>
+                                {sourceHealth?.degraded ? (
+                                    <div className="rounded-[22px] bg-[color:var(--sg-tint-amber)] px-4 py-3 text-xs leading-relaxed text-[color:var(--sg-accent-amber)] shadow-[var(--sg-shadow-card)]">
+                                        {sourceHealth.detail}
+                                    </div>
+                                ) : null}
                             </div>
                         </article>
 

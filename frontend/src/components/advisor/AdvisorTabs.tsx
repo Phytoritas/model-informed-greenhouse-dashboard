@@ -1432,7 +1432,7 @@ const AdvisorTabs = ({
                 })}
             </div>
 
-            {activeTabEntry.kind === 'pending' ? (
+            {activeTabEntry.kind === 'on-demand' ? (
                 <div>
                     {renderPendingTab(activeTab as PlannedAdvisorTabKey)}
                 </div>

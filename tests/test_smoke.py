@@ -332,7 +332,7 @@ def test_knowledge_status_endpoint_returns_crop_scoped_catalog(
 ) -> None:
     client = TestClient(get_app())
 
-    response = client.get("/api/knowledge/status?crop=cucumber")
+    response = client.get("/api/knowledge/status", params={"crop": " Cucumber "})
 
     assert response.status_code == 200
     payload = response.json()
@@ -822,7 +822,7 @@ def test_advisor_tab_endpoint_forwards_greenhouse_id(
     response = client.post(
         "/api/advisor/tab/work",
         json={
-            "crop": "cucumber",
+            "crop": " Cucumber ",
             "greenhouse_id": "gh-1",
             "dashboard": {},
         },
@@ -831,6 +831,7 @@ def test_advisor_tab_endpoint_forwards_greenhouse_id(
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert captured["greenhouse_id"] == "gh-1"
+    assert captured["crop"] == "cucumber"
 
 
 def test_exact_advisor_surface_routes_delegate_with_greenhouse_id(
