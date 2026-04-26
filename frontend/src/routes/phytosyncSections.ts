@@ -2,9 +2,12 @@ import {
   Bell,
   CircleGauge,
   Droplets,
+  FlaskConical,
   LayoutDashboard,
   MessageCircle,
+  Settings,
   Sprout,
+  TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
 import type { AppLocale } from '../i18n/locale';
@@ -14,11 +17,14 @@ import type { PromptAdvisorTabKey } from '../components/advisor/advisorTabRegist
 export type PhytoSectionKey =
   | 'overview'
   | 'control'
+  | 'rtr'
+  | 'scenarios'
   | 'trend'
   | 'crop-work'
   | 'resources'
   | 'alerts'
-  | 'assistant';
+  | 'assistant'
+  | 'settings';
 
 export interface PhytoSectionTab {
   id: string;
@@ -75,12 +81,45 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           ],
         },
         {
+          key: 'rtr',
+          path: '/rtr',
+          label: 'RTR 최적화',
+          shortLabel: 'RTR',
+          description: '기준안, 최적안, 민감도, 면적 보정을 따로 봅니다.',
+          icon: CircleGauge,
+          workspace: 'rtr',
+          advisorTab: 'environment',
+          heroTitle: 'RTR 최적화',
+          heroDescription: '기준안과 최적안 비교를 온실 환경 판단과 연결합니다.',
+          tabs: [
+            { id: 'rtr-strategy', label: '전략 비교' },
+            { id: 'rtr-sensitivity', label: '민감도' },
+            { id: 'rtr-area', label: '면적 보정' },
+          ],
+        },
+        {
+          key: 'scenarios',
+          path: '/scenarios',
+          label: '시나리오 실험실',
+          shortLabel: '시나리오',
+          description: '과정기반모델 What-if와 RTR 편미분을 실제 백엔드로 실행합니다.',
+          icon: FlaskConical,
+          workspace: 'rtr',
+          advisorTab: 'environment',
+          heroTitle: '시나리오 실험실',
+          heroDescription: '온도, CO2, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.',
+          tabs: [
+            { id: 'scenario-model', label: '과정모델 What-if' },
+            { id: 'scenario-rtr', label: 'RTR 시나리오' },
+          ],
+        },
+        {
           key: 'trend',
           path: '/trend',
           label: '날씨와 시세',
           shortLabel: '날씨와 시세',
           description: '날씨와 도매 시세 흐름을 따로 봅니다.',
-          icon: CircleGauge,
+          icon: TrendingUp,
           workspace: 'trend',
           heroTitle: '날씨와 시세',
           heroDescription: '',
@@ -152,6 +191,18 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
             { id: 'assistant-search', label: '자료 찾기' },
           ],
         },
+        {
+          key: 'settings',
+          path: '/settings',
+          label: '설정',
+          shortLabel: '설정',
+          description: '표시 기준, 연결 상태, 로컬 설정을 확인합니다.',
+          icon: Settings,
+          workspace: 'settings',
+          heroTitle: '설정',
+          heroDescription: '운영 화면의 기본값과 연결 상태를 정리합니다.',
+          tabs: [],
+        },
       ]
     : [
         {
@@ -187,12 +238,45 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           ],
         },
         {
+          key: 'rtr',
+          path: '/rtr',
+          label: 'RTR Optimizer',
+          shortLabel: 'RTR',
+          description: 'Review baseline, optimized, sensitivity, and area-adjusted strategy views.',
+          icon: CircleGauge,
+          workspace: 'rtr',
+          advisorTab: 'environment',
+          heroTitle: 'RTR Optimizer',
+          heroDescription: 'Connect baseline-vs-optimized strategy to live climate decisions.',
+          tabs: [
+            { id: 'rtr-strategy', label: 'Strategy' },
+            { id: 'rtr-sensitivity', label: 'Sensitivity' },
+            { id: 'rtr-area', label: 'Area' },
+          ],
+        },
+        {
+          key: 'scenarios',
+          path: '/scenarios',
+          label: 'Scenario Lab',
+          shortLabel: 'Scenarios',
+          description: 'Run process-model what-if and RTR partial sensitivity surfaces against the backend.',
+          icon: FlaskConical,
+          workspace: 'rtr',
+          advisorTab: 'environment',
+          heroTitle: 'Scenario Lab',
+          heroDescription: 'Estimate how temperature, CO2, and RH deltas affect yield and energy.',
+          tabs: [
+            { id: 'scenario-model', label: 'Process what-if' },
+            { id: 'scenario-rtr', label: 'RTR scenario' },
+          ],
+        },
+        {
           key: 'trend',
           path: '/trend',
           label: 'Trend',
           shortLabel: 'Trend',
           description: 'Track weather and wholesale market trends in a separate lane.',
-          icon: CircleGauge,
+          icon: TrendingUp,
           workspace: 'trend',
           heroTitle: 'Trend',
           heroDescription: '',
@@ -264,6 +348,18 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
             { id: 'assistant-search', label: 'Materials' },
           ],
         },
+        {
+          key: 'settings',
+          path: '/settings',
+          label: 'Settings',
+          shortLabel: 'Settings',
+          description: 'Review display defaults, connection state, and local preferences.',
+          icon: Settings,
+          workspace: 'settings',
+          heroTitle: 'Settings',
+          heroDescription: 'Keep operating defaults and connection status in one place.',
+          tabs: [],
+        },
       ];
 }
 
@@ -271,17 +367,15 @@ export function findPhytoSection(
   sections: PhytoSectionDefinition[],
   pathname: string,
 ): PhytoSectionDefinition {
-  const normalizedPath = pathname.startsWith('/rtr')
-    ? '/control'
-    : pathname.startsWith('/growth') || pathname.startsWith('/harvest')
-      ? '/crop-work'
-      : pathname.startsWith('/nutrient')
-        ? '/resources'
-        : pathname.startsWith('/protection')
-          ? '/alerts'
-          : pathname.startsWith('/assistant') || pathname.startsWith('/ask')
-            ? '/assistant'
-            : pathname;
+  const normalizedPath = pathname.startsWith('/growth') || pathname.startsWith('/harvest')
+    ? '/crop-work'
+    : pathname.startsWith('/nutrient')
+      ? '/resources'
+      : pathname.startsWith('/protection')
+        ? '/alerts'
+        : pathname.startsWith('/assistant') || pathname.startsWith('/ask')
+          ? '/assistant'
+          : pathname;
 
   return sections.find((section) => normalizedPath === section.path || normalizedPath.startsWith(`${section.path}/`))
     ?? sections[0];
@@ -292,7 +386,7 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
     case 'command':
       return '/overview';
     case 'rtr':
-      return '/control';
+      return '/rtr';
     case 'trend':
       return '/trend';
     case 'crop':
@@ -304,6 +398,8 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
       return '/alerts';
     case 'knowledge':
       return '/assistant';
+    case 'settings':
+      return '/settings';
     default:
       return '/overview';
   }

@@ -1,12 +1,21 @@
 import type { CSSProperties } from 'react';
-import { ArrowRight, CircleAlert, Sparkles } from 'lucide-react';
+import {
+    Droplets,
+    Gauge,
+    Sprout,
+    SunMedium,
+    Thermometer,
+    Wind,
+} from 'lucide-react';
+import type { CropType, SensorData } from '../../types';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { formatLocaleDateTime } from '../../i18n/locale';
-import DashboardCard from '../common/DashboardCard';
-import ConfidenceBadge from '../status/ConfidenceBadge';
+import { getCropLabel } from '../../utils/displayCopy';
 import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
+import { StatusChip } from '../ui/status-chip';
 
 interface HeroControlCardProps {
+    crop: CropType;
     operatingMode: string;
     primaryNarrative: string;
     summary: string;
@@ -15,6 +24,7 @@ interface HeroControlCardProps {
     confidence: number | null | undefined;
     advisorUpdatedAt?: number | null;
     advisorRefreshing?: boolean;
+    currentData?: SensorData;
     telemetryStatus: 'loading' | 'live' | 'delayed' | 'stale' | 'offline' | 'blocked' | 'provisional';
     telemetryDetail?: string | null;
     modelRuntimeSummary?: string | null;
@@ -26,25 +36,23 @@ interface HeroControlCardProps {
     onOpenAssistant: () => void;
 }
 
+type PreviewStatusTone = 'growth' | 'stable' | 'warning' | 'critical' | 'muted';
+
+const PREVIEW_STATUS_COPY: Record<HeroControlCardProps['telemetryStatus'], { ko: string; en: string; tone: PreviewStatusTone }> = {
+    loading: { ko: '로딩', en: 'Loading', tone: 'muted' },
+    live: { ko: 'Live', en: 'Live', tone: 'growth' },
+    delayed: { ko: '지연', en: 'Delayed', tone: 'warning' },
+    stale: { ko: '오래됨', en: 'Stale', tone: 'stable' },
+    offline: { ko: '오프라인', en: 'Offline', tone: 'critical' },
+    blocked: { ko: '확인 필요', en: 'Blocked', tone: 'warning' },
+    provisional: { ko: '임시', en: 'Provisional', tone: 'stable' },
+};
+
 const clampOneStyle: CSSProperties = {
     display: '-webkit-box',
     overflow: 'hidden',
     WebkitBoxOrient: 'vertical',
     WebkitLineClamp: 1,
-};
-
-const clampTwoStyle: CSSProperties = {
-    display: '-webkit-box',
-    overflow: 'hidden',
-    WebkitBoxOrient: 'vertical',
-    WebkitLineClamp: 2,
-};
-
-const clampThreeStyle: CSSProperties = {
-    display: '-webkit-box',
-    overflow: 'hidden',
-    WebkitBoxOrient: 'vertical',
-    WebkitLineClamp: 3,
 };
 
 function formatMetric(value: number | null | undefined, digits = 1): string {
@@ -62,16 +70,12 @@ function formatMetricWithUnit(
     unit: string,
     digits = 1,
 ): string {
-    if (typeof value !== 'number' || !Number.isFinite(value)) {
-        return '-';
-    }
-    return `${value.toLocaleString(undefined, {
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits,
-    })} ${unit}`;
+    const formatted = formatMetric(value, digits);
+    return formatted === '-' ? formatted : `${formatted} ${unit}`;
 }
 
 export default function HeroControlCard({
+    crop,
     operatingMode,
     primaryNarrative,
     summary,
@@ -80,74 +84,53 @@ export default function HeroControlCard({
     confidence,
     advisorUpdatedAt = null,
     advisorRefreshing = false,
+    currentData,
     telemetryStatus,
     telemetryDetail,
-    modelRuntimeSummary,
     sourceSinkBalance,
     canopyAssimilation,
     lai,
-    onOpenRtr,
 }: HeroControlCardProps) {
     const { locale } = useLocale();
-    const primaryAction = actions[0] ?? null;
-
+    const cropLabel = getCropLabel(crop, locale);
+    const telemetrySignal = PREVIEW_STATUS_COPY[telemetryStatus];
     const copy = locale === 'ko'
         ? {
-            eyebrow: '오늘 운영 요약',
-            title: '오늘 운영 방향',
-            issue: '긴급 확인',
-            next: '다음 메모',
-            openRtr: '온도 전략 보기',
-            mode: '추천 설정값 비교',
+            title: `온실 1 · ${cropLabel}`,
+            temp: 'Air Temp',
+            rh: 'RH',
+            co2: 'CO₂',
+            vpd: 'VPD',
+            par: 'PAR',
+            soilWater: '토양수분',
+            sourceSink: 'Source-sink',
+            canopy: 'Assimilation',
+            lai: 'LAI',
             refreshing: '분석 갱신 중',
             updated: '분석',
-            summaryFallback: '오늘은 상태를 크게 바꾸기보다 흐름을 단단히 붙잡는 쪽이 유리합니다.',
-            primaryAction: '지금 할 일',
-            sourceSink: '소스-싱크 균형 지수',
-            canopy: '광합성',
-            lai: '엽면적 지수',
-            sourceSinkMeaning: '광합성 공급 대비 생장 소비의 여유',
-            canopyMeaning: '현재 잎이 만드는 탄소량',
-            laiMeaning: '',
         }
         : {
-            eyebrow: 'Today summary',
-            title: 'Today operating direction',
-            issue: 'Watch now',
-            next: 'Next notes',
-            openRtr: 'Open control strategy',
-            mode: 'Current scenario',
+            title: `Greenhouse 1 · ${cropLabel}`,
+            temp: 'Air Temp',
+            rh: 'RH',
+            co2: 'CO₂',
+            vpd: 'VPD',
+            par: 'PAR',
+            soilWater: 'Soil water',
+            sourceSink: 'Source-sink',
+            canopy: 'Assimilation',
+            lai: 'LAI',
             refreshing: 'Refreshing',
             updated: 'Updated',
-            summaryFallback: 'Hold the working rhythm before forcing a bigger change.',
-            primaryAction: 'Do now',
-            sourceSink: 'Carbon margin',
-            canopy: 'Assimilation',
-            lai: 'Canopy',
-            sourceSinkMeaning: 'Supply margin over growth demand',
-            canopyMeaning: 'Current canopy carbon assimilation',
-            laiMeaning: 'Leaf area index over floor area',
         };
 
-    const signalTiles = [
-        {
-            key: 'source-sink',
-            label: copy.sourceSink,
-            value: formatMetric(sourceSinkBalance, 2),
-            description: copy.sourceSinkMeaning,
-        },
-        {
-            key: 'canopy',
-            label: copy.canopy,
-            value: formatMetricWithUnit(canopyAssimilation, 'µmol/m²/s', 1),
-            description: copy.canopyMeaning,
-        },
-        {
-            key: 'lai',
-            label: copy.lai,
-            value: formatMetric(lai, 2),
-            description: copy.laiMeaning,
-        },
+    const previewTiles = [
+        { label: copy.temp, value: `${formatMetric(currentData?.temperature, 1)}°C`, icon: Thermometer },
+        { label: copy.rh, value: `${formatMetric(currentData?.humidity, 0)}%`, icon: Droplets },
+        { label: copy.co2, value: `${formatMetric(currentData?.co2, 0)} ppm`, icon: Wind },
+        { label: copy.vpd, value: `${formatMetric(currentData?.vpd, 2)} kPa`, icon: Gauge },
+        { label: copy.par, value: `${formatMetric(currentData?.light, 0)} µmol`, icon: SunMedium },
+        { label: copy.soilWater, value: `${formatMetric(currentData?.soilMoisture, 1)}%`, icon: Sprout },
     ];
     const advisorFreshnessLabel = advisorRefreshing
         ? copy.refreshing
@@ -158,106 +141,63 @@ export default function HeroControlCard({
                 hour: '2-digit',
                 minute: '2-digit',
             })}`
-            : null;
+            : operatingMode;
 
     return (
-        <DashboardCard
-            variant="hero"
-            eyebrow={copy.eyebrow}
-            title={copy.title}
-            description={undefined}
-            actions={(
-                <div className="flex flex-wrap gap-1.5">
-                    <TelemetryFreshnessChip status={telemetryStatus} detail={telemetryDetail} />
-                    <ConfidenceBadge value={confidence} />
+        <article className="overview-dashboard-preview p-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                    <h2 className="text-[0.74rem] font-bold leading-tight text-[color:var(--sg-text-strong)]">
+                        {copy.title}
+                    </h2>
+                    <p className="mt-0.5 text-[0.58rem] font-semibold text-[color:var(--sg-text-faint)]" style={clampOneStyle}>
+                        {advisorFreshnessLabel}
+                    </p>
                 </div>
-            )}
-            contentClassName="flex flex-col"
-            className="h-full !p-4"
-        >
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(210px,0.75fr)] xl:items-start">
-                <div className="flex min-h-0 flex-col gap-3 rounded-[24px] bg-[linear-gradient(135deg,rgba(255,251,246,0.98),rgba(248,231,223,0.92))] p-4" style={{ boxShadow: 'var(--sg-shadow-soft)' }}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/84 px-2.5 py-1 text-[11px] font-semibold text-[color:var(--sg-accent-violet)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <Sparkles className="h-3.5 w-3.5" />
-                            <span style={clampOneStyle}>{operatingMode}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                                {copy.mode}
-                            </div>
-                            {advisorFreshnessLabel ? (
-                                <div className="rounded-full bg-white/84 px-2.5 py-1 text-[10px] font-semibold text-[color:var(--sg-text-faint)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                                    {advisorFreshnessLabel}
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <p className="text-[clamp(1.2rem,0.95rem+0.6vw,1.8rem)] font-semibold leading-tight tracking-[-0.04em] text-[color:var(--sg-text-strong)]" style={clampTwoStyle}>
-                            {primaryNarrative}
-                        </p>
-                        <p className="text-[13px] leading-5 text-[color:var(--sg-text-muted)]" style={clampTwoStyle}>
-                            {summary || copy.summaryFallback}
-                        </p>
-                    </div>
-
-                    <div className="grid gap-2 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                        <div className="rounded-[18px] bg-white/82 px-3 py-3" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                                {copy.primaryAction}
-                            </div>
-                            <div className="mt-1.5 text-[13px] leading-5 text-[color:var(--sg-text-strong)]" style={clampThreeStyle}>
-                                {primaryAction ?? copy.summaryFallback}
-                            </div>
-                        </div>
-                        <div className="rounded-[18px] bg-[color:var(--sg-surface-soft)] px-3 py-3" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                                <CircleAlert className="h-3.5 w-3.5 text-[color:var(--sg-accent-amber)]" />
-                                {copy.issue}
-                            </div>
-                            <div className="mt-1.5 text-[13px] leading-5 text-[color:var(--sg-text-strong)]" style={clampThreeStyle}>
-                                {importantIssue ?? modelRuntimeSummary ?? copy.summaryFallback}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex min-h-0 flex-col gap-2">
-                    <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-                        {signalTiles.map((tile) => (
-                            <div
-                                key={tile.key}
-                                className="rounded-[18px] bg-white/82 px-3 py-2.5"
-                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                            >
-                                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                                    {tile.label}
-                                </div>
-                                <div className="mt-1.5 text-[1.18rem] font-semibold leading-none tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
-                                    {tile.value}
-                                </div>
-                                {tile.description ? (
-                                    <p className="mt-1 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">
-                                        {tile.description}
-                                    </p>
-                                ) : null}
-                            </div>
-                        ))}
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={onOpenRtr}
-                        className="mt-auto inline-flex w-full items-center justify-between rounded-[18px] bg-[color:var(--sg-accent-violet)] px-3 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#e04e52]"
-                        style={{ boxShadow: 'var(--sg-shadow-soft)' }}
-                    >
-                        <span>{copy.openRtr}</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
+                <div className="flex flex-nowrap items-center justify-end gap-1.5">
+                    <StatusChip tone={telemetrySignal.tone} className="px-2 py-0.5 text-[10px]">{telemetrySignal[locale]}</StatusChip>
+                    <TelemetryFreshnessChip status={telemetryStatus} className="gap-1.5 px-2 py-1 text-[10px]" />
                 </div>
             </div>
-        </DashboardCard>
+
+            <div className="overview-dashboard-mini-grid mt-1.5">
+                {previewTiles.map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="overview-preview-metric">
+                        <div className="flex items-center justify-between gap-1 text-[0.58rem] font-semibold text-[color:var(--sg-text-faint)]">
+                            <span>{label}</span>
+                            <Icon className="h-2.5 w-2.5 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+                        </div>
+                        <div className="sg-data-number mt-0.5 text-[0.78rem] font-bold leading-none text-[color:var(--sg-text-strong)]">
+                            {value}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="overview-preview-chart mt-1.5 p-1" aria-hidden="true">
+                <svg viewBox="0 0 260 74" className="h-full w-full overflow-visible" aria-hidden="true" focusable="false">
+                    <line x1="0" y1="18" x2="260" y2="18" stroke="rgba(31,41,51,0.08)" strokeWidth="1" />
+                    <line x1="0" y1="42" x2="260" y2="42" stroke="rgba(31,41,51,0.08)" strokeWidth="1" />
+                    <path d="M4 48 C34 43 54 49 78 37 S122 24 148 38 190 54 224 35 248 30 258 34" fill="none" stroke="var(--sg-color-tomato)" strokeWidth="3" strokeLinecap="round" />
+                    <path d="M4 58 C32 56 60 50 82 52 S124 62 152 51 196 38 226 43 250 49 258 44" fill="none" stroke="var(--sg-color-success)" strokeWidth="3" strokeLinecap="round" />
+                    <circle cx="78" cy="37" r="3" fill="var(--sg-color-tomato)" />
+                    <circle cx="226" cy="43" r="3" fill="var(--sg-color-success)" />
+                </svg>
+                <div className="mt-0.5 flex items-center gap-3 text-[0.58rem] font-semibold text-[color:var(--sg-text-faint)]">
+                    <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[color:var(--sg-color-tomato)]" />Temp</span>
+                    <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[color:var(--sg-color-success)]" />RH</span>
+                </div>
+            </div>
+
+            {actions[0] ? <p className="sr-only">{actions[0]}</p> : null}
+            {importantIssue ? <p className="sr-only">{importantIssue}</p> : null}
+            <p className="sr-only">{copy.sourceSink}: {formatMetric(sourceSinkBalance, 2)}</p>
+            <p className="sr-only">{copy.canopy}: {formatMetricWithUnit(canopyAssimilation, 'µmol/m²/s', 1)}</p>
+            <p className="sr-only">{copy.lai}: {formatMetric(lai, 2)}</p>
+            {typeof confidence === 'number' ? <p className="sr-only">Advisor confidence: {Math.round(confidence * 100)}%</p> : null}
+            {telemetryDetail ? <p className="sr-only">{telemetryDetail}</p> : null}
+            <p className="sr-only">{primaryNarrative}</p>
+            <p className="sr-only">{summary}</p>
+        </article>
     );
 }

@@ -20,6 +20,9 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
             temperatureSettings: '온도 설정',
             heatingThreshold: '난방 시작 온도',
             coolingThreshold: '냉방 시작 온도',
+            pBand: '제어 밴드',
+            co2Target: 'CO₂ 목표',
+            drainTarget: '배액 목표',
         }
         : {
             title: 'Quick controls',
@@ -30,7 +33,13 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
             temperatureSettings: 'Temperature guide',
             heatingThreshold: 'Heat start',
             coolingThreshold: 'Cool start',
+            pBand: 'Control band',
+            co2Target: 'CO₂ target',
+            drainTarget: 'Drain target',
         };
+    const pBand = status.settings.pBand ?? 4;
+    const co2Target = status.settings.co2Target ?? 800;
+    const drainTarget = status.settings.drainTarget ?? 0.3;
 
     return (
         <div className="sg-warm-panel p-6">
@@ -106,6 +115,42 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                             <span className="font-medium text-[color:var(--sg-text)]">{status.settings.cooling}°C</span>
                             <span>35°C</span>
                         </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <label className="grid gap-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">
+                            {copy.pBand}
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={pBand}
+                                onChange={(e) => onSettingsChange({ ...status.settings, pBand: Number(e.target.value) })}
+                                className="h-10 rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-white px-3 text-sm font-semibold text-[color:var(--sg-text-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
+                            />
+                        </label>
+                        <label className="grid gap-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">
+                            {copy.co2Target}
+                            <input
+                                type="number"
+                                min="300"
+                                step="25"
+                                value={co2Target}
+                                onChange={(e) => onSettingsChange({ ...status.settings, co2Target: Number(e.target.value) })}
+                                className="h-10 rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-white px-3 text-sm font-semibold text-[color:var(--sg-text-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
+                            />
+                        </label>
+                        <label className="grid gap-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">
+                            {copy.drainTarget}
+                            <input
+                                type="number"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                value={drainTarget}
+                                onChange={(e) => onSettingsChange({ ...status.settings, drainTarget: Number(e.target.value) })}
+                                className="h-10 rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-white px-3 text-sm font-semibold text-[color:var(--sg-text-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
+                            />
+                        </label>
                     </div>
                 </div>
             </div>

@@ -495,6 +495,8 @@ vi.mock('./components/SmartGrowSurfacePanel', () => ({
 }))
 vi.mock('./components/WeatherOutlookPanel', () => ({ default: () => <div>WeatherOutlookPanel</div> }))
 vi.mock('./components/ProducePricesPanel', () => ({ default: () => <div>ProducePricesPanel</div> }))
+vi.mock('./components/dashboard/WeatherTrendPanel', () => ({ default: () => <div>WeatherTrendPanel</div> }))
+vi.mock('./components/dashboard/ModelScenarioWorkbench', () => ({ default: () => <div>ModelScenarioWorkbench</div> }))
 vi.mock('./components/dashboard/OverviewSignalTrendCard', () => ({
   default: ({
     liveSourceSinkSeries,
@@ -591,7 +593,7 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
     expect(screen.queryByRole('button', { name: 'Open assistant fab' })).toBeNull()
   })
 
@@ -644,7 +646,7 @@ describe('App routed shell', () => {
     ]
 
     try {
-      renderApp('/overview')
+      renderApp('/overview#overview-dashboard')
       await waitFor(() => expect(screen.getByTestId('overview-live-source-sink-series')).toBeTruthy())
 
       const liveSeries = JSON.parse(screen.getByTestId('overview-live-source-sink-series').textContent ?? '[]') as Array<{ timestamp: number; value: number }>
@@ -656,10 +658,35 @@ describe('App routed shell', () => {
     }
   })
 
-  it('navigates between routed pages from the sidebar', async () => {
+  it('renders overview as a standalone reference landing surface', async () => {
     renderApp('/overview')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
+    expect(screen.queryByTestId('app-topbar')).toBeNull()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'PhytoSync landing navigation' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/overview#overview-dashboard')
+    expect(screen.getByRole('link', { name: 'View Dashboard' }).getAttribute('href')).toBe('/overview#overview-dashboard')
+    expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask Assistant' }))
+    expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
+  })
+
+  it('redirects the root route into the standalone overview landing', async () => {
+    renderApp('/')
+
+    expect(await screen.findByRole('heading', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
+    expect(screen.queryByTestId('app-topbar')).toBeNull()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
+  })
+
+  it('navigates between routed shell pages from the sidebar', async () => {
+    renderApp('/trend')
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Control' }))
@@ -667,7 +694,7 @@ describe('App routed shell', () => {
     await waitFor(() => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
     })
-    expect(screen.getByText('RTROptimizerPanel')).toBeTruthy()
+    expect(await screen.findByText('RTROptimizerPanel', {}, { timeout: 5000 })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
   }, 15000)
 
@@ -757,14 +784,17 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
   })
 
-  it('shows section actions on sidebar interaction and applies the selected section action', async () => {
+  it('keeps overview dashboard anchors on the standalone landing navigation', async () => {
     renderApp('/overview')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Overview' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Action:overview-dashboard' }))
-
-    expect(await screen.findByText('Charts')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/overview#overview-dashboard')
+    expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend')
+    expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios')
+    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant#assistant-search')
+    expect(screen.getByRole('region', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Live decision metrics' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Actions worth checking today' })).toBeTruthy()
   })
 
   it('keeps control section actions inline and leaves the recommended control surface visible', async () => {
@@ -791,16 +821,16 @@ describe('App routed shell', () => {
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('opens the assistant drawer from the topbar without leaving the current page', async () => {
-    renderApp('/overview')
+  it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {
+    renderApp('/trend')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
-    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('opens the assistant drawer from the floating button on non-assistant routes', async () => {
@@ -860,20 +890,27 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(await screen.findByText(expectedPanel)).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Overview' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
   })
 
   it.each([
-    ['/overview/legacy', 'Today Operations'],
     ['/control/legacy', 'Control Solutions'],
     ['/trend/legacy', 'Trend'],
-    ['/rtr', 'Control Solutions'],
+    ['/rtr', 'RTR Optimizer'],
     ['/resources/legacy', 'Resources'],
     ['/alerts/legacy', 'Alerts'],
   ])('redirects %s to the canonical routed page', async (path, heading) => {
     renderApp(path)
 
     expect(screen.getByTestId('topbar-title').textContent).toBe(heading)
+  })
+
+  it('redirects the legacy overview path to the standalone overview landing', async () => {
+    renderApp('/overview/legacy')
+
+    expect(await screen.findByRole('heading', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
   })
 
   it('opens the nutrient advisor lane through the live advisor tab surface', async () => {
@@ -924,17 +961,16 @@ describe('App routed shell', () => {
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
   })
 
-  it('opens the environment advisor tab when overview requests the advisor lane', async () => {
+  it('opens the assistant drawer when overview requests advisor detail', async () => {
     renderApp('/overview')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open advisor lane' }))
 
-    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
-    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('environment')
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
-    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
+    expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
+    expect(screen.queryByText('AdvisorTabs')).toBeNull()
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
   })
 
   it('keeps nutrient correction tool intent when assistant opens the nutrient surface', async () => {
@@ -988,9 +1024,9 @@ describe('App routed shell', () => {
   })
 
   it('closes the assistant drawer before navigating to settings', async () => {
-    renderApp('/overview')
+    renderApp('/trend')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()

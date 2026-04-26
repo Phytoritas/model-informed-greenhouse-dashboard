@@ -1,5 +1,7 @@
 import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
 import WeatherOutlookPanel from '../components/WeatherOutlookPanel';
+import ProducePricesPanel from '../components/ProducePricesPanel';
+import WeatherTrendPanel from '../components/dashboard/WeatherTrendPanel';
 import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
@@ -22,6 +24,7 @@ interface TrendRoutePageProps {
   weatherError: string | null;
   producePrices: ProducePricesPayload | null;
   produceLoading: boolean;
+  produceError: string | null;
   overviewSignals: OverviewSignalsPayload | null;
 }
 
@@ -35,18 +38,34 @@ export default function TrendRoutePage({
   weatherError,
   producePrices,
   produceLoading,
+  produceError,
   overviewSignals,
 }: TrendRoutePageProps) {
   return (
     <TrendPage
       weatherSurface={(
-        <WeatherOutlookPanel
-          weather={weather}
-          loading={weatherLoading}
-          error={weatherError}
-        />
+        <div className="grid gap-5">
+          <WeatherTrendPanel
+            weather={weather}
+            loading={weatherLoading}
+            error={weatherError}
+          />
+          <WeatherOutlookPanel
+            weather={weather}
+            loading={weatherLoading}
+            error={weatherError}
+            compact
+          />
+        </div>
       )}
       marketSurface={(
+        <ProducePricesPanel
+          prices={producePrices}
+          loading={produceLoading}
+          error={produceError}
+        />
+      )}
+      decisionSurface={(
         <DecisionSnapshotGrid
           crop={crop}
           currentData={currentData}

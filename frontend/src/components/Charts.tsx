@@ -1,4 +1,4 @@
-import { memo, Profiler, useMemo } from 'react';
+import { memo, Profiler, useMemo, type ReactNode } from 'react';
 import { Droplets, Sun, Thermometer, Wind, Zap } from 'lucide-react';
 import type { SensorData } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
@@ -9,9 +9,10 @@ import TimeSeriesChart from './TimeSeriesChart';
 interface ChartsProps {
     data: SensorData[];
     variant?: 'default' | 'overview';
+    extraChartSlot?: ReactNode;
 }
 
-const Charts = ({ data, variant = 'default' }: ChartsProps) => {
+const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProps) => {
     const { locale } = useLocale();
     const onRender = useDashboardPerfMetrics('chart-section');
     const copy = useMemo(() => (
@@ -133,6 +134,7 @@ const Charts = ({ data, variant = 'default' }: ChartsProps) => {
                             height={chartHeight}
                         />
                     ))}
+                    {extraChartSlot}
                 </div>
             </div>
         </Profiler>

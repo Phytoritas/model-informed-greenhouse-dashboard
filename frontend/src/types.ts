@@ -37,6 +37,9 @@ export interface SensorData {
 export interface TemperatureSettings {
     heating: number;
     cooling: number;
+    pBand?: number;
+    co2Target?: number;
+    drainTarget?: number;
 }
 
 export interface ControlStatus {
@@ -82,7 +85,9 @@ export interface ForecastDay {
 }
 
 export interface ForecastData {
+    type?: 'forecast.snapshot';
     daily: ForecastDay[];
+    last?: Record<string, unknown>;
     total_harvest_kg: number;
     total_ETc_mm: number;
     total_energy_kWh: number;

@@ -8,10 +8,11 @@ if exist "%SCRIPT_DIR%..\frontend" (
     set "REPO_ROOT=%SCRIPT_DIR%"
 )
 
-set "BACKEND_HOST=127.0.0.1"
-set "BACKEND_PORT=8000"
-set "FRONTEND_HOST=127.0.0.1"
-set "FRONTEND_PORT=5173"
+if not defined BACKEND_HOST set "BACKEND_HOST=127.0.0.1"
+if not defined BACKEND_PORT set "BACKEND_PORT=8000"
+if not defined FRONTEND_HOST set "FRONTEND_HOST=127.0.0.1"
+if not defined FRONTEND_PORT set "FRONTEND_PORT=5173"
+set "VITE_BACKEND_PORT=%BACKEND_PORT%"
 
 if /I "%~1"=="check" goto :check_only
 if /I "%~1"=="install" goto :install_only
@@ -64,6 +65,7 @@ echo   - Greenhouse Backend
 echo   - Greenhouse Frontend
 echo.
 echo   Use `set DEV=0` before launch if you want backend without reload.
+echo   Use `set BACKEND_PORT=8003` before launch if port 8000 is stuck.
 echo   Run `start_all.bat check` to validate dependencies only.
 echo.
 pause

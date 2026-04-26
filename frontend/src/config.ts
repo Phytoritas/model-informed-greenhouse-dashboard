@@ -154,3 +154,19 @@ export const WS_URL = normalizeBaseUrl(
     `${toWsOrigin(BACKEND_ORIGIN)}/ws/sim`,
 );
 
+function deriveForecastWsUrl(simWsUrl: string): string {
+  if (/\/ws\/sim$/i.test(simWsUrl)) {
+    return simWsUrl.replace(/\/ws\/sim$/i, "/ws/forecast");
+  }
+  return `${toWsOrigin(BACKEND_ORIGIN)}/ws/forecast`;
+}
+
+/**
+ * Backend WebSocket base URL for forecast snapshots.
+ * Example: ws://localhost:8000/ws/forecast
+ */
+export const FORECAST_WS_URL = normalizeBaseUrl(
+  (import.meta.env.VITE_FORECAST_WS_URL as string | undefined) ??
+    deriveForecastWsUrl(WS_URL),
+);
+

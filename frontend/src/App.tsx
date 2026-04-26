@@ -100,6 +100,8 @@ const ControlRoutePage = lazy(() => import('./pages/control-route-page'));
 const CropWorkRoutePage = lazy(() => import('./pages/crop-work-route-page'));
 const OverviewRoutePage = lazy(() => import('./pages/overview-route-page'));
 const ResourcesRoutePage = lazy(() => import('./pages/resources-route-page'));
+const RtrRoutePage = lazy(() => import('./pages/rtr-route-page'));
+const ScenariosRoutePage = lazy(() => import('./pages/scenarios-route-page'));
 const SettingsRoutePage = lazy(() => import('./pages/settings-route-page'));
 const TrendRoutePage = lazy(() => import('./pages/trend-route-page'));
 
@@ -585,7 +587,9 @@ function App() {
   const selectedRtrProfile = selectedCrop === 'Tomato' ? tomatoRtrProfile : cucumberRtrProfile;
   const optimizerEnabled = selectedCrop === 'Tomato' ? tomatoOptimizerEnabled : cucumberOptimizerEnabled;
   const selectedAreaState = areaByCrop[selectedCrop];
-  const rtrOptimizerRouteActive = activeSection.key === 'control';
+  const rtrOptimizerRouteActive = activeSection.key === 'control'
+    || activeSection.key === 'rtr'
+    || activeSection.key === 'scenarios';
   const rtrOptimizerState = useRtrOptimizer({
     crop: selectedCrop,
     actualAreaM2: selectedAreaState.actualAreaM2,
@@ -868,6 +872,10 @@ function App() {
         return '/overview';
       case 'control':
         return '/control';
+      case 'rtr':
+        return '/rtr';
+      case 'scenarios':
+        return '/scenarios';
       case 'trend':
         return '/trend';
       case 'growth':
@@ -1283,6 +1291,7 @@ function App() {
       actionsWeek={aiDisplay?.actions_week ?? []}
       monitor={aiDisplay?.monitor ?? []}
       activePanel={activePanelId === 'crop-work-harvest' ? 'crop-work-harvest' : activePanelId === 'crop-work-work' ? 'crop-work-work' : 'crop-work-growth'}
+      onOpenAssistant={() => openAssistantDrawer('assistant-chat')}
     />
   );
 
@@ -1401,7 +1410,58 @@ function App() {
       weatherError={weatherError}
       producePrices={producePrices}
       produceLoading={isProducePricesLoading}
+      produceError={producePricesError}
       overviewSignals={overviewSignals}
+    />
+  );
+
+  const rtrPage = (
+    <RtrRoutePage
+      locale={locale}
+      crop={selectedCrop}
+      currentData={currentData}
+      history={deferredHistory}
+      telemetryStatus={telemetry.status}
+      temperatureSettings={controls.settings}
+      weather={weather}
+      weatherLoading={isWeatherLoading}
+      weatherError={weatherError}
+      profile={selectedRtrProfile}
+      profileLoading={isRtrProfileLoading}
+      profileError={rtrProfileError}
+      optimizerEnabled={optimizerEnabled}
+      defaultMode={selectedRtrProfile?.optimizer?.default_mode}
+      onRefreshProfiles={refreshRtrProfiles}
+      controls={controls}
+      onToggle={toggleControl}
+      onSettingsChange={setTempSettings}
+      modelMetrics={deferredModelMetrics}
+      producePrices={producePrices}
+      produceLoading={isProducePricesLoading}
+      optimizerState={rtrOptimizerState}
+      uiState={rtrOptimizerUiState}
+    />
+  );
+
+  const scenariosPage = (
+    <ScenariosRoutePage
+      locale={locale}
+      crop={selectedCrop}
+      currentData={currentData}
+      history={deferredHistory}
+      telemetryStatus={telemetry.status}
+      temperatureSettings={controls.settings}
+      weather={weather}
+      weatherLoading={isWeatherLoading}
+      weatherError={weatherError}
+      profile={selectedRtrProfile}
+      profileLoading={isRtrProfileLoading}
+      profileError={rtrProfileError}
+      optimizerEnabled={optimizerEnabled}
+      defaultMode={selectedRtrProfile?.optimizer?.default_mode}
+      onRefreshProfiles={refreshRtrProfiles}
+      optimizerState={rtrOptimizerState}
+      uiState={rtrOptimizerUiState}
     />
   );
 
@@ -1433,6 +1493,7 @@ function App() {
   const settingsPage = (
     <SettingsRoutePage
       locale={locale}
+      crop={selectedCrop}
       selectedCropLabel={selectedCropLabel}
       assistantOpen={assistantDrawerOpen}
       telemetrySummary={kpiStatusSummary}
@@ -1440,6 +1501,99 @@ function App() {
       marketConnected={Boolean(producePrices)}
     />
   );
+
+  const overviewRouteElement = (
+    <Suspense fallback={<RouteLoadingFallback />}>
+      <OverviewRoutePage
+        locale={locale}
+        crop={selectedCrop}
+        telemetryStatus={telemetry.status}
+        telemetryDetail={telemetryDetail}
+        primaryKpiTiles={primaryKpiTiles}
+        secondaryKpiTiles={secondaryKpiTiles}
+        runtimeRecommendedAction={runtimeRecommendedAction ?? selectedRtrProfile?.strategyLabel ?? heroCopy.scenarioReady}
+        heroPrimaryNarrative={heroPrimaryNarrative}
+        heroSummary={heroSummary}
+        heroImportantIssue={heroImportantIssue}
+        heroActions={heroActions}
+        confidence={aiDisplay?.confidence ?? aiModelRuntime?.scenario?.confidence ?? null}
+        advisorUpdatedAt={advisorUpdatedAt}
+        advisorRefreshing={isAnalyzing}
+        modelRuntimeSummary={aiModelRuntime?.summary ?? null}
+        sourceSinkBalance={liveSourceSinkBalance}
+        canopyAssimilation={currentData.photosynthesis}
+        lai={modelMetrics.growth.lai}
+        liveSourceSinkSeries={liveSourceSinkSeries}
+        alertItems={alertItems}
+        fallbackAlertBody={heroCopy.telemetryLive}
+        history={deferredHistory}
+        currentData={currentData}
+        modelMetrics={modelMetrics}
+        overviewSignals={overviewSignals}
+        overviewSignalsLoading={overviewSignalsLoading}
+        overviewSignalsError={overviewSignalsError}
+        overviewSignalsRefreshedAt={overviewSignalsRefreshedAt}
+        weather={weather}
+        weatherLoading={isWeatherLoading}
+        weatherError={weatherError}
+        producePrices={producePrices}
+        produceLoading={isProducePricesLoading}
+        produceError={producePricesError}
+        knowledgeSummary={smartGrowSummary}
+        knowledgeLoading={isSmartGrowLoading}
+        knowledgeError={smartGrowError}
+        actionsNow={aiDisplay?.actions_now ?? []}
+        actionsToday={aiDisplay?.actions_today ?? []}
+        actionsWeek={aiDisplay?.actions_week ?? []}
+        monitor={aiDisplay?.monitor ?? []}
+        rtrProfile={selectedRtrProfile}
+        activeTabId={activePanelId}
+        onOpenRtr={() => navigate('/rtr')}
+        onOpenAdvisor={handleChatToggle}
+        onOpenAssistant={handleChatToggle}
+      />
+    </Suspense>
+  );
+
+  const shouldRenderStandaloneOverview = location.pathname === '/'
+    || location.pathname === '/overview'
+    || location.pathname.startsWith('/overview/');
+
+  if (shouldRenderStandaloneOverview) {
+    return (
+      <div className="min-h-screen bg-[color:var(--sg-bg)] px-4 py-4 font-sans text-[color:var(--sg-text)] sm:px-6 lg:px-8">
+        <Routes>
+          <Route path="/" element={<Navigate to="/overview" replace />} />
+          <Route path="/overview" element={overviewRouteElement} />
+          <Route path="*" element={<Navigate to="/overview" replace />} />
+        </Routes>
+        <AssistantDrawer
+          open={assistantDrawerOpen}
+          locale={locale}
+          crop={selectedCrop}
+          cropLabel={selectedCropLabel}
+          panelTabs={assistantSection.tabs}
+          activePanel={assistantDrawerPanel}
+          summary={smartGrowSummary}
+          searchRequest={assistantSearchRequest}
+          chatRequest={assistantChatRequest}
+          currentData={currentData}
+          metrics={deferredModelMetrics}
+          forecast={deferredForecast}
+          history={deferredHistory}
+          producePrices={producePrices}
+          weather={weather}
+          rtrProfile={selectedRtrProfile}
+          smartGrowLoading={isSmartGrowLoading}
+          smartGrowError={smartGrowError}
+          onClose={() => setAssistantDrawerOpen(false)}
+          onSelectPanel={(panelId) => setAssistantDrawerPanel(panelId as AssistantPanelId)}
+          onOpenSearch={handleOpenRagAssistant}
+        />
+        <AssistantFab onClick={handleChatToggle} />
+      </div>
+    );
+  }
 
   return (
     <AppShell
@@ -1476,53 +1630,7 @@ function App() {
         <Route path="/" element={<Navigate to="/overview" replace />} />
         <Route
           path="/overview"
-          element={(
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <OverviewRoutePage
-                locale={locale}
-                crop={selectedCrop}
-                telemetryStatus={telemetry.status}
-                telemetryDetail={telemetryDetail}
-                primaryKpiTiles={primaryKpiTiles}
-                secondaryKpiTiles={secondaryKpiTiles}
-                runtimeRecommendedAction={runtimeRecommendedAction ?? selectedRtrProfile?.strategyLabel ?? heroCopy.scenarioReady}
-                heroPrimaryNarrative={heroPrimaryNarrative}
-                heroSummary={heroSummary}
-                heroImportantIssue={heroImportantIssue}
-                heroActions={heroActions}
-                confidence={aiDisplay?.confidence ?? aiModelRuntime?.scenario?.confidence ?? null}
-                advisorUpdatedAt={advisorUpdatedAt}
-                advisorRefreshing={isAnalyzing}
-                modelRuntimeSummary={aiModelRuntime?.summary ?? null}
-                sourceSinkBalance={liveSourceSinkBalance}
-                canopyAssimilation={currentData.photosynthesis}
-                lai={modelMetrics.growth.lai}
-                liveSourceSinkSeries={liveSourceSinkSeries}
-                alertItems={alertItems}
-                fallbackAlertBody={heroCopy.telemetryLive}
-                history={deferredHistory}
-                currentData={currentData}
-                modelMetrics={modelMetrics}
-                overviewSignals={overviewSignals}
-                overviewSignalsLoading={overviewSignalsLoading}
-                overviewSignalsError={overviewSignalsError}
-                overviewSignalsRefreshedAt={overviewSignalsRefreshedAt}
-                weather={weather}
-                weatherLoading={isWeatherLoading}
-                producePrices={producePrices}
-                produceLoading={isProducePricesLoading}
-                actionsNow={aiDisplay?.actions_now ?? []}
-                actionsToday={aiDisplay?.actions_today ?? []}
-                actionsWeek={aiDisplay?.actions_week ?? []}
-                monitor={aiDisplay?.monitor ?? []}
-                rtrProfile={selectedRtrProfile}
-                activeTabId={activePanelId}
-                onOpenRtr={() => navigate('/control#control-strategy')}
-                onOpenAdvisor={() => handleOpenAdvisorTabs('environment')}
-                onOpenAssistant={handleChatToggle}
-              />
-            </Suspense>
-          )}
+          element={overviewRouteElement}
         />
         <Route
           path="/control"
@@ -1534,6 +1642,8 @@ function App() {
                   ? 'control-devices'
                   : 'control-strategy'}
                 crop={selectedCrop}
+                telemetryStatus={telemetry.status}
+                telemetryDetail={telemetryDetail}
                 controls={controls}
                 onToggle={toggleControl}
                 onSettingsChange={setTempSettings}
@@ -1557,7 +1667,8 @@ function App() {
             </Suspense>
           )}
         />
-        <Route path="/rtr" element={<Navigate to={{ pathname: '/control', hash: '#control-strategy' }} replace />} />
+        <Route path="/rtr" element={<Suspense fallback={<RouteLoadingFallback />}>{rtrPage}</Suspense>} />
+        <Route path="/scenarios" element={<Suspense fallback={<RouteLoadingFallback />}>{scenariosPage}</Suspense>} />
         <Route path="/trend" element={<Suspense fallback={<RouteLoadingFallback />}>{trendPage}</Suspense>} />
         <Route path="/crop-work" element={<Suspense fallback={<RouteLoadingFallback />}>{cropWorkPage}</Suspense>} />
         <Route path="/resources" element={<Suspense fallback={<RouteLoadingFallback />}>{resourcesPage}</Suspense>} />

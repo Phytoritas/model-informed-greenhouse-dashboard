@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach } from 'vitest';
 import { describe, expect, it, vi } from 'vitest';
 import { LocaleProvider } from '../../i18n/LocaleProvider';
@@ -344,5 +344,34 @@ describe('AdvisorTabs pesticide surface', () => {
         expect(screen.queryByText('Backup options')).toBeNull();
         expect(screen.queryByText('백엔드 한글 요약')).toBeNull();
         expect(screen.queryByText('백엔드 한글 정책')).toBeNull();
+    });
+
+    it('runs the selected pesticide focus target immediately', async () => {
+        const runPesticide = vi.fn().mockResolvedValue(undefined);
+        mockUseSmartGrowAdvisor.mockReturnValue({
+            executionState: {
+                environment: { status: 'idle', error: null },
+                physiology: { status: 'idle', error: null },
+                work: { status: 'idle', error: null },
+                pesticide: { status: 'idle', error: null },
+                nutrient: { status: 'idle', error: null },
+                correction: { status: 'idle', error: null },
+                harvest_market: { status: 'idle', error: null },
+            },
+            pesticideResult: null,
+            nutrientResult: null,
+            correctionResult: null,
+            plannedTabResults: {},
+            runPesticide,
+            runNutrient: vi.fn(),
+            runCorrection: vi.fn(),
+            runPlannedTab: vi.fn(),
+        });
+
+        renderAdvisorTabs();
+
+        fireEvent.click(screen.getByRole('button', { name: /온실가루이/ }));
+
+        await waitFor(() => expect(runPesticide).toHaveBeenCalledWith('온실가루이', 5));
     });
 });

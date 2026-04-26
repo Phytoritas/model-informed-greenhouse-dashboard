@@ -48,6 +48,10 @@ function jsonResponse(payload: unknown): Response {
     } as Response;
 }
 
+function findSocket(pathSegment: string): MockWebSocket | undefined {
+    return MockWebSocket.instances.find((socket) => socket.url.includes(pathSegment));
+}
+
 describe('useGreenhouse', () => {
     beforeEach(() => {
         fetchMock.mockImplementation((input: RequestInfo | URL) => {
@@ -98,7 +102,9 @@ describe('useGreenhouse', () => {
             await Promise.resolve();
         });
 
-        expect(MockWebSocket.instances).toHaveLength(1);
+        expect(MockWebSocket.instances).toHaveLength(2);
+        expect(findSocket('/ws/sim/cucumber')).toBeDefined();
+        expect(findSocket('/ws/forecast/cucumber')).toBeDefined();
 
         unmount();
     });
@@ -132,11 +138,11 @@ describe('useGreenhouse', () => {
         const { result, unmount } = renderHook(() => useGreenhouse());
 
         await waitFor(() => {
-            expect(MockWebSocket.instances).toHaveLength(1);
+            expect(MockWebSocket.instances).toHaveLength(2);
         });
 
         await act(async () => {
-            MockWebSocket.instances[0]?.onmessage?.({
+            findSocket('/ws/sim/cucumber')?.onmessage?.({
                 data: JSON.stringify({
                     t: '2026-04-26T00:00:00Z',
                     env: {
@@ -160,6 +166,78 @@ describe('useGreenhouse', () => {
         await waitFor(() => {
             expect(result.current.modelMetrics.energy.costPrediction).toBe(240);
         });
+
+        unmount();
+    });
+
+    it('hydrates forecast snapshots from the backend forecast WebSocket while keeping REST fallback polling', async () => {
+        fetchMock.mockImplementation((input: RequestInfo | URL) => {
+            const url = String(input);
+            if (url.includes('/status')) {
+                return Promise.resolve(jsonResponse({
+                    greenhouses: {
+                        cucumber: {
+                            status: 'idle',
+                            total_rows: 12,
+                            idx: 0,
+                        },
+                    },
+                }));
+            }
+            if (url.includes('/start')) {
+                return Promise.resolve(jsonResponse({ status: 'success' }));
+            }
+            if (url.includes('/settings?crop=')) {
+                return Promise.resolve(jsonResponse({ cost_per_kwh: 0.15 }));
+            }
+            if (url.includes('/forecast/')) {
+                return Promise.resolve(jsonResponse({
+                    daily: [
+                        {
+                            date: '2026-04-26',
+                            harvest_kg: 12.5,
+                            ETc_mm: 4.2,
+                        },
+                    ],
+                    total_harvest_kg: 12.5,
+                    total_ETc_mm: 4.2,
+                    total_energy_kWh: 18.4,
+                }));
+            }
+            return Promise.resolve(jsonResponse({}));
+        });
+
+        const { result, unmount } = renderHook(() => useGreenhouse());
+
+        await waitFor(() => {
+            expect(findSocket('/ws/forecast/cucumber')).toBeDefined();
+        });
+
+        await act(async () => {
+            findSocket('/ws/forecast/cucumber')?.onmessage?.({
+                data: JSON.stringify({
+                    type: 'forecast.snapshot',
+                    daily: [
+                        {
+                            date: '2026-04-26',
+                            harvest_kg: 12.5,
+                            ETc_mm: 4.2,
+                        },
+                    ],
+                    last: { datetime: '2026-04-26T23:00:00Z' },
+                    total_harvest_kg: 12.5,
+                    total_ETc_mm: 4.2,
+                    total_energy_kWh: 18.4,
+                }),
+            } as MessageEvent<string>);
+        });
+
+        await waitFor(() => {
+            expect(result.current.forecast?.total_harvest_kg).toBe(12.5);
+            expect(result.current.forecast?.daily).toHaveLength(1);
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/forecast/cucumber'));
 
         unmount();
     });

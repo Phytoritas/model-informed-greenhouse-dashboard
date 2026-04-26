@@ -21,6 +21,8 @@ export interface AdvisorTabRegistryEntry {
     label: string;
     icon: LucideIcon;
     endpoint: string;
+    exactEndpoint?: string;
+    publicEndpoint?: string;
     kind: 'actionable' | 'on-demand';
 }
 
@@ -40,6 +42,8 @@ export const ADVISOR_TAB_REGISTRY: AdvisorTabRegistryEntry[] = [
         label: 'Environment',
         icon: Sun,
         endpoint: ADVISOR_TAB_ENDPOINTS.environment,
+        exactEndpoint: '/api/advisor/environment',
+        publicEndpoint: '/api/environment/recommend',
         kind: 'on-demand',
     },
     {
@@ -47,6 +51,7 @@ export const ADVISOR_TAB_REGISTRY: AdvisorTabRegistryEntry[] = [
         label: 'Physiology',
         icon: Leaf,
         endpoint: ADVISOR_TAB_ENDPOINTS.physiology,
+        exactEndpoint: '/api/advisor/physiology',
         kind: 'on-demand',
     },
     {
@@ -54,6 +59,8 @@ export const ADVISOR_TAB_REGISTRY: AdvisorTabRegistryEntry[] = [
         label: 'Work',
         icon: Sprout,
         endpoint: ADVISOR_TAB_ENDPOINTS.work,
+        exactEndpoint: '/api/advisor/work-tradeoff',
+        publicEndpoint: '/api/work/recommend',
         kind: 'on-demand',
     },
     {
@@ -61,6 +68,7 @@ export const ADVISOR_TAB_REGISTRY: AdvisorTabRegistryEntry[] = [
         label: 'Pesticide',
         icon: ShieldCheck,
         endpoint: ADVISOR_TAB_ENDPOINTS.pesticide,
+        publicEndpoint: '/api/pesticides/recommend',
         kind: 'actionable',
     },
     {
@@ -68,6 +76,7 @@ export const ADVISOR_TAB_REGISTRY: AdvisorTabRegistryEntry[] = [
         label: 'Nutrient',
         icon: FlaskConical,
         endpoint: ADVISOR_TAB_ENDPOINTS.nutrient,
+        publicEndpoint: '/api/nutrients/recommend',
         kind: 'actionable',
     },
     {
@@ -75,6 +84,7 @@ export const ADVISOR_TAB_REGISTRY: AdvisorTabRegistryEntry[] = [
         label: 'Harvest & Market',
         icon: Activity,
         endpoint: ADVISOR_TAB_ENDPOINTS.harvest_market,
+        exactEndpoint: '/api/advisor/harvest',
         kind: 'on-demand',
     },
 ];

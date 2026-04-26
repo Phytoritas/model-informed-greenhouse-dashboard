@@ -12,7 +12,8 @@ export type DashboardWorkspaceKey =
   | 'crop'
   | 'resources'
   | 'alerts'
-  | 'knowledge';
+  | 'knowledge'
+  | 'settings';
 
 export interface WorkspaceNavAction {
   id: string;

@@ -19,6 +19,7 @@ interface RtrTrendCardProps {
   currentData: SensorData;
   history: SensorData[];
   profile?: RtrProfile | null;
+  variant?: 'default' | 'chart-slot';
 }
 
 interface RtrTrendPoint {
@@ -72,8 +73,13 @@ export default function RtrTrendCard({
   currentData,
   history,
   profile = null,
+  variant = 'default',
 }: RtrTrendCardProps) {
   const { locale } = useLocale();
+  const cardClassName = variant === 'chart-slot'
+    ? 'h-full min-h-[268px] overflow-hidden !p-4'
+    : RTR_TREND_CARD_HEIGHT_CLASS;
+  const chartHeight = variant === 'chart-slot' ? 176 : 176;
   const trendSeries = useMemo(
     () => buildRtrTrendSeries(crop, currentData, history, profile),
     [crop, currentData, history, profile],
@@ -98,7 +104,7 @@ export default function RtrTrendCard({
   if (trendSeries.length < 2) {
     return (
       <DashboardCard
-        className={RTR_TREND_CARD_HEIGHT_CLASS}
+        className={cardClassName}
         eyebrow={copy.eyebrow}
         title={copy.title}
         description=""
@@ -112,7 +118,7 @@ export default function RtrTrendCard({
 
   return (
     <DashboardCard
-      className={RTR_TREND_CARD_HEIGHT_CLASS}
+      className={cardClassName}
       eyebrow={copy.eyebrow}
       title={copy.title}
       description=""
@@ -120,20 +126,20 @@ export default function RtrTrendCard({
     >
       <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.06em] text-[color:var(--sg-text-faint)]">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-accent-violet)]" />
+          <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-olive)]" />
           {copy.actual}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-accent-earth)]" />
+          <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-terracotta)]" />
           {copy.target}
         </span>
       </div>
 
-      <ChartFrame minHeight={176} style={{ height: 176 }}>
+      <ChartFrame minHeight={chartHeight} style={{ height: chartHeight }}>
         {({ width, height }) => (
           <LineChart
             width={Math.max(width, 1)}
-            height={Math.max(height, 176)}
+            height={Math.max(height, chartHeight)}
             data={trendSeries}
             margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
           >
@@ -166,7 +172,7 @@ export default function RtrTrendCard({
             <Line
               type="monotone"
               dataKey="actualTempC"
-              stroke="var(--sg-accent-violet)"
+              stroke="var(--sg-color-olive)"
               strokeWidth={2.2}
               dot={false}
               isAnimationActive={false}
@@ -174,7 +180,7 @@ export default function RtrTrendCard({
             <Line
               type="monotone"
               dataKey="targetTempC"
-              stroke="var(--sg-accent-earth)"
+              stroke="var(--sg-color-terracotta)"
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}

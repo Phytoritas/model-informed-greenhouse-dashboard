@@ -54,6 +54,21 @@ describe('Charts', () => {
     expect(cards[1].textContent).toBe('Vapor pressure deficit and transpiration:176');
   });
 
+  it('renders an overview trailing chart slot without changing the base chart deck', () => {
+    render(
+      <LocaleProvider>
+        <Charts
+          data={SENSOR_FIXTURE}
+          variant="overview"
+          extraChartSlot={<div data-testid="rtr-chart-slot">RTR trend</div>}
+        />
+      </LocaleProvider>,
+    );
+
+    expect(screen.getAllByTestId('chart-card')).toHaveLength(5);
+    expect(screen.getByTestId('rtr-chart-slot').textContent).toBe('RTR trend');
+  });
+
   it('keeps the full chart deck in default mode', () => {
     render(
       <LocaleProvider>
