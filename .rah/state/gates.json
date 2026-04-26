@@ -1,5 +1,5 @@
 {
-  "earliest_restart_point": "Resume from issue #118 branch after re-reading AGENTS.md, Phytoritas.md, docs/design/codex_image_based_greenhouse_ui_prompt.md, .rah/memory/wakeup.md, and .rah/plans/current_loop.md.",
+  "earliest_restart_point": "Resume from main after re-reading AGENTS.md, Phytoritas.md, docs/design/codex_image_based_greenhouse_ui_prompt.md, .rah/memory/wakeup.md, and .rah/plans/current_loop.md.",
   "issue118_prompt_intake": {
     "status": "pass",
     "note": "Issue #118 and branch `feat/118-redesign-overview-decision-dashboard-ui-system` were created before non-trivial frontend writes after repo-local AGENTS intake, RAH status checks, and Memento context/recall hydration."
@@ -487,5 +487,13 @@
   "issue118_assistant_and_protection_pass": {
     "status": "pass",
     "note": "Assistant/Ask now uses the current warm UI system, knowledge search renders book-like result pages with a clickable table of contents, AI replies show farmer-friendly summaries before full markdown, and pesticide recommendations can be recalculated from common focus-target buttons."
+  },
+  "issue118_pr_validation": {
+    "status": "pass",
+    "note": "PR #119 merged issue #118 into main at dfd68cdc2da0acd13bd37f2d47558e12757602f7 after local frontend lint/build/test, git diff --check, and GitHub Actions Backend/Frontend validation all passed; issue #118 is closed and Project status is Done."
+  },
+  "issue120_harness_sync": {
+    "status": "pass",
+    "note": "Post-merge RAH wakeup, current loop, and status state now resume from the clean post-issue118 main baseline instead of the retired feature branch."
   }
 }

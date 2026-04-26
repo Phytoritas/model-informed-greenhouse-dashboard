@@ -3,25 +3,22 @@
 ## Identity
 - workspace: `model-informed-greenhouse-dashboard`
 - topic: `frontend-ui-system`
-- sessionId: `model-informed-greenhouse-dashboard#118:overview-ui-system-redesign`
-- caseId: `case/model-informed-greenhouse-dashboard/118/overview-ui-system-redesign`
-- active product issue: `#118`
-- branch: `feat/118-redesign-overview-decision-dashboard-ui-system`
+- sessionId: `model-informed-greenhouse-dashboard#120:sync-issue118-merged-harness-state`
+- caseId: `case/model-informed-greenhouse-dashboard/120/sync-issue118-merged-harness-state`
+- active product issue: none
+- active docs sync issue: none
+- branch: `main`
 - blocked backlog issue: `#3`
 
 ## Current State
-- current_stage: `issue118-overview-ui-system-redesign`
-- implementation_gate: `pass`
-- scope: image-informed `/overview` landing UI system redesign using `docs/design/design_system_ui_ux_dashboard_mockup.png` and `docs/design/codex_image_based_greenhouse_ui_prompt.md`; `docs/design/UIUX_example.png` remains the original imported source copy
-- validation_baseline: frontend lint, 154-test Vitest suite, production build, and Playwright overview/dashboard screenshots passed locally
-- route_contract: `/`, `/overview`, and `/overview/legacy` render outside `AppShell`; `/rtr`, `/assistant`, and `/settings` are first-class shell navigation routes
-- live_forecast_contract: frontend uses `FORECAST_WS_URL` for `/ws/forecast/{crop}` snapshots and keeps `/api/forecast/{crop}` polling as fallback
-- visual_fidelity_delta: Overview Command hero uses `frontend/src/assets/overview-greenhouse-hero.jpg`, a compressed crop derived from the existing greenhouse photo, instead of the previous CSS-only greenhouse illustration
-- dashboard_delta: Overview Dashboard fills the empty slot beside electrical demand with `RtrTrendCard` and adds `ConsultingTrendCard` under source-sink trends without changing backend/API contracts
-- command_delta: Overview Command first-screen cards now use tighter PNG-like section density, bottom status chips on Today Action Board, a compact baseline-vs-RTR scenario strip, compact Weather/Market/Knowledge bridge cards, active cucumber labeling, and a smaller assistant FAB that avoids covering the board.
-- data_flow_delta: Command freshness and metric chips now reflect actual telemetry/KPI state; the hero preview uses live PAR and soil moisture instead of fabricated DLI or irrigation-minute values.
-- watch_delta: Overview Watch now reuses the warm sg-panel/status-chip visual system for AlertRail and TodayBoard, neutralizes zero-count critical/warning summaries, and removes the transparent/absolute overview tab overlap.
-- assistant_delta: Assistant/Ask now uses the same warm UI system, book-like knowledge result pages, farmer-friendly answer summaries, and pesticide focus-target buttons for common cucumber protection problems.
+- current_stage: `post-issue118-merged-baseline`
+- implementation_gate: `closed`
+- completed_issue118: image-informed `/overview` landing UI system, tabbed workspace restoration, Assistant/Ask redesign, book-like knowledge result pages, farmer-friendly answer summaries, and pesticide focus-target buttons.
+- merged_pr: `#119` merged into `main` at `dfd68cdc2da0acd13bd37f2d47558e12757602f7`.
+- closed_issue: `#118`; Project status is `Done`.
+- validation_baseline: local frontend lint/build/test, `git diff --check`, and GitHub Actions Backend/Frontend validation passed on PR `#119`.
+- route_contract: `/`, `/overview`, and `/overview/legacy` render the standalone landing/overview surface; detailed backend-backed features remain in first-class workspace routes such as `/control`, `/rtr`, `/crop-work`, `/resources`, `/alerts`, `/assistant`, `/settings`, and `/scenarios`.
+- design_evidence: reference and comparison assets live under `docs/design/`, including Command, Dashboard, Watch, tablet, and mobile screenshots.
 
 ## Read First
 1. nearest `AGENTS.md`
@@ -33,15 +30,15 @@
 
 ## Memento Start Recipe
 ```python
-context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#118:overview-ui-system-redesign")
+context(types=["preference", "procedure", "error", "decision"], workspace="model-informed-greenhouse-dashboard", sessionId="model-informed-greenhouse-dashboard#120:sync-issue118-merged-harness-state")
 recall(
-    keywords=["model-informed-greenhouse-dashboard", "frontend-ui-system", "issue118", "overview", "dashboard", "landing", "forecast-websocket", "integration-inventory", "validation"],
+    keywords=["model-informed-greenhouse-dashboard", "frontend-ui-system", "issue118", "issue119", "overview", "assistant", "pesticide", "post-merge"],
     topic="frontend-ui-system",
     workspace="model-informed-greenhouse-dashboard",
-    sessionId="model-informed-greenhouse-dashboard#118:overview-ui-system-redesign",
+    sessionId="model-informed-greenhouse-dashboard#120:sync-issue118-merged-harness-state",
     caseMode=True,
-    depth="detail",
-    contextText="resume from locally validated issue118 overview UI, first-class workspace nav, forecast websocket, and integration inventory"
+    depth="standard",
+    contextText="resume from clean post-issue118 merged main baseline"
 )
 ```
 
@@ -49,8 +46,6 @@ recall(
 If recall results are useful or misleading, record `tool_feedback()` and update `.rah/memory/memento_feedback.json`.
 
 ## Exact Next Step
-- Use `docs/design/current-overview-command-1440x810.png`, `docs/design/current-overview-command-tablet-768x1024.png`, `docs/design/current-overview-command-mobile-390x844.png`, and `docs/design/current-overview-dashboard-fullpage.png` as the latest visual regression evidence.
-- Use `docs/design/current-overview-command-fullpage.png` as the latest full-page evidence for the compact cucumber Overview Command pass.
-- Use `docs/design/current-overview-watch-1440x810.png` and `docs/design/current-overview-watch-fullpage.png` as the latest Watch tab evidence.
-- Review the final diff for unrelated dirty worktree changes before commit/PR packaging.
-- Do not alter backend/API contracts as part of issue `#118`; keep issue `#3` blocked until grower-approved windows exist.
+- Leave issue `#3` blocked until grower-approved RTR windows exist.
+- Do not reopen issue `#118`; create a new issue for any follow-up UI, backend, or calibration work.
+- Use `docs/design/current-overview-*.png` as the latest issue118 visual regression evidence.
