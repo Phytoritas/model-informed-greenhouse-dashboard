@@ -34,7 +34,7 @@ function deferredResponse<T>() {
 function buildStateResponse(): RtrStateResponse {
     return {
         status: 'ready',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         snapshot_id: 'snap-001',
         optimizer_enabled: true,
@@ -50,7 +50,7 @@ function buildStateResponse(): RtrStateResponse {
         },
         canonical_state: {
             timestamp: '2026-04-08T03:00:00Z',
-            crop: 'Cucumber',
+            crop: 'cucumber',
             greenhouse_id: 'house-a',
             env: {
                 T_air_C: 19.2,
@@ -115,7 +115,7 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
     return {
         status: 'ready',
         mode: 'optimizer',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         snapshot_id: 'snap-001',
         baseline: {
@@ -255,7 +255,7 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
 function buildScenarioResponse(): RtrScenarioResponse {
     return {
         status: 'ready',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         snapshot_id: 'snap-001',
         target_node_development_per_day: 0.73,
@@ -301,7 +301,7 @@ function buildSensitivityResponse(): RtrSensitivityResponse {
     return {
         status: 'ready',
         mode: 'optimizer',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         snapshot_id: 'snap-001',
         target_horizon: 'today',
@@ -366,6 +366,8 @@ describe('useRtrOptimizer', () => {
             expect(result.current.stateResponse?.canonical_state.growth.predicted_node_rate_day).toBe(0.73);
             expect(result.current.optimizeResponse).not.toBeNull();
         });
+
+        expect(result.current.stateResponse?.crop).toBe('cucumber');
 
         const stateCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/state'));
         expect(stateCall?.[0]).toEqual(expect.stringContaining('/rtr/state?crop=cucumber'));
@@ -530,6 +532,7 @@ describe('useRtrOptimizer', () => {
             const areaSettingsCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/area-settings'));
             expect(areaSettingsCall).toBeTruthy();
             const body = JSON.parse(String((areaSettingsCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+            expect(body.crop).toBe('cucumber');
             expect(body.user_actual_area_pyeong).toBe(900);
             expect(body.user_actual_area_m2).toBe(2975.21);
         });
@@ -619,6 +622,7 @@ describe('useRtrOptimizer', () => {
             const areaSettingsCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/rtr/area-settings'));
             expect(areaSettingsCall).toBeTruthy();
             const body = JSON.parse(String((areaSettingsCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+            expect(body.crop).toBe('cucumber');
             expect(body.user_actual_area_pyeong).toBe(913.1);
             expect(body.user_actual_area_m2).toBe(3018.52);
         });

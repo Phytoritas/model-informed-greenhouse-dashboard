@@ -94,11 +94,11 @@ describe('phytosyncSections', () => {
     expect(getDefaultSectionPathForWorkspace('alerts')).toBe('/alerts');
     expect(getDefaultSectionPathForWorkspace('knowledge')).toBe('/assistant');
 
-    expect(getSectionPathForAdvisorTab('environment')).toBe('/control#control-strategy');
-    expect(getSectionPathForAdvisorTab('physiology')).toBe('/crop-work#crop-work-growth');
-    expect(getSectionPathForAdvisorTab('work')).toBe('/crop-work#crop-work-work');
-    expect(getSectionPathForAdvisorTab('nutrient')).toBe('/resources#resources-nutrient');
-    expect(getSectionPathForAdvisorTab('pesticide')).toBe('/alerts#alerts-warning');
-    expect(getSectionPathForAdvisorTab('harvest_market')).toBe('/crop-work#crop-work-harvest');
+    expect(getSectionPathForAdvisorTab('environment')).toBe('/growth#environment');
+    expect(getSectionPathForAdvisorTab('physiology')).toBe('/growth#physiology');
+    expect(getSectionPathForAdvisorTab('work')).toBe('/growth#work');
+    expect(getSectionPathForAdvisorTab('nutrient')).toBe('/nutrient');
+    expect(getSectionPathForAdvisorTab('pesticide')).toBe('/protection');
+    expect(getSectionPathForAdvisorTab('harvest_market')).toBe('/harvest');
   });
 });

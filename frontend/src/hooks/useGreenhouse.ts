@@ -295,8 +295,8 @@ export const useGreenhouse = () => {
         Cucumber: 0,
     });
     const costPerKwhRef = useRef<Record<CropType, number>>({
-        Tomato: 0.15,
-        Cucumber: 0.15,
+        Tomato: 120,
+        Cucumber: 120,
     });
     const recoveryAttemptAtRef = useRef<Record<CropType, number>>({
         Tomato: 0,
