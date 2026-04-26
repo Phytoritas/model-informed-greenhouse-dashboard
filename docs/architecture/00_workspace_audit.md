@@ -3,48 +3,49 @@
 ## Mode
 - Harness mode: `hybrid`
 - Setup scope: `project`
-- Active issue: `#61`
-- Active branch: `hyp/61-rebuild-phytosync-into-coral-stay-routed-shell`
-- Preserved merged baseline: issue `#57` frontend chunk split plus the earlier model-first runtime and routed-shell merges
+- Active issue: `#112`
+- Active branch: `fix/112-backend-frontend-integration-audit-and-repair`
+- Preserved merged baseline: post-issue106 `main` with the current SmartGrow runtime, routed shell, RTR optimizer, advisor, knowledge, weather, and market surfaces
 
 ## Target Repository Profile
 - Repo type: Python-first greenhouse dashboard with Poetry packaging and a Vite frontend
 - Current runtime maturity: backend/frontend runtime, model-first SmartGrow services, advisor routes, knowledge search, and RTR optimizer are already landed
-- Active expansion mode: PhytoSync Coral Stay routed-shell redesign with route-level pages, compatibility containment, and shell/editorial cleanup
+- Active expansion mode: backend/frontend integration repair; no product IA rewrite
 - Existing quality gates: `npm --prefix frontend run lint`, `npm --prefix frontend run test -- --pool=threads`, `npm --prefix frontend run build`, `poetry run pytest`, `poetry run ruff check .`
 
 ## Current Target Inventory
-- `frontend/src/App.tsx`: root route registration, shell wiring, and explicit compatibility redirects
-- `frontend/src/layout/AppShell.tsx`, `frontend/src/components/shell/*`: shared routed shell chrome
-- `frontend/src/app/route-meta.ts`: canonical primary-route metadata
-- `frontend/src/pages/*-route-page.tsx`: dedicated route-level page composition
-- `frontend/src/routes/phytosyncSections.ts`: assistant-first section metadata plus bounded compatibility helpers for advisor-lane intent and `/ask` redirect/hash handling
-- `/overview|/control|/resources|/alerts/legacy`: explicit canonical redirects now owned directly in `frontend/src/App.tsx`
-- `frontend/src/App.routing.test.tsx`: route-entry and navigation regression lock
+- `src/model_informed_greenhouse_dashboard/backend/app/main.py`: FastAPI route surface for simulation, settings, knowledge, advisor, RTR, weather, market, and WebSocket endpoints
+- `frontend/src/config.ts`: runtime API and WebSocket base-url inference
+- `frontend/src/hooks/useGreenhouse.ts`: status/start/settings/config/forecast/WebSocket integration
+- `frontend/src/hooks/useRtrOptimizer.ts`: `/api/rtr/state|optimize|scenario|sensitivity|area-settings` integration
+- `frontend/src/components/advisor/AdvisorTabs.tsx` plus `frontend/src/pages/advisor-lane-route-page.tsx`: advisor tab API client and route page
+- `frontend/src/App.tsx` and `frontend/src/routes/phytosyncSections.ts`: route access to advisor lanes and preserved compatibility redirects
 - `docs/architecture/` and `.rah/`: durable architecture and control-plane state
 
 ## Directive Inventory
-- Primary requirement: move the frontend to a true route-based shell with Coral Stay-inspired warm coral/red direction
-- Required route surfaces: `/overview`, `/control`, `/rtr`, `/crop-work`, `/resources`, `/alerts`, `/assistant`, `/settings`
-- Required compatibility surfaces: `/growth`, `/nutrient`, `/protection`, `/harvest`, and `/ask#... -> /assistant#...`
-- Required preservation rules: no backend contract regression, no route/runtime regression, no return to one oversized page
+- Primary requirement: find and repair backend/frontend integration gaps, not redesign the product shell
+- Required preservation rules: no regression to `/api/models/*`, `/api/advisor/*`, `/api/rtr/*`, weather, market, crop switching, WebSocket simulation, or area-unit projection contracts
+- Required route preservation: `/overview`, `/control`, `/trend`, `/crop-work`, `/resources`, `/alerts`, `/assistant`, `/settings`, `/rtr -> /control#control-strategy`, `/ask#... -> /assistant#...`
+- Advisor lane requirement: existing AdvisorTabs backend integration must be reachable from app routes rather than remaining dead route-page code
 
 ## Gap Snapshot
-- Landed and reusable: direct top-level route pages, advisor-lane route page, routed assistant page, route-entry regression tests, and warm shell primitives
-- Still coupled: `frontend/src/routes/phytosyncSections.ts` now uses `assistant` as the canonical knowledge section, but `ask-*` panel ids and `/ask` redirect semantics still feed compatibility helpers and advisor-lane intent
-- Drift repaired in this loop: root blueprint, architecture mirror, workspace audit/system brief, implementation gate, and Memento hydration state are now resynced to the issue `#61` truth instead of the stale issue `#19/#27` state
+- Confirmed: `useRtrOptimizer` persists `/api/rtr/area-settings` with frontend `CropType` casing while backend expects lowercase crop keys.
+- Confirmed: RTR response types claim `CropType` even though backend RTR endpoints return normalized lowercase crop keys.
+- Confirmed: RTR calibration-state/preview/save responses still exposed title-case profile crop keys while the new frontend API response type expects lowercase crop keys.
+- Confirmed: frontend starts energy cost calculations with `0.15` while backend settings default to `120` KRW/kWh.
+- Confirmed: `AdvisorLaneRoutePage` exists but `/growth`, `/nutrient`, `/protection`, and `/harvest` currently redirect away from the page, leaving `AdvisorTabs` backend calls unreachable from those routes.
+- Confirmed: route helpers classify nested advisor aliases such as `/harvest/week`, but `App.tsx` only registered exact advisor paths.
 
 ## Earliest Gate Status
 - AGENTS intake: passed
 - Issue/branch linkage: passed
 - Harness scaffold: passed
 - Memento context/recall hydration: passed
-- Routed primary-page extraction: passed
-- Control-plane sync for issue `#61`: passed
-- Next bounded implementation gate: ready once the control-plane sync lands
+- Backend/frontend interface recon: passed for phase 1
+- Implementation gate: pass only for the confirmed repairs listed above
 
 ## Recommended Target Shape
-- Keep the direct routed pages as the primary product shell
-- Keep `App.tsx` focused on route registration and shared cross-route state wiring
-- Keep `/legacy` aliases as explicit redirects only and do not reintroduce layout-level compatibility frames
-- Keep `/assistant` canonical and `/ask` as compatibility only
+- Normalize crop keys at backend/frontend boundaries where the API contract is lowercase.
+- Keep frontend response types honest when backend payloads use lowercase API crop keys.
+- Use KRW/kWh consistently for backend settings and frontend fallback calculations.
+- Render the existing advisor lane route page for exact and nested advisor compatibility routes and protect the behavior with route tests.

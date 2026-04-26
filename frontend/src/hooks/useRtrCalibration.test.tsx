@@ -47,7 +47,7 @@ const TEST_WEIGHTS = {
 function buildStateResponse(): RtrCalibrationStateResponse {
     return {
         status: 'ready',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         current_profile: {
             crop: 'Cucumber',
@@ -93,7 +93,7 @@ function buildStateResponse(): RtrCalibrationStateResponse {
 function buildPreviewResponse(saved = false): RtrCalibrationPreviewResponse {
     return {
         status: 'ready',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         selection_mode: 'windows-only',
         windows: [WINDOW_FIXTURE],

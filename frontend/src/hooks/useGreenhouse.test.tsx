@@ -102,4 +102,65 @@ describe('useGreenhouse', () => {
 
         unmount();
     });
+
+    it('uses the backend KRW/kWh default before settings finish loading', async () => {
+        fetchMock.mockImplementation((input: RequestInfo | URL) => {
+            const url = String(input);
+            if (url.includes('/status')) {
+                return Promise.resolve(jsonResponse({
+                    greenhouses: {
+                        cucumber: {
+                            status: 'idle',
+                            total_rows: 12,
+                            idx: 0,
+                        },
+                    },
+                }));
+            }
+            if (url.includes('/start')) {
+                return Promise.resolve(jsonResponse({ status: 'success' }));
+            }
+            if (url.includes('/settings?crop=')) {
+                return new Promise<Response>(() => {});
+            }
+            if (url.includes('/forecast/')) {
+                return Promise.resolve(jsonResponse({ daily: [] }));
+            }
+            return Promise.resolve(jsonResponse({}));
+        });
+
+        const { result, unmount } = renderHook(() => useGreenhouse());
+
+        await waitFor(() => {
+            expect(MockWebSocket.instances).toHaveLength(1);
+        });
+
+        await act(async () => {
+            MockWebSocket.instances[0]?.onmessage?.({
+                data: JSON.stringify({
+                    t: '2026-04-26T00:00:00Z',
+                    env: {
+                        T_air_C: 23,
+                        RH_percent: 70,
+                        CO2_ppm: 550,
+                        PAR_umol: 410,
+                        VPD_kPa: 0.9,
+                    },
+                    state: { LAI: 2.1 },
+                    energy: {
+                        P_elec_kW: 2,
+                        COP_current: 3.2,
+                        Q_load_kW: 6.4,
+                    },
+                    kpi: {},
+                }),
+            } as MessageEvent<string>);
+        });
+
+        await waitFor(() => {
+            expect(result.current.modelMetrics.energy.costPrediction).toBe(240);
+        });
+
+        unmount();
+    });
 });

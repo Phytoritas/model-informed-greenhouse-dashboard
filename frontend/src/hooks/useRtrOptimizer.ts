@@ -429,7 +429,7 @@ export const useRtrOptimizer = ({
 
     useEffect(() => {
         const areaPersistenceSignature = JSON.stringify({
-            crop,
+            crop: cropKey,
             greenhouseId: greenhouseId ?? null,
             actualAreaM2,
             actualAreaPyeong,
@@ -456,7 +456,7 @@ export const useRtrOptimizer = ({
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    crop,
+                    crop: cropKey,
                     greenhouse_id: greenhouseId,
                     user_actual_area_m2: actualAreaM2 ?? undefined,
                     user_actual_area_pyeong: actualAreaPyeong ?? undefined,
@@ -467,7 +467,7 @@ export const useRtrOptimizer = ({
         }, 400);
 
         return () => window.clearTimeout(timer);
-    }, [actualAreaM2, actualAreaPyeong, actualAreaSource, crop, greenhouseId, loadingState, stateResponse]);
+    }, [actualAreaM2, actualAreaPyeong, actualAreaSource, cropKey, greenhouseId, loadingState, stateResponse]);
 
     const setTargetNodeRate = useCallback((value: number | null) => {
         hasManualTargetRef.current = value !== null;

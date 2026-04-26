@@ -1126,7 +1126,7 @@ def _build_rtr_calibration_preview_payload(
     )
     return {
         "status": "success",
-        "crop": crop_key,
+        "crop": crop,
         "greenhouse_id": greenhouse_id,
         "selection_mode": selection_mode,
         "windows": windows,
@@ -3461,7 +3461,7 @@ async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
 @app.post("/api/rtr/area-settings")
 async def save_rtr_area_settings(req: RTRAreaSettingsRequest):
     """Persist actual-area overrides for RTR projections per crop/greenhouse."""
-    crop = _validate_crop(req.crop)
+    crop = _validate_crop(req.crop.lower() if req.crop not in CROPS else req.crop)
     greenhouse_id = _resolve_greenhouse_id(crop, req.greenhouse_id)
     area_meta = _resolve_rtr_area_meta(
         crop,
@@ -3497,7 +3497,7 @@ async def get_rtr_calibration_state(crop: str, greenhouse_id: Optional[str] = No
     crop_key = _get_rtr_profile_crop_key(normalized_crop)
     return {
         "status": "success",
-        "crop": crop_key,
+        "crop": normalized_crop,
         "greenhouse_id": resolved_greenhouse_id,
         "current_profile": copy.deepcopy(profiles_payload.get("profiles", {}).get(crop_key, {})),
         "windows": current_windows,

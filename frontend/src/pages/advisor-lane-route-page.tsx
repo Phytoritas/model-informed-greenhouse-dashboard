@@ -59,6 +59,7 @@ export default function AdvisorLaneRoutePage({
       <div className={`grid gap-6 ${secondarySurface ? '2xl:grid-cols-[minmax(0,1.16fr)_minmax(320px,0.84fr)]' : ''}`}>
         <div className="min-w-0">
           <AdvisorTabs
+            key={`${initialTab}-${initialCorrectionToolOpen ? 'correction' : 'standard'}`}
             crop={crop}
             summary={summary}
             currentData={currentData}
