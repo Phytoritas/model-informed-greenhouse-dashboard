@@ -1,1 +1,2 @@
 change_id,linked_adr,linked_module,objective,tests_added_or_updated,regression_risk,status,notes
+issue114-phase1,,backend-frontend-integration,"Repair post-issue112 route/crop/advisor/market fallback drifts","App.routing.test.tsx; ProducePricesPanel.test.tsx; useSmartGrowAdvisor.test.tsx; useSmartGrowKnowledge.test.tsx; smoke/advisory/advisor_orchestration/model_runtime/RTR focused tests",medium,validating,"Preserves issue112 contracts while adding /ask/* routing, normalized crop boundary use, canonical harvest-market metadata, and explicit produce fallback source status"

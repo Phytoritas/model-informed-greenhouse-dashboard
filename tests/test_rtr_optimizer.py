@@ -1232,7 +1232,7 @@ def test_rtr_state_route_returns_canonical_shape(
     )
 
     client = TestClient(get_app())
-    response = client.get("/api/rtr/state", params={"crop": "cucumber"})
+    response = client.get("/api/rtr/state", params={"crop": " Cucumber "})
 
     assert response.status_code == 200
     payload = response.json()

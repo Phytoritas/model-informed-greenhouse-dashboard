@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { API_URL } from '../config';
+import { ADVISOR_TAB_ENDPOINTS } from '../components/advisor/advisorTabRegistry';
 
 type AdvisorStatus = 'idle' | 'loading' | 'success' | 'error';
 export type AdvisorActionTimelineItem = {
@@ -851,13 +852,6 @@ const INITIAL_STATE: Record<AdvisorTabKey, AdvisorExecutionState> = {
     harvest_market: { status: 'idle', error: null },
 };
 
-const PLANNED_TAB_PATHS: Record<PlannedAdvisorTabKey, string> = {
-    environment: '/advisor/tab/environment',
-    physiology: '/advisor/tab/physiology',
-    work: '/advisor/tab/work',
-    harvest_market: '/advisor/tab/harvest-market',
-};
-
 async function parseJsonResponse<T>(response: Response): Promise<T> {
     const raw = await response.text();
     const json = raw ? (JSON.parse(raw) as T & RequestErrorPayload) : null;
@@ -985,7 +979,7 @@ export function useSmartGrowAdvisor(crop: string) {
     ) {
         const payload = await execute<PlannedAdvisorTabPayload>(
             tab,
-            PLANNED_TAB_PATHS[tab],
+            ADVISOR_TAB_ENDPOINTS[tab],
             dashboard ? { dashboard } : {},
         );
         setPlannedTabResults((current) => ({

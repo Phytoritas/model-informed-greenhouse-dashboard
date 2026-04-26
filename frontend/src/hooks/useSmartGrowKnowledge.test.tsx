@@ -39,7 +39,8 @@ describe('useSmartGrowKnowledge', () => {
             advisory_surfaces: {
                 pesticide: {
                     status: 'ready',
-                    route: '/api/pesticide/review',
+                    route: '/api/pesticides/recommend',
+                    delegate_route: '/api/advisor/tab/pesticide',
                     request_contract: {
                         required: ['crop', 'disease'],
                         optional: ['weather'],

@@ -1573,7 +1573,7 @@ function App() {
         <Route path="/nutrient/*" element={<Suspense fallback={<RouteLoadingFallback />}>{nutrientAdvisorPage}</Suspense>} />
         <Route path="/protection/*" element={<Suspense fallback={<RouteLoadingFallback />}>{protectionAdvisorPage}</Suspense>} />
         <Route path="/harvest/*" element={<Suspense fallback={<RouteLoadingFallback />}>{harvestAdvisorPage}</Suspense>} />
-        <Route path="/ask" element={<Navigate to={{ pathname: '/assistant', hash: location.hash }} replace />} />
+        <Route path="/ask/*" element={<Navigate to={{ pathname: '/assistant', hash: location.hash }} replace />} />
         <Route path="*" element={<Navigate to="/overview" replace />} />
       </Routes>
       <AssistantDrawer

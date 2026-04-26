@@ -397,7 +397,7 @@ def test_overview_signal_endpoint_returns_internal_irradiance_and_model_history(
 
     client = TestClient(get_app())
 
-    response = client.get("/api/overview/signals?crop=cucumber")
+    response = client.get("/api/overview/signals", params={"crop": " Cucumber "})
 
     assert response.status_code == 200
     payload = response.json()
