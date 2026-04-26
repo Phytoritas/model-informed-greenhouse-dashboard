@@ -5,7 +5,7 @@
 - GitHub repo: `https://github.com/Phytoritas/model-informed-greenhouse-dashboard`
 - Project name: `model-informed-greenhouse-dashboard`
 - Package name: `model_informed_greenhouse_dashboard`
-- Current baseline branch: `main`
+- Current baseline branch: `fix/112-backend-frontend-integration-audit-and-repair`
 - Current merged UI baseline: issues `#65`, `#67`, `#69`, `#74`, `#80`, `#82`, `#84`
 - Current control-plane sync baseline: issue `#86`
 
@@ -18,15 +18,14 @@
 - bounded shell rhythm: `248px` sidebar, `80px` header, `1320px` main canvas
 - preserved product/runtime seams: `/api/models/*`, `/api/advisor/*`, `/api/rtr/*`, weather, market, crop switching, and area-unit projections
 
-## Current Maintenance Lane
-The current maintenance work is no longer a product IA rewrite. It is baseline hygiene.
+## Current Issue #112 Lane
+Issue `#112` audits and repairs backend/frontend integration seams before any broader dashboard work continues.
 
-- keep blueprint pointers aligned with the merged `main` baseline
-- keep `.rah` control-plane truth aligned with the same merged baseline
-- keep the blueprint mirror, doctor snapshot, and backlog pointers aligned with the same merged baseline
-- rehydrate missing local-only `.rah` runtime seed files when harness doctor/status/resume need them
-- keep issue `#3` explicitly blocked until real grower-approved RTR windows are supplied; do not synthesize calibration windows from demo history
-- start any new non-trivial product or architecture change from a fresh GitHub issue/branch instead of reopening merged UI slices
+- active issue: `#112`
+- active branch: `fix/112-backend-frontend-integration-audit-and-repair`
+- confirmed backend/frontend gaps: RTR area-settings crop casing, RTR response and calibration crop typing drift, KRW/kWh frontend default drift, and exact/nested AdvisorTabs lane routing disconnected from the live app routes
+- bounded phase: repair those high-confidence integration gaps, update focused backend/frontend tests, and preserve existing route/API compatibility
+- still blocked separately: issue `#3` remains blocked until real grower-approved RTR windows are supplied
 
 ## Source Of Truth
 1. nearest `AGENTS.md`
@@ -92,6 +91,6 @@ The current maintenance work is no longer a product IA rewrite. It is baseline h
 - `poetry run pytest`
 
 ## Immediate Next Action
-- If grower-approved tomato/cucumber production windows become available, resume issue `#3` on its own bounded branch and recalibrate `configs/rtr_profiles.json`.
-- Otherwise treat `main` as the clean post-issue84 baseline, and open a fresh issue/branch for any unrelated follow-up work.
-- If harness doctor/status/resume drift reappears, rehydrate the local runtime seed files first, then rerun `automation/rah.py doctor|status|resume` before making broader decisions.
+- Complete issue `#112` phase 1 by reconnecting the confirmed backend/frontend seams and locking them with focused tests.
+- Re-run the repo validation ladder before reporting completion.
+- Keep issue `#3` blocked unless grower-approved production windows are supplied.

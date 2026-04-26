@@ -874,43 +874,65 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe(heading)
   })
 
-  it('redirects nutrient into the resources page with the nutrient segment selected', async () => {
-    renderApp('/nutrient#nutrient-tool')
+  it('opens the nutrient advisor lane through the live advisor tab surface', async () => {
+    renderApp('/nutrient')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
-    expect(await screen.findByText('ResourcesCommandCenter:resources-stock')).toBeTruthy()
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
+    expect(screen.getByTestId('advisor-correction-open').textContent).toBe('false')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('redirects harvest into the crop-work page and keeps the harvest segment selected', async () => {
-    renderApp('/harvest#harvest-market')
+  it('opens the harvest advisor lane through the live advisor tab surface', async () => {
+    renderApp('/harvest')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
-    expect(await screen.findByText('TodayBoard')).toBeTruthy()
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('harvest_market')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('redirects protection into the alerts page with the warning segment selected', async () => {
-    renderApp('/protection#protection-check')
+  it('keeps nested harvest advisor aliases on the live advisor tab surface', async () => {
+    renderApp('/harvest/week')
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('harvest_market')
+    expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
+  })
+
+  it('opens the protection advisor lane through the live advisor tab surface', async () => {
+    renderApp('/protection')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
-    expect(await screen.findByText('AlertsCommandCenter:alerts-stream')).toBeTruthy()
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('pesticide')
     expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('opens the control strategy segment when overview requests the environment lane', async () => {
+  it('keeps nested growth advisor aliases on the live advisor tab surface', async () => {
+    renderApp('/growth/week#work')
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('work')
+    expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
+  })
+
+  it('opens the environment advisor tab when overview requests the advisor lane', async () => {
     renderApp('/overview')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Today Operations')
 
     fireEvent.click(screen.getByRole('button', { name: 'Open advisor lane' }))
 
-    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
-    expect(screen.queryByTestId('page-section-active')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('environment')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
+    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('keeps nutrient correction tool intent when assistant opens the nutrient surface', async () => {
@@ -921,7 +943,9 @@ describe('App routed shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open nutrient correction' }))
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
-    expect(await screen.findByText('ResourcesCommandCenter:resources-stock')).toBeTruthy()
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
+    expect(screen.getByTestId('advisor-correction-open').textContent).toBe('true')
     expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
   })
 

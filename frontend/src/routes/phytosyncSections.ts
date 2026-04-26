@@ -312,17 +312,17 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
 export function getSectionPathForAdvisorTab(tab: PromptAdvisorTabKey): string {
   switch (tab) {
     case 'nutrient':
-      return '/resources#resources-nutrient';
+      return '/nutrient';
     case 'pesticide':
-      return '/alerts#alerts-warning';
+      return '/protection';
     case 'harvest_market':
-      return '/crop-work#crop-work-harvest';
+      return '/harvest';
     case 'environment':
-      return '/control#control-strategy';
+      return '/growth#environment';
     case 'work':
-      return '/crop-work#crop-work-work';
+      return '/growth#work';
     case 'physiology':
     default:
-      return '/crop-work#crop-work-growth';
+      return '/growth#physiology';
   }
 }

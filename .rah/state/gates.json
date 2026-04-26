@@ -1,5 +1,17 @@
 {
-  "earliest_restart_point": "Treat `main` as the post-issue106 merged baseline after re-reading the wakeup packet and current loop, keep issue #3 blocked until real grower-approved windows exist, and start any unrelated non-trivial change from a fresh issue/branch instead of resuming a retired delivery loop.",
+  "earliest_restart_point": "Resume issue #112 from the bounded backend/frontend integration repair phase; keep issue #3 blocked until real grower-approved windows exist.",
+  "issue112_prompt_intake": {
+    "status": "pass",
+    "note": "Issue #112 and branch `fix/112-backend-frontend-integration-audit-and-repair` were created before non-trivial docs/code writes, after repo-local AGENTS intake, RAH setup/doctor/status/resume, and Memento context/recall hydration."
+  },
+  "issue112_recon_gate": {
+    "status": "pass",
+    "note": "Backend and frontend integration inventories identified high-confidence repair targets: RTR area-settings crop casing, RTR response crop typing, RTR calibration response crop casing, KRW/kWh frontend fallback drift, and exact/nested advisor lane route access bypassing AdvisorTabs."
+  },
+  "issue112_implementation_gate": {
+    "status": "pass",
+    "note": "Implementation is authorized only for the confirmed integration repairs plus focused tests; broad response-model generation, API-client migration, shell redesign, and new actuator endpoints remain out of scope."
+  },
   "agents_and_workflow_gate": {
     "status": "pass",
     "note": "Repo-local AGENTS intake, issue-first workflow, blueprint-first discipline, and the post-merge harness-sync discipline are satisfied; merged product work from issues #104 and #106 stays closed, and docs issue #108 is only the bounded control-plane sync lane."

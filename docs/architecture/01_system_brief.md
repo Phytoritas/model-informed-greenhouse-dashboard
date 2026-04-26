@@ -1,71 +1,62 @@
 # System Brief
 
 ## Problem
-The repository already has a functional backend, a validated model-first SmartGrow runtime, routed advisor lanes, and a partially modernized frontend shell.
-The active problem is now frontend architecture: the app still carries too much giant-page and legacy compatibility composition inside `frontend/src/App.tsx`, even though the product intent is a true routed shell with discrete pages and a Coral Stay-inspired editorial system.
+The repository already has a functional FastAPI backend and a Vite frontend, but several backend/frontend connection seams drifted after the routed-shell work.
+The active issue is not a visual redesign; it is contract alignment between frontend hooks/routes and backend API behavior.
 
 ## Goal
-Reshape the frontend so that:
-- the shell behaves like a product with clear primary pages
-- each page holds one operating story instead of inheriting the full dashboard stack
-- the routed shell stays aligned with the preserved backend/model/advisor contracts
-- the remaining compatibility aliases stay explicit, bounded, and removable without reviving the old dashboard frame
+Repair issue `#112` so that:
+- frontend calls use the backend's lowercase crop contract for RTR persistence
+- RTR response typing reflects backend payloads instead of pretending all crop fields are UI `CropType`
+- RTR calibration responses expose lowercase API crop keys while preserving title-case profile display fields inside profile objects
+- frontend fallback energy-cost calculations use the same KRW/kWh unit as backend settings
+- the existing advisor tab backend integration is reachable through exact and nested app routes
 
 ## Primary Actors
 - greenhouse operator who needs direct page navigation and clear operating lanes
-- routed shell that owns page-level IA, navigation, and presentation rhythm
-- preserved backend/model runtime that continues to supply weather, RTR, market, advisor, and assistant data
-- compatibility alias layer that keeps legacy URLs pointed at canonical pages while the modern shell finishes landing
+- frontend hooks that call backend simulation, RTR, advisor, knowledge, weather, and market endpoints
+- FastAPI backend route handlers that own runtime state and response payloads
+- route shell that decides whether advisor backend surfaces are reachable or dead code
+- `.rah` harness state that must describe the active issue truth
 
 ## Source-To-Target Mapping
 | Source surface | Target direction | Notes |
 |---|---|---|
-| `frontend/src/App.tsx` giant-page composition | route registration plus minimal shared state wiring | direct page composition is extracted; the remaining root-level debt is shared state concentration plus explicit compatibility redirects |
-| `/overview|/control|/resources|/alerts/legacy` redirects in `frontend/src/App.tsx` | compatibility-only alias layer | keeps old deep links alive without reviving the old dashboard frame |
-| `frontend/src/app/route-meta.ts` | canonical route metadata | owns the eight primary routes and sidebar highlight logic |
-| `frontend/src/pages/*-route-page.tsx` | direct route containers | already hold the new route-level page stories |
-| `frontend/src/routes/phytosyncSections.ts` | bounded compatibility/intent bridge | now canonicalizes the assistant section while keeping `/ask` redirect/hash compatibility bounded |
+| `frontend/src/hooks/useRtrOptimizer.ts` area persistence | POST lowercase `crop` to `/api/rtr/area-settings` | all other RTR request payloads already use `cropKey` |
+| `src/.../backend/app/main.py` area-settings route | tolerate frontend-style crop casing at this boundary | keeps old local UI state from failing silently |
+| `frontend/src/types.ts` RTR response crop fields | type backend RTR crop fields as lowercase API keys | avoids latent type drift |
+| `src/.../backend/app/main.py` RTR calibration routes | return lowercase API crop keys for state/preview/save envelopes | profile payloads can still keep title-case profile labels |
+| `frontend/src/hooks/useGreenhouse.ts` cost fallback | KRW/kWh default aligned with backend `GET /api/settings` | prevents unit jump before settings load |
+| `frontend/src/App.tsx` advisor compatibility routes | render `AdvisorLaneRoutePage` for exact and nested advisor aliases | makes `AdvisorTabs` API calls reachable |
 
 ## Target Module Boundary
-- `route_shell`: `App.tsx`, `AppShell.tsx`, `TopBar.tsx`, `WorkspaceNav.tsx`, `route-meta.ts`
-- `route_pages`: `overview-route-page.tsx`, `control-route-page.tsx`, `rtr-route-page.tsx`, `crop-work-route-page.tsx`, `resources-route-page.tsx`, `alerts-route-page.tsx`, `assistant-route-page.tsx`, `settings-route-page.tsx`
-- `advisor_lane_pages`: `advisor-lane-route-page.tsx` plus `/growth|/nutrient|/protection|/harvest`
-- `legacy_compatibility`: `/legacy` redirects plus `/ask` alias handling
+- `api_contract`: `backend/app/main.py`, `frontend/src/config.ts`, `frontend/src/types.ts`
+- `runtime_hooks`: `useGreenhouse.ts`, `useRtrOptimizer.ts`, `useSmartGrowAdvisor.ts`
+- `advisor_route_access`: `App.tsx`, `phytosyncSections.ts`, `advisor-lane-route-page.tsx`, `AdvisorTabs.tsx`
+- `tests`: `useRtrOptimizer.test.tsx`, `useGreenhouse.test.tsx`, `App.routing.test.tsx`, backend smoke/RTR tests
 
 ## Contract Targets
-### Primary routes
-- `/overview`
-- `/control`
-- `/rtr`
-- `/crop-work`
-- `/resources`
-- `/alerts`
-- `/assistant`
-- `/settings`
-
-### Compatibility routes
-- `/growth`
-- `/nutrient`
-- `/protection`
-- `/harvest`
-- `/ask#... -> /assistant#...`
-- `/overview/legacy -> /overview`
-- `/control/legacy -> /control`
-- `/resources/legacy -> /resources`
-- `/alerts/legacy -> /alerts`
+- `/api/rtr/area-settings` accepts saved area overrides from frontend area-unit state and returns lowercase `crop`.
+- `/api/rtr/state|optimize|scenario|sensitivity|calibration-state|calibration-preview|calibration-save` response crop fields are treated as backend API crop keys.
+- `cost_per_kwh` is interpreted as KRW/kWh across backend defaults and frontend fallback calculations.
+- `/growth`, `/growth/*`, `/nutrient`, `/nutrient/*`, `/protection`, `/protection/*`, `/harvest`, and `/harvest/*` expose advisor lane tabs instead of bypassing them.
+- Existing `/ask#...`, `/rtr`, and `/legacy` redirects remain preserved.
 
 ## Major Risks
-1. `frontend/src/App.tsx` still mixes modern route registration with legacy-only surface builders, which makes the next refactor easy to overreach.
-2. `frontend/src/routes/phytosyncSections.ts` now canonicalizes `/assistant`, but the remaining `ask-*` panel/hash compatibility can still drift if it is renamed carelessly.
-3. The control plane had drifted to old issue `#19/#27` truths, so restart packets were no longer trustworthy until the current issue `#61` sync landed.
-4. If the explicit `/legacy` redirects are removed or changed carelessly, old deep links can still collapse to the wrong canonical page or the wildcard fallback.
+1. Fixing advisor routes can accidentally break old compatibility expectations if `/ask`, `/rtr`, or `/legacy` redirects are touched.
+2. Changing RTR crop response typing can expose existing test fixtures that used UI crop names for backend payloads.
+3. Backend tolerance for uppercase crop inputs should stay narrow and not hide invalid crop names.
+4. Full response-model hardening is larger than this phase and should not be mixed into the bounded repair.
 
 ## Current Bounded Delivery Slice
-- keep the direct routed pages untouched
-- sync the control plane and architecture docs to issue `#61`
-- retire the live `/legacy` frame chain with explicit redirects and dead-wrapper cleanup
+- update architecture/control-plane state to issue `#112`
+- patch RTR area-settings crop casing on frontend and backend
+- align RTR response crop typing, calibration envelopes, and focused fixtures
+- align frontend fallback energy-cost unit with backend settings
+- reconnect exact and nested advisor lane routes and add route regressions
 
 ## Deferred Until Later Phases
-- deciding whether the remaining `ask-*` panel/hash compatibility should stay as-is until after the first PR
-- deeper theme-token cleanup beyond the current coral-first route shell
-- canonical removal of the old `ask` section model once `/assistant` is the only remaining knowledge-route truth
+- response models for every large backend payload
+- a complete generated OpenAPI-to-TypeScript contract
+- wiring quick control toggles to real backend actuator endpoints
+- replacing `alert()`-style local error handling in legacy crop config components

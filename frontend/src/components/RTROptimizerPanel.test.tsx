@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
-    CropType,
+    CropApiKey,
     RtrOptimizeResponse,
     RtrProfile,
     RtrScenarioResponse,
@@ -78,7 +78,7 @@ const TEST_WEIGHTS = {
     stress: 75,
 };
 
-function buildStateResponse(crop: CropType = 'Cucumber'): RtrStateResponse {
+function buildStateResponse(crop: CropApiKey = 'cucumber'): RtrStateResponse {
     return {
         status: 'ready',
         crop,
@@ -167,7 +167,7 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
     return {
         status: 'ready',
         mode: 'optimizer',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         snapshot_id: 'snap-001',
         baseline: {
@@ -345,7 +345,7 @@ function buildScenarioResponse(): RtrScenarioResponse {
 
     return {
         status: 'ready',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         snapshot_id: 'snap-001',
         target_node_development_per_day: 0.68,
@@ -447,7 +447,7 @@ function buildSensitivityResponse(): RtrSensitivityResponse {
     return {
         status: 'ready',
         mode: 'optimizer',
-        crop: 'Cucumber',
+        crop: 'cucumber',
         greenhouse_id: 'house-a',
         snapshot_id: 'snap-001',
         target_horizon: 'today',
