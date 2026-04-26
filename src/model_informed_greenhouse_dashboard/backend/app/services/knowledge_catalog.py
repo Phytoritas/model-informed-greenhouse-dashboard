@@ -604,6 +604,7 @@ def _build_advisory_surface_summary(
         "pesticide": {
             "status": "ready" if pesticide_preview.get("status") == "ready" else "unavailable",
             "route": "/api/pesticides/recommend",
+            "delegate_route": "/api/advisor/tab/pesticide",
             "request_contract": {
                 "required": ["crop", "target"],
                 "optional": ["limit"],
@@ -627,6 +628,7 @@ def _build_advisory_surface_summary(
         "nutrient": {
             "status": "ready" if nutrient_preview.get("status") == "ready" else "unavailable",
             "route": "/api/nutrients/recommend",
+            "delegate_route": "/api/advisor/tab/nutrient",
             "request_contract": {
                 "required": ["crop"],
                 "optional": ["stage", "medium"],
@@ -643,6 +645,7 @@ def _build_advisory_surface_summary(
         "nutrient_correction": {
             "status": "ready" if nutrient_preview.get("status") == "ready" else "unavailable",
             "route": "/api/nutrients/correction",
+            "delegate_route": "/api/advisor/tab/correction",
             "request_contract": {
                 "required": ["crop"],
                 "optional": [
@@ -698,7 +701,8 @@ def _build_advisory_surface_summary(
         "harvest": {
             "status": "ready",
             "route": "/api/advisor/harvest",
-            "delegate_route": "/api/advisor/tab/harvest_market",
+            "delegate_route": "/api/advisor/tab/harvest-market",
+            "accepted_aliases": ["/api/advisor/tab/harvest_market"],
             "request_contract": {
                 "required": ["crop"],
                 "optional": ["greenhouse_id", "dashboard"],

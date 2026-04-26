@@ -851,6 +851,8 @@ describe('App routed shell', () => {
     ['/ask#ask-chat', 'AskSearchPage:assistant-chat'],
     ['/ask#ask-search', 'AskSearchPage:assistant-search'],
     ['/ask#ask-history', 'AskSearchPage:assistant-search'],
+    ['/ask/search#ask-search', 'AskSearchPage:assistant-search'],
+    ['/ask/history#ask-chat', 'AskSearchPage:assistant-chat'],
     ['/assistant#ask-search', 'AskSearchPage:assistant-search'],
   ])('keeps legacy assistant hash compatibility for %s', async (path, expectedPanel) => {
     renderApp(path)
