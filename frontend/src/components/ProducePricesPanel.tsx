@@ -181,7 +181,7 @@ const getSourceHealthCopy = (
             label: locale === 'ko' ? '샘플 데이터' : 'Sample data',
             detail: locale === 'ko'
                 ? 'KAMIS 인증 정보가 없어 샘플 가격 스냅샷을 표시합니다.'
-                : 'KAMIS credentials are not configured, so sample prices are shown.',
+                : 'Live market access is not ready, so sample prices are shown.',
             degraded: false,
         };
     }
@@ -534,8 +534,8 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             leadItem: '대표 품목',
             livePulse: '시장 펄스',
             currentSelection: '현재 선택',
-            sourceLabel: '데이터 소스',
-            sourceStatus: '소스 상태',
+            sourceLabel: '조사 기준',
+            sourceStatus: '조사 상태',
         }
         : {
             title: 'Cucumber and tomato market signals',
@@ -554,8 +554,8 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             leadItem: 'Lead item',
             livePulse: 'Market pulse',
             currentSelection: 'Current selection',
-            sourceLabel: 'Data source',
-            sourceStatus: 'Source status',
+            sourceLabel: 'Survey basis',
+            sourceStatus: 'Survey state',
         };
 
     const activeMarketKey: ProduceMarketKey | null = prices

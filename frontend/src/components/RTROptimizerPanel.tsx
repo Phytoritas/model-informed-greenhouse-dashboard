@@ -1198,7 +1198,7 @@ const RTROptimizerPanelContent = ({
 
     if (isProfilePending) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                             <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
                     <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.profileLoadingTitle}</p>
                     <p className="mt-1">{copy.profileLoadingBody}</p>
@@ -1209,7 +1209,7 @@ const RTROptimizerPanelContent = ({
 
     if (isProfileUnavailable || !optimizerEnabled) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                 {profileErrorCopy ? (
                     <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
                         {profileErrorCopy}
@@ -1238,7 +1238,7 @@ const RTROptimizerPanelContent = ({
 
     if (telemetryStatus === 'offline' || (telemetryStatus === 'stale' && !hasOptimizerSurface)) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                             <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
                     <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.telemetryBlockedTitle}</p>
                     <p className="mt-1">{copy.telemetryBlockedBody}</p>
@@ -1265,11 +1265,11 @@ const RTROptimizerPanelContent = ({
 
     if (compact) {
         return (
-            <div className="flex h-full flex-col rounded-[24px] bg-white/82 p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+            <div className="flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                 <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                         <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                            <CircleGauge className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                            <CircleGauge className="h-5 w-5 text-[color:var(--sg-color-olive)]" />
                             <h3 className="text-sm font-semibold">{compactCopy.title}</h3>
                         </div>
                         <p className="mt-1 text-xs text-[color:var(--sg-text-muted)]">{compactCopy.subtitle}</p>
@@ -1278,7 +1278,7 @@ const RTROptimizerPanelContent = ({
                         type="button"
                         onClick={() => void refreshOptimization()}
                         disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget || telemetryOptimizationBlocked}
-                        className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-rose)] hover:text-[color:var(--sg-accent-rose)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-accent-violet-soft)]"
+                        className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-color-primary)] hover:text-[color:var(--sg-color-primary)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-color-sage)]"
                     >
                         {copy.refresh}
                     </button>
@@ -1346,7 +1346,7 @@ const RTROptimizerPanelContent = ({
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)]">
                         <section className="sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4">
-                            <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{compactCopy.summaryLabel}</div>
+                            <div className="sg-eyebrow text-[color:var(--sg-color-olive)]">{compactCopy.summaryLabel}</div>
                             <p className="mt-2 text-xl font-semibold leading-8 text-[color:var(--sg-text-strong)]">
                                 {optimizeResponse
                                     ? compactSummary
@@ -1384,7 +1384,7 @@ const RTROptimizerPanelContent = ({
                                 <div className={metricTileClass}>
                                     <div className={metricLabelClass}>{copy.confidence}</div>
                                     <div className="mt-1 flex items-center gap-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">
-                                        {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
+                                        {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-color-olive)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
                                         {readiness.label}
                                     </div>
                                 </div>
@@ -1422,7 +1422,7 @@ const RTROptimizerPanelContent = ({
                     <section className={sectionPanelClass}>
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                                <Thermometer className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                                 <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.nodeGuideTitle}</h4>
                             </div>
                             {nodeGuideRangeLabel ? (
@@ -1432,9 +1432,9 @@ const RTROptimizerPanelContent = ({
                             ) : null}
                         </div>
                         {nodeGuideRows.length > 0 ? (
-                            <div className="max-h-[200px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-white/72">
+                            <div className="max-h-[200px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)]">
                                 <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
-                                    <thead className="sticky top-0 bg-white/95 text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                                    <thead className="sticky top-0 bg-[color:var(--sg-surface-raised)] text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
                                         <tr>
                                             <th className="px-3 py-2">{copy.nodeGuideTemp}</th>
                                             <th className="px-3 py-2">{copy.nodeGuideNode}</th>
@@ -1468,7 +1468,7 @@ const RTROptimizerPanelContent = ({
 
                     <section className={sectionPanelClass}>
                         <div className="mb-3 flex items-center gap-2">
-                            <Activity className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                            <Activity className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                             <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{compactCopy.comparisonTitle}</h4>
                         </div>
                         <div className="overflow-x-auto">
@@ -1496,7 +1496,7 @@ const RTROptimizerPanelContent = ({
                     {compactReasonTags.length > 0 ? (
                         <section className={sectionPanelClass}>
                             <div className="mb-3 flex items-center gap-2">
-                                <Leaf className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                                <Leaf className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                                 <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{compactCopy.reasonTitle}</h4>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -1514,11 +1514,11 @@ const RTROptimizerPanelContent = ({
     }
 
     return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                        <CircleGauge className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                        <CircleGauge className="h-5 w-5 text-[color:var(--sg-color-olive)]" />
                         <h3 className={compact ? 'text-sm font-semibold' : 'font-semibold'}>{copy.title}</h3>
                     </div>
                     {!compact ? (
@@ -1529,7 +1529,7 @@ const RTROptimizerPanelContent = ({
                     type="button"
                     onClick={() => void refreshOptimization()}
                     disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget || telemetryOptimizationBlocked}
-                    className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-rose)] hover:text-[color:var(--sg-accent-rose)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-accent-violet-soft)]"
+                    className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-color-primary)] hover:text-[color:var(--sg-color-primary)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-color-sage)]"
                 >
                     {copy.refresh}
                 </button>
@@ -1610,7 +1610,7 @@ const RTROptimizerPanelContent = ({
                     <div className={metricTileClass}>
                         <div className={metricLabelClass}>{copy.confidence}</div>
                         <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-[color:var(--sg-text-strong)]">
-                            {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
+                            {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-color-olive)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
                             {readiness.label}
                         </div>
                     </div>
@@ -1676,7 +1676,7 @@ const RTROptimizerPanelContent = ({
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                            <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                            <Thermometer className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                             <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.nodeGuideTitle}</h4>
                         </div>
                         {nodeGuideRangeLabel ? (
@@ -1686,9 +1686,9 @@ const RTROptimizerPanelContent = ({
                         ) : null}
                     </div>
                     {nodeGuideRows.length > 0 ? (
-                        <div className="max-h-[220px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-white/72">
+                        <div className="max-h-[220px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)]">
                             <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
-                                <thead className="sticky top-0 bg-white/95 text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                                <thead className="sticky top-0 bg-[color:var(--sg-surface-raised)] text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
                                     <tr>
                                         <th className="px-3 py-2">{copy.nodeGuideTemp}</th>
                                         <th className="px-3 py-2">{copy.nodeGuideNode}</th>
@@ -1720,7 +1720,7 @@ const RTROptimizerPanelContent = ({
                             disabled={telemetryOptimizationBlocked}
                             className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                                 optimizationMode === mode
-                                    ? 'bg-[color:var(--sg-accent-violet)] text-white'
+                                    ? 'bg-[color:var(--sg-color-olive)] text-white'
                                     : 'bg-[color:var(--sg-surface-muted)] text-[color:var(--sg-text)] hover:bg-[color:var(--sg-accent-earth-soft)]'
                             }`}
                         >
@@ -1812,7 +1812,7 @@ const RTROptimizerPanelContent = ({
 
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <Activity className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.gainLoss}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -1920,7 +1920,7 @@ const RTROptimizerPanelContent = ({
                             {explanationCopy.reason_tags.length > 0 ? (
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {explanationCopy.reason_tags.map((tag) => (
-                                        <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-status-live-text)] ring-1 ring-[color:var(--sg-outline-soft)]">
+                                        <span key={tag} className="rounded-full bg-[color:var(--sg-surface-raised)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-status-live-text)] ring-1 ring-[color:var(--sg-outline-soft)]">
                                             {getReasonTagLabel(tag, locale)}
                                         </span>
                                     ))}
@@ -1935,14 +1935,14 @@ const RTROptimizerPanelContent = ({
 
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Leaf className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <Leaf className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.cropInsight}</h4>
                     </div>
                     {renderCropSpecificInsight(optimizeResponse?.crop_specific_insight ?? null, locale)}
                 </section>
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <Thermometer className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.controlEffects}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -1970,7 +1970,7 @@ const RTROptimizerPanelContent = ({
                 </section>
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <Thermometer className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.setpoints}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -2036,7 +2036,7 @@ const RTROptimizerPanelContent = ({
 
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <FlaskConical className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <FlaskConical className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.sensitivity}</h4>
                     </div>
                     <div className="space-y-3">
@@ -2048,7 +2048,7 @@ const RTROptimizerPanelContent = ({
                                 </div>
                                 <div className="h-2 rounded-full bg-[color:var(--sg-surface-muted)]">
                                     <div
-                                        className={`h-2 rounded-full ${row.direction === 'increase' ? 'bg-[color:var(--sg-accent-violet)]' : 'bg-[color:var(--sg-accent-earth)]'}`}
+                                        className={`h-2 rounded-full ${row.direction === 'increase' ? 'bg-[color:var(--sg-color-olive)]' : 'bg-[color:var(--sg-accent-earth)]'}`}
                                         style={{ width: `${row.widthPct}%` }}
                                     />
                                 </div>
@@ -2059,7 +2059,7 @@ const RTROptimizerPanelContent = ({
 
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <CircleGauge className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <CircleGauge className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.scenarios}</h4>
                     </div>
                     <div className="mb-4 rounded-lg border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] p-3">
@@ -2198,7 +2198,7 @@ const RTROptimizerPanelContent = ({
                                     );
                                 }}
                                 disabled={!hasCustomScenarioDraft || telemetryOptimizationBlocked}
-                                className="rounded-full bg-[color:var(--sg-accent-violet)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
+                                className="rounded-full bg-[color:var(--sg-color-primary)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
                             >
                                 {copy.customApply}
                             </button>

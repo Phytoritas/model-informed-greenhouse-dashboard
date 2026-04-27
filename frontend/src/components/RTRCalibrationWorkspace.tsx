@@ -181,7 +181,7 @@ const RTRCalibrationWorkspace = ({
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                        <BookOpenCheck className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <BookOpenCheck className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold">{copy.title}</h4>
                     </div>
                     <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.subtitle}</p>
@@ -392,7 +392,7 @@ const RTRCalibrationWorkspace = ({
                     type="button"
                     onClick={() => void previewCalibration({ windows: draftWindows, selectionMode })}
                     disabled={!canPreview || loadingPreview || saving}
-                    className="rounded-full bg-[color:var(--sg-accent-violet)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
+                    className="rounded-full bg-[color:var(--sg-color-primary)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
                 >
                     <span className="inline-flex items-center gap-1">
                         <Search className="h-3.5 w-3.5" />
@@ -408,7 +408,7 @@ const RTRCalibrationWorkspace = ({
                         await onSaved?.();
                     }}
                     disabled={!canPreview || saving}
-                    className="rounded-lg border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-violet)] hover:bg-[color:var(--sg-status-live-bg)] hover:text-[color:var(--sg-accent-violet)] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-color-olive)] hover:bg-[color:var(--sg-status-live-bg)] hover:text-[color:var(--sg-color-olive)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <span className="inline-flex items-center gap-1">
                         <Save className="h-3.5 w-3.5" />

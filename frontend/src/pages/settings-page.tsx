@@ -5,12 +5,14 @@ interface SettingsPageProps {
   locale: 'ko' | 'en';
   shellCard: ReactNode;
   laneCard: ReactNode;
+  supportCard?: ReactNode;
 }
 
 export default function SettingsPage({
   locale,
   shellCard,
   laneCard,
+  supportCard,
 }: SettingsPageProps) {
   const copy = locale === 'ko'
     ? {
@@ -20,8 +22,8 @@ export default function SettingsPage({
       }
     : {
         eyebrow: 'Contact',
-        title: 'Settings',
-        description: 'Review service connectivity, crop-specific cost assumptions, and support-ready operating details.',
+        title: 'Connectivity and support',
+        description: 'Review service links, crop-specific cost assumptions, and support-ready operating details.',
       };
 
   return (
@@ -29,6 +31,7 @@ export default function SettingsPage({
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="min-w-0">{shellCard}</div>
         <div className="min-w-0">{laneCard}</div>
+        {supportCard ? <div className="min-w-0 xl:col-span-2">{supportCard}</div> : null}
       </div>
     </PageCanvas>
   );

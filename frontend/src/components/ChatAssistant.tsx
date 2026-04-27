@@ -382,7 +382,7 @@ const ChatAssistant = ({
         }
         : {
             initialMessage: 'Hello. I can explain the current greenhouse state and turn it into immediate actions.',
-            title: 'Question helper',
+            title: 'Grower assistant',
             close: 'Close question helper',
             send: 'Send question',
             placeholder: 'Example: What happens if I raise CO2 by 100 ppm now?',
@@ -394,7 +394,7 @@ const ChatAssistant = ({
             smartGrowUnavailable: 'Tool status is unavailable.',
             smartGrowHint: 'Open the linked material or move into the connected workflow.',
             knowledgeSearch: 'Find materials',
-            runtimeTitle: 'Model runtime',
+            runtimeTitle: 'Prediction status',
             runtimeReady: 'Recommendation linked',
             runtimeFallback: 'Monitoring first',
             runtimeUnavailable: 'Runtime unavailable',
@@ -716,7 +716,7 @@ const ChatAssistant = ({
                 boxShadow: 'var(--sg-shadow-soft)',
             }}
         >
-            <div className="flex items-center justify-between border-b border-[color:var(--sg-outline-soft)] bg-white/60 p-4 text-[color:var(--sg-text-strong)] backdrop-blur-sm">
+            <div className="flex items-center justify-between border-b border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] p-4 text-[color:var(--sg-text-strong)] backdrop-blur-sm">
                 <div className="flex items-center gap-2">
                     <div className="rounded-2xl bg-white/88 p-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                         <Leaf className="h-5 w-5 text-[color:var(--sg-color-olive)]" />
@@ -790,7 +790,7 @@ const ChatAssistant = ({
                             className={`max-w-[84%] rounded-3xl p-3 text-sm ${
                                 message.role === 'user'
                                     ? 'rounded-br-none bg-[color:var(--sg-color-olive)] text-white'
-                                    : 'rounded-bl-none bg-white/94 text-[color:var(--sg-text)]'
+                                    : 'rounded-bl-none bg-[color:var(--sg-surface-raised)] text-[color:var(--sg-text)]'
                             }`}
                             style={message.role === 'user' ? undefined : { boxShadow: 'var(--sg-shadow-card)' }}
                         >
@@ -814,7 +814,7 @@ const ChatAssistant = ({
                 ))}
             </div>
 
-            <div className="flex gap-2 border-t border-[color:var(--sg-outline-soft)] bg-white/72 p-4">
+            <div className="flex gap-2 border-t border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] p-4">
                 <input
                     type="text"
                     value={input}

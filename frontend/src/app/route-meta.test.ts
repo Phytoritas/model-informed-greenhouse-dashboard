@@ -46,7 +46,8 @@ describe('route-meta', () => {
     expect(getPrimaryRouteMeta('/overview', 'ko').title).toBe('오늘 운영');
     expect(getPrimaryRouteMeta('/trend', 'ko').label).toBe('날씨와 시세');
     expect(getPrimaryRouteMeta('/assistant', 'ko').label).toBe('질문 도우미');
+    expect(getPrimaryRouteMeta('/settings', 'en').label).toBe('Contact');
     expect(getPrimaryRouteMeta('/rtr', 'en').title).toBe('RTR Optimizer');
-    expect(getPrimaryRouteMeta('/scenarios', 'en').title).toBe('Scenario Lab');
+    expect(getPrimaryRouteMeta('/scenarios', 'en').title).toBe('Greenhouse adjustment review');
   });
 });

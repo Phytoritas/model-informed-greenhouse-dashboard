@@ -88,7 +88,7 @@ describe('phytosyncSections', () => {
     expect(enOverview?.tabs.map((tab) => tab.label)).toEqual(['Operations', 'Dashboard', 'Watch']);
     expect(enControl?.tabs.map((tab) => tab.label)).toEqual(['Climate solutions', 'Devices']);
     expect(enRtr?.tabs.map((tab) => tab.label)).toEqual(['Strategy', 'Sensitivity', 'Area']);
-    expect(enScenarios?.tabs.map((tab) => tab.label)).toEqual(['Process what-if', 'RTR scenario']);
+    expect(enScenarios?.tabs.map((tab) => tab.label)).toEqual(['Adjustment effect', 'RTR sensitivity']);
     expect(enTrend?.tabs).toEqual([]);
     expect(enResources?.tabs.map((tab) => tab.label)).toEqual(['Nutrients', 'Energy', 'Market']);
     expect(enAssistant?.tabs.map((tab) => tab.label)).toEqual(['Ask', 'Materials']);

@@ -1065,7 +1065,7 @@ describe('App routed shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
 
-    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Connectivity and support' })).toBeTruthy()
     expect(screen.queryByText('AssistantDrawer:assistant-chat')).toBeNull()
   })
 })

@@ -65,6 +65,24 @@ function formatNumber(value: number | null, digits = 2): string {
   return value === null ? '-' : value.toFixed(digits);
 }
 
+function getSensitivityTargetLabel(value: string, locale: 'ko' | 'en'): string {
+  const labels: Record<string, { ko: string; en: string }> = {
+    predicted_yield_24h: { ko: '24시간 수량', en: '24h yield' },
+    predicted_yield_72h: { ko: '72시간 수량', en: '72h yield' },
+    predicted_yield_7d: { ko: '7일 수량', en: '7d yield' },
+    predicted_yield_14d: { ko: '14일 수량', en: '14d yield' },
+    source_sink_balance_72h: { ko: '72시간 소스/싱크', en: '72h source/sink' },
+    energy_cost_72h: { ko: '72시간 에너지 비용', en: '72h energy cost' },
+  };
+  return labels[value]?.[locale] ?? value;
+}
+
+function getDirectionLabel(value: unknown, locale: 'ko' | 'en'): string {
+  if (value === 'increase') return locale === 'ko' ? '증가' : 'Increase';
+  if (value === 'decrease') return locale === 'ko' ? '감소' : 'Decrease';
+  return locale === 'ko' ? '중립' : 'Stable';
+}
+
 export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchProps) {
   const { locale } = useLocale();
   const {
@@ -86,53 +104,67 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
 
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Model What-if',
+        eyebrow: '조정안 계산',
         title: '온실 조정 효과 계산',
         description: '현재 온실 상태를 기준으로 온도, CO2, 상대습도 변경량을 넣어 수량·에너지·소스/싱크 변화를 계산합니다.',
         snapshot: '스냅샷 생성',
-        runScenario: 'What-if 실행',
-        runSensitivity: '편미분 계산',
-        noSnapshot: 'live snapshot',
+        runScenario: '효과 계산',
+        runSensitivity: '민감도 확인',
+        noSnapshot: '현재 기준',
         horizon: '검토 기간',
-        sensitivityTarget: '편미분 대상',
+        sensitivityTarget: '검토 지표',
         inputs: '현재 대비 변경량',
         scenarioResult: '시나리오 결과',
-        sensitivityResult: '편미분 결과',
+        sensitivityResult: '민감도 결과',
         yieldDelta: '수량 변화',
         yield: '예상 수량',
         energyDelta: '에너지 변화',
         balanceDelta: '소스/싱크 변화',
         confidence: '신뢰도',
-        derivative: '편미분',
+        derivative: '국소 영향',
         elasticity: '탄력도',
         direction: '방향',
         waiting: '아직 실행 결과가 없습니다.',
         backendNote: '입력값은 현재 상태 대비 변경량입니다. 검토 기간을 바꾸면 같은 조정의 단기·중기 효과를 비교할 수 있습니다.',
+        idle: '대기 중',
+        loading: '계산 중',
+        success: '계산 완료',
+        error: '확인 필요',
       }
     : {
-        eyebrow: 'Model What-if',
+        eyebrow: 'Greenhouse model',
         title: 'Greenhouse adjustment effect',
         description: 'Run temperature, CO2, RH, and screen deltas against the current greenhouse state and compare yield, energy, and source-sink response.',
         snapshot: 'Create snapshot',
-        runScenario: 'Run what-if',
-        runSensitivity: 'Run partials',
-        noSnapshot: 'live snapshot',
+        runScenario: 'Calculate effect',
+        runSensitivity: 'Check sensitivity',
+        noSnapshot: 'current baseline',
         horizon: 'Horizon',
-        sensitivityTarget: 'Derivative target',
+        sensitivityTarget: 'Review metric',
         inputs: 'Delta from current',
         scenarioResult: 'Scenario result',
-        sensitivityResult: 'Partial derivatives',
+        sensitivityResult: 'Sensitivity result',
         yieldDelta: 'Yield change',
         yield: 'Yield',
         energyDelta: 'Energy change',
         balanceDelta: 'Source/sink change',
         confidence: 'Confidence',
-        derivative: 'Derivative',
+        derivative: 'Local effect',
         elasticity: 'Elasticity',
         direction: 'Direction',
         waiting: 'No scenario result yet.',
         backendNote: 'Inputs are deltas from the current state. Change the horizon to compare short- and mid-term effects.',
+        idle: 'Waiting',
+        loading: 'Calculating',
+        success: 'Ready',
+        error: 'Needs review',
       };
+  const getRunStatusLabel = (status: string) => {
+    if (status === 'loading') return copy.loading;
+    if (status === 'success') return copy.success;
+    if (status === 'error') return copy.error;
+    return copy.idle;
+  };
 
   const scenarioRows = useMemo(() => {
     const result = runs.scenario.result;
@@ -203,7 +235,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
             <label className="mt-3 block text-xs font-semibold text-[color:var(--sg-text-muted)]">
               <span>{copy.sensitivityTarget}</span>
               <Select className="mt-1" value={target} onChange={(event) => setTarget(event.target.value)} aria-label={copy.sensitivityTarget}>
-                {SENSITIVITY_TARGETS.map((value) => <option key={value} value={value}>{value}</option>)}
+                {SENSITIVITY_TARGETS.map((value) => <option key={value} value={value}>{getSensitivityTargetLabel(value, locale)}</option>)}
               </Select>
             </label>
             <p className="mt-3 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-surface-muted)] p-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
@@ -253,7 +285,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
                 {copy.scenarioResult}
               </h3>
               <StatusChip tone={runs.scenario.status === 'success' ? 'growth' : runs.scenario.status === 'error' ? 'critical' : 'muted'}>
-                {runs.scenario.status}
+                {getRunStatusLabel(runs.scenario.status)}
               </StatusChip>
             </div>
             {runs.scenario.error ? <p className="mt-3 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary-soft)] p-2 text-xs text-[color:var(--sg-color-primary-strong)]">{runs.scenario.error}</p> : null}
@@ -296,7 +328,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
                 {copy.sensitivityResult}
               </h3>
               <StatusChip tone={runs.sensitivity.status === 'success' ? 'growth' : runs.sensitivity.status === 'error' ? 'critical' : 'muted'}>
-                {runs.sensitivity.status}
+                {getRunStatusLabel(runs.sensitivity.status)}
               </StatusChip>
             </div>
             {runs.sensitivity.error ? <p className="mt-3 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary-soft)] p-2 text-xs text-[color:var(--sg-color-primary-strong)]">{runs.sensitivity.error}</p> : null}
@@ -311,7 +343,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
                     <div key={control || JSON.stringify(row)} className="rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] p-3">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-bold text-[color:var(--sg-text-strong)]">{meta ? (locale === 'ko' ? meta.ko : meta.en) : control}</p>
-                        <StatusChip tone={row.direction === 'increase' ? 'growth' : row.direction === 'decrease' ? 'warning' : 'muted'}>{String(row.direction ?? '-')}</StatusChip>
+                        <StatusChip tone={row.direction === 'increase' ? 'growth' : row.direction === 'decrease' ? 'warning' : 'muted'}>{getDirectionLabel(row.direction, locale)}</StatusChip>
                       </div>
                       <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
                         <div>

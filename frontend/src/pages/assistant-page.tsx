@@ -21,7 +21,7 @@ export default function AssistantPage({
     : {
         eyebrow: 'Knowledge',
         title: 'Assistant',
-        description: 'Use the farmer assistant, table-of-contents material search, and agronomy tools in one route.',
+        description: 'Review questions, grower materials, pesticide checks, and nutrient tools in one route.',
       };
 
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CircleDollarSign, CloudSun, LifeBuoy, PlugZap, Sprout } from 'lucide-react';
+import { CircleDollarSign, ClipboardCheck, CloudSun, LifeBuoy, MessageCircle, PlugZap, ShieldCheck, Sprout } from 'lucide-react';
 import DashboardCard from '../components/common/DashboardCard';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -143,8 +143,8 @@ export default function SettingsRoutePage({
       shellCard={(
         <DashboardCard
           eyebrow={locale === 'ko' ? '운영 프로필' : 'Operating profile'}
-          title={locale === 'ko' ? '현재 작업 기준' : 'Current workspace basis'}
-          description={locale === 'ko' ? '언어, 작물, 질문 도우미 상태처럼 지원 요청과 운영 판단에 함께 쓰는 기준입니다.' : 'Review language, crop, and assistant state used for support and operating decisions.'}
+          title={locale === 'ko' ? '현재 작업 기준' : 'Current operating basis'}
+          description={locale === 'ko' ? '언어, 작물, 질문 도우미 상태처럼 지원 요청과 운영 판단에 함께 쓰는 기준입니다.' : 'Review language, crop, and question flow used for support and operating decisions.'}
           className="sg-tint-neutral"
         >
           <div className="grid gap-3 sm:grid-cols-3">
@@ -168,7 +168,7 @@ export default function SettingsRoutePage({
                 <StatusChip tone={assistantOpen ? 'growth' : 'muted'}>{assistantOpen ? (locale === 'ko' ? '열림' : 'Open') : (locale === 'ko' ? '닫힘' : 'Closed')}</StatusChip>
               </div>
               <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
-                {locale === 'ko' ? '현재 화면과 연결된 질문/자료 흐름입니다.' : 'Question and material flow connected to this workspace.'}
+                {locale === 'ko' ? '현재 화면과 연결된 질문/자료 흐름입니다.' : 'Question and material flow connected to this greenhouse.'}
               </p>
             </article>
           </div>
@@ -249,6 +249,44 @@ export default function SettingsRoutePage({
               {saveState === 'error' ? <span className="text-xs font-semibold text-[color:var(--sg-color-primary)]">{saveCopy.error}{statusMessage ? `: ${statusMessage}` : ''}</span> : null}
             </div>
           </form>
+        </DashboardCard>
+      )}
+      supportCard={(
+        <DashboardCard
+          eyebrow={locale === 'ko' ? '지원 준비' : 'Support readiness'}
+          title={locale === 'ko' ? '운영 문의 전에 확인할 항목' : 'Before contacting support'}
+          description={locale === 'ko' ? '문제가 생겼을 때 바로 전달할 수 있도록 연결 상태, 비용 기준, 질문 흐름을 한 번에 정리합니다.' : 'Collect connection status, cost assumptions, and question context before support follow-up.'}
+          className="sg-tint-neutral"
+        >
+          <div className="grid gap-3 md:grid-cols-3">
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+                <h3 className="text-sm font-bold text-[color:var(--sg-text-strong)]">{locale === 'ko' ? '연동 상태' : 'Connection state'}</h3>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                {locale === 'ko' ? `센서 ${telemetrySummary}, 기상 ${weatherConnected ? '연결됨' : '대기 중'}, 시장 ${marketConnected ? '연결됨' : '대기 중'} 상태를 함께 확인합니다.` : `Sensor ${telemetrySummary}, weather ${weatherConnected ? 'connected' : 'pending'}, and market ${marketConnected ? 'connected' : 'pending'} are reviewed together.`}
+              </p>
+            </article>
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center gap-3">
+                <ClipboardCheck className="h-5 w-5 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+                <h3 className="text-sm font-bold text-[color:var(--sg-text-strong)]">{locale === 'ko' ? '비용 기준' : 'Cost basis'}</h3>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                {locale === 'ko' ? `현재 ${selectedCropLabel} 기준 판매가와 전력비를 저장해 RTR·시세 판단에 같은 기준을 사용합니다.` : `Saved ${selectedCropLabel} price and power cost keep RTR and market decisions on the same basis.`}
+              </p>
+            </article>
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center gap-3">
+                <MessageCircle className="h-5 w-5 text-[color:var(--sg-color-primary)]" aria-hidden="true" />
+                <h3 className="text-sm font-bold text-[color:var(--sg-text-strong)]">{locale === 'ko' ? '문의 흐름' : 'Question flow'}</h3>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                {locale === 'ko' ? '질문 도우미에서 상담 내용과 자료 검색 결과를 함께 확인한 뒤 운영 문의를 정리합니다.' : 'Use the assistant route to keep consultation and material lookup together before follow-up.'}
+              </p>
+            </article>
+          </div>
         </DashboardCard>
       )}
     />

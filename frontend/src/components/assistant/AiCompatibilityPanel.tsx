@@ -236,7 +236,7 @@ export default function AiCompatibilityPanel({
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-[color:var(--sg-text-strong)]">{action.label}</div>
                     <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                      {action.key === 'consult' ? (locale === 'ko' ? '상담 엔진' : 'Consult engine') : (locale === 'ko' ? '채팅 엔진' : 'Chat engine')}
+                      {action.key === 'consult' ? (locale === 'ko' ? '상담 응답' : 'Consult response') : (locale === 'ko' ? '대화 응답' : 'Chat response')}
                     </div>
                   </div>
                 </div>

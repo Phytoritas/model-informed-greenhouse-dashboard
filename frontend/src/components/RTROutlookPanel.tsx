@@ -220,7 +220,7 @@ const RTROutlookPanel = ({
             <div className={`flex items-start justify-between gap-3 ${compact ? 'mb-2' : 'mb-4'}`}>
                 <div>
                     <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                        <Target className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                        <Target className="h-5 w-5 text-[color:var(--sg-color-olive)]" />
                         <h3 className={compact ? 'text-sm font-semibold' : 'font-semibold'}>{copy.title}</h3>
                     </div>
                     {!compact && (
@@ -244,7 +244,7 @@ const RTROutlookPanel = ({
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <div className="flex items-center gap-2 text-xs font-medium text-[color:var(--sg-text-muted)]">
-                                <Leaf className="h-3.5 w-3.5 text-[color:var(--sg-accent-violet)]" />
+                                <Leaf className="h-3.5 w-3.5 text-[color:var(--sg-color-olive)]" />
                                 <span>{copy.rolling}</span>
                             </div>
                             <div className="mt-2 flex items-baseline gap-2 text-[color:var(--sg-text-strong)]">

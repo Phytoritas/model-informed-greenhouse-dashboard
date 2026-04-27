@@ -168,7 +168,7 @@ export default function AskKnowledgeBoard({
                     />
                     <div className="flex flex-wrap items-center gap-2">
                         {lastQuery ? <Badge variant="forest">{`${copy.query}: ${lastQuery}`}</Badge> : null}
-                        {resolvedScopeLabel ? <Badge variant="blue">{`${copy.scope}: ${resolvedScopeLabel}`}</Badge> : null}
+                        {resolvedScopeLabel ? <Badge variant="forest">{`${copy.scope}: ${resolvedScopeLabel}`}</Badge> : null}
                         {lastQuery ? <Badge variant="amber">{`${copy.count}: ${returnedCount}`}</Badge> : null}
                     </div>
                 </div>
