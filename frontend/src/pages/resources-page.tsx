@@ -1,14 +1,20 @@
 import type { ReactNode } from 'react';
-import PageCanvas from '../components/layout/PageCanvas';
+import PageCanvas, { type PageCanvasTab } from '../components/layout/PageCanvas';
 
 interface ResourcesPageProps {
   locale: 'ko' | 'en';
   surface: ReactNode;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function ResourcesPage({
   locale,
   surface,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: ResourcesPageProps) {
   const copy = locale === 'ko'
     ? {
@@ -28,6 +34,9 @@ export default function ResourcesPage({
       title={copy.title}
       description={copy.description}
       hideHeader
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
     >
       <div className="min-w-0">{surface}</div>
     </PageCanvas>

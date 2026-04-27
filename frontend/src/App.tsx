@@ -95,7 +95,6 @@ type RtrUiStateSnapshot = {
 const RTR_UI_STATE_STORAGE_KEY = 'smartgrow-rtr-ui-state-v1';
 
 const AssistantRoutePage = lazy(() => import('./pages/assistant-route-page'));
-const AdvisorLaneRoutePage = lazy(() => import('./pages/advisor-lane-route-page'));
 const AlertsRoutePage = lazy(() => import('./pages/alerts-route-page'));
 const ControlRoutePage = lazy(() => import('./pages/control-route-page'));
 const CropWorkRoutePage = lazy(() => import('./pages/crop-work-route-page'));
@@ -864,11 +863,36 @@ function App() {
       return;
     }
     if (surfaceKey === 'nutrient_correction') {
-      navigate('/nutrient#correction');
+      navigate({ pathname: '/resources', search: '?tool=correction', hash: '#resources-nutrient' });
       return;
     }
     handleOpenAdvisorTabs('nutrient');
   }, [handleOpenAdvisorTabs, navigate]);
+
+  const nutrientAliasTarget = useMemo(() => {
+    const wantsCorrectionTool = location.hash.replace(/^#/, '') === 'correction'
+      || new URLSearchParams(location.search).get('tool') === 'correction';
+
+    return {
+      pathname: '/resources',
+      search: wantsCorrectionTool ? '?tool=correction' : '',
+      hash: '#resources-nutrient',
+    };
+  }, [location.hash, location.search]);
+
+  const growthAliasTarget = useMemo(() => {
+    const hash = location.hash.replace(/^#/, '');
+    if (hash === 'work') {
+      return { pathname: '/crop-work', hash: '#crop-work-work' };
+    }
+    if (hash === 'environment') {
+      return { pathname: '/control', hash: '#control-strategy' };
+    }
+    if (hash === 'harvest' || hash === 'harvest-market') {
+      return { pathname: '/crop-work', hash: '#crop-work-harvest' };
+    }
+    return { pathname: '/crop-work', hash: '#crop-work-growth' };
+  }, [location.hash]);
 
   const resolveRoutePath = useCallback((key: string) => {
     switch (key) {
@@ -886,9 +910,10 @@ function App() {
       case 'crop-work':
         return '/crop-work';
       case 'nutrient':
-      case 'harvest':
       case 'resources':
         return '/resources';
+      case 'harvest':
+        return '/crop-work#crop-work-harvest';
       case 'protection':
       case 'alerts':
         return '/alerts';
@@ -1323,6 +1348,9 @@ function App() {
       monitor={aiDisplay?.monitor ?? []}
       activePanel={activePanelId === 'crop-work-harvest' ? 'crop-work-harvest' : activePanelId === 'crop-work-work' ? 'crop-work-work' : 'crop-work-growth'}
       onOpenAssistant={() => openAssistantDrawer('assistant-chat')}
+      tabs={activeSection.tabs}
+      activeTabId={activePanelId}
+      onSelectTab={handleSectionTabSelect}
     />
   );
 
@@ -1344,6 +1372,10 @@ function App() {
       produceLoading={isProducePricesLoading}
       produceError={producePricesError}
       activePanel={activePanelId === 'resources-market' ? 'resources-market' : activePanelId === 'resources-nutrient' ? 'resources-nutrient' : 'resources-energy'}
+      initialCorrectionToolOpen={new URLSearchParams(location.search).get('tool') === 'correction'}
+      tabs={activeSection.tabs}
+      activeTabId={activePanelId}
+      onSelectTab={handleSectionTabSelect}
     />
   );
 
@@ -1365,80 +1397,10 @@ function App() {
       statusSummary={kpiStatusSummary}
       primaryTiles={primaryKpiTiles}
       secondaryTiles={secondaryKpiTiles}
-      activePanel={activePanelId === 'alerts-history' ? 'alerts-history' : activePanelId === 'alerts-warning' ? 'alerts-stream' : 'alerts-protection'}
-    />
-  );
-
-  const advisorLaneSharedProps = {
-    locale,
-    crop: selectedCrop,
-    summary: smartGrowSummary,
-    currentData,
-    metrics: deferredModelMetrics,
-    history: deferredHistory,
-    forecast: deferredForecast,
-    producePrices,
-    weather,
-    rtrProfile: selectedRtrProfile,
-  };
-
-  const growthAdvisorInitialTab: PromptAdvisorTabKey =
-    location.hash === '#environment'
-      ? 'environment'
-      : location.hash === '#work'
-        ? 'work'
-        : 'physiology';
-
-  const growthAdvisorPage = (
-    <AdvisorLaneRoutePage
-      {...advisorLaneSharedProps}
-      eyebrow={locale === 'ko' ? '작물 어드바이저' : 'Crop advisor'}
-      title={locale === 'ko' ? '생육·환경·작업 판단' : 'Growth, Environment, and Work'}
-      description={locale === 'ko'
-        ? '생육, 환경, 농작업 탭을 실제 어드바이저 API와 연결해 확인합니다.'
-        : 'Review growth, environment, and work tabs through the live advisor API.'}
-      initialTab={growthAdvisorInitialTab}
-      onClose={() => navigate('/crop-work')}
-    />
-  );
-
-  const nutrientAdvisorPage = (
-    <AdvisorLaneRoutePage
-      {...advisorLaneSharedProps}
-      eyebrow={locale === 'ko' ? '양액 어드바이저' : 'Nutrient advisor'}
-      title={locale === 'ko' ? '양액 레시피와 보정' : 'Nutrient Recipe and Correction'}
-      description={locale === 'ko'
-        ? '양액 레시피와 배액 기반 보정 초안을 실제 어드바이저 API로 실행합니다.'
-        : 'Run nutrient recipe and drain-feedback correction through the live advisor API.'}
-      initialTab="nutrient"
-      initialCorrectionToolOpen={location.hash === '#correction'}
-      onClose={() => navigate('/resources')}
-    />
-  );
-
-  const protectionAdvisorPage = (
-    <AdvisorLaneRoutePage
-      {...advisorLaneSharedProps}
-      eyebrow={locale === 'ko' ? '방제 어드바이저' : 'Protection advisor'}
-      title={locale === 'ko' ? '병해충·농약 검토' : 'Pest and Pesticide Review'}
-      description={locale === 'ko'
-        ? '등록 우선 농약 후보와 교호 사용 순서를 실제 어드바이저 API로 확인합니다.'
-        : 'Review registered-first pesticide candidates and rotation order through the live advisor API.'}
-      initialTab="pesticide"
-      onClose={() => navigate('/alerts')}
-    />
-  );
-
-  const harvestAdvisorPage = (
-    <AdvisorLaneRoutePage
-      {...advisorLaneSharedProps}
-      eyebrow={locale === 'ko' ? '수확·시세 어드바이저' : 'Harvest and market advisor'}
-      title={locale === 'ko' ? '수확과 시세 판단' : 'Harvest and Market Decisions'}
-      description={locale === 'ko'
-        ? '수확 흐름과 시세 문맥을 실제 어드바이저 API로 함께 확인합니다.'
-        : 'Review harvest flow and market context through the live advisor API.'}
-      initialTab="harvest_market"
-      onClose={() => navigate('/crop-work')}
+      activePanel={activePanelId === 'alerts-history' ? 'alerts-history' : activePanelId === 'alerts-warning' ? 'alerts-warning' : 'alerts-protection'}
+      tabs={activeSection.tabs}
+      activeTabId={activePanelId}
+      onSelectTab={handleSectionTabSelect}
     />
   );
 
@@ -1484,6 +1446,9 @@ function App() {
       produceLoading={isProducePricesLoading}
       optimizerState={rtrOptimizerState}
       uiState={rtrOptimizerUiState}
+      tabs={activeSection.tabs}
+      activeTabId={activePanelId}
+      onSelectTab={handleSectionTabSelect}
     />
   );
 
@@ -1506,6 +1471,9 @@ function App() {
       onRefreshProfiles={refreshRtrProfiles}
       optimizerState={rtrOptimizerState}
       uiState={rtrOptimizerUiState}
+      tabs={activeSection.tabs}
+      activeTabId={activePanelId}
+      onSelectTab={handleSectionTabSelect}
     />
   );
 
@@ -1711,6 +1679,9 @@ function App() {
                 onRefreshProfiles={refreshRtrProfiles}
                 optimizerState={rtrOptimizerState}
                 uiState={rtrOptimizerUiState}
+                tabs={activeSection.tabs}
+                activeTabId={activePanelId}
+                onSelectTab={handleSectionTabSelect}
               />
             </Suspense>
           )}
@@ -1728,10 +1699,10 @@ function App() {
         <Route path="/trend/legacy" element={<Navigate to="/trend" replace />} />
         <Route path="/resources/legacy" element={<Navigate to="/resources" replace />} />
         <Route path="/alerts/legacy" element={<Navigate to="/alerts" replace />} />
-        <Route path="/growth/*" element={<Suspense fallback={<RouteLoadingFallback />}>{growthAdvisorPage}</Suspense>} />
-        <Route path="/nutrient/*" element={<Suspense fallback={<RouteLoadingFallback />}>{nutrientAdvisorPage}</Suspense>} />
-        <Route path="/protection/*" element={<Suspense fallback={<RouteLoadingFallback />}>{protectionAdvisorPage}</Suspense>} />
-        <Route path="/harvest/*" element={<Suspense fallback={<RouteLoadingFallback />}>{harvestAdvisorPage}</Suspense>} />
+        <Route path="/growth/*" element={<Navigate to={growthAliasTarget} replace />} />
+        <Route path="/nutrient/*" element={<Navigate to={nutrientAliasTarget} replace />} />
+        <Route path="/protection/*" element={<Navigate to={{ pathname: '/alerts', hash: '#alerts-protection' }} replace />} />
+        <Route path="/harvest/*" element={<Navigate to={{ pathname: '/crop-work', hash: '#crop-work-harvest' }} replace />} />
         <Route path="/ask/*" element={<Navigate to={{ pathname: '/assistant', hash: location.hash }} replace />} />
         <Route path="*" element={<Navigate to="/overview" replace />} />
       </Routes>
@@ -1740,11 +1711,11 @@ function App() {
         locale={locale}
         crop={selectedCrop}
         cropLabel={selectedCropLabel}
-      panelTabs={assistantSection.tabs}
-      activePanel={assistantDrawerPanel}
-      summary={smartGrowSummary}
-      searchRequest={assistantSearchRequest}
-      chatRequest={assistantChatRequest}
+        panelTabs={assistantSection.tabs}
+        activePanel={assistantDrawerPanel}
+        summary={smartGrowSummary}
+        searchRequest={assistantSearchRequest}
+        chatRequest={assistantChatRequest}
         currentData={currentData}
         metrics={deferredModelMetrics}
         forecast={deferredForecast}

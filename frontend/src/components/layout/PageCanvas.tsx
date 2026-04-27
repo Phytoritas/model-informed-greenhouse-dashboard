@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import PageHeader from '../common/PageHeader';
 import PageSectionTabs from '../phyto/PageSectionTabs';
 
-interface PageCanvasTab {
+export interface PageCanvasTab {
   id: string;
   label: string;
 }

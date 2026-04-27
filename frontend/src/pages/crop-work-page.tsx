@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import PageCanvas from '../components/layout/PageCanvas';
+import PageCanvas, { type PageCanvasTab } from '../components/layout/PageCanvas';
 
 interface CropWorkPageProps {
   locale: 'ko' | 'en';
@@ -9,6 +9,8 @@ interface CropWorkPageProps {
   forecastSurface: ReactNode;
   recentWorkSurface: ReactNode;
   activeTabId?: string;
+  tabs?: PageCanvasTab[];
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function CropWorkPage({
@@ -19,6 +21,8 @@ export default function CropWorkPage({
   forecastSurface,
   recentWorkSurface,
   activeTabId,
+  tabs = [],
+  onSelectTab,
 }: CropWorkPageProps) {
   const selectedTabId = activeTabId ?? 'crop-work-growth';
   const showGrowth = selectedTabId === 'crop-work-growth';
@@ -43,6 +47,9 @@ export default function CropWorkPage({
       title={copy.title}
       description={copy.description}
       hideHeader
+      tabs={tabs}
+      activeTabId={selectedTabId}
+      onSelectTab={onSelectTab}
     >
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
         {showGrowth ? (

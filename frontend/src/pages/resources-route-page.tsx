@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
+import type { PageCanvasTab } from '../components/layout/PageCanvas';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
 import type {
@@ -32,6 +33,10 @@ interface ResourcesRoutePageProps {
   produceLoading: boolean;
   produceError: string | null;
   activePanel?: 'resources-nutrient' | 'resources-energy' | 'resources-market';
+  initialCorrectionToolOpen?: boolean;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function ResourcesRoutePage({
@@ -51,10 +56,17 @@ export default function ResourcesRoutePage({
   produceLoading,
   produceError,
   activePanel = 'resources-energy',
+  initialCorrectionToolOpen = false,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: ResourcesRoutePageProps) {
   return (
     <ResourcesPage
       locale={locale}
+      tabs={tabs}
+      activeTabId={activeTabId ?? activePanel}
+      onSelectTab={onSelectTab}
       surface={(
         <Suspense
           fallback={(
@@ -82,6 +94,7 @@ export default function ResourcesRoutePage({
             produceLoading={produceLoading}
             produceError={produceError}
             activePanel={activePanel}
+            initialCorrectionToolOpen={initialCorrectionToolOpen}
           />
         </Suspense>
       )}

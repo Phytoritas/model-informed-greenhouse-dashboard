@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import PageCanvas from '../components/layout/PageCanvas';
+import PageCanvas, { type PageCanvasTab } from '../components/layout/PageCanvas';
 
 export type ControlPagePanelId = 'control-strategy' | 'control-devices';
 
@@ -11,6 +11,9 @@ interface ControlPageProps {
   controlSummary: ReactNode;
   environmentAdvisorSurface?: ReactNode;
   runtimeSurface?: ReactNode;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function ControlPage({
@@ -21,6 +24,9 @@ export default function ControlPage({
   controlSummary,
   environmentAdvisorSurface = null,
   runtimeSurface,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: ControlPageProps) {
   const copy = locale === 'ko'
     ? {
@@ -40,6 +46,9 @@ export default function ControlPage({
       title={copy.title}
       description={copy.description}
       hideHeader
+      tabs={tabs}
+      activeTabId={activeTabId ?? activePanel}
+      onSelectTab={onSelectTab}
     >
       {activePanel === 'control-strategy' ? (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">

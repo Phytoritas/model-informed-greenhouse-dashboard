@@ -16,6 +16,7 @@ import type {
 import type { AlertRailItem } from '../components/dashboard/AlertRail';
 import AlertRail from '../components/dashboard/AlertRail';
 import SimulationRuntimePanel from '../components/dashboard/SimulationRuntimePanel';
+import type { PageCanvasTab } from '../components/layout/PageCanvas';
 import ControlPanel from '../components/ControlPanel';
 import AdvisorTabs from '../components/advisor/AdvisorTabs';
 import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
@@ -54,6 +55,9 @@ interface ControlRoutePageProps {
   onRefreshProfiles?: () => void | Promise<void>;
   optimizerState?: RTROptimizerStateLike;
   uiState?: RTROptimizerUiStateLike;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function ControlRoutePage({
@@ -85,6 +89,9 @@ export default function ControlRoutePage({
   onRefreshProfiles,
   optimizerState,
   uiState,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: ControlRoutePageProps) {
   const fallbackAlerts = alertItems.length
     ? alertItems
@@ -99,6 +106,9 @@ export default function ControlRoutePage({
     <ControlPage
       locale={locale}
       activePanel={activePanel}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
       strategySurface={(
         <Suspense
           fallback={(

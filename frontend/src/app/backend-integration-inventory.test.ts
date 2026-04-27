@@ -41,4 +41,25 @@ describe('backend integration inventory', () => {
     expect(getPrimaryRouteKey('/assistant')).toBe('assistant');
     expect(getPrimaryRouteKey('/settings')).toBe('settings');
   });
+
+  it('documents compatibility endpoints that are intentionally surfaced through delegated advisor tabs', () => {
+    const byEndpoint = new Map(BACKEND_INTEGRATION_INVENTORY.map((entry) => [entry.endpoint, entry]));
+
+    const delegatedEndpoints = [
+      '/api/advisor/environment',
+      '/api/advisor/physiology',
+      '/api/advisor/work-tradeoff',
+      '/api/advisor/harvest',
+      '/api/environment/recommend',
+      '/api/work/recommend',
+      '/api/pesticides/recommend',
+      '/api/nutrients/recommend',
+      '/api/nutrients/correction',
+    ] as const;
+
+    for (const endpoint of delegatedEndpoints) {
+      expect(byEndpoint.get(endpoint)?.status, endpoint).toBe('hidden');
+    }
+    expect(byEndpoint.get('/api/nutrients/correction')?.frontend).toBe('useSmartGrowAdvisor.runCorrection nested tool');
+  });
 });

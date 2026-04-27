@@ -16,6 +16,7 @@ import type {
   WeatherOutlook,
 } from '../types';
 import CropWorkPage from './crop-work-page';
+import type { PageCanvasTab } from '../components/layout/PageCanvas';
 
 const ForecastPanel = lazy(() => import('../components/ForecastPanel'));
 const ConsultingReport = lazy(() => import('../components/ConsultingReport'));
@@ -38,6 +39,9 @@ interface CropWorkRoutePageProps {
   monitor: string[];
   activePanel?: 'crop-work-growth' | 'crop-work-work' | 'crop-work-harvest';
   onOpenAssistant: () => void;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function CropWorkRoutePage({
@@ -58,6 +62,9 @@ export default function CropWorkRoutePage({
   monitor,
   activePanel = 'crop-work-growth',
   onOpenAssistant,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: CropWorkRoutePageProps) {
   const advisorInitialTab = activePanel === 'crop-work-work'
     ? 'work'
@@ -86,7 +93,9 @@ export default function CropWorkRoutePage({
   return (
     <CropWorkPage
       locale={locale}
-      activeTabId={activePanel}
+      activeTabId={activeTabId ?? activePanel}
+      tabs={tabs}
+      onSelectTab={onSelectTab}
       cropSummary={<CropDetails crop={crop} currentData={currentData} metrics={modelMetrics} />}
       advisorSurface={advisorSurface}
       workBoard={(

@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import PageCanvas from '../components/layout/PageCanvas';
+import type { PageCanvasTab } from '../components/layout/PageCanvas';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import ModelScenarioWorkbench from '../components/dashboard/ModelScenarioWorkbench';
 import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
@@ -34,6 +35,9 @@ interface ScenariosRoutePageProps {
   onRefreshProfiles?: () => void | Promise<void>;
   optimizerState?: RTROptimizerStateLike;
   uiState?: RTROptimizerUiStateLike;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function ScenariosRoutePage({
@@ -54,6 +58,9 @@ export default function ScenariosRoutePage({
   onRefreshProfiles,
   optimizerState,
   uiState,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: ScenariosRoutePageProps) {
   const location = useLocation();
   const copy = locale === 'ko'
@@ -94,7 +101,14 @@ export default function ScenariosRoutePage({
   }, [location.hash]);
 
   return (
-    <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
+    <PageCanvas
+      eyebrow={copy.eyebrow}
+      title={copy.title}
+      description={copy.description}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
+    >
       <section id="scenario-model" tabIndex={-1} className="scroll-mt-24 focus:outline-none">
         <ModelScenarioWorkbench crop={crop} />
       </section>

@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import type { KpiTileData } from '../components/KpiStrip';
 import type { AlertRailItem } from '../components/dashboard/AlertRail';
+import type { PageCanvasTab } from '../components/layout/PageCanvas';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
@@ -35,7 +36,10 @@ interface AlertsRoutePageProps {
   statusSummary: string;
   primaryTiles: KpiTileData[];
   secondaryTiles: KpiTileData[];
-  activePanel?: 'alerts-protection' | 'alerts-stream' | 'alerts-history';
+  activePanel?: 'alerts-protection' | 'alerts-warning' | 'alerts-history';
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function AlertsRoutePage({
@@ -56,6 +60,9 @@ export default function AlertsRoutePage({
   primaryTiles,
   secondaryTiles,
   activePanel = 'alerts-protection',
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: AlertsRoutePageProps) {
   const fallbackItems = items.length
     ? items
@@ -69,6 +76,9 @@ export default function AlertsRoutePage({
   return (
     <AlertsPage
       locale={locale}
+      tabs={tabs}
+      activeTabId={activeTabId ?? activePanel}
+      onSelectTab={onSelectTab}
       surface={(
         <Suspense
           fallback={(

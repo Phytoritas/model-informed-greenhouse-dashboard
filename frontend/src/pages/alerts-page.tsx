@@ -1,14 +1,20 @@
 import type { ReactNode } from 'react';
-import PageCanvas from '../components/layout/PageCanvas';
+import PageCanvas, { type PageCanvasTab } from '../components/layout/PageCanvas';
 
 interface AlertsPageProps {
   locale: 'ko' | 'en';
   surface: ReactNode;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function AlertsPage({
   locale,
   surface,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: AlertsPageProps) {
   const copy = locale === 'ko'
     ? {
@@ -28,6 +34,9 @@ export default function AlertsPage({
       title={copy.title}
       description={copy.description}
       hideHeader
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
     >
       <div className="min-w-0">{surface}</div>
     </PageCanvas>

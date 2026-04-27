@@ -31,7 +31,7 @@ interface AlertsCommandCenterProps {
     statusSummary: string;
     primaryTiles: KpiTileData[];
     secondaryTiles: KpiTileData[];
-    activePanel?: 'alerts-protection' | 'alerts-stream' | 'alerts-history';
+    activePanel?: 'alerts-protection' | 'alerts-warning' | 'alerts-history';
 }
 
 export default function AlertsCommandCenter({
@@ -172,13 +172,16 @@ export default function AlertsCommandCenter({
                     <AlertRail items={items} compact />
                 </div>
             ) : null}
-            {activePanel === 'alerts-stream' ? (
-                <LiveMetricStrip
-                    statusSummary={statusSummary}
-                    telemetryStatus={telemetryStatus}
-                    primaryTiles={primaryTiles}
-                    secondaryTiles={secondaryTiles}
-                />
+            {activePanel === 'alerts-warning' ? (
+                <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.48fr)]">
+                    <AlertRail items={items} />
+                    <LiveMetricStrip
+                        statusSummary={statusSummary}
+                        telemetryStatus={telemetryStatus}
+                        primaryTiles={primaryTiles}
+                        secondaryTiles={secondaryTiles}
+                    />
+                </div>
             ) : null}
             {activePanel === 'alerts-history' ? (
                 <DashboardCard

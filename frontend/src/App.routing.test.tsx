@@ -524,10 +524,38 @@ vi.mock('./components/dashboard/OverviewSignalTrendCard', () => ({
   ),
 }))
 vi.mock('./components/alerts/AlertsCommandCenter', () => ({
-  default: ({ activePanel }: { activePanel?: string }) => <div>{`AlertsCommandCenter:${activePanel ?? 'missing'}`}</div>,
+  default: ({ activePanel }: { activePanel?: string }) => (
+    <div>
+      <div>{`AlertsCommandCenter:${activePanel ?? 'missing'}`}</div>
+      {activePanel === 'alerts-protection' ? (
+        <div>
+          <div>AdvisorTabs</div>
+          <div data-testid="advisor-initial-tab">pesticide</div>
+          <div data-testid="advisor-correction-open">false</div>
+        </div>
+      ) : null}
+    </div>
+  ),
 }))
 vi.mock('./components/resources/ResourcesCommandCenter', () => ({
-  default: ({ activePanel }: { activePanel?: string }) => <div>{`ResourcesCommandCenter:${activePanel ?? 'missing'}`}</div>,
+  default: ({
+    activePanel,
+    initialCorrectionToolOpen,
+  }: {
+    activePanel?: string
+    initialCorrectionToolOpen?: boolean
+  }) => (
+    <div>
+      <div>{`ResourcesCommandCenter:${activePanel ?? 'missing'}`}</div>
+      {activePanel === 'resources-nutrient' ? (
+        <div>
+          <div>AdvisorTabs</div>
+          <div data-testid="advisor-initial-tab">nutrient</div>
+          <div data-testid="advisor-correction-open">{String(Boolean(initialCorrectionToolOpen))}</div>
+        </div>
+      ) : null}
+    </div>
+  ),
 }))
 vi.mock('./components/RTROptimizerPanel', () => ({
   default: ({
@@ -824,7 +852,7 @@ describe('App routed shell', () => {
     expect(screen.queryByText('RTROptimizerPanel')).toBeNull()
     expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
-    expect(screen.queryByTestId('page-section-active')).toBeNull()
+    expect(screen.getByTestId('page-section-active').textContent).toBe('control-devices')
     expect(screen.getByRole('button', { name: 'Action:control-devices' }).getAttribute('aria-current')).toBe('step')
 
     fireEvent.click(screen.getByRole('button', { name: 'Action:control-strategy' }))
@@ -937,6 +965,27 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe(heading)
   })
 
+  it('keeps RTR hash tabs as active in-page route sections', async () => {
+    renderApp('/rtr#rtr-area')
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('RTR Optimizer')
+    expect((await screen.findByTestId('page-section-active')).textContent).toBe('rtr-area')
+    expect(screen.getByTestId('rtr-active-panel').getAttribute('id')).toBe('rtr-area')
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+  })
+
+  it('switches RTR workspace tabs without leaving the RTR route', async () => {
+    renderApp('/rtr')
+
+    expect((await screen.findByTestId('page-section-active')).textContent).toBe('rtr-strategy')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tab:rtr-sensitivity' }))
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('RTR Optimizer')
+    expect(screen.getByTestId('page-section-active').textContent).toBe('rtr-sensitivity')
+    expect(screen.getByTestId('rtr-active-panel').getAttribute('id')).toBe('rtr-sensitivity')
+  })
+
   it('redirects the legacy overview path to the standalone overview landing', async () => {
     renderApp('/overview/legacy')
 
@@ -953,6 +1002,16 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
     expect(screen.getByTestId('advisor-correction-open').textContent).toBe('false')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('preserves the legacy nutrient correction intent separately from the nutrient lane', async () => {
+    renderApp('/nutrient#correction')
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
+    expect(screen.getByTestId('advisor-correction-open').textContent).toBe('true')
     expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
   })
 

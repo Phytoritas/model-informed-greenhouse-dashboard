@@ -14,6 +14,7 @@ import type {
 } from '../types';
 import ControlPanel from '../components/ControlPanel';
 import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
+import type { PageCanvasTab } from '../components/layout/PageCanvas';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
 import RtrPage from './rtr-page';
@@ -44,6 +45,9 @@ interface RtrRoutePageProps {
   produceLoading: boolean;
   optimizerState?: RTROptimizerStateLike;
   uiState?: RTROptimizerUiStateLike;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
 }
 
 export default function RtrRoutePage({
@@ -70,10 +74,16 @@ export default function RtrRoutePage({
   produceLoading,
   optimizerState,
   uiState,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: RtrRoutePageProps) {
   return (
     <RtrPage
       locale={locale}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
       recommendationSurface={(
         <Suspense
           fallback={(

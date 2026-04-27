@@ -36,6 +36,7 @@ interface ResourcesCommandCenterProps {
     produceLoading: boolean;
     produceError: string | null;
     activePanel?: 'resources-nutrient' | 'resources-energy' | 'resources-market';
+    initialCorrectionToolOpen?: boolean;
 }
 
 export default function ResourcesCommandCenter({
@@ -55,6 +56,7 @@ export default function ResourcesCommandCenter({
     produceLoading,
     produceError,
     activePanel = 'resources-energy',
+    initialCorrectionToolOpen = false,
 }: ResourcesCommandCenterProps) {
     const copy = locale === 'ko'
         ? {
@@ -205,7 +207,7 @@ export default function ResourcesCommandCenter({
                     rtrProfile={rtrProfile}
                     isOpen
                     initialTab="nutrient"
-                    initialCorrectionToolOpen
+                    initialCorrectionToolOpen={initialCorrectionToolOpen}
                     onClose={() => undefined}
                     showCloseAction={false}
                 />
