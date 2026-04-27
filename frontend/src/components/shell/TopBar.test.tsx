@@ -46,7 +46,8 @@ describe('TopBar', () => {
     it('renders Korean search copy and triggers assistant toggle', () => {
         const { onAssistantToggle, onOpenAlerts, onLocaleChange, onCropChange, onSearchSubmit } = renderTopBar('ko');
 
-        expect(screen.getByRole('heading', { name: '스마트 온실 인공지능 의사결정 플랫폼' })).toBeTruthy();
+        expect(screen.getByRole('heading', { name: '오늘 한눈에' })).toBeTruthy();
+        expect(screen.getByText('오늘 운영 판단을 먼저 정리합니다.')).toBeTruthy();
         expect(screen.getByLabelText('온실, 시세, 생육 등 현황 확인하기')).toBeTruthy();
         expect(screen.getByPlaceholderText('온실, 시세, 생육 등 현황 확인하기')).toBeTruthy();
 

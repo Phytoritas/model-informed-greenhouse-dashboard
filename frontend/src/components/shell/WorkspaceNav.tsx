@@ -57,7 +57,7 @@ function WorkspaceButton({
       onClick={onSelect}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group flex w-full items-center gap-3 rounded-[24px] px-4 py-3 text-left transition-all',
+        'group flex w-full items-center gap-3 rounded-[24px] px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--sg-bg)]',
         active
           ? 'bg-[color:var(--sg-surface-strong)] text-[color:var(--sg-text-strong)]'
           : 'text-[color:var(--sg-text-muted)] hover:bg-[color:var(--sg-surface-warm)] hover:text-[color:var(--sg-text-strong)]',
@@ -154,7 +154,7 @@ export default function WorkspaceNav({
                       aria-current={activeActionId === action.id ? 'step' : undefined}
                       onClick={() => onSelectAction?.(item.key, action.id)}
                       className={cn(
-                        'rounded-full px-3 py-2 text-xs font-semibold transition',
+                        'rounded-full px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--sg-surface-warm)]',
                         activeActionId === action.id
                           ? 'bg-[color:var(--sg-color-primary)] text-white'
                           : 'bg-[color:var(--sg-surface-raised)] text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]',
@@ -195,7 +195,7 @@ export default function WorkspaceNav({
                 aria-current={activeActionId === action.id ? 'step' : undefined}
                 onClick={() => onSelectAction?.(activeItem.key, action.id)}
                 className={cn(
-                  'rounded-full px-3 py-2 text-xs font-semibold transition',
+                  'rounded-full px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-white',
                   activeActionId === action.id
                     ? 'bg-[color:var(--sg-color-primary)] text-white'
                     : 'bg-[color:var(--sg-surface-raised)] text-[color:var(--sg-text-muted)]',

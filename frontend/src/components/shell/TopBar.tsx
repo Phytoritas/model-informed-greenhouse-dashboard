@@ -44,7 +44,7 @@ export default function TopBar({
     ? {
         brand: 'PhytoSync',
         platformTitle: '스마트 온실 인공지능 의사결정 플랫폼',
-        tagline: '',
+        tagline: '기후, 작물, 시세, 지식 신호를 같은 운영 기준으로 연결합니다.',
         language: '언어',
         assistant: '질문 도우미',
         search: '온실, 시세, 생육 등 현황 확인하기',
@@ -63,10 +63,8 @@ export default function TopBar({
         settings: 'Settings',
       };
 
-  const resolvedPageTitle = locale === 'ko' ? copy.pageTitle : pageTitle ?? copy.pageTitle;
-  const resolvedPageDescription = locale === 'ko'
-    ? ''
-    : pageDescription ?? copy.tagline;
+  const resolvedPageTitle = pageTitle ?? copy.pageTitle;
+  const resolvedPageDescription = pageDescription || copy.tagline;
 
   const handleSearchSubmit = () => {
     const normalizedQuery = searchQuery.trim();
@@ -96,10 +94,10 @@ export default function TopBar({
                     {copy.brand}
                   </span>
                   <span className="rounded-full bg-[color:var(--sg-color-sage-soft)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
-                    Command OS
+                    {locale === 'ko' ? 'Decision OS' : 'Command OS'}
                   </span>
                 </div>
-                <h1 className="mt-1 truncate text-[clamp(1.05rem,0.9rem+0.45vw,1.42rem)] font-bold tracking-[-0.02em] text-[color:var(--sg-text-strong)]">
+                <h1 data-testid="topbar-title" className="mt-1 truncate text-[clamp(1.05rem,0.9rem+0.45vw,1.42rem)] font-bold tracking-[-0.02em] text-[color:var(--sg-text-strong)]">
                   {resolvedPageTitle}
                 </h1>
               </div>

@@ -12,7 +12,8 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            title: '수동 제어',
+            title: '수동 제어 확인',
+            note: '장치 버튼은 화면 확인용 로컬 상태입니다. 온도, CO₂, 배액 설정은 /api/config/ops로 저장되어 백엔드 자동 제어 기준에 반영됩니다.',
             ventilation: '환기',
             irrigation: '관수',
             heating: '난방',
@@ -25,7 +26,8 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
             drainTarget: '배액 목표',
         }
         : {
-            title: 'Quick controls',
+            title: 'Manual control check',
+            note: 'Device buttons are local visual checks. Temperature, CO₂, and drain settings are saved to /api/config/ops for backend automatic control.',
             ventilation: 'Vent',
             irrigation: 'Water',
             heating: 'Heat',
@@ -43,35 +45,42 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
 
     return (
         <div className="sg-warm-panel p-6">
-            <h3 className="mb-4 text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
+            <div className="mb-4">
+                <h3 className="text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
+                <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.note}</p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
                 <button
+                    type="button"
                     onClick={() => onToggle('ventilation')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors ${status.ventilation ? 'bg-[color:var(--sg-accent-forest-soft)] text-[color:var(--sg-accent-forest)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.ventilation ? 'bg-[color:var(--sg-accent-forest-soft)] text-[color:var(--sg-accent-forest)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Fan className="h-6 w-6" />
                     <span className="text-sm font-medium">{copy.ventilation}</span>
                 </button>
                 <button
+                    type="button"
                     onClick={() => onToggle('irrigation')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors ${status.irrigation ? 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.irrigation ? 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Droplets className="h-6 w-6" />
                     <span className="text-sm font-medium">{copy.irrigation}</span>
                 </button>
                 <button
+                    type="button"
                     onClick={() => onToggle('heating')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors ${status.heating ? 'bg-[color:var(--sg-accent-violet-soft)] text-[color:var(--sg-accent-violet)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.heating ? 'bg-[color:var(--sg-accent-violet-soft)] text-[color:var(--sg-accent-violet)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Thermometer className="h-6 w-6" />
                     <span className="text-sm font-medium">{copy.heating}</span>
                 </button>
                 <button
+                    type="button"
                     onClick={() => onToggle('shading')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors ${status.shading ? 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.shading ? 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Sun className="h-6 w-6" />

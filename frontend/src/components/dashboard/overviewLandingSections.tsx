@@ -135,7 +135,7 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
   const location = useLocation();
   const nav = [
     ['HOME', '/overview'],
-    ['DASHBOARD', '/overview#overview-dashboard'],
+    ['DASHBOARD', '/control'],
     ['INSIGHTS', '/trend'],
     ['SCENARIOS', '/scenarios'],
     ['KNOWLEDGE', '/assistant#assistant-search'],
@@ -192,7 +192,7 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
             <MessageCircle className="h-4 w-4" aria-hidden="true" />
           </button>
           <Link
-            to="/overview#overview-dashboard"
+            to="/control"
             className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary)] px-3.5 text-xs font-bold text-white shadow-[var(--sg-shadow-card)] transition hover:bg-[color:var(--sg-color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2"
           >
             {dashboardLabel} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -232,7 +232,7 @@ export function HeroDecisionBrief({ heroCard }: { heroCard: ReactNode }) {
           {copy.support}
         </p>
         <div className="mt-2.5 flex flex-wrap gap-2.5">
-          <Link className="inline-flex h-8 items-center justify-center rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary)] px-3.5 text-xs font-bold text-white shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2" to="/overview#overview-dashboard">
+          <Link className="inline-flex h-8 items-center justify-center rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary)] px-3.5 text-xs font-bold text-white shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2" to="/control">
             {copy.primary}
           </Link>
           <Link className="inline-flex h-8 items-center justify-center rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-color-primary)] bg-white px-3.5 text-xs font-bold text-[color:var(--sg-color-primary)] shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2" to="/scenarios">

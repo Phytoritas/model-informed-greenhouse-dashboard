@@ -186,7 +186,7 @@
   .overview-tab-strip {
     display: inline-flex;
     position: relative;
-    z-index: 2;
+    z-index: 20;
     width: fit-content;
     max-width: 100%;
     align-items: center;
@@ -195,16 +195,23 @@
     border: 1px solid var(--sg-outline-soft);
     border-radius: 999px;
     margin: 0.12rem 0;
-    background: #fffdf9;
+    background: rgba(255, 253, 249, 0.98);
     padding: 0.16rem;
     box-shadow: var(--sg-shadow-card);
+    isolation: isolate;
+    scrollbar-width: none;
+  }
+
+  .overview-tab-strip::-webkit-scrollbar {
+    display: none;
   }
 
   .overview-tab-link {
     display: flex;
-    min-width: 0;
+    min-width: max-content;
     position: relative;
     z-index: 1;
+    flex-shrink: 0;
     flex-direction: column;
     gap: 0.08rem;
     border-radius: 999px;

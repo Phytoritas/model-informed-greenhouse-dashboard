@@ -172,11 +172,11 @@ describe('overview landing sections', () => {
   it('routes landing navigation to the full feature surfaces', () => {
     renderWithProviders(<TopNavigation onOpenAssistant={() => undefined} />);
 
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/overview#overview-dashboard');
+    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control');
     expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend');
     expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios');
     expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant#assistant-search');
     expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Open Dashboard' }).getAttribute('href')).toBe('/overview#overview-dashboard');
+    expect(screen.getByRole('link', { name: 'Open Dashboard' }).getAttribute('href')).toBe('/control');
   });
 });

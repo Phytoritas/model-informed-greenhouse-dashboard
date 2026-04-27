@@ -56,7 +56,7 @@ export default function AlertsCommandCenter({
         ? {
             eyebrow: '긴급 알림 요약',
             title: '긴급 알림과 확인 필요를 바로 가릅니다',
-            description: '지금 확인할 항목과 처리 이력을 한 화면에서 정리합니다.',
+            description: '지금 확인할 항목과 최근 생성된 운영 메모를 한 화면에서 정리합니다.',
             critical: '긴급 알림',
             warning: '확인 필요',
             resolved: '처리 완료',
@@ -72,7 +72,7 @@ export default function AlertsCommandCenter({
         : {
             eyebrow: 'Alert summary',
             title: 'Separate urgent and review items',
-            description: 'Keep urgent checks, warnings, and handling history in one page.',
+            description: 'Keep urgent checks, warnings, and recently generated operating notes in one page.',
             critical: 'Urgent',
             warning: 'Warning',
             resolved: 'Handled',
@@ -110,7 +110,7 @@ export default function AlertsCommandCenter({
         {
             label: copy.resolved,
             value: `${counts.resolved}`,
-            detail: locale === 'ko' ? '최근 정리된 항목도 같은 화면에서 확인합니다.' : 'Keep recently resolved items in the same lane.',
+            detail: locale === 'ko' ? '백엔드 이력 저장소가 아닌 현재 경보 묶음에서 정리된 항목입니다.' : 'Derived from the current alert bundle, not a persisted backend history store.',
             toneClass: 'sg-tint-neutral',
         },
         {
@@ -186,10 +186,10 @@ export default function AlertsCommandCenter({
             {activePanel === 'alerts-history' ? (
                 <DashboardCard
                     eyebrow={copy.resolved}
-                    title={locale === 'ko' ? '최근 정리한 알림과 운영 메모' : 'Recently resolved alerts and notes'}
+                    title={locale === 'ko' ? '최근 생성된 알림 메모' : 'Recently generated alert notes'}
                     description={locale === 'ko'
-                        ? '해결 완료로 넘어간 항목과 운영 메모를 한곳에서 다시 확인합니다.'
-                        : 'Review the items that recently moved into resolved status.'}
+                        ? '현재 경보 묶음에서 해결/점검 상태로 분류된 항목입니다. 별도 이력 API가 생기면 이 영역에 연결합니다.'
+                        : 'These items are derived from the current alert bundle. Wire this lane to a persisted history API when one is available.'}
                 >
                     <div className="grid gap-3">
                         {(resolvedItems.length ? resolvedItems : items.slice(0, 3)).map((item) => (

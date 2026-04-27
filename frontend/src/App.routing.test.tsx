@@ -709,8 +709,8 @@ describe('App routed shell', () => {
     expect(screen.queryByTestId('topbar-title')).toBeNull()
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'PhytoSync landing navigation' })).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/overview#overview-dashboard')
-    expect(screen.getByRole('link', { name: 'View Dashboard' }).getAttribute('href')).toBe('/overview#overview-dashboard')
+    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control')
+    expect(screen.getByRole('link', { name: 'View Dashboard' }).getAttribute('href')).toBe('/control')
     expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
 
@@ -827,11 +827,11 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
   })
 
-  it('keeps overview dashboard anchors on the standalone landing navigation', async () => {
+  it('routes the landing dashboard navigation to the full control workspace', async () => {
     renderApp('/overview')
 
     expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/overview#overview-dashboard')
+    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control')
     expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend')
     expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios')
     expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant#assistant-search')
