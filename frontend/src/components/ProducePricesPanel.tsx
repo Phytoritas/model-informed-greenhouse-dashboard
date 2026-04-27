@@ -105,7 +105,7 @@ const getDirectionMeta = (locale: AppLocale): Record<
     down: {
         label: locale === 'ko' ? '하락' : 'Down',
         Icon: ArrowDownRight,
-        accentClassName: 'border-rose-100 bg-rose-50 text-rose-700',
+        accentClassName: 'border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary-strong)]',
     },
     flat: {
         label: locale === 'ko' ? '보합' : 'Flat',
@@ -518,8 +518,8 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
     const [selectedMarket, setSelectedMarket] = useState<ProduceMarketKey>('wholesale');
     const copy = locale === 'ko'
         ? {
-            title: '실시간 농산물 가격',
-            subtitle: '소매·도매 스냅샷과 2주 추세선',
+            title: '오이·토마토 시세 판단',
+            subtitle: '소매·도매 스냅샷과 2주 KAMIS 추세선을 재배 의사결정용으로 비교합니다.',
             loading: '실시간 농산물 가격을 불러오는 중...',
             unavailable: '농산물 가격 패널을 불러올 수 없습니다',
             retail: '소매',
@@ -538,8 +538,8 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             sourceStatus: '소스 상태',
         }
         : {
-            title: 'Live Produce Prices',
-            subtitle: 'Retail + wholesale snapshots with 2-week KAMIS trend overlays',
+            title: 'Cucumber and tomato market signals',
+            subtitle: 'Compare retail/wholesale snapshots and 2-week KAMIS trends for operating decisions.',
             loading: 'Loading live produce prices...',
             unavailable: 'Produce price panel is unavailable',
             retail: 'Retail',
@@ -593,7 +593,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                 <div className="flex h-full flex-col space-y-4">
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.22fr)_minmax(0,0.78fr)]">
                         <article
-                            className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(225,245,203,0.96),rgba(255,255,255,0.9))] px-6 py-6"
+                            className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(232,241,227,0.96),rgba(255,241,233,0.9))] px-6 py-6"
                             style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                         >
                             <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/22 blur-3xl" />
@@ -687,7 +687,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(250px,0.95fr)] lg:items-start">
                         <div className="space-y-3">
                             {activeMarketKey !== prices.trend.market_key ? (
-                                <div className="rounded-[22px] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-[11px] text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
+                                <div className="rounded-[22px] bg-[color:var(--sg-color-olive-soft)] px-4 py-3 text-[11px] text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)]">
                                     <div className="font-semibold">{copy.trendNoteTitle}</div>
                                     <div className="mt-1 leading-relaxed">{copy.trendNote}</div>
                                 </div>

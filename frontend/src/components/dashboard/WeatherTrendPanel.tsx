@@ -31,9 +31,9 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
   const { locale } = useLocale();
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Weather Trend',
-        title: '대구 외기 추세 그래프',
-        description: '최고·최저기온, 강수 위험, 일사량, 풍속을 한 화면에서 비교합니다.',
+        eyebrow: 'Outside Weather',
+        title: '대구 외기 운전 신호',
+        description: '최고·최저기온, 강수 위험, 일사량, 풍속을 환기·보온 판단에 맞춰 비교합니다.',
         loading: '외기 예보 추세를 불러오는 중입니다...',
         unavailable: '외기 추세 데이터를 아직 표시할 수 없습니다.',
         maxTemp: '최고기온',
@@ -44,9 +44,9 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
         source: '예보 소스',
       }
     : {
-        eyebrow: 'Weather Trend',
-        title: 'Daegu outside trend chart',
-        description: 'Compare temperature, precipitation risk, radiation, and wind on the same lane.',
+        eyebrow: 'Outside Weather',
+        title: 'Daegu outside operating signals',
+        description: 'Compare temperature, precipitation risk, radiation, and wind for venting and protection decisions.',
         loading: 'Loading outside trend...',
         unavailable: 'Outside trend data is not available yet.',
         maxTemp: 'Max temp',
@@ -68,8 +68,8 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
   })) ?? [];
 
   return (
-    <section className="sg-panel bg-[color:var(--sg-surface-raised)] p-4" aria-labelledby="weather-trend-title">
-      <header className="flex flex-col gap-3 border-b border-[color:var(--sg-outline-soft)] pb-3 md:flex-row md:items-start md:justify-between">
+    <section className="sg-card sg-tint-neutral p-4 sm:p-5" aria-labelledby="weather-trend-title">
+      <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="sg-eyebrow">{copy.eyebrow}</p>
           <h2 id="weather-trend-title" className="mt-1 text-xl font-bold text-[color:var(--sg-text-strong)]">
@@ -85,16 +85,16 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
       </header>
 
       {loading ? (
-        <div className="mt-4 rounded-[var(--sg-radius-md)] bg-white p-8 text-center text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
+        <div className="mt-4 rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-surface-raised)] p-8 text-center text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
           {copy.loading}
         </div>
       ) : error || trendRows.length === 0 ? (
-        <div className="mt-4 rounded-[var(--sg-radius-md)] bg-[color:var(--sg-surface-warm)] p-8 text-center text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
+        <div className="mt-4 rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-surface-warm)] p-8 text-center text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
           {error ?? copy.unavailable}
         </div>
       ) : (
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.18fr)_minmax(280px,0.82fr)]">
-          <ChartFrame className="h-[22rem] rounded-[var(--sg-radius-md)] bg-white p-3 shadow-[var(--sg-shadow-card)]" minHeight={300}>
+          <ChartFrame className="h-[22rem] rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-surface-raised)] p-3 shadow-[var(--sg-shadow-card)]" minHeight={300}>
             {({ width, height }) => (
               <LineChart width={Math.max(width, 1)} height={Math.max(height, 300)} data={trendRows} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(89,107,74,0.14)" />
@@ -113,7 +113,7 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
 
           <div className="grid gap-3">
             {trendRows.slice(0, 4).map((row) => (
-              <article key={row.date} className="sg-panel bg-white p-3">
+              <article key={row.date} className="sg-panel bg-[color:var(--sg-surface-raised)] p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="sg-eyebrow">{row.label}</p>

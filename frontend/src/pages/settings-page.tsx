@@ -15,13 +15,13 @@ export default function SettingsPage({
   const copy = locale === 'ko'
     ? {
         eyebrow: 'Contact',
-        title: '연결 상태와 운영 설정',
-        description: '센서·날씨·시세 연결 상태, 작물별 가격/전력 단가, 운영 기본값을 확인합니다.',
+        title: '연동 상태와 운영 문의',
+        description: '센서·날씨·시세 연결, 작물별 비용 기준, 운영 중 확인할 연락·지원 정보를 정리합니다.',
       }
     : {
         eyebrow: 'Contact',
         title: 'Settings',
-        description: 'Review service connectivity, crop-specific price/cost assumptions, and operating defaults.',
+        description: 'Review service connectivity, crop-specific cost assumptions, and support-ready operating details.',
       };
 
   return (

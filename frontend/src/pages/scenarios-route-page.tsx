@@ -59,14 +59,14 @@ export default function ScenariosRoutePage({
   const copy = locale === 'ko'
     ? {
         eyebrow: 'Scenarios',
-        title: '시나리오 실험실',
-        description: '과정기반모델 What-if와 RTR 시나리오·편미분을 실제 백엔드 계산으로 실행합니다.',
+        title: '온실 What-if 검토',
+        description: '온도, CO2, 습도, 스크린 조정을 실제 모델 계산으로 비교하고 수량·에너지 변화를 확인합니다.',
         rtrLoading: 'RTR 시나리오 표면을 불러오는 중입니다...',
       }
     : {
         eyebrow: 'Scenarios',
-        title: 'Scenario Lab',
-        description: 'Run process-model what-if scenarios and RTR scenario/sensitivity surfaces against the real backend.',
+        title: 'Greenhouse what-if review',
+        description: 'Compare temperature, CO2, humidity, and screen adjustments through model-backed yield and energy calculations.',
         rtrLoading: 'Loading RTR scenario surface...',
       };
 

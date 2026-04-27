@@ -15,13 +15,13 @@ export default function AssistantPage({
   const copy = locale === 'ko'
     ? {
         eyebrow: 'Knowledge',
-        title: '질문 도우미와 자료 찾기',
-        description: '채팅 상담, 문서 목차형 검색, AI endpoint 상태를 같은 디자인 시스템 안에서 사용합니다.',
+        title: '질문 도우미와 재배 자료',
+        description: '농가 질문, 자료 목차 검색, 농약·양액 솔루션을 한 화면에서 이어서 확인합니다.',
       }
     : {
         eyebrow: 'Knowledge',
         title: 'Assistant',
-        description: 'Use chat, table-of-contents search, and AI endpoint status inside the same design system.',
+        description: 'Use the farmer assistant, table-of-contents material search, and agronomy tools in one route.',
       };
 
   return (

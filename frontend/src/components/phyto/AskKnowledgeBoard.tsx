@@ -39,9 +39,9 @@ export default function AskKnowledgeBoard({
 }: AskKnowledgeBoardProps) {
     const copy = locale === 'ko'
         ? {
-            eyebrow: '페이지 안에서 자료 찾기',
-            title: '질문 흐름 안에서 바로 자료를 찾습니다',
-            description: '별도 패널을 열지 않고 이 화면에서 바로 검색하고 관련 문서를 읽을 수 있습니다.',
+            eyebrow: '자료 목차 검색',
+            title: '책처럼 넘겨 보는 재배 자료',
+            description: '검색어를 입력하면 관련 문서를 목차로 묶고, 선택한 항목을 한 페이지처럼 읽을 수 있습니다.',
             placeholder: `${cropLabel} 자료를 찾거나 질문 형태로 검색어를 입력하세요`,
             search: '자료 찾기',
             idle: '검색어를 입력하면 이 화면 아래에 바로 관련 자료가 나타납니다.',
@@ -60,9 +60,9 @@ export default function AskKnowledgeBoard({
             pageGuide: '왼쪽 목차를 누르면 해당 자료 페이지로 이동합니다.',
         }
         : {
-            eyebrow: 'Search inside this page',
-            title: 'Find source material inside the assistant page',
-            description: 'Search and read the linked material directly here without opening a separate panel.',
+            eyebrow: 'Material browser',
+            title: 'Read cultivation material like a book',
+            description: 'Search source material, use the table of contents, and read the selected result as a page.',
             placeholder: `Search ${cropLabel} materials or type a question-shaped query`,
             search: 'Find materials',
             idle: 'Enter a query and the related material will appear below in this page.',
@@ -142,10 +142,10 @@ export default function AskKnowledgeBoard({
             eyebrow={copy.eyebrow}
             title={copy.title}
             description={copy.description}
-            variant="scenario"
+            className="sg-tint-neutral"
             actions={(
                 <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" onClick={handleSearch}>
+                    <Button variant="primary" onClick={handleSearch}>
                         <Search className="h-4 w-4" />
                         {copy.search}
                     </Button>
@@ -153,7 +153,7 @@ export default function AskKnowledgeBoard({
             )}
         >
             <div className="space-y-4">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="grid gap-3 rounded-[var(--sg-radius-lg)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] p-3 lg:grid-cols-[minmax(0,1fr)_auto]">
                     <Input
                         aria-label={copy.placeholder}
                         placeholder={copy.placeholder}
@@ -195,7 +195,7 @@ export default function AskKnowledgeBoard({
                         <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
                             <nav
                                 aria-label={copy.toc}
-                                className="rounded-[26px] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-color-ivory)] p-3"
+                                className="rounded-[26px] border border-[color:var(--sg-outline-soft)] bg-[linear-gradient(180deg,rgba(250,247,242,0.98),rgba(232,241,227,0.72))] p-3"
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 <div className="flex items-center gap-2 px-2 pb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
@@ -236,7 +236,7 @@ export default function AskKnowledgeBoard({
                                 </div>
                             </nav>
                             <article
-                                className="rounded-[28px] border border-[color:var(--sg-outline-soft)] bg-white/90 px-4 py-4 sm:px-5 sm:py-5"
+                                className="rounded-[28px] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] px-4 py-4 sm:px-5 sm:py-5"
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 <div className="flex flex-wrap gap-2">

@@ -17,10 +17,10 @@
 
   .sg-card {
     border: 1px solid var(--sg-outline-soft);
-    border-radius: var(--sg-radius-md);
+    border-radius: var(--sg-radius-xl);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(255, 251, 247, 0.98));
     box-shadow: var(--sg-shadow-card);
-    padding: 1rem;
+    padding: clamp(1rem, 1.5vw, 1.25rem);
   }
 
   .sg-card-muted {
@@ -111,8 +111,8 @@
 
   .sg-panel {
     border: 1px solid var(--sg-outline-soft);
-    border-radius: var(--sg-radius-md);
-    background: var(--sg-surface-strong);
+    border-radius: var(--sg-radius-lg);
+    background: linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(248, 243, 238, 0.94));
     box-shadow: var(--sg-shadow-card);
   }
 

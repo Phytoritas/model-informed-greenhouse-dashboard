@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { CircleDollarSign, CloudSun, LifeBuoy, PlugZap, Sprout } from 'lucide-react';
 import DashboardCard from '../components/common/DashboardCard';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { StatusChip } from '../components/ui/status-chip';
 import { API_URL } from '../config';
 import type { AppLocale } from '../i18n/locale';
 import type { CropType } from '../types';
@@ -140,30 +142,75 @@ export default function SettingsRoutePage({
       locale={locale}
       shellCard={(
         <DashboardCard
-          eyebrow={locale === 'ko' ? '운영 기본값' : 'Operating defaults'}
-          title={locale === 'ko' ? '작업 화면 기본 설정' : 'Workspace defaults'}
-          description={locale === 'ko' ? '언어, 작물, 질문 도우미 상태처럼 작업 시작 전에 확인할 기준입니다.' : 'Review language, crop, and assistant state before operating.'}
+          eyebrow={locale === 'ko' ? '운영 프로필' : 'Operating profile'}
+          title={locale === 'ko' ? '현재 작업 기준' : 'Current workspace basis'}
+          description={locale === 'ko' ? '언어, 작물, 질문 도우미 상태처럼 지원 요청과 운영 판단에 함께 쓰는 기준입니다.' : 'Review language, crop, and assistant state used for support and operating decisions.'}
+          className="sg-tint-neutral"
         >
-          <div className="grid gap-3 text-sm text-[color:var(--sg-text-muted)]">
-            <div>{locale === 'ko' ? '현재 언어' : 'Current locale'}: {locale === 'ko' ? '한국어' : 'English'}</div>
-            <div>{locale === 'ko' ? '현재 작물' : 'Current crop'}: {selectedCropLabel}</div>
-            <div>{locale === 'ko' ? '질문 도우미' : 'Assistant'}: {assistantOpen ? (locale === 'ko' ? '열림' : 'Open') : (locale === 'ko' ? '닫힘' : 'Closed')}</div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="sg-eyebrow">{locale === 'ko' ? '언어' : 'Locale'}</p>
+                <LifeBuoy className="h-4 w-4 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+              </div>
+              <div className="mt-3 text-lg font-bold text-[color:var(--sg-text-strong)]">{locale === 'ko' ? '한국어' : 'English'}</div>
+            </article>
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="sg-eyebrow">{locale === 'ko' ? '작물' : 'Crop'}</p>
+                <Sprout className="h-4 w-4 text-[color:var(--sg-color-success)]" aria-hidden="true" />
+              </div>
+              <div className="mt-3 text-lg font-bold text-[color:var(--sg-text-strong)]">{selectedCropLabel}</div>
+            </article>
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="sg-eyebrow">{locale === 'ko' ? '질문 도우미' : 'Assistant'}</p>
+                <StatusChip tone={assistantOpen ? 'growth' : 'muted'}>{assistantOpen ? (locale === 'ko' ? '열림' : 'Open') : (locale === 'ko' ? '닫힘' : 'Closed')}</StatusChip>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                {locale === 'ko' ? '현재 화면과 연결된 질문/자료 흐름입니다.' : 'Question and material flow connected to this workspace.'}
+              </p>
+            </article>
+          </div>
+          <div className="mt-4 rounded-[var(--sg-radius-lg)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] px-4 py-4 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+            {locale === 'ko'
+              ? '문제가 생기면 이 화면의 연결 상태와 비용 기준을 먼저 확인한 뒤 지원 요청을 정리하면 됩니다.'
+              : 'When support is needed, start from the connection state and cost assumptions on this screen.'}
           </div>
         </DashboardCard>
       )}
       laneCard={(
         <DashboardCard
           eyebrow={locale === 'ko' ? 'Contact' : 'Contact'}
-          title={locale === 'ko' ? '현재 연결 및 비용 기준' : 'Connectivity and cost assumptions'}
+          title={locale === 'ko' ? '연동 상태와 비용 기준' : 'Connectivity and cost assumptions'}
           description={locale === 'ko' ? '센서 상태와 날씨·시세 연동, 작물별 가격/전력 단가를 저장합니다.' : 'Review sensor freshness, weather/market links, and crop-specific price/cost values.'}
+          className="sg-tint-rose"
         >
-          <div className="grid gap-3 text-sm text-[color:var(--sg-text-muted)]">
-            <div>{locale === 'ko' ? '센서 상태' : 'Sensor status'}: {telemetrySummary}</div>
-            <div>{locale === 'ko' ? '기상 연동' : 'Weather'}: {weatherConnected ? (locale === 'ko' ? '연결됨' : 'Connected') : (locale === 'ko' ? '대기 중' : 'Pending')}</div>
-            <div>{locale === 'ko' ? '시장 연동' : 'Market'}: {marketConnected ? (locale === 'ko' ? '연결됨' : 'Connected') : (locale === 'ko' ? '대기 중' : 'Pending')}</div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="sg-eyebrow">{locale === 'ko' ? '센서' : 'Sensor'}</p>
+                <PlugZap className="h-4 w-4 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+              </div>
+              <p className="mt-3 text-sm font-bold text-[color:var(--sg-text-strong)]">{telemetrySummary}</p>
+            </article>
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="sg-eyebrow">{locale === 'ko' ? '기상' : 'Weather'}</p>
+                <CloudSun className="h-4 w-4 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+              </div>
+              <StatusChip tone={weatherConnected ? 'growth' : 'warning'}>{weatherConnected ? (locale === 'ko' ? '연결됨' : 'Connected') : (locale === 'ko' ? '대기 중' : 'Pending')}</StatusChip>
+            </article>
+            <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="sg-eyebrow">{locale === 'ko' ? '시장' : 'Market'}</p>
+                <CircleDollarSign className="h-4 w-4 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+              </div>
+              <StatusChip tone={marketConnected ? 'growth' : 'warning'}>{marketConnected ? (locale === 'ko' ? '연결됨' : 'Connected') : (locale === 'ko' ? '대기 중' : 'Pending')}</StatusChip>
+            </article>
           </div>
           <form
-            className="mt-5 grid gap-3 rounded-[var(--sg-radius-md)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] p-3"
+            className="mt-5 grid gap-3 rounded-[var(--sg-radius-lg)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] p-4"
             onSubmit={(event) => {
               event.preventDefault();
               void handleSaveSettings();

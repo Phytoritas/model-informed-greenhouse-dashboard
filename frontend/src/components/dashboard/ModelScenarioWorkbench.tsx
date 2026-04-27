@@ -86,9 +86,9 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
 
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Process Model What-if',
-        title: '과정기반모델 시나리오',
-        description: '현재 또는 저장된 모델 스냅샷을 기준으로 온도, CO2, 상대습도 변경량을 넣어 수량·에너지·소스/싱크 변화를 계산합니다.',
+        eyebrow: 'Model What-if',
+        title: '온실 조정 효과 계산',
+        description: '현재 온실 상태를 기준으로 온도, CO2, 상대습도 변경량을 넣어 수량·에너지·소스/싱크 변화를 계산합니다.',
         snapshot: '스냅샷 생성',
         runScenario: 'What-if 실행',
         runSensitivity: '편미분 계산',
@@ -107,12 +107,12 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
         elasticity: '탄력도',
         direction: '방향',
         waiting: '아직 실행 결과가 없습니다.',
-        backendNote: '현재 백엔드는 날짜 범위 대신 horizon과 현재 대비 delta를 사용합니다.',
+        backendNote: '입력값은 현재 상태 대비 변경량입니다. 검토 기간을 바꾸면 같은 조정의 단기·중기 효과를 비교할 수 있습니다.',
       }
     : {
-        eyebrow: 'Process Model What-if',
-        title: 'Process-model scenarios',
-        description: 'Run temperature, CO2, RH, and screen deltas against the current or saved model snapshot and compare yield, energy, and source-sink response.',
+        eyebrow: 'Model What-if',
+        title: 'Greenhouse adjustment effect',
+        description: 'Run temperature, CO2, RH, and screen deltas against the current greenhouse state and compare yield, energy, and source-sink response.',
         snapshot: 'Create snapshot',
         runScenario: 'Run what-if',
         runSensitivity: 'Run partials',
@@ -131,7 +131,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
         elasticity: 'Elasticity',
         direction: 'Direction',
         waiting: 'No scenario result yet.',
-        backendNote: 'The current backend uses horizon and deltas, not calendar date ranges.',
+        backendNote: 'Inputs are deltas from the current state. Change the horizon to compare short- and mid-term effects.',
       };
 
   const scenarioRows = useMemo(() => {
@@ -156,8 +156,8 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
   const isBusy = runs.snapshot.status === 'loading' || runs.scenario.status === 'loading' || runs.sensitivity.status === 'loading';
 
   return (
-    <section className="sg-panel bg-[color:var(--sg-surface-raised)] p-4" aria-labelledby="model-scenario-title">
-      <header className="flex flex-col gap-3 border-b border-[color:var(--sg-outline-soft)] pb-3 lg:flex-row lg:items-start lg:justify-between">
+    <section className="sg-card sg-tint-rose p-4 sm:p-5" aria-labelledby="model-scenario-title">
+      <header className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="sg-eyebrow">{copy.eyebrow}</p>
           <h2 id="model-scenario-title" className="mt-1 text-xl font-bold text-[color:var(--sg-text-strong)]">{copy.title}</h2>
@@ -168,7 +168,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
         <div className="space-y-3">
-          <div className="sg-panel bg-white p-3">
+          <div className="sg-panel bg-[color:var(--sg-surface-raised)] p-3">
             <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[color:var(--sg-text-strong)]">
               <Gauge className="h-4 w-4 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
               {copy.inputs}
@@ -190,7 +190,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
             </div>
           </div>
 
-          <div className="sg-panel bg-white p-3">
+          <div className="sg-panel bg-[color:var(--sg-surface-raised)] p-3">
             <label className="text-xs font-semibold text-[color:var(--sg-text-muted)]">
               <span>{copy.horizon}</span>
               <Select className="mt-1" value={horizon} onChange={(event) => setHorizon(event.target.value)} aria-label={copy.horizon}>
@@ -246,7 +246,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
         </div>
 
         <div className="grid gap-4">
-          <article className="sg-panel bg-white p-3">
+          <article className="sg-panel bg-[color:var(--sg-surface-raised)] p-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className="flex items-center gap-2 text-base font-bold text-[color:var(--sg-text-strong)]">
                 <Activity className="h-4 w-4 text-[color:var(--sg-color-success)]" aria-hidden="true" />
@@ -289,7 +289,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
             )}
           </article>
 
-          <article className="sg-panel bg-white p-3">
+          <article className="sg-panel bg-[color:var(--sg-surface-raised)] p-3">
             <div className="flex items-center justify-between gap-3">
               <h3 className="flex items-center gap-2 text-base font-bold text-[color:var(--sg-text-strong)]">
                 <Sigma className="h-4 w-4 text-[color:var(--sg-color-primary)]" aria-hidden="true" />
