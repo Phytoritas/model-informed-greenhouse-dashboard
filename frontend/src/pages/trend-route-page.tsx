@@ -80,6 +80,8 @@ export default function TrendRoutePage({
           overviewSignals={overviewSignals}
         />
       )}
+      weatherUnavailable={Boolean(weatherError)}
+      marketUnavailable={Boolean(produceError)}
     />
   );
 }

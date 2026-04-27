@@ -168,11 +168,11 @@
     color: var(--sg-text-muted);
   }
 
-  .overview-nav-link:first-child {
+  .overview-nav-link-active {
     color: var(--sg-text-strong);
   }
 
-  .overview-nav-link:first-child::after {
+  .overview-nav-link-active::after {
     content: "";
     position: absolute;
     right: 0;
@@ -194,7 +194,8 @@
     overflow-x: auto;
     border: 1px solid var(--sg-outline-soft);
     border-radius: 999px;
-    background: rgba(255, 253, 249, 0.98);
+    margin: 0.12rem 0;
+    background: #fffdf9;
     padding: 0.16rem;
     box-shadow: var(--sg-shadow-card);
   }
@@ -202,6 +203,8 @@
   .overview-tab-link {
     display: flex;
     min-width: 0;
+    position: relative;
+    z-index: 1;
     flex-direction: column;
     gap: 0.08rem;
     border-radius: 999px;

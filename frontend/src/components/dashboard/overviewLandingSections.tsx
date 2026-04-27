@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import greenhouseHero from '../../assets/overview-greenhouse-hero.jpg';
 import {
   ArrowRight,
@@ -132,6 +132,7 @@ interface TopNavigationProps {
 
 export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
   const { locale } = useLocale();
+  const location = useLocation();
   const nav = [
     ['HOME', '/overview'],
     ['DASHBOARD', '/overview#overview-dashboard'],
@@ -142,6 +143,16 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
   ];
   const assistantLabel = locale === 'ko' ? '질문하기' : 'Ask Assistant';
   const dashboardLabel = locale === 'ko' ? '대시보드 열기' : 'Open Dashboard';
+  const isActiveNav = (to: string) => {
+    const [pathname, hash = ''] = to.split('#');
+    if (pathname !== location.pathname && !(pathname === '/overview' && location.pathname === '/')) {
+      return false;
+    }
+    if (!hash) {
+      return !location.hash || location.hash === '#overview-core';
+    }
+    return location.hash === `#${hash}`;
+  };
 
   return (
     <header>
@@ -151,15 +162,22 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
           PhytoSync
         </Link>
         <div className="overview-nav-links">
-          {nav.map(([label, to]) => (
+          {nav.map(([label, to]) => {
+            const active = isActiveNav(to);
+            return (
             <Link
               key={label}
               to={to}
-              className="overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
+              aria-current={active ? 'page' : undefined}
+              className={cn(
+                'overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]',
+                active && 'overview-nav-link-active',
+              )}
             >
               {label}
             </Link>
-          ))}
+            );
+          })}
         </div>
         <div className="flex items-center justify-end gap-2">
           <button
