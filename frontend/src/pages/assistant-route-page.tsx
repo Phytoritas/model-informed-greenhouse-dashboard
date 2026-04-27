@@ -112,8 +112,8 @@ export default function AssistantRoutePage({
           <Suspense
             fallback={(
               <LoadingSkeleton
-                title={locale === 'ko' ? '바로 실행 도구' : 'Quick operating tools'}
-                loadingMessage={locale === 'ko' ? '운영 도구를 불러오는 중입니다...' : 'Loading quick operating tools...'}
+                title={locale === 'ko' ? '운영 솔루션 도구' : 'Operating solution tools'}
+                loadingMessage={locale === 'ko' ? '자료 기반 솔루션 도구를 불러오는 중입니다...' : 'Loading source-backed solution tools...'}
                 minHeightClassName="min-h-[320px]"
               />
             )}

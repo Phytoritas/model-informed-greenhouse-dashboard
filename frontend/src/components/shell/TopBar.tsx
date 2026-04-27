@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Globe2, MessageCircle, Search, Settings } from 'lucide-react';
+import { Bell, Globe2, Leaf, MessageCircle, Search, Settings } from 'lucide-react';
 import type { AppLocale } from '../../i18n/locale';
 import type { CropType } from '../../types';
 import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
@@ -54,12 +54,12 @@ export default function TopBar({
       }
     : {
         brand: 'PhytoSync',
-        tagline: 'Keep today’s operations and control flow in a compact working shell.',
+        tagline: 'Model-informed greenhouse decisions with live climate, scenario, and knowledge surfaces.',
         language: 'Language',
         assistant: 'Assistant',
-        search: 'Search work, materials, or houses',
+        search: 'Search climate, scenarios, knowledge, or market signals',
         alerts: 'Alerts',
-        pageTitle: 'Today operations',
+        pageTitle: 'Smart greenhouse AI decision platform',
         settings: 'Settings',
       };
 
@@ -78,51 +78,57 @@ export default function TopBar({
   };
 
   return (
-    <header className="pt-4">
-      <div className="mx-auto w-full max-w-[1640px] px-4 sm:px-6 xl:px-8">
-        <div className="sg-glass w-full rounded-[28px] px-5 py-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <div
-                  aria-label={copy.brand}
-                  className="inline-flex h-12 w-[62px] shrink-0 flex-col items-center justify-center rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,231,223,0.94))] px-1.5"
-                  style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                >
-                  <span className="w-full text-center text-[0.84rem] font-black leading-[0.95] tracking-[0.06em] text-[color:var(--sg-accent-violet)]">
-                    Phyto
+    <header>
+      <div className="sg-glass w-full rounded-[26px] px-4 py-4 sm:px-5">
+        <div className="grid gap-4 2xl:grid-cols-[minmax(0,0.9fr)_minmax(320px,0.72fr)_auto] 2xl:items-center">
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <div
+                aria-label={copy.brand}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border border-[color:var(--sg-outline-soft)] bg-[linear-gradient(145deg,rgba(255,253,249,0.98),rgba(232,241,227,0.86))] text-[color:var(--sg-color-olive)]"
+                style={{ boxShadow: 'var(--sg-shadow-card)' }}
+              >
+                <Leaf className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-sm font-black tracking-[-0.02em] text-[color:var(--sg-text-strong)]">
+                    {copy.brand}
                   </span>
-                  <span className="w-full text-center text-[0.84rem] font-black leading-[0.95] tracking-[0.06em] text-[color:var(--sg-text-strong)]">
-                    Sync
+                  <span className="rounded-full bg-[color:var(--sg-color-sage-soft)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
+                    Command OS
                   </span>
                 </div>
-                <h1 className="truncate whitespace-nowrap text-[clamp(1.08rem,0.86rem+0.52vw,1.5rem)] font-bold tracking-[-0.02em] text-[color:var(--sg-text-strong)]">
+                <h1 className="mt-1 truncate text-[clamp(1.05rem,0.9rem+0.45vw,1.42rem)] font-bold tracking-[-0.02em] text-[color:var(--sg-text-strong)]">
                   {resolvedPageTitle}
                 </h1>
               </div>
-              {resolvedPageDescription ? (
-                <p className="mt-2 max-w-[860px] truncate text-sm text-[color:var(--sg-text-muted)]">{resolvedPageDescription}</p>
-              ) : null}
-              <div className="mt-3 max-w-[860px]">
-                <Input
-                  aria-label={copy.search}
-                  placeholder={copy.search}
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      handleSearchSubmit();
-                    }
-                  }}
-                  className="h-11 rounded-[18px] !border !border-[color:var(--sg-outline-strong)] !bg-white text-[color:var(--sg-text-strong)] placeholder:text-[color:var(--sg-text-faint)] shadow-[var(--sg-shadow-card)]"
-                />
-              </div>
             </div>
+            {resolvedPageDescription ? (
+              <p className="mt-2 max-w-[760px] text-sm leading-6 text-[color:var(--sg-text-muted)]">{resolvedPageDescription}</p>
+            ) : null}
+          </div>
 
-            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+          <div className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+            <Input
+              aria-label={copy.search}
+              placeholder={copy.search}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handleSearchSubmit();
+                }
+              }}
+              className="h-11 rounded-full !border !border-[color:var(--sg-outline-soft)] !bg-[color:var(--sg-surface-raised)] pl-10 text-[color:var(--sg-text-strong)] placeholder:text-[color:var(--sg-text-faint)] shadow-[var(--sg-shadow-card)]"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 2xl:justify-end">
               <TelemetryFreshnessChip status={telemetryStatus} detail={telemetryDetail} />
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-2 py-1.5 text-xs font-medium text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--sg-outline-soft)] bg-white/75 px-2 py-1.5 text-xs font-medium text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                 <Globe2 className="h-4 w-4" />
                 <span className="hidden sm:inline">{copy.language}</span>
                 {(['ko', 'en'] as AppLocale[]).map((candidate) => (
@@ -140,7 +146,7 @@ export default function TopBar({
                   </button>
                 ))}
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-2 py-1.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--sg-outline-soft)] bg-white/75 px-2 py-1.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                 <Search className="h-4 w-4 text-[color:var(--sg-text-faint)] lg:hidden" />
                 {(['Cucumber', 'Tomato'] as CropType[]).map((crop) => (
                   <button
@@ -149,7 +155,7 @@ export default function TopBar({
                     onClick={() => onCropChange(crop)}
                     className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                       selectedCrop === crop
-                        ? 'bg-[color:var(--sg-accent-violet)] text-white'
+                        ? 'bg-[color:var(--sg-color-olive)] text-white'
                         : 'text-[color:var(--sg-text-muted)]'
                     }`}
                     style={selectedCrop === crop ? { boxShadow: 'var(--sg-shadow-soft)' } : undefined}
@@ -171,7 +177,7 @@ export default function TopBar({
               <Button
                 onClick={onAssistantToggle}
                 variant={assistantOpen ? 'tonal' : 'default'}
-                className={assistantOpen ? 'rounded-full bg-[color:var(--sg-accent-violet)] text-white hover:bg-[#98242f]' : 'rounded-full'}
+                className={assistantOpen ? 'rounded-full bg-[color:var(--sg-color-primary)] text-white hover:bg-[color:var(--sg-color-primary-strong)]' : 'rounded-full'}
               >
                 <MessageCircle className="h-4 w-4" />
                 {copy.assistant}
@@ -188,7 +194,6 @@ export default function TopBar({
                 <Settings className="h-5 w-5" />
               </Button>
             </div>
-          </div>
         </div>
       </div>
     </header>

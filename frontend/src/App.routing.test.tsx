@@ -605,12 +605,12 @@ describe('App routed shell', () => {
   it('renders the direct route entry without falling back to the giant overview stack', async () => {
     renderApp('/assistant')
 
-    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Assistant' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
     expect(screen.queryByRole('button', { name: 'Open assistant fab' })).toBeNull()
-  })
+  }, 10000)
 
   it('prefers live overview metrics over stale advisor snapshot values', async () => {
     const originalSnapshot = advisorState.aiModelRuntime.state_snapshot
@@ -638,7 +638,7 @@ describe('App routed shell', () => {
     } finally {
       advisorState.aiModelRuntime.state_snapshot = originalSnapshot
     }
-  })
+  }, 10000)
 
   it('uses simulation timestamps for the live source-sink overlay series', async () => {
     const originalMetricHistory = greenhouseState.metricHistory

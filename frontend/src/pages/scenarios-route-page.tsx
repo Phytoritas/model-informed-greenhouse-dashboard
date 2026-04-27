@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import PageHeader from '../components/common/PageHeader';
+import PageCanvas from '../components/layout/PageCanvas';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import ModelScenarioWorkbench from '../components/dashboard/ModelScenarioWorkbench';
 import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
@@ -60,7 +60,7 @@ export default function ScenariosRoutePage({
     ? {
         eyebrow: 'Scenarios',
         title: '시나리오 실험실',
-        description: '과정기반모델 What-if와 RTR 시나리오·편미분을 별도 탭에서 실제 백엔드 계산으로 실행합니다.',
+        description: '과정기반모델 What-if와 RTR 시나리오·편미분을 실제 백엔드 계산으로 실행합니다.',
         rtrLoading: 'RTR 시나리오 표면을 불러오는 중입니다...',
       }
     : {
@@ -94,8 +94,7 @@ export default function ScenariosRoutePage({
   }, [location.hash]);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6">
-      <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+    <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
       <section id="scenario-model" tabIndex={-1} className="scroll-mt-24 focus:outline-none">
         <ModelScenarioWorkbench crop={crop} />
       </section>
@@ -130,6 +129,6 @@ export default function ScenariosRoutePage({
           />
         </Suspense>
       </section>
-    </div>
+    </PageCanvas>
   );
 }

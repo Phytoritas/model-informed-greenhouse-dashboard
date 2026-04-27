@@ -14,14 +14,14 @@ export default function SettingsPage({
 }: SettingsPageProps) {
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'PhytoSync',
-        title: '설정',
-        description: '표시 기준과 현재 연결 상태를 정리합니다.',
+        eyebrow: 'Contact',
+        title: '연결 상태와 운영 설정',
+        description: '센서·날씨·시세 연결 상태, 작물별 가격/전력 단가, 운영 기본값을 확인합니다.',
       }
     : {
-        eyebrow: 'PhytoSync',
+        eyebrow: 'Contact',
         title: 'Settings',
-        description: 'Review shell defaults and the current runtime connection state.',
+        description: 'Review service connectivity, crop-specific price/cost assumptions, and operating defaults.',
       };
 
   return (

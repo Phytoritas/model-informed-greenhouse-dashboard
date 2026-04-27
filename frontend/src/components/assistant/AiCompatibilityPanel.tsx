@@ -88,9 +88,9 @@ export default function AiCompatibilityPanel({
   const cropKey = crop.toLowerCase();
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'AI Assistant 호환 연결',
-        title: 'AI 상담 · 채팅 endpoint',
-        description: '기존 /api/ai 상담 surface를 Assistant 안에 보존합니다. 기본 채팅은 /api/advisor/chat을 계속 사용합니다.',
+        eyebrow: 'AI 연결 상태',
+        title: '상담 엔진 점검',
+        description: '/api/ai/consult와 /api/ai/chat 응답 상태를 확인합니다. 실제 대화는 농가용 질문 도우미 흐름과 함께 유지됩니다.',
         consult: 'AI 상담 실행',
         chat: 'AI 채팅 확인',
         prompt: '현재 온실 상태와 오늘 가장 먼저 볼 의사결정을 간단히 요약해 주세요.',
@@ -101,9 +101,9 @@ export default function AiCompatibilityPanel({
         error: '실패',
       }
     : {
-        eyebrow: 'AI Assistant compatibility',
-        title: 'AI consult and chat endpoints',
-        description: 'Keeps the legacy /api/ai assistant surfaces visible while the main chat continues to use /api/advisor/chat.',
+        eyebrow: 'AI connection status',
+        title: 'Consult engine checks',
+        description: 'Check /api/ai/consult and /api/ai/chat while the farmer-facing assistant flow remains available.',
         consult: 'Run AI consult',
         chat: 'Check AI chat',
         prompt: 'Summarize the current greenhouse state and the first operating decision to review today.',

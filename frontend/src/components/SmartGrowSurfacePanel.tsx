@@ -47,9 +47,9 @@ function getSurfaceAccent(
             };
         default:
             return {
-                card: 'sg-tint-violet text-[color:var(--sg-text-strong)]',
-                badge: 'bg-white/90 text-[color:var(--sg-accent-violet)]',
-                button: 'bg-[color:var(--sg-accent-violet)] text-white',
+                card: 'sg-tint-rose text-[color:var(--sg-text-strong)]',
+                badge: 'bg-white/90 text-[color:var(--sg-accent-rose)]',
+                button: 'bg-[color:var(--sg-accent-rose)] text-white',
             };
     }
 }

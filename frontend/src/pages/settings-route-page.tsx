@@ -140,9 +140,9 @@ export default function SettingsRoutePage({
       locale={locale}
       shellCard={(
         <DashboardCard
-          eyebrow={locale === 'ko' ? '표시 기준' : 'Display'}
-          title={locale === 'ko' ? '기본 표시 설정' : 'Display defaults'}
-          description={locale === 'ko' ? '언어, 작물, 보조 패널 기준을 정리합니다.' : 'Review language, crop, and assistant defaults.'}
+          eyebrow={locale === 'ko' ? '운영 기본값' : 'Operating defaults'}
+          title={locale === 'ko' ? '작업 화면 기본 설정' : 'Workspace defaults'}
+          description={locale === 'ko' ? '언어, 작물, 질문 도우미 상태처럼 작업 시작 전에 확인할 기준입니다.' : 'Review language, crop, and assistant state before operating.'}
         >
           <div className="grid gap-3 text-sm text-[color:var(--sg-text-muted)]">
             <div>{locale === 'ko' ? '현재 언어' : 'Current locale'}: {locale === 'ko' ? '한국어' : 'English'}</div>
@@ -153,9 +153,9 @@ export default function SettingsRoutePage({
       )}
       laneCard={(
         <DashboardCard
-          eyebrow={locale === 'ko' ? '연결 상태' : 'Connections'}
-          title={locale === 'ko' ? '현재 연결 확인' : 'Current connections'}
-          description={locale === 'ko' ? '센서 상태와 주요 연동 상태를 한곳에서 봅니다.' : 'Review sensor freshness and key service connectivity.'}
+          eyebrow={locale === 'ko' ? 'Contact' : 'Contact'}
+          title={locale === 'ko' ? '현재 연결 및 비용 기준' : 'Connectivity and cost assumptions'}
+          description={locale === 'ko' ? '센서 상태와 날씨·시세 연동, 작물별 가격/전력 단가를 저장합니다.' : 'Review sensor freshness, weather/market links, and crop-specific price/cost values.'}
         >
           <div className="grid gap-3 text-sm text-[color:var(--sg-text-muted)]">
             <div>{locale === 'ko' ? '센서 상태' : 'Sensor status'}: {telemetrySummary}</div>

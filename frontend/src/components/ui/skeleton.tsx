@@ -4,7 +4,7 @@ import { cn } from '../../utils/cn';
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     return (
         <div
-            className={cn('animate-pulse rounded-[18px] bg-[linear-gradient(180deg,rgba(239,244,255,0.95),rgba(229,238,255,0.8))]', className)}
+            className={cn('animate-pulse rounded-[18px] bg-[linear-gradient(180deg,rgba(255,253,249,0.96),rgba(255,231,225,0.66))]', className)}
             {...props}
         />
     );

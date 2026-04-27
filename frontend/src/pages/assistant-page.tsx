@@ -14,14 +14,14 @@ export default function AssistantPage({
 }: AssistantPageProps) {
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'PhytoSync',
-        title: '질문 도우미',
-        description: '질문과 자료 찾기를 한곳에서 봅니다.',
+        eyebrow: 'Knowledge',
+        title: '질문 도우미와 자료 찾기',
+        description: '채팅 상담, 문서 목차형 검색, AI endpoint 상태를 같은 디자인 시스템 안에서 사용합니다.',
       }
     : {
-        eyebrow: 'PhytoSync',
+        eyebrow: 'Knowledge',
         title: 'Assistant',
-        description: 'Keep ask and search together.',
+        description: 'Use chat, table-of-contents search, and AI endpoint status inside the same design system.',
       };
 
   return (
