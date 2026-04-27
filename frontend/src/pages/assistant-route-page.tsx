@@ -41,6 +41,7 @@ interface AssistantRoutePageProps {
   smartGrowError?: string | null;
   onOpenSearch: (request?: Omit<RagAssistantOpenRequest, 'nonce'>) => void;
   onOpenSurface?: (surfaceKey: SmartGrowAdvisorySurfaceSummary['key']) => void;
+  onOpenAssistant: () => void;
 }
 
 export default function AssistantRoutePage({
@@ -64,10 +65,24 @@ export default function AssistantRoutePage({
   smartGrowError = null,
   onOpenSearch,
   onOpenSurface,
+  onOpenAssistant,
 }: AssistantRoutePageProps) {
   return (
     <AssistantPage
       locale={locale}
+      crop={crop}
+      cropLabel={cropLabel}
+      currentData={currentData}
+      metrics={metrics}
+      forecast={forecast}
+      history={history}
+      producePrices={producePrices}
+      weather={weather}
+      rtrProfile={rtrProfile}
+      summary={summary}
+      smartGrowLoading={smartGrowLoading}
+      smartGrowError={smartGrowError}
+      onOpenAssistant={onOpenAssistant}
       surface={(
         <div className="space-y-6">
           <PageSectionTabs

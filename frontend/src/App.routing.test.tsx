@@ -633,10 +633,10 @@ describe('App routed shell', () => {
   it('renders the direct route entry without falling back to the giant overview stack', async () => {
     renderApp('/assistant')
 
-    expect(await screen.findByRole('heading', { name: 'Assistant' }, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('aria-current')).toBe('page')
     expect(screen.queryByRole('button', { name: 'Open assistant fab' })).toBeNull()
   }, 10000)
 
@@ -727,18 +727,18 @@ describe('App routed shell', () => {
   })
 
   it('navigates between routed shell pages from the sidebar', async () => {
-    renderApp('/trend')
+    renderApp('/control')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
     })
-    expect(await screen.findByText('RTROptimizerPanel', {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Climate' }).getAttribute('aria-current')).toBe('page')
+    expect(await screen.findByText('ResourcesCommandCenter:resources-nutrient', {}, { timeout: 5000 })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
   }, 15000)
 
   it('keeps RTR state outside route-local control pages', async () => {
@@ -747,9 +747,9 @@ describe('App routed shell', () => {
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
     await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
@@ -764,9 +764,9 @@ describe('App routed shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Persist RTR draft' }))
     expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
     await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
@@ -865,15 +865,15 @@ describe('App routed shell', () => {
   })
 
   it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {
-    renderApp('/trend')
+    renderApp('/control')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
-    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
+    expect(screen.getByRole('button', { name: 'Climate' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('opens the assistant drawer from the floating button on non-assistant routes', async () => {
@@ -908,9 +908,9 @@ describe('App routed shell', () => {
     expect(await screen.findByText('ResourcesCommandCenter:resources-market')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Action:resources-market' }).getAttribute('aria-current')).toBe('step')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
     await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
@@ -922,10 +922,12 @@ describe('App routed shell', () => {
   it('keeps trend as a dedicated page separated from control', async () => {
     renderApp('/trend')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    expect(await screen.findByRole('heading', { name: 'Connect cucumber decisions to weather and prices' })).toBeTruthy()
+    expect(screen.queryByTestId('app-topbar')).toBeNull()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
     expect(await screen.findByText('WeatherOutlookPanel')).toBeTruthy()
     expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('keeps crop-work as a dedicated page instead of assembling it inline in App', async () => {
@@ -947,15 +949,14 @@ describe('App routed shell', () => {
   ])('keeps legacy assistant hash compatibility for %s', async (path, expectedPanel) => {
     renderApp(path)
 
-    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
     expect(await screen.findByText(expectedPanel)).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('aria-current')).toBe('page')
   })
 
   it.each([
     ['/control/legacy', 'Climate Solutions'],
-    ['/trend/legacy', 'Trend'],
     ['/rtr', 'RTR Optimizer'],
     ['/resources/legacy', 'Resources'],
     ['/alerts/legacy', 'Protection'],
@@ -963,6 +964,14 @@ describe('App routed shell', () => {
     renderApp(path)
 
     expect(screen.getByTestId('topbar-title').textContent).toBe(heading)
+  })
+
+  it('redirects the legacy trend path to the standalone insights page', async () => {
+    renderApp('/trend/legacy')
+
+    expect(await screen.findByRole('heading', { name: 'Connect cucumber decisions to weather and prices' })).toBeTruthy()
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
+    expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('keeps RTR hash tabs as active in-page route sections', async () => {
@@ -1067,7 +1076,7 @@ describe('App routed shell', () => {
   it('keeps nutrient correction tool intent when assistant opens the nutrient surface', async () => {
     renderApp('/assistant')
 
-    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open nutrient correction' }))
 
@@ -1081,7 +1090,7 @@ describe('App routed shell', () => {
   it('keeps assistant flows inline inside the assistant route', async () => {
     renderApp('/assistant')
 
-    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-chat')
 
@@ -1093,21 +1102,21 @@ describe('App routed shell', () => {
   it('keeps assistant search inline even from the hidden assistant route', async () => {
     renderApp('/assistant')
 
-    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Find materials inline' }))
 
     expect(await screen.findByText('AskSearchPage:assistant-search')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Assistant' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
     expect(screen.queryByText('AssistantDrawer:assistant-search')).toBeNull()
   })
 
-  it('keeps the assistant route inline when the topbar toggle is pressed on /assistant', async () => {
+  it('keeps the assistant route inline when the landing assistant action is pressed on /assistant', async () => {
     renderApp('/assistant')
 
-    expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ask Assistant' }))
 
     expect(await screen.findByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-chat')
@@ -1117,14 +1126,14 @@ describe('App routed shell', () => {
   it('closes the assistant drawer before navigating to settings', async () => {
     renderApp('/trend')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    expect(await screen.findByRole('heading', { name: 'Connect cucumber decisions to weather and prices' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ask Assistant' }))
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
+    fireEvent.click(screen.getByRole('link', { name: 'CONTACT' }))
 
-    expect(await screen.findByRole('heading', { name: 'Connectivity and support' })).toBeTruthy()
-    expect(screen.queryByText('AssistantDrawer:assistant-chat')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'Collect links and operating basis before support' })).toBeTruthy()
+    await waitFor(() => expect(screen.queryByText('AssistantDrawer:assistant-chat')).toBeNull())
   })
 })

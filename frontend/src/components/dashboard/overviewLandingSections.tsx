@@ -151,6 +151,9 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
     if (!hash) {
       return !location.hash || location.hash === '#overview-core';
     }
+    if (pathname !== '/overview' && location.pathname === pathname) {
+      return true;
+    }
     return location.hash === `#${hash}`;
   };
 

@@ -5,8 +5,9 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { StatusChip } from '../components/ui/status-chip';
 import { API_URL } from '../config';
+import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
-import type { CropType } from '../types';
+import type { CropType, ProducePricesPayload, WeatherOutlook } from '../types';
 import SettingsPage from './settings-page';
 
 interface SettingsRoutePageProps {
@@ -17,6 +18,10 @@ interface SettingsRoutePageProps {
   telemetrySummary: string;
   weatherConnected: boolean;
   marketConnected: boolean;
+  weather: WeatherOutlook | null;
+  producePrices: ProducePricesPayload | null;
+  knowledgeSummary: SmartGrowKnowledgeSummary | null;
+  onOpenAssistant: () => void;
 }
 
 type SettingsPayload = {
@@ -39,6 +44,10 @@ export default function SettingsRoutePage({
   telemetrySummary,
   weatherConnected,
   marketConnected,
+  weather,
+  producePrices,
+  knowledgeSummary,
+  onOpenAssistant,
 }: SettingsRoutePageProps) {
   const [pricePerKg, setPricePerKg] = useState('3000');
   const [costPerKwh, setCostPerKwh] = useState('120');
@@ -140,6 +149,20 @@ export default function SettingsRoutePage({
   return (
     <SettingsPage
       locale={locale}
+      crop={crop}
+      selectedCropLabel={selectedCropLabel}
+      assistantOpen={assistantOpen}
+      telemetrySummary={telemetrySummary}
+      weatherConnected={weatherConnected}
+      marketConnected={marketConnected}
+      pricePerKg={pricePerKg}
+      costPerKwh={costPerKwh}
+      loadState={loadState}
+      saveState={saveState}
+      weather={weather}
+      producePrices={producePrices}
+      knowledgeSummary={knowledgeSummary}
+      onOpenAssistant={onOpenAssistant}
       shellCard={(
         <DashboardCard
           eyebrow={locale === 'ko' ? '운영 프로필' : 'Operating profile'}

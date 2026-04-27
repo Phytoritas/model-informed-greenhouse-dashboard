@@ -11,6 +11,7 @@ import type {
   SensorData,
   WeatherOutlook,
 } from '../types';
+import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import TrendPage from './trend-page';
 
 interface TrendRoutePageProps {
@@ -26,6 +27,10 @@ interface TrendRoutePageProps {
   produceLoading: boolean;
   produceError: string | null;
   overviewSignals: OverviewSignalsPayload | null;
+  knowledgeSummary: SmartGrowKnowledgeSummary | null;
+  knowledgeLoading: boolean;
+  knowledgeError: string | null;
+  onOpenAssistant: () => void;
 }
 
 export default function TrendRoutePage({
@@ -41,10 +46,29 @@ export default function TrendRoutePage({
   produceLoading,
   produceError,
   overviewSignals,
+  knowledgeSummary,
+  knowledgeLoading,
+  knowledgeError,
+  onOpenAssistant,
 }: TrendRoutePageProps) {
   return (
     <TrendPage
       locale={locale}
+      crop={crop}
+      currentData={currentData}
+      modelMetrics={modelMetrics}
+      history={history}
+      weather={weather}
+      weatherLoading={weatherLoading}
+      weatherError={weatherError}
+      producePrices={producePrices}
+      produceLoading={produceLoading}
+      produceError={produceError}
+      overviewSignals={overviewSignals}
+      knowledgeSummary={knowledgeSummary}
+      knowledgeLoading={knowledgeLoading}
+      knowledgeError={knowledgeError}
+      onOpenAssistant={onOpenAssistant}
       weatherSurface={(
         <div className="grid gap-5">
           <WeatherTrendPanel
@@ -80,8 +104,6 @@ export default function TrendRoutePage({
           overviewSignals={overviewSignals}
         />
       )}
-      weatherUnavailable={Boolean(weatherError)}
-      marketUnavailable={Boolean(produceError)}
     />
   );
 }

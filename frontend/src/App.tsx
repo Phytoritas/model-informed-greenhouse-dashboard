@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   Thermometer,
@@ -846,6 +847,21 @@ function App() {
     navigate('/settings');
   }, [navigate, setAssistantDrawerOpen]);
 
+  const handleStandaloneProductClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const link = target.closest('a[href]');
+    if (!link) {
+      return;
+    }
+    const href = link.getAttribute('href') ?? '';
+    if (href.startsWith('/') || href.startsWith('#')) {
+      setAssistantDrawerOpen(false);
+    }
+  }, [setAssistantDrawerOpen]);
+
   const handleOpenAlerts = useCallback(() => {
     setAssistantDrawerOpen(false);
     navigate({ pathname: '/alerts', hash: '#alerts-protection' });
@@ -1418,6 +1434,10 @@ function App() {
       produceLoading={isProducePricesLoading}
       produceError={producePricesError}
       overviewSignals={overviewSignals}
+      knowledgeSummary={smartGrowSummary}
+      knowledgeLoading={isSmartGrowLoading}
+      knowledgeError={smartGrowError}
+      onOpenAssistant={handleChatToggle}
     />
   );
 
@@ -1458,11 +1478,18 @@ function App() {
       crop={selectedCrop}
       currentData={currentData}
       history={deferredHistory}
+      modelMetrics={deferredModelMetrics}
       telemetryStatus={telemetry.status}
       temperatureSettings={controls.settings}
       weather={weather}
       weatherLoading={isWeatherLoading}
       weatherError={weatherError}
+      producePrices={producePrices}
+      produceLoading={isProducePricesLoading}
+      produceError={producePricesError}
+      knowledgeSummary={smartGrowSummary}
+      knowledgeLoading={isSmartGrowLoading}
+      knowledgeError={smartGrowError}
       profile={selectedRtrProfile}
       profileLoading={isRtrProfileLoading}
       profileError={rtrProfileError}
@@ -1474,6 +1501,7 @@ function App() {
       tabs={activeSection.tabs}
       activeTabId={activePanelId}
       onSelectTab={handleSectionTabSelect}
+      onOpenAssistant={handleChatToggle}
     />
   );
 
@@ -1499,6 +1527,7 @@ function App() {
       smartGrowError={smartGrowError}
       onOpenSearch={handleOpenRagAssistant}
       onOpenSurface={handleOpenSmartGrowSurface}
+      onOpenAssistant={handleChatToggle}
     />
   );
 
@@ -1511,6 +1540,10 @@ function App() {
       telemetrySummary={kpiStatusSummary}
       weatherConnected={Boolean(weather)}
       marketConnected={Boolean(producePrices)}
+      weather={weather}
+      producePrices={producePrices}
+      knowledgeSummary={smartGrowSummary}
+      onOpenAssistant={handleChatToggle}
     />
   );
 
@@ -1567,16 +1600,26 @@ function App() {
     </Suspense>
   );
 
+  const standaloneProductPaths = ['/overview', '/trend', '/scenarios', '/assistant', '/settings'];
   const shouldRenderStandaloneOverview = location.pathname === '/'
-    || location.pathname === '/overview'
-    || location.pathname.startsWith('/overview/');
+    || standaloneProductPaths.some((pathname) => location.pathname === pathname || location.pathname.startsWith(`${pathname}/`));
 
   if (shouldRenderStandaloneOverview) {
     return (
-      <div className="min-h-screen bg-[color:var(--sg-bg)] px-4 py-4 font-sans text-[color:var(--sg-text)] sm:px-6 lg:px-8">
+      <div
+        className="min-h-screen bg-[color:var(--sg-bg)] px-4 py-4 font-sans text-[color:var(--sg-text)] sm:px-6 lg:px-8"
+        onClickCapture={handleStandaloneProductClick}
+      >
         <Routes>
           <Route path="/" element={<Navigate to="/overview" replace />} />
           <Route path="/overview" element={overviewRouteElement} />
+          <Route path="/trend" element={<Suspense fallback={<RouteLoadingFallback />}>{trendPage}</Suspense>} />
+          <Route path="/trend/legacy" element={<Navigate to="/trend" replace />} />
+          <Route path="/scenarios" element={<Suspense fallback={<RouteLoadingFallback />}>{scenariosPage}</Suspense>} />
+          <Route path="/assistant" element={<Suspense fallback={<RouteLoadingFallback />}>{assistantPage}</Suspense>} />
+          <Route path="/ask" element={<Navigate to="/assistant#assistant-chat" replace />} />
+          <Route path="/ask/:panelId" element={<Navigate to="/assistant#assistant-chat" replace />} />
+          <Route path="/settings" element={<Suspense fallback={<RouteLoadingFallback />}>{settingsPage}</Suspense>} />
           <Route path="*" element={<Navigate to="/overview" replace />} />
         </Routes>
         <AssistantDrawer
@@ -1602,7 +1645,9 @@ function App() {
           onSelectPanel={(panelId) => setAssistantDrawerPanel(panelId as AssistantPanelId)}
           onOpenSearch={handleOpenRagAssistant}
         />
-        <AssistantFab onClick={handleChatToggle} />
+        {!location.pathname.startsWith('/assistant') ? (
+          <AssistantFab onClick={handleChatToggle} />
+        ) : null}
       </div>
     );
   }
