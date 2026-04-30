@@ -42,8 +42,6 @@
   --sg-text-faint: #7e8a93;
   --sg-text-subtle: #95857a;
 
-  --sg-accent-violet: var(--sg-color-primary);
-  --sg-accent-violet-soft: var(--sg-color-primary-soft);
   --sg-accent-forest: var(--sg-color-success);
   --sg-accent-forest-soft: var(--sg-color-sage-soft);
   --sg-accent-blue: var(--sg-color-olive);
@@ -61,9 +59,9 @@
 
   --sg-radius-xs: 6px;
   --sg-radius-sm: 8px;
-  --sg-radius-md: 10px;
-  --sg-radius-lg: 12px;
-  --sg-radius-xl: 14px;
+  --sg-radius-md: 14px;
+  --sg-radius-lg: 18px;
+  --sg-radius-xl: 22px;
   --sg-space-section: clamp(0.7rem, 1.35vw, 1.05rem);
   --sg-space-panel: clamp(0.7rem, 1.1vw, 0.9rem);
 

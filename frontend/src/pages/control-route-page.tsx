@@ -1,8 +1,11 @@
 import { Suspense, lazy } from 'react';
 import type { AppLocale } from '../i18n/locale';
 import type {
+  AdvancedModelMetrics,
   ControlStatus,
   CropType,
+  ForecastData,
+  ProducePricesPayload,
   RtrOptimizationMode,
   RtrProfile,
   SensorData,
@@ -11,10 +14,12 @@ import type {
   WeatherOutlook,
 } from '../types';
 import type { AlertRailItem } from '../components/dashboard/AlertRail';
-import AlertRail from '../components/dashboard/AlertRail';
 import SimulationRuntimePanel from '../components/dashboard/SimulationRuntimePanel';
+import type { PageCanvasTab } from '../components/layout/PageCanvas';
 import ControlPanel from '../components/ControlPanel';
+import AdvisorTabs from '../components/advisor/AdvisorTabs';
 import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
+import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import ControlPage, { type ControlPagePanelId } from './control-page';
 
@@ -29,10 +34,14 @@ interface ControlRoutePageProps {
   controls: ControlStatus;
   onToggle: (key: keyof ControlStatus) => void;
   onSettingsChange: (settings: TemperatureSettings) => void;
+  summary?: SmartGrowKnowledgeSummary | null;
   alertItems: AlertRailItem[];
   fallbackAlertBody: string;
   history: SensorData[];
   currentData: SensorData;
+  modelMetrics: AdvancedModelMetrics;
+  forecast?: ForecastData | null;
+  producePrices?: ProducePricesPayload | null;
   weather: WeatherOutlook | null;
   weatherLoading: boolean;
   weatherError: string | null;
@@ -45,6 +54,11 @@ interface ControlRoutePageProps {
   onRefreshProfiles?: () => void | Promise<void>;
   optimizerState?: RTROptimizerStateLike;
   uiState?: RTROptimizerUiStateLike;
+  tabs?: PageCanvasTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
+  onCropChange?: (crop: CropType) => void;
+  onOpenAssistant?: () => void;
 }
 
 export default function ControlRoutePage({
@@ -56,10 +70,12 @@ export default function ControlRoutePage({
   controls,
   onToggle,
   onSettingsChange,
-  alertItems,
-  fallbackAlertBody,
+  summary = null,
   history,
   currentData,
+  modelMetrics,
+  forecast = null,
+  producePrices = null,
   weather,
   weatherLoading,
   weatherError,
@@ -72,26 +88,35 @@ export default function ControlRoutePage({
   onRefreshProfiles,
   optimizerState,
   uiState,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
+  onCropChange,
+  onOpenAssistant = () => undefined,
 }: ControlRoutePageProps) {
-  const fallbackAlerts = alertItems.length
-    ? alertItems
-    : [{
-        id: 'control-ready',
-        severity: 'resolved' as const,
-        title: locale === 'ko' ? '제어 차단 항목 없음' : 'No urgent warning',
-        body: fallbackAlertBody,
-      }];
-
   return (
     <ControlPage
       locale={locale}
+      crop={crop}
       activePanel={activePanel}
+      currentData={currentData}
+      modelMetrics={modelMetrics}
+      history={history}
+      telemetryStatus={telemetryStatus}
+      temperatureSettings={temperatureSettings}
+      profile={profile}
+      controls={controls}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
+      onCropChange={onCropChange}
+      onOpenAssistant={onOpenAssistant}
       strategySurface={(
         <Suspense
           fallback={(
             <LoadingSkeleton
-              title={locale === 'ko' ? '추천 제어안' : 'Recommended control'}
-              loadingMessage={locale === 'ko' ? '추천 제어안을 불러오는 중입니다...' : 'Loading recommended control...'}
+              title={locale === 'ko' ? '환경 솔루션' : 'Climate solutions'}
+              loadingMessage={locale === 'ko' ? '환경 솔루션을 불러오는 중입니다...' : 'Loading climate solutions...'}
               minHeightClassName="min-h-[304px]"
             />
           )}
@@ -124,7 +149,24 @@ export default function ControlRoutePage({
           onSettingsChange={onSettingsChange}
         />
       )}
-      controlActions={<AlertRail items={fallbackAlerts} compact />}
+      environmentAdvisorSurface={(
+        <AdvisorTabs
+          key={`${crop}-environment`}
+          crop={crop}
+          summary={summary}
+          currentData={currentData}
+          metrics={modelMetrics}
+          history={history}
+          forecast={forecast}
+          producePrices={producePrices}
+          weather={weather}
+          rtrProfile={profile}
+          isOpen
+          initialTab="environment"
+          onClose={() => undefined}
+          showCloseAction={false}
+        />
+      )}
       runtimeSurface={(
         <SimulationRuntimePanel
           locale={locale}

@@ -26,6 +26,11 @@ import type {
     ProducePricesPayload,
 } from '../types';
 import { getProduceDisplayName } from '../utils/displayCopy';
+import {
+    filterFeaturedPriceEntries,
+    filterFeaturedPriceTrendSeries,
+    filterFeaturedUnavailablePriceTrendSeries,
+} from '../utils/producePriceSelectors';
 import ChartFrame from './charts/ChartFrame';
 import DashboardCard from './common/DashboardCard';
 
@@ -105,7 +110,7 @@ const getDirectionMeta = (locale: AppLocale): Record<
     down: {
         label: locale === 'ko' ? '하락' : 'Down',
         Icon: ArrowDownRight,
-        accentClassName: 'border-rose-100 bg-rose-50 text-rose-700',
+        accentClassName: 'border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary-strong)]',
     },
     flat: {
         label: locale === 'ko' ? '보합' : 'Flat',
@@ -145,20 +150,12 @@ const buildProduceSummary = (
     locale: AppLocale,
 ): string => {
     const marketLabel = localizeMarketLabel(market.market_label, locale);
-
-    if (market.market_key === prices.trend.market_key) {
-        if (locale === 'ko') {
-            return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} 기준 주요 시설원예 품목 ${market.items.length}종의 ${marketLabel} 평균가격입니다. 최근 ${prices.trend.history_days}일 실측과 향후 ${prices.trend.forecast_days}일 평년선(3년·5년·10년)을 함께 비교할 수 있습니다.`;
-        }
-
-        return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} snapshot of ${market.items.length} featured greenhouse produce items in the ${marketLabel.toLowerCase()} market. Compare trailing ${prices.trend.history_days} days of actual prices with forward 3-year, 5-year, and 10-year seasonal normals.`;
-    }
-
     if (locale === 'ko') {
-        return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} 기준 주요 시설원예 품목 ${market.items.length}종의 ${marketLabel} 평균가격입니다. 우측 카드는 ${marketLabel} 스냅샷을 표시하고, 좌측 차트는 KAMIS가 제공하는 ${localizeMarketLabel(prices.trend.market_key, locale)} 평균가격 기준 최근 ${prices.trend.history_days}일 실측과 향후 ${prices.trend.forecast_days}일 평년선을 유지합니다.`;
+        return `토마토·취청오이·백다다기오이 ${marketLabel} 시세 ${market.items.length}개와 최근 ${prices.trend.history_days}일 추세를 함께 봅니다.`;
     }
 
-    return `KAMIS ${formatSurveyDay(locale, prices.source.latest_day)} snapshot of ${market.items.length} featured greenhouse produce items in the ${marketLabel.toLowerCase()} market. Cards show the live ${marketLabel.toLowerCase()} survey, while the chart keeps the ${localizeMarketLabel(prices.trend.market_key, locale).toLowerCase()} average-price history and forward seasonal normals from KAMIS.`;
+    return `Tomato, Chuicheong cucumber, and Baekdadagi cucumber only. ${market.items.length} ${marketLabel.toLowerCase()} items with the trailing ${prices.trend.history_days}-day trend.`;
+
 };
 
 const getSourceHealthCopy = (
@@ -170,7 +167,7 @@ const getSourceHealthCopy = (
         return {
             label: locale === 'ko' ? '대체 스냅샷' : 'Fallback snapshot',
             detail: locale === 'ko'
-                ? `KAMIS 실시간 요청이 저하되어 캐시/샘플 스냅샷을 표시합니다: ${reason}`
+                ? `실시간 시세 요청이 지연되어 캐시/샘플 스냅샷을 표시합니다: ${reason}`
                 : `Live KAMIS request degraded, so cached or sample prices are shown: ${reason}`,
             degraded: true,
         };
@@ -180,8 +177,8 @@ const getSourceHealthCopy = (
         return {
             label: locale === 'ko' ? '샘플 데이터' : 'Sample data',
             detail: locale === 'ko'
-                ? 'KAMIS 인증 정보가 없어 샘플 가격 스냅샷을 표시합니다.'
-                : 'KAMIS credentials are not configured, so sample prices are shown.',
+                ? '실시간 시세 연결 정보가 없어 샘플 가격 스냅샷을 표시합니다.'
+                : 'Live market access is not ready, so sample prices are shown.',
             degraded: false,
         };
     }
@@ -189,7 +186,7 @@ const getSourceHealthCopy = (
     return {
         label: locale === 'ko' ? '실시간 연결' : 'Live connection',
         detail: locale === 'ko'
-            ? 'KAMIS 인증 연결로 최신 가격 스냅샷을 표시합니다.'
+            ? '실시간 시세 연결로 최신 가격 스냅샷을 표시합니다.'
             : 'Latest price snapshot is served from the configured KAMIS connection.',
         degraded: false,
     };
@@ -302,14 +299,14 @@ const TrendChart = ({
     locale: AppLocale;
 }) => {
     const [selectedKey, setSelectedKey] = useState<string | null>(null);
-    const availableSeries = prices.trend.series;
-    const unavailableSeries = prices.trend.unavailable_series;
+    const availableSeries = filterFeaturedPriceTrendSeries(prices.trend.series);
+    const unavailableSeries = filterFeaturedUnavailablePriceTrendSeries(prices.trend.unavailable_series);
     const trendMarketLabel = localizeMarketLabel(prices.trend.market_key, locale);
     const copy = locale === 'ko'
         ? {
-            unavailable: '현재 주요 품목 목록에 대한 KAMIS 추세선 데이터를 불러올 수 없습니다.',
-            title: '최근 2주 실측 vs 평년 추세선',
-            description: `상단 카드는 최신 KAMIS 조사 스냅샷이고, 차트는 최근 ${prices.trend.history_days}일 ${trendMarketLabel} 평균가격 실측과 향후 ${prices.trend.forecast_days}일 평년선(3년·5년·10년)을 겹쳐 보여줍니다.`,
+            unavailable: '현재 주요 품목 목록에 대한 시세 추세선 데이터를 불러올 수 없습니다.',
+            title: '최근 2주 실측과 평년 추세선 비교',
+            description: `${trendMarketLabel} 최근 ${prices.trend.history_days}일 실측과 향후 ${prices.trend.forecast_days}일 평년선을 비교합니다.`,
             reference: '기준일',
             noData: '데이터 없음',
             actual: '실측 평균',
@@ -327,7 +324,7 @@ const TrendChart = ({
         : {
             unavailable: 'KAMIS trend overlay is unavailable for the current featured produce list.',
             title: '2-week trend vs seasonal normals',
-            description: `Cards above use the latest KAMIS item snapshot. The chart history line uses KAMIS ${trendMarketLabel.toLowerCase()} average prices for the trailing ${prices.trend.history_days} days, while forward lines use matching calendar dates averaged across the prior 3, 5, and 10 years.`,
+            description: `${trendMarketLabel} actual prices for ${prices.trend.history_days} days with forward seasonal normals.`,
             reference: 'Reference',
             noData: 'No data',
             actual: 'Actual avg',
@@ -499,7 +496,9 @@ const TrendChart = ({
                 <div className="rounded-[18px] bg-white/88 px-3 py-3 shadow-[var(--sg-shadow-card)]">
                     <div className="font-medium text-[color:var(--sg-text-strong)]">{copy.futureCoverage}</div>
                     <div className="mt-1">
-                        3y {coverageRangeLabel(selectedSeries.points, 'normal_3y_sample_count', 3)} / 5y {coverageRangeLabel(selectedSeries.points, 'normal_5y_sample_count', 5)} / 10y {coverageRangeLabel(selectedSeries.points, 'normal_10y_sample_count', 10)}
+                        {locale === 'ko'
+                            ? `3년 ${coverageRangeLabel(selectedSeries.points, 'normal_3y_sample_count', 3)} / 5년 ${coverageRangeLabel(selectedSeries.points, 'normal_5y_sample_count', 5)} / 10년 ${coverageRangeLabel(selectedSeries.points, 'normal_10y_sample_count', 10)}`
+                            : `3y ${coverageRangeLabel(selectedSeries.points, 'normal_3y_sample_count', 3)} / 5y ${coverageRangeLabel(selectedSeries.points, 'normal_5y_sample_count', 5)} / 10y ${coverageRangeLabel(selectedSeries.points, 'normal_10y_sample_count', 10)}`}
                     </div>
                 </div>
             </div>
@@ -518,15 +517,15 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
     const [selectedMarket, setSelectedMarket] = useState<ProduceMarketKey>('wholesale');
     const copy = locale === 'ko'
         ? {
-            title: '실시간 농산물 가격',
-            subtitle: '소매·도매 스냅샷과 2주 추세선',
+            title: '오이·토마토 시세 판단',
+            subtitle: '소매·도매 스냅샷과 2주 시세 추세선을 재배 의사결정용으로 비교합니다.',
             loading: '실시간 농산물 가격을 불러오는 중...',
             unavailable: '농산물 가격 패널을 불러올 수 없습니다',
             retail: '소매',
             wholesale: '도매',
             noItems: '현재 선택한 시장에 표시할 주요 품목이 없습니다.',
             trendNoteTitle: '추세선 기준',
-            trendNote: 'KAMIS 추세선은 도매 평균가격을 우선 사용하며, 도매 이력이 없으면 소매 평균가격으로 자동 전환됩니다.',
+            trendNote: '시세 추세선은 도매 평균가격을 우선 사용하며, 도매 이력이 없으면 소매 평균가격으로 자동 전환됩니다.',
             surveyBasis: '조사 기준',
             featuredCount: '주요 품목 수',
             trendBasis: '차트 기준',
@@ -534,12 +533,12 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             leadItem: '대표 품목',
             livePulse: '시장 펄스',
             currentSelection: '현재 선택',
-            sourceLabel: '데이터 소스',
-            sourceStatus: '소스 상태',
+            sourceLabel: '조사 기준',
+            sourceStatus: '조사 상태',
         }
         : {
-            title: 'Live Produce Prices',
-            subtitle: 'Retail + wholesale snapshots with 2-week KAMIS trend overlays',
+            title: 'Cucumber and tomato market signals',
+            subtitle: 'Compare retail/wholesale snapshots and 2-week KAMIS trends for operating decisions.',
             loading: 'Loading live produce prices...',
             unavailable: 'Produce price panel is unavailable',
             retail: 'Retail',
@@ -554,32 +553,51 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             leadItem: 'Lead item',
             livePulse: 'Market pulse',
             currentSelection: 'Current selection',
-            sourceLabel: 'Data source',
-            sourceStatus: 'Source status',
+            sourceLabel: 'Survey basis',
+            sourceStatus: 'Survey state',
         };
 
-    const activeMarketKey: ProduceMarketKey | null = prices
-        ? prices.markets[selectedMarket].items.length > 0
+    const filteredMarkets = prices
+        ? {
+            retail: {
+                ...prices.markets.retail,
+                items: filterFeaturedPriceEntries(prices.markets.retail.items),
+            },
+            wholesale: {
+                ...prices.markets.wholesale,
+                items: filterFeaturedPriceEntries(prices.markets.wholesale.items),
+            },
+        }
+        : null;
+    const visiblePrices = prices && filteredMarkets
+        ? {
+            ...prices,
+            items: filterFeaturedPriceEntries(prices.items ?? []),
+            markets: filteredMarkets,
+        }
+        : null;
+    const activeMarketKey: ProduceMarketKey | null = visiblePrices
+        ? visiblePrices.markets[selectedMarket].items.length > 0
             ? selectedMarket
-            : prices.markets.retail.items.length > 0
+            : visiblePrices.markets.retail.items.length > 0
                 ? 'retail'
-                : prices.markets.wholesale.items.length > 0
+                : visiblePrices.markets.wholesale.items.length > 0
                     ? 'wholesale'
                     : selectedMarket
         : null;
-    const activeMarket = prices && activeMarketKey ? prices.markets[activeMarketKey] : null;
+    const activeMarket = visiblePrices && activeMarketKey ? visiblePrices.markets[activeMarketKey] : null;
     const leadMarketItem = activeMarket?.items?.[0] ?? null;
-    const sourceHealth = prices ? getSourceHealthCopy(prices, locale) : null;
+    const sourceHealth = visiblePrices ? getSourceHealthCopy(visiblePrices, locale) : null;
 
     return (
         <DashboardCard
-            eyebrow="KAMIS"
+            eyebrow={locale === 'ko' ? '농산물 시세' : 'KAMIS'}
             title={copy.title}
             description={copy.subtitle}
             className="sg-tint-amber"
             actions={(
                 <div className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-amber)] shadow-[var(--sg-shadow-card)]">
-                    {sourceHealth?.label ?? 'KAMIS'}
+                    {sourceHealth?.label ?? (locale === 'ko' ? '농산물 시세' : 'KAMIS')}
                 </div>
             )}
         >
@@ -589,11 +607,11 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                 <div className="rounded-[26px] bg-[color:var(--sg-tint-amber)] p-5 text-sm text-[color:var(--sg-accent-amber)]">
                     {copy.unavailable}: {error}
                 </div>
-            ) : prices && activeMarket ? (
+            ) : visiblePrices && activeMarket ? (
                 <div className="flex h-full flex-col space-y-4">
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.22fr)_minmax(0,0.78fr)]">
                         <article
-                            className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(225,245,203,0.96),rgba(255,255,255,0.9))] px-6 py-6"
+                            className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(232,241,227,0.96),rgba(255,241,233,0.9))] px-6 py-6"
                             style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                         >
                             <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/22 blur-3xl" />
@@ -612,7 +630,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                                 {localizeMarketLabel(activeMarket.market_label, locale)}
                                             </div>
                                             <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
-                                                {buildProduceSummary(prices, activeMarket, locale)}
+                                                {buildProduceSummary(visiblePrices, activeMarket, locale)}
                                             </p>
                                         </div>
                                     </div>
@@ -642,11 +660,11 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                     <MarketMetaTile
                                         label={copy.currentSelection}
                                         value={localizeMarketLabel(activeMarket.market_label, locale)}
-                                        detail={`${copy.sourceLabel} · ${prices.source.provider}`}
+                                        detail={visiblePrices.source.provider}
                                     />
                                     <MarketMetaTile
                                         label={copy.surveyBasis}
-                                        value={formatSurveyDay(locale, prices.source.latest_day)}
+                                        value={formatSurveyDay(locale, visiblePrices.source.latest_day)}
                                         detail={copy.leadItem}
                                     />
                                     <MarketMetaTile
@@ -656,8 +674,8 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                     />
                                     <MarketMetaTile
                                         label={copy.sourceStatus}
-                                        value={sourceHealth?.label ?? prices.source.provider}
-                                        detail={sourceHealth?.detail ?? prices.source.provider}
+                                        value={sourceHealth?.label ?? visiblePrices.source.provider}
+                                        detail={sourceHealth?.degraded ? sourceHealth.detail : visiblePrices.source.provider}
                                     />
                                 </div>
                                 {sourceHealth?.degraded ? (
@@ -671,7 +689,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                         <div className="grid gap-4">
                             <MarketMetaTile
                                 label={copy.trendBasis}
-                                value={localizeMarketLabel(prices.trend.market_key, locale)}
+                                value={localizeMarketLabel(visiblePrices.trend.market_key, locale)}
                                 detail={copy.trendNote}
                             />
                             {leadMarketItem ? (
@@ -686,13 +704,13 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
 
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(250px,0.95fr)] lg:items-start">
                         <div className="space-y-3">
-                            {activeMarketKey !== prices.trend.market_key ? (
-                                <div className="rounded-[22px] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-[11px] text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
+                            {activeMarketKey !== visiblePrices.trend.market_key ? (
+                                <div className="rounded-[22px] bg-[color:var(--sg-color-olive-soft)] px-4 py-3 text-[11px] text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)]">
                                     <div className="font-semibold">{copy.trendNoteTitle}</div>
                                     <div className="mt-1 leading-relaxed">{copy.trendNote}</div>
                                 </div>
                             ) : null}
-                            <TrendChart prices={prices} locale={locale} />
+                            <TrendChart prices={visiblePrices} locale={locale} />
                         </div>
 
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">

@@ -8,10 +8,12 @@ import re
 from typing import Any, Dict, List, Optional
 
 try:
-    from openai import AuthenticationError, OpenAI
+    from openai import APIStatusError, AuthenticationError, OpenAI, RateLimitError
 except ImportError:  # pragma: no cover - exercised only when optional dependency is absent
+    APIStatusError = None
     AuthenticationError = None
     OpenAI = None
+    RateLimitError = None
 
 
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
@@ -108,6 +110,59 @@ def _client() -> OpenAI:
         return OpenAI()
 
 
+def _extract_openai_error(exc: Exception) -> dict[str, Any]:
+    body = getattr(exc, "body", None)
+    error_body = body.get("error", body) if isinstance(body, dict) else {}
+    status_code = getattr(exc, "status_code", None)
+    response = getattr(exc, "response", None)
+    if status_code is None and response is not None:
+        status_code = getattr(response, "status_code", None)
+    code = getattr(exc, "code", None) or error_body.get("code")
+    error_type = getattr(exc, "type", None) or error_body.get("type")
+    message = str(error_body.get("message") or getattr(exc, "message", None) or exc)
+    normalized = f"{code} {error_type} {message}".casefold()
+    return {
+        "status_code": status_code,
+        "code": code,
+        "type": error_type,
+        "message": message,
+        "normalized": normalized,
+    }
+
+
+def _is_instance(exc: Exception, klass: Any) -> bool:
+    return klass is not None and isinstance(exc, klass)
+
+
+def _translate_openai_exception(exc: Exception) -> RuntimeError | None:
+    details = _extract_openai_error(exc)
+    status_code = details["status_code"]
+    normalized = str(details["normalized"])
+
+    if _is_instance(exc, AuthenticationError):
+        return RuntimeError(
+            "Invalid OpenAI API key. Recreate OPENAI_API_KEY from the OpenAI Platform and update the repo-root .env or backend environment."
+        )
+    if (
+        status_code == 429
+        or _is_instance(exc, RateLimitError)
+        or "insufficient_quota" in normalized
+        or "exceeded your current quota" in normalized
+    ):
+        if "insufficient_quota" in normalized or "quota" in normalized:
+            return RuntimeError(
+                "OpenAI quota is exhausted. Check the OpenAI project billing, usage limits, or API key."
+            )
+        return RuntimeError(
+            "OpenAI rate limit was reached. Try again after the rate-limit window resets."
+        )
+    if _is_instance(exc, APIStatusError):
+        return RuntimeError(
+            f"OpenAI API request failed with status {status_code or 'unknown'}."
+        )
+    return None
+
+
 def _generate_text(*, instructions: str, input_data: Any, model: str) -> str:
     try:
         response = _client().responses.create(
@@ -115,10 +170,11 @@ def _generate_text(*, instructions: str, input_data: Any, model: str) -> str:
             instructions=instructions,
             input=input_data,
         )
-    except AuthenticationError as exc:
-        raise RuntimeError(
-            "Invalid OpenAI API key. Recreate OPENAI_API_KEY from the OpenAI Platform and update the repo-root .env or backend environment."
-        ) from exc
+    except Exception as exc:
+        translated = _translate_openai_exception(exc)
+        if translated is not None:
+            raise translated from exc
+        raise
 
     text = getattr(response, "output_text", None)
     if text:
@@ -435,11 +491,12 @@ def generate_consulting(
         "- knowledge.* for crop-scoped local corpus availability and workbook/manual scope\n\n"
         "Structured runtime recommendation contract when present:\n"
         "- model_runtime.answer_focus / recommendation_families / best_actions / control_precision_matrix / operator_view / tradeoff_summary\n"
-        "- If model_runtime.answer_focus is present, start from those exact calculated effects before giving general advice.\n"
+        "- If model_runtime.runtime_mode is current_state, answer the crop/growth status first from state_snapshot and growth_diagnosis. Do not lead with a control-change recommendation.\n"
+        "- If model_runtime.answer_focus is present and matched_user_request is true, start from those exact calculated effects before giving general advice.\n"
         "- For what-if questions, explain why the requested delta changes yield, canopy assimilation, source/sink balance, energy, and risk. Do not merely repeat that it is recommended.\n"
         "- Use only the provided numbers. Do not invent missing values.\n"
         "- Explain the strongest option, a stronger step, and a conservative step when the precision matrix supports it.\n"
-        "- Do not expose internal terms like partial derivative, elasticity, or trust region in the visible answer.\n\n"
+        "- Do not expose internal terms like partial derivative, elasticity, trust region, runtime payload, JSON path, or bounded scenario in the visible answer.\n\n"
         f"{knowledge_block}"
         "Priority rules:\n"
         f"{priority_heading_rule}"
@@ -500,11 +557,15 @@ def generate_chat_reply(
                 "- knowledge: crop-scoped local corpus summary for tomato/cucumber manuals and workbooks\n\n"
                 "Structured runtime recommendation contract when present:\n"
                 "- model_runtime.answer_focus / recommendation_families / best_actions / control_precision_matrix / operator_view / tradeoff_summary\n"
-                "- If model_runtime.answer_focus is present, start from those exact calculated effects before giving general advice.\n"
+                "- model_runtime.runtime_mode tells whether the user asked for current state or a what-if/control change.\n"
+                "- If model_runtime.runtime_mode is current_state, answer the crop/growth status first from state_snapshot and growth_diagnosis. Do not lead with control-change recommendations unless the user explicitly asks for a control change.\n"
+                "- If model_runtime.answer_focus is present and matched_user_request is true, start from those exact calculated effects before giving general advice.\n"
+                "- If answer_focus is absent or matched_user_request is false, do not present model_runtime.recommendations as the user's requested answer. Use them only as optional background after answering the question.\n"
                 "- For what-if questions, explain why the requested delta changes yield, canopy assimilation, source/sink balance, energy, and risk. Do not merely repeat that it is recommended.\n"
                 "- Use only the provided numbers. Do not invent missing values.\n"
                 "- Explain the strongest option, a stronger step, and a conservative step when the precision matrix supports it.\n"
-                "- Do not expose internal terms like partial derivative, elasticity, or trust region in the visible answer.\n\n"
+                "- Do not expose internal terms like partial derivative, elasticity, trust region, runtime payload, JSON path, currentData.*, data.*, metrics.*, or bounded scenario in the visible answer.\n"
+                "- In Korean, avoid raw English labels such as rubisco, electron_transport, source/sink, penalty, runtime, payload, baseline, and optimized. Translate them into farmer-readable Korean.\n\n"
                 f"{knowledge_block}"
                 "Priority rules:\n"
                 "- If weather or rtr fields are present, explicitly use them in the answer.\n"

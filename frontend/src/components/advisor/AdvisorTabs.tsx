@@ -50,6 +50,7 @@ interface AdvisorTabsProps {
     initialTab?: PromptAdvisorTabKey;
     initialCorrectionToolOpen?: boolean;
     onClose: () => void;
+    showCloseAction?: boolean;
 }
 
 function formatNumber(value: number | null | undefined, digits = 2): string {
@@ -437,6 +438,7 @@ const AdvisorTabs = ({
     initialTab = 'environment',
     initialCorrectionToolOpen = false,
     onClose,
+    showCloseAction = true,
 }: AdvisorTabsProps) => {
     const { locale } = useLocale();
     const cropKey = crop.toLowerCase();
@@ -1376,12 +1378,12 @@ const AdvisorTabs = ({
             className="sg-advisor-shell sg-advisor-shell-neutral space-y-6"
         >
             <div
-                className="rounded-[34px] bg-[linear-gradient(135deg,var(--sg-color-blush),rgba(255,255,255,0.92))] px-5 py-5"
+                className="rounded-[var(--sg-radius-xl)] border border-[color:var(--sg-outline-soft)] bg-[linear-gradient(135deg,var(--sg-color-blush),rgba(255,255,255,0.92))] px-5 py-5"
                 style={{ boxShadow: 'var(--sg-shadow-soft)' }}
             >
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
                     <div className="min-w-0 space-y-5">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-accent-violet)]">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-color-primary)]">
                             {copy.title}
                         </div>
                         <h2 className="flex items-center gap-3 text-[clamp(1.4rem,1rem+0.8vw,2.1rem)] font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
@@ -1389,7 +1391,7 @@ const AdvisorTabs = ({
                                 className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-white/88"
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
-                                <ActiveIcon className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                                <ActiveIcon className="h-5 w-5 text-[color:var(--sg-color-primary)]" />
                             </span>
                             {cropLabel}
                         </h2>
@@ -1397,7 +1399,7 @@ const AdvisorTabs = ({
 
                         <div className="flex flex-wrap gap-2">
                             <span className="sg-advisor-pill">
-                                <ActiveIcon className="h-3.5 w-3.5 text-[color:var(--sg-accent-violet)]" />
+                                <ActiveIcon className="h-3.5 w-3.5 text-[color:var(--sg-color-primary)]" />
                                 {tabLabels[activeTab]}
                             </span>
                             <span className="sg-advisor-pill">{activeStateLabel}</span>
@@ -1405,16 +1407,16 @@ const AdvisorTabs = ({
                                 {completedCount}/{ADVISOR_TAB_REGISTRY.length}
                             </span>
                             <span className="sg-advisor-pill">
-                                delegate: /api{activeTabEntry.endpoint}
+                                {locale === 'ko' ? '세부 권고 연결' : 'Advisor lane connected'}
                             </span>
                             {activeTabEntry.exactEndpoint ? (
                                 <span className="sg-advisor-pill">
-                                    exact: {activeTabEntry.exactEndpoint}
+                                    {locale === 'ko' ? '정밀 진단 가능' : 'Exact check ready'}
                                 </span>
                             ) : null}
                             {activeTabEntry.publicEndpoint ? (
                                 <span className="sg-advisor-pill">
-                                    public: {activeTabEntry.publicEndpoint}
+                                    {locale === 'ko' ? '추천 실행 가능' : 'Recommendation ready'}
                                 </span>
                             ) : null}
                         </div>
@@ -1422,7 +1424,7 @@ const AdvisorTabs = ({
                     <div className="space-y-3">
                         <div className="grid gap-3 md:grid-cols-[minmax(0,1.16fr)_minmax(0,0.84fr)]">
                             <div
-                                className="sg-advisor-band sg-tint-violet"
+                                className="sg-advisor-band sg-tint-rose"
                                 style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                             >
                                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
@@ -1460,15 +1462,17 @@ const AdvisorTabs = ({
                                 </div>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="sg-button-secondary"
-                            >
-                                {copy.close}
-                            </button>
-                        </div>
+                        {showCloseAction ? (
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="sg-button-secondary"
+                                >
+                                    {copy.close}
+                                </button>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </div>

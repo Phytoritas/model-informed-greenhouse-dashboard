@@ -21,6 +21,16 @@ const DEFAULT_TEMP_SETTINGS_BY_CROP: Record<CropType, TemperatureSettings> = {
     Cucumber: { heating: 18, cooling: 26, pBand: 4, co2Target: 800, drainTarget: 0.3 },
 };
 
+type ControlDeviceKey = Exclude<keyof ControlStatus, 'settings'>;
+type ControlDeviceState = Pick<ControlStatus, ControlDeviceKey>;
+
+const DEFAULT_CONTROL_DEVICE_STATE: ControlDeviceState = {
+    ventilation: false,
+    irrigation: false,
+    heating: false,
+    shading: false,
+};
+
 type BackendEnv = {
     T_air_C?: number;
     RH_percent?: number;
@@ -80,6 +90,18 @@ type BackendPayload = {
     state?: BackendState;
     kpi?: BackendKpi;
     energy?: BackendEnergy;
+};
+
+type BackendControlStatePayload = {
+    devices?: Partial<Record<ControlDeviceKey, boolean>>;
+};
+
+type BackendOpsConfigPayload = {
+    heating_set_C?: number;
+    cooling_set_C?: number;
+    p_band_C?: number;
+    co2_target_ppm?: number;
+    drain_target_fraction?: number;
 };
 
 type ForecastSocketPayload = ForecastData | {
@@ -226,6 +248,10 @@ export const useGreenhouse = () => {
         Tomato: { ...DEFAULT_TEMP_SETTINGS_BY_CROP.Tomato },
         Cucumber: { ...DEFAULT_TEMP_SETTINGS_BY_CROP.Cucumber },
     });
+    const controlDeviceStateByCropRef = useRef<Record<CropType, ControlDeviceState>>({
+        Tomato: { ...DEFAULT_CONTROL_DEVICE_STATE },
+        Cucumber: { ...DEFAULT_CONTROL_DEVICE_STATE },
+    });
     const [currentDataByCrop, setCurrentDataByCrop] = useState<NullableByCrop<SensorData>>({
         Tomato: null,
         Cucumber: null,
@@ -243,10 +269,7 @@ export const useGreenhouse = () => {
         Cucumber: [],
     });
     const [controls, setControls] = useState<ControlStatus>({
-        ventilation: false,
-        irrigation: false,
-        heating: false,
-        shading: false,
+        ...controlDeviceStateByCropRef.current.Cucumber,
         settings: settingsByCropRef.current.Cucumber,
     });
     const wsRef = useRef<WebSocket | null>(null);
@@ -338,6 +361,48 @@ export const useGreenhouse = () => {
         Tomato: 0,
         Cucumber: 0,
     });
+
+    const applyBackendOpsConfig = useCallback((cropType: CropType, payload: BackendOpsConfigPayload | null | undefined) => {
+        if (!payload) {
+            return;
+        }
+        const currentSettings = settingsByCropRef.current[cropType];
+        const nextSettings: TemperatureSettings = {
+            heating: typeof payload.heating_set_C === 'number' ? payload.heating_set_C : currentSettings.heating,
+            cooling: typeof payload.cooling_set_C === 'number' ? payload.cooling_set_C : currentSettings.cooling,
+            pBand: typeof payload.p_band_C === 'number' ? payload.p_band_C : currentSettings.pBand,
+            co2Target: typeof payload.co2_target_ppm === 'number' ? payload.co2_target_ppm : currentSettings.co2Target,
+            drainTarget: typeof payload.drain_target_fraction === 'number' ? payload.drain_target_fraction : currentSettings.drainTarget,
+        };
+        settingsByCropRef.current[cropType] = nextSettings;
+        if (cropType === selectedCrop) {
+            setControls((prev) => ({
+                ...prev,
+                settings: nextSettings,
+            }));
+        }
+    }, [selectedCrop]);
+
+    const applyBackendControlState = useCallback((cropType: CropType, payload: BackendControlStatePayload | null | undefined) => {
+        if (!payload?.devices) {
+            return;
+        }
+        const currentState = controlDeviceStateByCropRef.current[cropType];
+        const nextState: ControlDeviceState = {
+            ventilation: typeof payload.devices.ventilation === 'boolean' ? payload.devices.ventilation : currentState.ventilation,
+            irrigation: typeof payload.devices.irrigation === 'boolean' ? payload.devices.irrigation : currentState.irrigation,
+            heating: typeof payload.devices.heating === 'boolean' ? payload.devices.heating : currentState.heating,
+            shading: typeof payload.devices.shading === 'boolean' ? payload.devices.shading : currentState.shading,
+        };
+        controlDeviceStateByCropRef.current[cropType] = nextState;
+        if (cropType === selectedCrop) {
+            setControls((prev) => ({
+                ...prev,
+                ...nextState,
+                settings: settingsByCropRef.current[cropType],
+            }));
+        }
+    }, [selectedCrop]);
     const recoveryRequestInFlightRef = useRef<Record<CropType, boolean>>({
         Tomato: false,
         Cucumber: false,
@@ -395,6 +460,8 @@ export const useGreenhouse = () => {
 
             const statusData = await statusRes.json();
             const cropStatus = statusData?.greenhouses?.[cropKey];
+            applyBackendOpsConfig(cropType, cropStatus?.ops_config);
+            applyBackendControlState(cropType, cropStatus?.control_state);
             const totalRows = typeof cropStatus?.total_rows === 'number' ? cropStatus.total_rows : 0;
             const idx = typeof cropStatus?.idx === 'number' ? cropStatus.idx : -1;
             const isPaused = cropStatus?.status === 'paused' || cropStatus?.paused === true;
@@ -470,7 +537,7 @@ export const useGreenhouse = () => {
         } finally {
             recoveryRequestInFlightRef.current[cropType] = false;
         }
-    }, [requestWebSocketReconnect, selectedCrop]);
+    }, [applyBackendControlState, applyBackendOpsConfig, requestWebSocketReconnect, selectedCrop]);
 
     // Helper to map backend payload to frontend types
     const mapPayloadToData = useCallback((
@@ -890,7 +957,7 @@ export const useGreenhouse = () => {
                 ws.close();
             }
         };
-    }, [selectedCrop]);
+    }, [applyBackendControlState, applyBackendOpsConfig, requestWebSocketReconnect, selectedCrop]);
 
     useEffect(() => {
         const timer = window.setInterval(() => {
@@ -941,10 +1008,7 @@ export const useGreenhouse = () => {
     // Restore crop-specific controls when the user switches crop tabs
     useEffect(() => {
         setControls({
-            ventilation: false,
-            irrigation: false,
-            heating: false,
-            shading: false,
+            ...controlDeviceStateByCropRef.current[selectedCrop],
             settings: settingsByCropRef.current[selectedCrop],
         });
     }, [selectedCrop]);
@@ -972,15 +1036,57 @@ export const useGreenhouse = () => {
         void ensureSimulationRunning(selectedCrop);
     }, [ensureSimulationRunning, selectedCrop]);
 
+    const pushControlCommand = useCallback((cropType: CropType, patch: Partial<ControlDeviceState>) => {
+        const cropKey = cropType.toLowerCase();
+        void fetch(`${API_URL}/control/commands?crop=${cropKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...patch,
+                source: 'frontend-control-panel',
+            }),
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                const payload = await res.json();
+                applyBackendControlState(cropType, payload?.control_state);
+            })
+            .catch((err) => {
+                console.error('Failed to update backend control state:', err);
+            });
+    }, [applyBackendControlState]);
+
     const toggleControl = useCallback((key: keyof ControlStatus) => {
-        setControls(prev => ({ ...prev, [key]: !prev[key] }));
-        // Note: These controls are local overrides for visualization. 
-        // The backend simulation runs in automatic mode based on setpoints.
-    }, []);
+        if (key === 'settings') {
+            return;
+        }
+        const cropType = selectedCrop;
+        const currentDeviceState = controlDeviceStateByCropRef.current[cropType];
+        const nextValue = !currentDeviceState[key];
+        const nextDeviceState = {
+            ...currentDeviceState,
+            [key]: nextValue,
+        };
+        controlDeviceStateByCropRef.current[cropType] = nextDeviceState;
+        setControls(prev => ({ ...prev, ...nextDeviceState }));
+        pushControlCommand(cropType, { [key]: nextValue });
+    }, [pushControlCommand, selectedCrop]);
 
     const setControlValue = useCallback((key: keyof ControlStatus, value: boolean) => {
-        setControls(prev => ({ ...prev, [key]: value }));
-    }, []);
+        if (key === 'settings') {
+            return;
+        }
+        const cropType = selectedCrop;
+        const nextDeviceState = {
+            ...controlDeviceStateByCropRef.current[cropType],
+            [key]: value,
+        };
+        controlDeviceStateByCropRef.current[cropType] = nextDeviceState;
+        setControls(prev => ({ ...prev, ...nextDeviceState }));
+        pushControlCommand(cropType, { [key]: value });
+    }, [pushControlCommand, selectedCrop]);
 
     const setTempSettings = useCallback(async (newSettings: TemperatureSettings) => {
         const cropKey = selectedCrop.toLowerCase();

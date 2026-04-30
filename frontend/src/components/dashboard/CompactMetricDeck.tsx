@@ -12,7 +12,7 @@ function toneClass(colorClass: string): string {
     return 'sg-tint-amber';
   }
   if (colorClass.includes('violet') || colorClass.includes('purple')) {
-    return 'sg-tint-violet';
+    return 'sg-tint-neutral';
   }
   if (colorClass.includes('earth')) {
     return 'bg-[color:var(--sg-surface-soft)]';

@@ -719,6 +719,48 @@ def test_unit_projection_keeps_canonical_m2_and_projects_actual_area() -> None:
     assert projection["energy_krw_day"] > 0
 
 
+def test_labor_projection_separates_load_hours_and_krw_cost() -> None:
+    labor_estimator = importlib.import_module(
+        "model_informed_greenhouse_dashboard.backend.app.services.rtr.labor_estimator"
+    )
+
+    projection = labor_estimator.estimate_labor_projection(
+        crop="cucumber",
+        predicted_node_rate_day=0.68,
+        observed_node_rate_day=0.52,
+        fruit_load=14.0,
+        lai=2.8,
+        crop_specific={"remaining_leaves": 16},
+    )
+
+    assert projection["labor_index"] > 0
+    assert projection["labor_hours_m2_day"] > 0
+    assert projection["labor_cost_krw_m2_day"] > 0
+    assert projection["labor_rate_source"] == "agricultural-income-reference"
+    assert projection["reference_labor_hours_10a_year"] == 782.0
+
+    custom_projection = labor_estimator.estimate_labor_projection(
+        crop="cucumber",
+        predicted_node_rate_day=0.68,
+        observed_node_rate_day=0.52,
+        fruit_load=14.0,
+        lai=2.8,
+        crop_specific={"remaining_leaves": 16},
+        user_labor_cost_coefficient=21000.0,
+        labor_benchmark={
+            "source_label_ko": "농업소득자료 기준",
+            "reference_labor_hours_10a_year": 810.0,
+            "reference_workload_index": 0.5,
+            "default_labor_rate_krw_hour": 18000.0,
+        },
+    )
+
+    assert custom_projection["labor_rate_source"] == "user"
+    assert custom_projection["labor_rate_krw_hour"] == 21000.0
+    assert custom_projection["reference_labor_hours_10a_year"] == 810.0
+    assert custom_projection["reference_labor_cost_krw_10a_year"] == 17_010_000.0
+
+
 def test_cucumber_leaf_removal_pushes_optimizer_to_guard_or_warmer_solution() -> None:
     services = _load_optimizer_rtr_services()
     before_context = _fake_context(

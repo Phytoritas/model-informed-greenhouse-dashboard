@@ -1,6 +1,8 @@
 """Main FastAPI application entry point."""
 
+import asyncio
 import copy
+import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
@@ -20,6 +22,7 @@ from .services.advisory_api import (
     build_pesticide_recommendation_response,
 )
 from .services.advisor_orchestration import (
+    build_advisor_chat_fallback_response,
     build_advisor_chat_response,
     build_environment_advisor_response,
     build_environment_recommendation_response,
@@ -55,7 +58,7 @@ from .services.rtr_profiles import (
     upsert_rtr_good_windows,
 )
 from .services.weather import fetch_daegu_weather_outlook
-from .schemas import OpsConfig, CropConfig
+from .schemas import AlertHistoryRequest, ControlStateUpdate, OpsConfig, CropConfig
 
 class Settings(BaseModel):
     price_per_kg: float
@@ -354,6 +357,8 @@ app_state = {
         "latest_forecast": None,
         "last_forecast_schedule_at": None,
         "ops_config": None,
+        "control_state": None,
+        "alert_history": None,
         "crop_config": None,
         "csv_filename": None,
         "pending_prune_reset": False,
@@ -379,6 +384,8 @@ app_state = {
         "latest_forecast": None,
         "last_forecast_schedule_at": None,
         "ops_config": None,
+        "control_state": None,
+        "alert_history": None,
         "crop_config": None,
         "csv_filename": None,
         "pending_prune_reset": False,
@@ -410,6 +417,13 @@ OVERVIEW_LIVE_SOURCE_SINK_SOURCES = (
     "overview_signals",
 )
 OVERVIEW_SIGNAL_TIMEZONE = ZoneInfo("Asia/Seoul")
+ALERT_HISTORY_STORE_PATH = (
+    Path(settings.config_dir).resolve().parent
+    / "artifacts"
+    / "alerts"
+    / "alert_history.json"
+)
+ALERT_HISTORY_LIMIT = 100
 
 
 def _default_ops_config() -> Dict[str, float]:
@@ -420,6 +434,46 @@ def _default_ops_config() -> Dict[str, float]:
         "co2_target_ppm": greenhouse_config["operations"]["co2_target_ppm"],
         "drain_target_fraction": greenhouse_config["substrate"]["drain_target_fraction"],
     }
+
+
+def _default_control_state() -> Dict[str, Any]:
+    return {
+        "ventilation": False,
+        "irrigation": False,
+        "heating": False,
+        "shading": False,
+        "mode": "manual-ui",
+        "source": "backend-default",
+        "updated_at": None,
+    }
+
+
+def _read_alert_history_store() -> Dict[str, list[Dict[str, Any]]]:
+    if not ALERT_HISTORY_STORE_PATH.exists():
+        return {crop: [] for crop in CROPS}
+
+    try:
+        payload = json.loads(ALERT_HISTORY_STORE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.warning("Failed to read alert history store: %s", ALERT_HISTORY_STORE_PATH)
+        return {crop: [] for crop in CROPS}
+
+    if not isinstance(payload, dict):
+        return {crop: [] for crop in CROPS}
+
+    return {
+        crop: payload.get(crop, []) if isinstance(payload.get(crop, []), list) else []
+        for crop in CROPS
+    }
+
+
+def _write_alert_history_store(store: Dict[str, list[Dict[str, Any]]]) -> None:
+    ALERT_HISTORY_STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    payload = {crop: list(store.get(crop, []))[:ALERT_HISTORY_LIMIT] for crop in CROPS}
+    ALERT_HISTORY_STORE_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
 
 
 def _default_crop_config(crop: str) -> Dict[str, int]:
@@ -783,6 +837,95 @@ def _get_ops_config(crop: str) -> Dict[str, float]:
         crop_state["ops_config"] = ops_config
 
     return ops_config
+
+
+def _get_control_state(crop: str) -> Dict[str, Any]:
+    crop_state = app_state[crop]
+    control_state = crop_state.get("control_state")
+    if control_state is None:
+        control_state = _default_control_state()
+        crop_state["control_state"] = control_state
+
+    return control_state
+
+
+def _serialize_control_state(crop: str) -> Dict[str, Any]:
+    control_state = _get_control_state(crop)
+    return {
+        "crop": crop,
+        "mode": control_state.get("mode", "manual-ui"),
+        "source": control_state.get("source", "backend"),
+        "updated_at": control_state.get("updated_at"),
+        "devices": {
+            "ventilation": bool(control_state.get("ventilation", False)),
+            "irrigation": bool(control_state.get("irrigation", False)),
+            "heating": bool(control_state.get("heating", False)),
+            "shading": bool(control_state.get("shading", False)),
+        },
+    }
+
+
+def _load_alert_history(crop: str) -> list[Dict[str, Any]]:
+    crop_state = app_state[crop]
+    history = crop_state.get("alert_history")
+    if history is None:
+        history = list(_read_alert_history_store().get(crop, []))
+        crop_state["alert_history"] = history
+
+    return history
+
+
+def _serialize_alert_history(crop: str, limit: int = 25) -> Dict[str, Any]:
+    history = _load_alert_history(crop)
+    resolved_limit = max(1, min(int(limit), ALERT_HISTORY_LIMIT))
+    return {
+        "status": "success",
+        "crop": crop,
+        "source": {
+            "provider": "backend-alert-history",
+            "persisted": True,
+            "path": str(ALERT_HISTORY_STORE_PATH),
+        },
+        "events": history[:resolved_limit],
+    }
+
+
+def _upsert_alert_history_events(
+    crop: str,
+    events: list[Dict[str, Any]],
+) -> Dict[str, Any]:
+    history = _load_alert_history(crop)
+    now_iso = datetime.now(UTC).isoformat()
+    event_by_id = {str(item.get("id")): item for item in history if item.get("id")}
+    changed = False
+
+    for event in events:
+        event_id = str(event["id"])
+        next_event = {
+            "id": event_id,
+            "severity": event["severity"],
+            "title": event["title"],
+            "body": event.get("body", ""),
+            "source": event.get("source") or "frontend",
+            "observed_at": _serialize_datetime(event.get("observed_at")) or now_iso,
+            "last_seen_at": now_iso,
+            "crop": crop,
+        }
+        existing = event_by_id.get(event_id)
+        if existing:
+            existing.update(next_event)
+        else:
+            history.insert(0, next_event)
+            event_by_id[event_id] = next_event
+        changed = True
+
+    if changed:
+        del history[ALERT_HISTORY_LIMIT:]
+        store = _read_alert_history_store()
+        store[crop] = history
+        _write_alert_history_store(store)
+
+    return _serialize_alert_history(crop)
 
 
 def _get_crop_config_store(crop: str) -> Dict[str, int]:
@@ -2166,6 +2309,60 @@ async def update_ops_config(config: OpsConfig, crop: Optional[str] = None):
     return {"status": "success", "crops": target_crops, "config": config_payload}
 
 
+@app.get("/api/config/ops")
+async def get_ops_config(crop: str = "cucumber"):
+    """Return crop-scoped operational configuration."""
+    crop = _validate_crop(crop)
+    return {
+        "status": "success",
+        "crop": crop,
+        "config": dict(_get_ops_config(crop)),
+        "control_state": _serialize_control_state(crop),
+    }
+
+
+@app.get("/api/control/state")
+async def get_control_state(crop: str = "cucumber"):
+    """Return backend-held manual actuator state for the UI control lane."""
+    crop = _validate_crop(crop)
+    return {"status": "success", "control_state": _serialize_control_state(crop)}
+
+
+@app.post("/api/control/commands")
+async def update_control_state(update: ControlStateUpdate, crop: str = "cucumber"):
+    """Persist a manual actuator command issued from the frontend."""
+    crop = _validate_crop(crop)
+    control_state = _get_control_state(crop)
+    payload = update.model_dump(exclude_none=True)
+    for key in ("ventilation", "irrigation", "heating", "shading"):
+        if key in payload:
+            control_state[key] = bool(payload[key])
+
+    control_state["source"] = payload.get("source") or "frontend"
+    control_state["mode"] = "manual-ui"
+    control_state["updated_at"] = datetime.now(UTC).isoformat()
+    logger.info("Control state updated for %s: %s", crop, _serialize_control_state(crop)["devices"])
+
+    return {"status": "success", "control_state": _serialize_control_state(crop)}
+
+
+@app.get("/api/alerts/history")
+async def get_alert_history(crop: str = "cucumber", limit: int = 25):
+    """Return persisted alert history for the selected crop."""
+    crop = _validate_crop(crop)
+    return _serialize_alert_history(crop, limit=limit)
+
+
+@app.post("/api/alerts/history")
+async def update_alert_history(request: AlertHistoryRequest, crop: str = "cucumber"):
+    """Persist frontend-observed alert events into backend alert history."""
+    crop = _validate_crop(crop)
+    return _upsert_alert_history_events(
+        crop,
+        [event.model_dump() for event in request.events],
+    )
+
+
 @app.post("/api/config/crop")
 async def update_crop_config(config: CropConfig, crop: str):
     """Update crop-specific configuration."""
@@ -2594,8 +2791,6 @@ async def advisor_chat(req: AdvisorChatRequest):
     """Return a SmartGrow chat reply with orchestration metadata."""
     crop = _validate_crop(req.crop)
     try:
-        import asyncio
-
         return await asyncio.to_thread(
             build_advisor_chat_response,
             crop=crop,
@@ -2605,49 +2800,14 @@ async def advisor_chat(req: AdvisorChatRequest):
         )
     except RuntimeError as exc:
         logger.warning("Advisor chat degraded gracefully: %s", exc)
-        fallback_text = (
-            "모델 상담을 잠시 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
-            if (req.language or "ko") == "ko"
-            else "AI chat is temporarily unavailable. Please try again shortly."
+        return await asyncio.to_thread(
+            build_advisor_chat_fallback_response,
+            crop=crop,
+            messages=req.messages,
+            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
+            language=req.language or "ko",
+            reason="openai_unavailable",
         )
-        runtime_summary = (
-            "대화 응답 계산이 중단되어 모델 상태를 함께 보여주지 못했습니다."
-            if (req.language or "ko") == "ko"
-            else "Model runtime details are unavailable because chat generation degraded early."
-        )
-        return {
-            "status": "degraded",
-            "family": "advisor_chat",
-            "crop": crop,
-            "text": fallback_text,
-            "machine_payload": {
-                "domains": [],
-                "context_completeness": 0.0,
-                "missing_data": ["openai_unavailable"],
-                "model_runtime": {
-                    "status": "unavailable",
-                    "summary": runtime_summary,
-                    "state_snapshot": {},
-                    "scenario": {"baseline_outputs": [], "options": [], "recommended": None},
-                    "sensitivity": {
-                        "target": None,
-                        "analysis_horizon_hours": None,
-                        "confidence": 0.0,
-                        "top_levers": [],
-                    },
-                    "constraint_checks": {
-                        "status": "unavailable",
-                        "violated_constraints": [],
-                        "penalties": {},
-                    },
-                    "recommendations": [],
-                    "provenance": {
-                        "source": "advisor_chat_fallback",
-                        "reason": "openai_unavailable",
-                    },
-                },
-            },
-        }
     except Exception as exc:
         logger.error("Advisor chat failed: %s", exc, exc_info=True)
         raise HTTPException(
@@ -3319,6 +3479,7 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
         custom_controls = custom_eval.get("controls", {}) or {}
         custom_objective_breakdown = custom_eval.get("objective_breakdown", {}) or {}
         custom_energy_summary = custom_eval.get("energy_summary", {}) or {}
+        custom_labor_summary = custom_eval.get("labor_projection", {}) or {}
         custom_yield_summary = custom_eval.get("yield_projection", {}) or {}
         custom_node_summary = custom_eval.get("node_summary", {}) or {}
         custom_risk_flags = custom_feasibility.get("risk_flags") or []
@@ -3357,6 +3518,9 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
                 "cooling_energy_kwh_m2_day": custom_energy_summary.get("cooling_energy_kWh_m2_day", 0.0),
                 "total_energy_cost_krw_m2_day": custom_energy_summary.get("total_energy_cost_krw_m2_day", 0.0),
                 "labor_index": custom_objective_breakdown.get("labor_index", 0.0),
+                "labor_hours_m2_day": custom_labor_summary.get("labor_hours_m2_day", 0.0),
+                "labor_cost_krw_m2_day": custom_labor_summary.get("labor_cost_krw_m2_day", 0.0),
+                "labor_summary": custom_labor_summary,
                 "yield_kg_m2_day": custom_yield_summary.get("predicted_yield_kg_m2_day", 0.0),
                 "yield_kg_m2_week": custom_yield_summary.get("predicted_yield_kg_m2_week", 0.0),
                 "harvest_trend_delta_pct": custom_yield_summary.get("harvest_trend_delta_pct", 0.0),
@@ -3379,6 +3543,8 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
         row.setdefault("harvest_trend_delta_pct", 0.0)
         row.setdefault("heating_energy_kwh_m2_day", 0.0)
         row.setdefault("cooling_energy_kwh_m2_day", 0.0)
+        row.setdefault("labor_hours_m2_day", float(objective_breakdown.get("labor_hours_m2_day", 0.0)))
+        row.setdefault("labor_cost_krw_m2_day", float(objective_breakdown.get("labor_cost_krw", objective_breakdown.get("labor_cost", 0.0))))
         row.setdefault(
             "total_energy_cost_krw_m2_day",
             float(objective_breakdown.get("energy_cost_krw", 0.0)),
@@ -3402,8 +3568,8 @@ async def run_rtr_optimizer_scenario(req: RTRScenarioRequest):
                 }),
                 "labor_projection": {
                     "labor_index": float(row.get("labor_index", 0.0)),
-                    "labor_hours_m2_day": float(objective_breakdown.get("labor_hours_m2_day", 0.0)),
-                    "labor_cost_krw_m2_day": float(objective_breakdown.get("labor_cost", 0.0)),
+                    "labor_hours_m2_day": float(row.get("labor_hours_m2_day", objective_breakdown.get("labor_hours_m2_day", 0.0))),
+                    "labor_cost_krw_m2_day": float(row.get("labor_cost_krw_m2_day", objective_breakdown.get("labor_cost_krw", objective_breakdown.get("labor_cost", 0.0)))),
                 },
                 "node_summary": {"predicted_rate_day": float(row.get("node_rate_day", 0.0))},
             },
@@ -3664,9 +3830,15 @@ async def get_status():
     
     for crop_name in CROPS:
         crop_state = app_state[crop_name]
+        ops_config = dict(_get_ops_config(crop_name))
+        control_state = _serialize_control_state(crop_name)
         
         if crop_state["simulator"] is None:
-            status_result[crop_name] = {"status": "idle"}
+            status_result[crop_name] = {
+                "status": "idle",
+                "ops_config": ops_config,
+                "control_state": control_state,
+            }
         else:
             simulator = crop_state["simulator"]
             sim_task = crop_state.get("sim_task")
@@ -3725,6 +3897,8 @@ async def get_status():
                 "last_tick_at": _serialize_datetime(last_tick_at),
                 "last_error": last_error,
                 "last_error_at": _serialize_datetime(last_error_at),
+                "ops_config": ops_config,
+                "control_state": control_state,
             }
     
     return {"status": "success", "greenhouses": status_result}

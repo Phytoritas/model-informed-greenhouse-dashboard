@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import PageHeader from '../common/PageHeader';
 import PageSectionTabs from '../phyto/PageSectionTabs';
 
-interface PageCanvasTab {
+export interface PageCanvasTab {
   id: string;
   label: string;
 }
@@ -31,7 +31,7 @@ export default function PageCanvas({
   children,
 }: PageCanvasProps) {
   return (
-    <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5">
       {hideHeader ? null : <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />}
       {tabs.length > 0 ? (
         <div className="min-w-0">

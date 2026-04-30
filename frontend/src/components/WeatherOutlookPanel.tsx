@@ -23,12 +23,12 @@ function WeatherSignalTile({
     label: string;
     value: string;
     detail: string;
-    tone: 'blue' | 'amber' | 'violet';
+    tone: 'sage' | 'amber' | 'olive';
 }) {
     const toneClass = {
-        blue: 'sg-tint-blue text-[color:var(--sg-accent-blue)]',
+        sage: 'sg-tint-green text-[color:var(--sg-accent-forest)]',
         amber: 'sg-tint-amber text-[color:var(--sg-accent-amber)]',
-        violet: 'sg-tint-violet text-[color:var(--sg-accent-violet)]',
+        olive: 'sg-tint-neutral text-[color:var(--sg-color-olive)]',
     }[tone];
 
     return (
@@ -153,10 +153,10 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             eyebrow={copy.eyebrow}
             title={weather ? `${weather.location.name}, ${getCountryLabel(weather.location.country, locale)}` : copy.title}
             description={!compact ? copy.subtitle : undefined}
-            className="sg-tint-blue"
+            className="sg-tint-green"
             actions={(
                 <div
-                    className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-blue)]"
+                    className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-color-olive)]"
                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                     {providerDisplayLabel}
@@ -180,7 +180,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                         <article
                             className="relative overflow-hidden rounded-[32px] px-5 py-5"
                             style={{
-                                background: 'linear-gradient(135deg, rgba(196,231,255,0.94), rgba(255,255,255,0.88))',
+                                background: 'linear-gradient(135deg, rgba(232,241,226,0.96), rgba(255,241,233,0.9))',
                                 boxShadow: 'var(--sg-shadow-soft)',
                             }}
                         >
@@ -192,7 +192,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                             className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
                                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                         >
-                                            <MapPinned className="h-5.5 w-5.5 text-[color:var(--sg-accent-blue)]" />
+                                            <MapPinned className="h-5.5 w-5.5 text-[color:var(--sg-color-olive)]" />
                                         </div>
                                         <div className="min-w-0">
                                             <div className="sg-eyebrow">{copy.currentLead}</div>
@@ -218,7 +218,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                         <p className="max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
                                             {localizedSummary}
                                         </p>
-                                        <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--sg-accent-blue)]">
+                                        <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--sg-color-olive)]">
                                             {copy.currentNarrative}
                                         </p>
                                     </div>
@@ -244,7 +244,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                 label={copy.humidityClouds}
                                 value={`${copy.humidity} ${weather.current.relative_humidity_pct.toFixed(0)}% · ${copy.clouds} ${weather.current.cloud_cover_pct.toFixed(0)}%`}
                                 detail={copy.humidityCloudsDetail}
-                                tone="blue"
+                                tone="sage"
                             />
                             <WeatherSignalTile
                                 icon={Wind}
@@ -258,7 +258,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                 label={copy.sunHours}
                                 value={`${(today?.shortwave_radiation_sum_mj_m2 ?? 0).toFixed(1)} MJ/m2 · ${copy.sunshine} ${(today?.sunshine_duration_h ?? 0).toFixed(1)}h`}
                                 detail={copy.sunHoursDetail}
-                                tone="violet"
+                                tone="olive"
                             />
                         </div>
                     </div>
@@ -275,7 +275,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                         {copy.forecastBody}
                                     </p>
                                 </div>
-                                <div className="rounded-full bg-[color:var(--sg-tint-blue)] px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-blue)]">
+                                <div className="rounded-full bg-[color:var(--sg-tint-green)] px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-forest)]">
                                     {locale === 'ko' ? `${forecastCards.length}일 요약` : `${forecastCards.length}-day summary`}
                                 </div>
                             </div>
@@ -301,7 +301,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                             </div>
                                         </div>
                                         <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-blue)] px-3 py-3">
+                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-amber)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.rainRisk}</div>
                                                 <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                                                     {day.precipitation_probability_max_pct.toFixed(0)}%
@@ -313,7 +313,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                                     {day.shortwave_radiation_sum_mj_m2.toFixed(1)} MJ/m2
                                                 </div>
                                             </div>
-                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-violet)] px-3 py-3">
+                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-neutral)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.windMax}</div>
                                                 <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                                                     {day.wind_speed_max_kmh.toFixed(1)} km/h

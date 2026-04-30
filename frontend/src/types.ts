@@ -303,6 +303,19 @@ export interface RtrOptimizerWeights {
     stress: number;
 }
 
+export interface RtrLaborBenchmark {
+    source_key?: string;
+    source_label_ko?: string;
+    source_label_en?: string;
+    source_note?: string;
+    source_url?: string;
+    reference_year?: number;
+    reference_labor_hours_10a_year?: number;
+    reference_workload_index?: number;
+    default_labor_rate_krw_hour?: number;
+    default_labor_rate_basis?: string;
+}
+
 export interface RtrOptimizerProfileConfig {
     enabled: boolean;
     default_mode: RtrOptimizationMode;
@@ -310,6 +323,7 @@ export interface RtrOptimizerProfileConfig {
     max_rtr_ratio_delta: number;
     temp_slew_rate_C_per_step: number;
     weights: RtrOptimizerWeights;
+    labor_benchmark?: RtrLaborBenchmark;
 }
 
 export interface RtrCalibrationMetadata {
@@ -460,6 +474,8 @@ export interface RtrObjectiveBreakdown {
     cooling_energy_cost_krw?: number;
     ventilation_energy_cost_krw?: number;
     labor_cost: number;
+    labor_cost_krw?: number;
+    labor_objective_penalty?: number;
     labor_index: number;
     labor_hours_m2_day?: number;
     yield_penalty?: number;
@@ -680,6 +696,22 @@ export interface RtrLaborSummary {
     labor_index: number;
     labor_hours_m2_day: number;
     labor_cost_krw_m2_day: number;
+    labor_rate_krw_hour?: number;
+    labor_rate_source?: 'user' | 'agricultural-income-reference' | string;
+    labor_hours_basis?: string;
+    labor_benchmark_crop?: string;
+    labor_benchmark_source_label_ko?: string;
+    labor_benchmark_source_label_en?: string;
+    labor_benchmark_source_note?: string;
+    labor_benchmark_source_url?: string;
+    reference_year?: number;
+    reference_labor_hours_10a_year?: number;
+    reference_workload_index?: number;
+    reference_labor_hours_m2_day?: number;
+    reference_labor_cost_krw_10a_year?: number;
+    default_labor_rate_basis?: string;
+    labor_reference_source?: string;
+    definition?: string;
     predicted_harvest_frequency_increase?: number;
     predicted_pruning_thinning_demand_increase?: number;
 }
@@ -775,6 +807,9 @@ export interface RtrScenarioRow {
     cooling_energy_kwh_m2_day?: number;
     total_energy_cost_krw_m2_day?: number;
     labor_index: number;
+    labor_hours_m2_day?: number;
+    labor_cost_krw_m2_day?: number;
+    labor_summary?: RtrLaborSummary;
     yield_kg_m2_day: number;
     yield_kg_m2_week: number;
     harvest_trend_delta_pct?: number;

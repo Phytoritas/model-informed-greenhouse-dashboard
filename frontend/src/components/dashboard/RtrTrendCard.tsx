@@ -87,11 +87,11 @@ export default function RtrTrendCard({
 
   const copy = locale === 'ko'
     ? {
-      eyebrow: 'RTR 추세선',
-      title: '최근 3일 RTR 온도 추세',
+      eyebrow: '온도 기준 추세선',
+      title: '최근 3일 권장 온도 추세',
       actual: '실제 평균온도',
-      target: 'RTR 목표온도',
-      waiting: 'RTR 추세선을 계산하는 중입니다.',
+      target: '권장 목표온도',
+      waiting: '온도 기준 추세선을 계산하는 중입니다.',
     }
     : {
       eyebrow: 'RTR trend',

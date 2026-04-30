@@ -56,6 +56,7 @@ def _serialize_candidate_scenario(
 ) -> dict[str, Any]:
     yield_summary = candidate.get("yield_projection", {}) or {}
     energy_summary = candidate.get("energy_summary", {}) or {}
+    labor_summary = candidate.get("labor_projection", {}) or {}
     return {
         "label": label,
         "mode": mode,
@@ -82,6 +83,9 @@ def _serialize_candidate_scenario(
         "cooling_energy_kwh_m2_day": energy_summary.get("cooling_energy_kWh_m2_day", 0.0),
         "total_energy_cost_krw_m2_day": energy_summary.get("total_energy_cost_krw_m2_day", 0.0),
         "labor_index": candidate["objective_breakdown"]["labor_index"],
+        "labor_hours_m2_day": labor_summary.get("labor_hours_m2_day", 0.0),
+        "labor_cost_krw_m2_day": labor_summary.get("labor_cost_krw_m2_day", 0.0),
+        "labor_summary": labor_summary,
         "yield_kg_m2_day": yield_summary.get("predicted_yield_kg_m2_day", 0.0),
         "yield_kg_m2_week": yield_summary.get("predicted_yield_kg_m2_week", 0.0),
         "harvest_trend_delta_pct": yield_summary.get("harvest_trend_delta_pct", 0.0),
@@ -395,7 +399,15 @@ def compute_rtr_temperature_sensitivity(
                 optimization_inputs,
                 target_node_development_per_day=optimization_inputs.target_node_development_per_day + target_step,
             ),
-            extractor=lambda payload: float(payload["objective_breakdown"]["labor_cost"]),
+            extractor=lambda payload: float(
+                payload["objective_breakdown"].get(
+                    "labor_objective_penalty",
+                    payload["objective_breakdown"].get(
+                        "labor_index",
+                        payload["objective_breakdown"].get("labor_cost", 0.0),
+                    ),
+                )
+            ),
         ),
     ]
 

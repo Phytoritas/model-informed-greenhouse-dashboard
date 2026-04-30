@@ -55,7 +55,7 @@ const AdvisorLandedTabStatePanel = ({
 
     return (
         <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
-            <div className="sg-advisor-shell sg-advisor-shell-violet">
+            <div className="sg-advisor-shell sg-advisor-shell-rose">
                 <div className="space-y-4">
                     <div>
                         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
@@ -79,7 +79,7 @@ const AdvisorLandedTabStatePanel = ({
                         type="button"
                         onClick={onRun}
                         disabled={status === 'loading'}
-                        className="w-full rounded-full bg-[color:var(--sg-accent-violet)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-92 disabled:opacity-60"
+                        className="w-full rounded-full bg-[color:var(--sg-color-primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[color:var(--sg-color-primary-strong)] disabled:opacity-60"
                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                     >
                         {status === 'loading' ? copy.runLoading : copy.run}

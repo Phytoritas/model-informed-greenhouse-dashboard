@@ -34,6 +34,38 @@ function requestTone(status: 'idle' | 'loading' | 'success' | 'error'): 'growth'
   return 'muted';
 }
 
+function telemetryStatusLabel(status: TelemetryStatus, locale: AppLocale): string {
+  if (locale !== 'ko') {
+    return status;
+  }
+  return ({
+    live: '실시간',
+    delayed: '지연',
+    stale: '오래됨',
+    offline: '오프라인',
+    loading: '연결 중',
+  } as const)[status] ?? status;
+}
+
+function cropName(crop: CropType, locale: AppLocale): string {
+  if (locale !== 'ko') {
+    return crop;
+  }
+  return crop === 'Cucumber' ? '오이' : '토마토';
+}
+
+function requestStatusLabel(status: 'idle' | 'loading' | 'success' | 'error', locale: AppLocale): string {
+  if (locale !== 'ko') {
+    return status;
+  }
+  return ({
+    idle: '대기',
+    loading: '처리 중',
+    success: '완료',
+    error: '확인 필요',
+  } as const)[status];
+}
+
 export default function SimulationRuntimePanel({
   locale,
   crop,
@@ -52,21 +84,21 @@ export default function SimulationRuntimePanel({
 
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Simulation Runtime',
-        title: 'Live Climate & Controls',
-        description: '시뮬레이션 시작, 단일 step, 전체 run, pause/resume/stop, speed 조절을 백엔드 runtime endpoint에 직접 연결합니다.',
-        status: 'Runtime 상태',
-        timeStep: 'Time step',
-        speed: 'Speed',
-        start: 'Start',
-        step: 'Step',
-        run: 'Run 전체',
-        pause: 'Pause',
-        resume: 'Resume',
-        stop: 'Stop',
-        applySpeed: 'Speed 적용',
+        eyebrow: '실시간 구동',
+        title: '온실 구동 제어',
+        description: '온실 구동 시작, 한 단계 진행, 전체 실행, 일시정지, 재개, 정지와 속도 조절을 이 화면에서 처리합니다.',
+        status: '구동 상태',
+        timeStep: '실행 간격',
+        speed: '실행 속도',
+        start: '시작',
+        step: '한 단계',
+        run: '전체 실행',
+        pause: '일시정지',
+        resume: '재개',
+        stop: '정지',
+        applySpeed: '속도 적용',
         crop: '작물',
-        endpoint: 'endpoint',
+        latestCommand: '마지막 명령',
         latest: '마지막 응답',
         noMessage: '아직 요청하지 않았습니다.',
       }
@@ -85,12 +117,13 @@ export default function SimulationRuntimePanel({
         stop: 'Stop',
         applySpeed: 'Apply speed',
         crop: 'Crop',
-        endpoint: 'endpoint',
+        latestCommand: 'Latest command',
         latest: 'Latest response',
         noMessage: 'No runtime request yet.',
       };
 
   const latestState = runtime.state[latestAction];
+  const latestActionLabel = copy[latestAction];
 
   return (
     <section className="sg-panel p-4" aria-labelledby="simulation-runtime-title">
@@ -106,7 +139,7 @@ export default function SimulationRuntimePanel({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusChip tone={statusTone(telemetryStatus)} icon={<Activity className="h-3.5 w-3.5" aria-hidden="true" />}>
-            {copy.status}: {telemetryStatus}
+            {copy.status}: {telemetryStatusLabel(telemetryStatus, locale)}
           </StatusChip>
           {telemetryDetail ? <StatusChip tone="muted">{telemetryDetail}</StatusChip> : null}
         </div>
@@ -119,7 +152,7 @@ export default function SimulationRuntimePanel({
               {copy.crop}
             </label>
             <div id="runtime-crop" className="sg-data-number mt-2 text-base font-bold text-[color:var(--sg-text-strong)]">
-              {crop}
+              {cropName(crop, locale)}
             </div>
           </div>
           <div>
@@ -184,13 +217,13 @@ export default function SimulationRuntimePanel({
             {copy.stop}
           </Button>
           <div className="flex items-center justify-center rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-white px-3 text-xs font-semibold text-[color:var(--sg-text-muted)]">
-            {copy.endpoint}: /api/{latestAction}
+            {copy.latestCommand}: {latestActionLabel}
           </div>
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-white px-3 py-2 text-xs text-[color:var(--sg-text-muted)]" aria-live="polite">
-        <StatusChip tone={requestTone(latestState.status)}>{latestState.status}</StatusChip>
+        <StatusChip tone={requestTone(latestState.status)}>{requestStatusLabel(latestState.status, locale)}</StatusChip>
         <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.latest}:</span>
         <span>{latestState.message ?? copy.noMessage}</span>
       </div>

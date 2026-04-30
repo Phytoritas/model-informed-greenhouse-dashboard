@@ -1,5 +1,4 @@
 import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
-import WeatherOutlookPanel from '../components/WeatherOutlookPanel';
 import ProducePricesPanel from '../components/ProducePricesPanel';
 import WeatherTrendPanel from '../components/dashboard/WeatherTrendPanel';
 import type { AppLocale } from '../i18n/locale';
@@ -11,6 +10,8 @@ import type {
   SensorData,
   WeatherOutlook,
 } from '../types';
+import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
+import type { PhytoSectionTab } from '../routes/phytosyncSections';
 import TrendPage from './trend-page';
 
 interface TrendRoutePageProps {
@@ -26,9 +27,17 @@ interface TrendRoutePageProps {
   produceLoading: boolean;
   produceError: string | null;
   overviewSignals: OverviewSignalsPayload | null;
+  knowledgeSummary: SmartGrowKnowledgeSummary | null;
+  knowledgeLoading: boolean;
+  knowledgeError: string | null;
+  onOpenAssistant: () => void;
+  tabs?: PhytoSectionTab[];
+  activeTabId?: string;
+  onSelectTab?: (id: string) => void;
 }
 
 export default function TrendRoutePage({
+  locale,
   crop,
   currentData,
   modelMetrics,
@@ -40,23 +49,41 @@ export default function TrendRoutePage({
   produceLoading,
   produceError,
   overviewSignals,
+  knowledgeSummary,
+  knowledgeLoading,
+  knowledgeError,
+  onOpenAssistant,
+  tabs = [],
+  activeTabId,
+  onSelectTab,
 }: TrendRoutePageProps) {
   return (
     <TrendPage
+      locale={locale}
+      crop={crop}
+      currentData={currentData}
+      modelMetrics={modelMetrics}
+      history={history}
+      weather={weather}
+      weatherLoading={weatherLoading}
+      weatherError={weatherError}
+      producePrices={producePrices}
+      produceLoading={produceLoading}
+      produceError={produceError}
+      overviewSignals={overviewSignals}
+      knowledgeSummary={knowledgeSummary}
+      knowledgeLoading={knowledgeLoading}
+      knowledgeError={knowledgeError}
+      onOpenAssistant={onOpenAssistant}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
       weatherSurface={(
-        <div className="grid gap-5">
-          <WeatherTrendPanel
-            weather={weather}
-            loading={weatherLoading}
-            error={weatherError}
-          />
-          <WeatherOutlookPanel
-            weather={weather}
-            loading={weatherLoading}
-            error={weatherError}
-            compact
-          />
-        </div>
+        <WeatherTrendPanel
+          weather={weather}
+          loading={weatherLoading}
+          error={weatherError}
+        />
       )}
       marketSurface={(
         <ProducePricesPanel

@@ -44,8 +44,8 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
             dailyEnergy: '일일 에너지',
             humidity: '습도',
             vpd: 'VPD',
-            rtrDelta: 'RTR 편차',
-            rtrBalance: 'RTR 균형',
+            rtrDelta: '온도 편차',
+            rtrBalance: '온도 균형',
             forecastHighTemp: '예상 최고기온',
             forecastPrecip: '예상 강수확률',
             nextDayWeather: '다음 날씨',
@@ -132,7 +132,7 @@ const HarvestMarketTab = (props: HarvestMarketTabProps) => {
     if (props.status !== 'error' && analysis) {
         return (
             <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.92fr)_minmax(0,1.08fr)]">
-                <div className="sg-advisor-shell sg-advisor-shell-violet space-y-4">
+                <div className="sg-advisor-shell sg-advisor-shell-amber space-y-4">
                     <div>
                         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                             {copy.title}

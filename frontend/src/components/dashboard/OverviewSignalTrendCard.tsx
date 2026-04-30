@@ -129,17 +129,17 @@ export default function OverviewSignalTrendCard({
   const copy = locale === 'ko'
     ? {
       eyebrow: '3일 시계열',
-      title: '온실 내부 일사량 · 소스-싱크 균형 지수',
-      description: '실제 API 이력에 실시간 소스-싱크 추세를 겹쳐 표시합니다.',
+      title: '온실 내부 일사량 · 공급력과 착과 부담 균형',
+      description: '저장된 이력에 실시간 공급력·착과 부담 추세를 겹쳐 표시합니다.',
       irradiance: '온실 내부 일사량',
-      balance: '소스-싱크 균형 지수',
+      balance: '공급력·착과 부담 균형',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
       balanceUnit: signals?.source_sink.unit ?? '정규 지수',
       loading: '실제 3일 추세를 불러오는 중입니다.',
       error: error ?? '실제 추세를 불러오지 못했습니다.',
       empty: '표시할 실제 추세가 아직 없습니다.',
-      modelMissing: '모델 스냅샷 이력이 아직 없어 소스-싱크 추세를 표시할 수 없습니다.',
-      mergedTitle: '온실 내부 일사량과 소스-싱크를 한 차트에서 봅니다.',
+      modelMissing: '모델 이력이 아직 없어 공급력·착과 부담 추세를 표시할 수 없습니다.',
+      mergedTitle: '온실 내부 일사량과 공급력·착과 부담을 한 차트에서 봅니다.',
       updated: '화면 갱신',
       staleWarning: '최근 갱신 요청이 지연되어 마지막 성공 값을 유지하고 있습니다.',
     }

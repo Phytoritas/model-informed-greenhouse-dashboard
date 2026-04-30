@@ -39,7 +39,7 @@ const WorkTab = (props: WorkTabProps) => {
             compareOperatorNote: '해석',
             compareImmediateDelta: '즉시 상태 변화',
             compareLeafGuard: '엽수 안전선',
-            compareSinkOverload: '싱크 과부하',
+            compareSinkOverload: '착과 부담 과부하',
             compareFruitDm14d: '14일 과실 건물중',
             compareLai14d: '14일 LAI',
             compareAgronomy: '재배 메모',
@@ -74,7 +74,7 @@ const WorkTab = (props: WorkTabProps) => {
             harvestableFruits: '수확 가능 과실',
             humidity: '습도',
             vpd: 'VPD',
-            rtrDelta: 'RTR 편차',
+            rtrDelta: '온도 편차',
             forecastHighTemp: '예상 최고기온',
             availableButNotRun: '작업 어드바이저는 이미 적용되어 있으며, 실행하면 현재 작업 우선순위를 확인할 수 있습니다.',
         }
@@ -161,9 +161,9 @@ const WorkTab = (props: WorkTabProps) => {
             case 'fruit_load_delta':
                 return locale === 'ko' ? '착과 부하' : 'Fruit load';
             case 'sink_demand_delta':
-                return locale === 'ko' ? '싱크 요구량' : 'Sink demand';
+                return locale === 'ko' ? '착과 부담 요구량' : 'Sink demand';
             case 'source_capacity_delta':
-                return locale === 'ko' ? '소스 용량' : 'Source capacity';
+                return locale === 'ko' ? '광합성 공급력' : 'Source capacity';
             case 'fruit_partition_ratio_delta':
                 return locale === 'ko' ? '과실 분배율' : 'Fruit partition';
             default:

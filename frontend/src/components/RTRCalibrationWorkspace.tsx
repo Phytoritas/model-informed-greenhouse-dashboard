@@ -49,12 +49,12 @@ const RTRCalibrationWorkspace = ({
 
     const copy = locale === 'ko'
         ? {
-            title: 'RTR 칼리브레이션 워크스페이스',
-            subtitle: `${getCropLabel(crop, locale)} 고생산 구간을 직접 입력해 RTR 설정을 다시 맞춥니다.`,
+            title: '온도 기준 보정 워크스페이스',
+            subtitle: `${getCropLabel(crop, locale)} 고생산 구간을 직접 입력해 온도 기준 설정을 다시 맞춥니다.`,
             loading: '보정 상태를 불러오는 중...',
             rangeTitle: '사용 가능한 환경 이력',
             rangeMissing: '아직 이 작물의 환경 이력이 로드되지 않았습니다. 시뮬레이터 시작 후 다시 시도하세요.',
-            rangeReady: '현재 로드된 환경 이력에서 일별 RTR 포인트를 다시 계산합니다.',
+            rangeReady: '현재 로드된 환경 이력에서 일별 온도 기준 포인트를 다시 계산합니다.',
             currentTitle: '현재 보정 상태',
             currentMode: '현재 모드',
             currentSamples: '샘플 일수',
@@ -84,7 +84,7 @@ const RTRCalibrationWorkspace = ({
             previewSource: '선정 경로',
             previewFiltered: '사용 일수',
             previewFit: '미리 보기 적합도',
-            saveDone: '저장 후 RTR profile을 즉시 다시 불러옵니다.',
+            saveDone: '저장 후 온도 기준 설정을 즉시 다시 불러옵니다.',
             houseWindow: '하우스 입력 구간',
             growerApproved: '농가 승인',
             managerApproved: '매니저 승인',
@@ -181,7 +181,7 @@ const RTRCalibrationWorkspace = ({
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                        <BookOpenCheck className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <BookOpenCheck className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold">{copy.title}</h4>
                     </div>
                     <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.subtitle}</p>
@@ -392,7 +392,7 @@ const RTRCalibrationWorkspace = ({
                     type="button"
                     onClick={() => void previewCalibration({ windows: draftWindows, selectionMode })}
                     disabled={!canPreview || loadingPreview || saving}
-                    className="rounded-full bg-[color:var(--sg-accent-violet)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
+                    className="rounded-full bg-[color:var(--sg-color-primary)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
                 >
                     <span className="inline-flex items-center gap-1">
                         <Search className="h-3.5 w-3.5" />
@@ -408,7 +408,7 @@ const RTRCalibrationWorkspace = ({
                         await onSaved?.();
                     }}
                     disabled={!canPreview || saving}
-                    className="rounded-lg border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-violet)] hover:bg-[color:var(--sg-status-live-bg)] hover:text-[color:var(--sg-accent-violet)] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg border border-[color:var(--sg-outline-soft)] px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-color-olive)] hover:bg-[color:var(--sg-status-live-bg)] hover:text-[color:var(--sg-color-olive)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <span className="inline-flex items-center gap-1">
                         <Save className="h-3.5 w-3.5" />

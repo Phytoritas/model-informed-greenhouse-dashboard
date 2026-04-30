@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
+import { Sprout } from 'lucide-react';
 import type { AdvancedModelMetrics, RtrProfile, SensorData } from '../../types';
 import { LocaleProvider } from '../../i18n/LocaleProvider';
 import { LOCALE_STORAGE_KEY } from '../../i18n/locale';
@@ -9,6 +10,7 @@ import {
   FinalCTA,
   HeroDecisionBrief,
   LandingFooter,
+  LiveMetricStrip,
   ScenarioOptimizerPreview,
   TopNavigation,
   WeatherMarketKnowledgeBridge,
@@ -164,7 +166,7 @@ describe('overview landing sections', () => {
     );
 
     expect(screen.getByRole('heading', { name: '스마트온실 인공지능 의사결정 플랫폼' })).toBeTruthy();
-    expect(screen.getByText('대시보드 보기')).toBeTruthy();
+    expect(screen.getByText('온실 환경 보기')).toBeTruthy();
     expect(screen.getByRole('button', { name: '무료로 시작' })).toBeTruthy();
     expect(screen.queryByText('AI decision platform for smart greenhouses.')).toBeNull();
   });
@@ -172,11 +174,87 @@ describe('overview landing sections', () => {
   it('routes landing navigation to the full feature surfaces', () => {
     renderWithProviders(<TopNavigation onOpenAssistant={() => undefined} />);
 
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/overview#overview-dashboard');
-    expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend');
-    expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios');
-    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant#assistant-search');
-    expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Open Dashboard' }).getAttribute('href')).toBe('/overview#overview-dashboard');
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('href')).toBe('/control');
+    expect(screen.getByRole('link', { name: '날씨·시세' }).getAttribute('href')).toBe('/trend');
+    expect(screen.getByRole('link', { name: '조정검토' }).getAttribute('href')).toBe('/scenarios');
+    expect(screen.getByRole('link', { name: '자료·질문' }).getAttribute('href')).toBe('/knowledge#assistant-search');
+    expect(screen.getByRole('button', { name: '질문하기' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '운영 화면 열기' }).getAttribute('href')).toBe('/control');
+  });
+
+  it('renders visible trend charts in the live metric strip', () => {
+    const tiles = [
+      {
+        key: 'temperature',
+        label: '온도',
+        value: 22.4,
+        unit: '°C',
+        availabilityState: 'live' as const,
+        availabilityLabel: '정상',
+        healthStatus: 'normal' as const,
+        trend: 'up' as const,
+        trendDetail: '1h 변화 +0.4°C',
+        icon: Sprout,
+        color: 'bg-[color:var(--sg-color-olive)]',
+        lastReceived: '방금',
+      },
+      {
+        key: 'co2',
+        label: '이산화탄소',
+        value: 720,
+        unit: 'ppm',
+        availabilityState: 'live' as const,
+        availabilityLabel: '정상',
+        healthStatus: 'normal' as const,
+        trend: 'stable' as const,
+        trendDetail: '1h 변화 +8ppm',
+        icon: Sprout,
+        color: 'bg-[color:var(--sg-color-sage)]',
+        lastReceived: '방금',
+      },
+    ];
+    const history = [20.8, 21.2, 21.7, 22.4].map((temperature, index) => ({
+      ...SENSOR,
+      timestamp: SENSOR.timestamp + index * 60_000,
+      temperature,
+      co2: 650 + index * 20,
+    }));
+
+    renderWithProviders(
+      <LiveMetricStrip
+        tiles={tiles}
+        yieldOutlookKg={MODEL_METRICS.yield.predictedWeekly}
+        history={history}
+        metricHistory={[
+          {
+            timestamp: SENSOR.timestamp,
+            lai: 3.1,
+            biomass: 42,
+            growthRate: 1,
+            predictedWeeklyYield: 26.8,
+            harvestableFruits: 116,
+            energyConsumption: 12.1,
+            energyLoadKw: 4.2,
+            energyEfficiency: 0.8,
+          },
+          {
+            timestamp: SENSOR.timestamp + 60_000,
+            lai: 3.2,
+            biomass: 43,
+            growthRate: 1.1,
+            predictedWeeklyYield: 27.6,
+            harvestableFruits: 118,
+            energyConsumption: 12.6,
+            energyLoadKw: 4.4,
+            energyEfficiency: 0.82,
+          },
+        ]}
+      />,
+      'ko',
+    );
+
+    expect(screen.getByRole('img', { name: '온도 최근 흐름' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '이산화탄소 최근 흐름' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '수확 전망 최근 흐름' })).toBeTruthy();
   });
 });

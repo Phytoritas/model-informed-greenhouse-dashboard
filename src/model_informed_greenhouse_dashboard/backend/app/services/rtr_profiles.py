@@ -60,6 +60,21 @@ DEFAULT_RTR_PROFILES: Dict[str, Dict[str, Any]] = {
                 "energy": 25.0,
                 "labor": 18.0,
             },
+            "labor_benchmark": {
+                "source_key": "agricultural-income-reference",
+                "source_label_ko": "농업소득자료 기준",
+                "source_label_en": "Agricultural income benchmark",
+                "source_note": (
+                    "Facility tomato hydroponic labor-time benchmark from public "
+                    "agricultural income reporting; adjust with house records."
+                ),
+                "source_url": "https://www.rda.go.kr/board/board.do?boardId=pubreal&currPage=27&dataNo=100000521140&menu_id=opp&mode=updateCnt&prgId=opr_pubreal&searchKey=&searchVal=",
+                "reference_year": 2023,
+                "reference_labor_hours_10a_year": 687.0,
+                "reference_workload_index": 0.55,
+                "default_labor_rate_krw_hour": 16800.0,
+                "default_labor_rate_basis": "daily agricultural wage / 8h",
+            },
         },
     },
     "Cucumber": {
@@ -105,6 +120,21 @@ DEFAULT_RTR_PROFILES: Dict[str, Dict[str, Any]] = {
                 "risk": 120.0,
                 "energy": 25.0,
                 "labor": 20.0,
+            },
+            "labor_benchmark": {
+                "source_key": "agricultural-income-reference",
+                "source_label_ko": "농업소득자료 기준",
+                "source_label_en": "Agricultural income benchmark",
+                "source_note": (
+                    "Facility cucumber labor-time benchmark from public agricultural "
+                    "income reporting; adjust with house records."
+                ),
+                "source_url": "https://www.rda.go.kr/board/board.do?boardId=pubreal&currPage=27&dataNo=100000521140&menu_id=opp&mode=updateCnt&prgId=opr_pubreal&searchKey=&searchVal=",
+                "reference_year": 2023,
+                "reference_labor_hours_10a_year": 782.0,
+                "reference_workload_index": 0.55,
+                "default_labor_rate_krw_hour": 16800.0,
+                "default_labor_rate_basis": "daily agricultural wage / 8h",
             },
         },
     },

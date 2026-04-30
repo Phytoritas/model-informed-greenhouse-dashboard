@@ -241,4 +241,32 @@ describe('useGreenhouse', () => {
 
         unmount();
     });
+
+    it('persists device button changes through the backend control command endpoint', async () => {
+        const { result, unmount } = renderHook(() => useGreenhouse());
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledWith(
+                expect.stringContaining('/start'),
+                expect.objectContaining({ method: 'POST' }),
+            );
+        });
+
+        await act(async () => {
+            result.current.toggleControl('ventilation');
+        });
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledWith(
+                expect.stringContaining('/control/commands?crop=cucumber'),
+                expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining('"ventilation":true'),
+                }),
+            );
+        });
+        expect(result.current.controls.ventilation).toBe(true);
+
+        unmount();
+    });
 });

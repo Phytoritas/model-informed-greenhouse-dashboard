@@ -222,9 +222,9 @@ export default function DecisionSnapshotGrid({
   const { locale } = useLocale();
   const copy = locale === 'ko'
     ? {
-        eyebrow: '보조 흐름',
-        title: '날씨 · 시세 · 에너지 · 생육',
-        description: '외기, 에너지, 생육은 1일 흐름으로 보고, 시세는 최근 1주 흐름으로 봅니다.',
+        eyebrow: '오늘 판단 신호',
+        title: '날씨 · 시세 · 에너지 · 생육 흐름',
+        description: '외기, 에너지, 생육은 1일 흐름으로 보고, 시세는 최근 1주 흐름으로 묶어 판단합니다.',
         weatherTitle: '외기',
         marketTitle: '시세',
         energyTitle: '에너지',
@@ -249,9 +249,9 @@ export default function DecisionSnapshotGrid({
         cropUnit: 'µmol/m²/s',
       }
     : {
-        eyebrow: 'Support signals',
-        title: 'Weather · market · energy · crop',
-        description: 'Weather, energy, and crop use a 1-day window. Market uses a 7-day window.',
+        eyebrow: 'Today decision signals',
+        title: 'Weather · market · energy · crop flow',
+        description: 'Weather, energy, and crop use a 1-day window; market uses a 7-day decision window.',
         weatherTitle: 'Outside',
         marketTitle: 'Market',
         energyTitle: 'Energy',
@@ -345,14 +345,19 @@ export default function DecisionSnapshotGrid({
   const marketHeadline = produceLoading || !selectedMarket?.item
     ? copy.marketLoading
     : `${preferredProduceName} ${selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${copy.marketUnit}`;
-  const energyHeadline = `${modelMetrics.energy.consumption.toFixed(1)} kW · COP ${modelMetrics.energy.efficiency.toFixed(2)}`;
-  const cropHeadline = `광합성 ${currentData.photosynthesis.toFixed(1)} · LAI ${modelMetrics.growth.lai.toFixed(2)}`;
+  const energyHeadline = locale === 'ko'
+    ? `${modelMetrics.energy.consumption.toFixed(1)} kW · 열효율 ${modelMetrics.energy.efficiency.toFixed(2)}`
+    : `${modelMetrics.energy.consumption.toFixed(1)} kW · COP ${modelMetrics.energy.efficiency.toFixed(2)}`;
+  const cropHeadline = locale === 'ko'
+    ? `광합성 ${currentData.photosynthesis.toFixed(1)} · 잎면적 ${modelMetrics.growth.lai.toFixed(2)}`
+    : `Photosynthesis ${currentData.photosynthesis.toFixed(1)} · LAI ${modelMetrics.growth.lai.toFixed(2)}`;
 
   return (
     <DashboardCard
       eyebrow={copy.eyebrow}
       title={copy.title}
       description={copy.description}
+      className="sg-tint-neutral"
       contentClassName="overflow-hidden"
     >
       <div className="grid gap-3 xl:grid-cols-2">
@@ -363,8 +368,8 @@ export default function DecisionSnapshotGrid({
           supporting={copy.weatherSupport}
           seriesLabel={copy.outsideSeries}
           unitLabel={copy.radiationUnit}
-          toneClassName="sg-tint-amber"
-          stroke="#2d5d77"
+          toneClassName="sg-tint-neutral"
+          stroke="#596b4a"
           data={outsideData}
           emptyLabel={copy.outsideEmpty}
         />
@@ -399,8 +404,8 @@ export default function DecisionSnapshotGrid({
           supporting={copy.cropSupport}
           seriesLabel={copy.cropSeries}
           unitLabel={copy.cropUnit}
-          toneClassName="sg-tint-violet"
-          stroke="#7e2c2d"
+          toneClassName="sg-tint-green"
+          stroke="#15803d"
           data={cropData}
           emptyLabel={copy.cropEmpty}
         />

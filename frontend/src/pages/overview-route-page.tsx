@@ -3,6 +3,7 @@ import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
   CropType,
+  MetricHistoryPoint,
   OverviewSignalsPayload,
   ProducePricesPayload,
   RtrProfile,
@@ -16,7 +17,6 @@ import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import AlertRail from '../components/dashboard/AlertRail';
 import ConsultingTrendCard from '../components/dashboard/ConsultingTrendCard';
 import HeroControlCard from '../components/dashboard/HeroControlCard';
-import ModelRuntimeBridge from '../components/dashboard/ModelRuntimeBridge';
 import OverviewSignalTrendCard from '../components/dashboard/OverviewSignalTrendCard';
 import TodayBoard from '../components/dashboard/TodayBoard';
 import {
@@ -80,6 +80,7 @@ interface OverviewRoutePageProps {
   alertItems: AlertRailItem[];
   fallbackAlertBody: string;
   history: SensorData[];
+  metricHistory?: MetricHistoryPoint[];
   currentData: SensorData;
   modelMetrics: AdvancedModelMetrics;
   overviewSignals: OverviewSignalsPayload | null;
@@ -129,6 +130,7 @@ export default function OverviewRoutePage({
   alertItems,
   fallbackAlertBody,
   history,
+  metricHistory = [],
   currentData,
   modelMetrics,
   overviewSignals,
@@ -194,7 +196,14 @@ export default function OverviewRoutePage({
           )}
         />
       )}
-      liveMetricStrip={<LiveMetricStrip tiles={[...primaryKpiTiles, ...secondaryKpiTiles]} yieldOutlookKg={modelMetrics.yield.predictedWeekly} />}
+      liveMetricStrip={(
+        <LiveMetricStrip
+          tiles={[...primaryKpiTiles, ...secondaryKpiTiles]}
+          yieldOutlookKg={modelMetrics.yield.predictedWeekly}
+          history={history}
+          metricHistory={metricHistory}
+        />
+      )}
       todayActionBoard={(
         <TodayActionBoard
           crop={crop}
@@ -221,13 +230,13 @@ export default function OverviewRoutePage({
           <section className="space-y-4" aria-labelledby="overview-dashboard-metrics-title">
             <div className="overview-section-heading">
               <div>
-                <p className="sg-eyebrow">Dashboard</p>
+                <p className="sg-eyebrow">{locale === 'ko' ? '전체 지표' : 'Dashboard'}</p>
                 <h2 id="overview-dashboard-metrics-title">
                   {locale === 'ko' ? '전체 지표와 센서 추세' : 'Full metric deck and sensor trends'}
                 </h2>
                 <p className="mt-1 max-w-2xl text-[0.8rem] leading-5 text-[color:var(--sg-text-muted)]">
                   {locale === 'ko'
-                    ? 'Command 화면에서는 요약만 보이고, 상세 지표와 환경 차트는 이 탭에서 같은 데이터 흐름으로 확인합니다.'
+                    ? '첫 화면에서는 요약만 보이고, 상세 지표와 환경 차트는 이 탭에서 같은 데이터 흐름으로 확인합니다.'
                     : 'Command stays summary-first; detailed metrics and environmental charts remain connected here.'}
                 </p>
               </div>
@@ -270,8 +279,8 @@ export default function OverviewRoutePage({
                     <Suspense
                       fallback={(
                         <LoadingSkeleton
-                          title={locale === 'ko' ? 'RTR 추세' : 'RTR trend'}
-                          loadingMessage={locale === 'ko' ? 'RTR 추세선을 불러오는 중입니다...' : 'Loading RTR trendline...'}
+                          title={locale === 'ko' ? '온도 기준 추세' : 'RTR trend'}
+                          loadingMessage={locale === 'ko' ? '온도 기준 추세선을 불러오는 중입니다...' : 'Loading RTR trendline...'}
                           minHeightClassName="min-h-[268px]"
                         />
                       )}
@@ -307,11 +316,6 @@ export default function OverviewRoutePage({
               />
             </div>
           </div>
-          <div className="grid gap-4 xl:grid-cols-12">
-            <div className="xl:col-span-12">
-              <ModelRuntimeBridge crop={crop} onOpenAssistant={onOpenAssistant} />
-            </div>
-          </div>
         </div>
       )}
       watchTab={(
@@ -327,7 +331,6 @@ export default function OverviewRoutePage({
           />
         </div>
       )}
-      modelRuntimeBridge={<ModelRuntimeBridge crop={crop} onOpenAssistant={onOpenAssistant} />}
       weatherMarketKnowledgeBridge={(
         <WeatherMarketKnowledgeBridge
           crop={crop}

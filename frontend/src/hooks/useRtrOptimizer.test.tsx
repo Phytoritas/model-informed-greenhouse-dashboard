@@ -383,6 +383,36 @@ describe('useRtrOptimizer', () => {
         expect(optimizeBody.optimization_mode).toBe('energy_saving');
     });
 
+    it('sends a grower-entered hourly labor rate as the RTR labor-cost override', async () => {
+        const { result } = renderHook(() =>
+            useRtrOptimizer({
+                crop: 'Cucumber',
+                actualAreaM2: 2809.92,
+                actualAreaPyeong: 850,
+                actualAreaSource: 'server',
+                optimizerEnabled: true,
+                autoRunSupplemental: false,
+            }),
+        );
+
+        await waitFor(() => {
+            expect(result.current.optimizeResponse).not.toBeNull();
+        });
+        const initialOptimizeCount = fetchMock.mock.calls.filter(([url]) => String(url).includes('/rtr/optimize')).length;
+
+        act(() => {
+            result.current.setLaborRateKrwHour(21000);
+        });
+
+        await waitFor(() => {
+            const optimizeCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes('/rtr/optimize'));
+            expect(optimizeCalls.length).toBeGreaterThan(initialOptimizeCount);
+            const latestCall = optimizeCalls[optimizeCalls.length - 1];
+            const latestBody = JSON.parse(String((latestCall?.[1] as RequestInit | undefined)?.body ?? '{}'));
+            expect(latestBody.user_labor_cost_coefficient).toBe(21000);
+        });
+    });
+
     it('stays idle when the optimizer surface is inactive', async () => {
         const { result } = renderHook(() =>
             useRtrOptimizer({

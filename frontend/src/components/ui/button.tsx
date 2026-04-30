@@ -9,8 +9,8 @@ const buttonStyles = cva(
             variant: {
                 default: 'bg-[color:var(--sg-color-primary)] text-white shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-strong)]',
                 primary: 'bg-[color:var(--sg-color-primary)] text-white shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-strong)]',
-                secondary: 'border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-color-primary)] shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-soft)]',
-                ghost: 'bg-transparent text-[color:var(--sg-text-muted)] hover:bg-white/70 hover:text-[color:var(--sg-text-strong)]',
+                secondary: 'border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)] text-[color:var(--sg-color-primary)] shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-soft)]',
+                ghost: 'bg-transparent text-[color:var(--sg-text-muted)] hover:bg-[color:var(--sg-surface-raised)] hover:text-[color:var(--sg-text-strong)]',
                 tonal: 'bg-[color:var(--sg-color-olive-soft)] text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)] hover:bg-[#e2ecd8]',
                 danger: 'bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary-strong)] shadow-[var(--sg-shadow-card)] hover:bg-[#facfcc]',
                 disabled: 'bg-[#e5e7eb] text-[#98a2b3] shadow-none',

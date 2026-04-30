@@ -17,7 +17,7 @@ export function ToggleGroupItem({ pressed = false, className, ...props }: Toggle
             className={cn(
                 'rounded-[14px] px-3 py-2 text-sm font-semibold transition-colors',
                 pressed
-                    ? 'bg-[color:var(--sg-accent-violet)] text-white shadow-[var(--sg-shadow-card)]'
+                    ? 'bg-[color:var(--sg-color-olive)] text-white shadow-[var(--sg-shadow-card)]'
                     : 'text-[color:var(--sg-text-muted)] hover:bg-white hover:text-[color:var(--sg-text-strong)]',
                 className,
             )}

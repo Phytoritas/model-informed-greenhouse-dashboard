@@ -116,16 +116,17 @@ describe('ChatAssistant', () => {
         );
 
         fireEvent.change(
-            screen.getByPlaceholderText('Example: What happens if I raise CO2 by 100 ppm now?'),
+            screen.getByPlaceholderText('예: 지금 이산화탄소를 100ppm 더 올리면 어떻게 되나요?'),
             { target: { value: 'What happens if I raise CO2 by 100 ppm now?' } },
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Send question' }));
+        fireEvent.click(screen.getByRole('button', { name: '질문 보내기' }));
 
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-        expect(await screen.findByText('Model-calculated effect')).toBeTruthy();
-        expect(screen.getByText(/14d \+17\.493/)).toBeTruthy();
-        expect(screen.getByText(/S\/S \+0\.092/)).toBeTruthy();
-        expect(screen.getByText(/Confidence 86%/)).toBeTruthy();
+        expect(await screen.findByText('모델 계산 효과')).toBeTruthy();
+        expect(screen.getByText(/14일 \+17\.493/)).toBeTruthy();
+        expect(screen.getByText(/균형 \+0\.092/)).toBeTruthy();
+        expect(screen.getByText(/계산 신뢰도 86%/)).toBeTruthy();
+        expect(screen.queryByText(/추천:/)).toBeNull();
     });
 
     it('does not render fallback model-effect cards for generic chat responses', async () => {
@@ -179,13 +180,88 @@ describe('ChatAssistant', () => {
         );
 
         fireEvent.change(
-            screen.getByPlaceholderText('Example: What happens if I raise CO2 by 100 ppm now?'),
+            screen.getByPlaceholderText('예: 지금 이산화탄소를 100ppm 더 올리면 어떻게 되나요?'),
             { target: { value: 'What should I watch today?' } },
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Send question' }));
+        fireEvent.click(screen.getByRole('button', { name: '질문 보내기' }));
 
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-        expect(screen.queryByText('Model-calculated effect')).toBeNull();
-        expect(screen.queryByText(/14d \+17\.493/)).toBeNull();
+        expect(screen.queryByText('모델 계산 효과')).toBeNull();
+        expect(screen.queryByText(/14일 \+17\.493/)).toBeNull();
+    });
+
+    it('renders current-state chat responses without unrelated recommendations or duplicate action blocks', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            text: async () => JSON.stringify({
+                text: '## 핵심 요약\n- 현재 생육은 잎면적과 군락 동화량을 기준으로 확인했습니다.\n\n## 작업 순서\n- 별도 조정 질문이 있을 때만 계산합니다.',
+                machine_payload: {
+                    display: {
+                        language: 'ko',
+                        summary: '현재 생육은 잎면적 0.21, 공급/수요 균형 -0.52, 군락 동화량 0.1 µmol 기준으로 봅니다.',
+                        risks: [],
+                        actions_now: [],
+                        actions_today: [],
+                        actions_week: [],
+                        monitor: ['다음 관측 때 마디수와 잎면적을 같은 시간대에 기록하세요.'],
+                        confidence: 0.82,
+                    },
+                    model_runtime: {
+                        status: 'ready',
+                        runtime_mode: 'current_state',
+                        summary: '현재 생육 상태를 진단합니다. 제어 변경 효과는 사용자가 조정 범위를 물을 때만 계산합니다.',
+                        state_snapshot: {
+                            lai: 0.21,
+                            source_sink_balance: -0.52,
+                            canopy_net_assimilation_umol_m2_s: 0.1,
+                            limiting_factor: 'electron_transport',
+                            node_count: 5,
+                        },
+                        scenario: {
+                            baseline_outputs: [],
+                            options: [],
+                            recommended: null,
+                            confidence: 0.82,
+                        },
+                        sensitivity: {
+                            confidence: 0.82,
+                            top_levers: [],
+                        },
+                        constraint_checks: {
+                            status: 'monitoring-first',
+                            violated_constraints: [],
+                        },
+                        recommendations: [],
+                        answer_focus: null,
+                    },
+                },
+            }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(
+            <LocaleProvider>
+                <ChatAssistant
+                    layoutMode="inline"
+                    currentData={currentData}
+                    metrics={metrics}
+                    crop="Cucumber"
+                />
+            </LocaleProvider>,
+        );
+
+        fireEvent.change(
+            screen.getByPlaceholderText('예: 지금 이산화탄소를 100ppm 더 올리면 어떻게 되나요?'),
+            { target: { value: '지금 생육 상태 알려줘' } },
+        );
+        fireEvent.click(screen.getByRole('button', { name: '질문 보내기' }));
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+        expect(await screen.findByText(/현재 생육은 잎면적 0\.21/)).toBeTruthy();
+        expect(screen.getByText('생육 상태 스냅샷')).toBeTruthy();
+        expect(screen.getByText(/광 반응/)).toBeTruthy();
+        expect(screen.queryByText('모델 계산 효과')).toBeNull();
+        expect(screen.queryByText(/추천:/)).toBeNull();
+        expect(screen.queryByText('농가용 요약')).toBeNull();
     });
 });

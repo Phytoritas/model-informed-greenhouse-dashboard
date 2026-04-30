@@ -11,8 +11,18 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { AppLocale } from '../i18n/locale';
-import type { DashboardWorkspaceKey } from '../components/shell/WorkspaceNav';
 import type { PromptAdvisorTabKey } from '../components/advisor/advisorTabRegistry';
+
+export type DashboardWorkspaceKey =
+  | 'command'
+  | 'advisor'
+  | 'rtr'
+  | 'trend'
+  | 'crop'
+  | 'resources'
+  | 'alerts'
+  | 'knowledge'
+  | 'settings';
 
 export type PhytoSectionKey =
   | 'overview'
@@ -59,9 +69,9 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           heroTitle: '오늘 운영',
           heroDescription: '핵심 판단, 오늘 조치, 주의 신호를 한 화면에 둡니다.',
           tabs: [
-            { id: 'overview-core', label: '오늘 운영' },
-            { id: 'overview-dashboard', label: '대시보드' },
-            { id: 'overview-watch', label: '주의' },
+            { id: 'overview-core', label: '오늘 판단' },
+            { id: 'overview-dashboard', label: '전체 지표' },
+            { id: 'overview-watch', label: '주의 확인' },
           ],
         },
         {
@@ -76,20 +86,21 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           heroTitle: '온실 환경',
           heroDescription: '',
           tabs: [
-            { id: 'control-strategy', label: '추천 제어안' },
+            { id: 'control-strategy', label: '환경 솔루션' },
             { id: 'control-devices', label: '장치 상태' },
+            { id: 'control-runtime', label: '구동 제어' },
           ],
         },
         {
           key: 'rtr',
           path: '/rtr',
-          label: 'RTR 최적화',
-          shortLabel: 'RTR',
+          label: '온도 기준 최적화',
+          shortLabel: '온도 기준',
           description: '기준안, 최적안, 민감도, 면적 보정을 따로 봅니다.',
           icon: CircleGauge,
           workspace: 'rtr',
           advisorTab: 'environment',
-          heroTitle: 'RTR 최적화',
+          heroTitle: '온도 기준 최적화',
           heroDescription: '기준안과 최적안 비교를 온실 환경 판단과 연결합니다.',
           tabs: [
             { id: 'rtr-strategy', label: '전략 비교' },
@@ -100,17 +111,17 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
         {
           key: 'scenarios',
           path: '/scenarios',
-          label: '시나리오 실험실',
+          label: '온실 조정 검토',
           shortLabel: '시나리오',
-          description: '과정기반모델 What-if와 RTR 편미분을 실제 백엔드로 실행합니다.',
+          description: '과정기반 계산과 온도 민감도 검토를 실제 계산 화면에서 실행합니다.',
           icon: FlaskConical,
           workspace: 'rtr',
           advisorTab: 'environment',
-          heroTitle: '시나리오 실험실',
-          heroDescription: '온도, CO2, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.',
+          heroTitle: '온실 조정 효과 검토',
+          heroDescription: '온도, 이산화탄소, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.',
           tabs: [
-            { id: 'scenario-model', label: '과정모델 What-if' },
-            { id: 'scenario-rtr', label: 'RTR 시나리오' },
+            { id: 'scenario-model', label: '조정안 계산' },
+            { id: 'scenario-rtr', label: '온도 민감도' },
           ],
         },
         {
@@ -123,7 +134,11 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           workspace: 'trend',
           heroTitle: '날씨와 시세',
           heroDescription: '',
-          tabs: [],
+          tabs: [
+            { id: 'trend-weather', label: '외기 그래프' },
+            { id: 'trend-market', label: '시세 그래프' },
+            { id: 'trend-decision', label: '판단 신호' },
+          ],
         },
         {
           key: 'crop-work',
@@ -162,16 +177,16 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
         {
           key: 'alerts',
           path: '/alerts',
-          label: '긴급 알림',
-          shortLabel: '긴급 알림',
-          description: '긴급 알림, 확인 필요, 처리 이력을 나눠 봅니다.',
+          label: '방제·알림',
+          shortLabel: '방제·알림',
+          description: '농약 솔루션, 확인 필요, 처리 이력을 나눠 봅니다.',
           icon: Bell,
           workspace: 'alerts',
           advisorTab: 'pesticide',
-          heroTitle: '긴급 알림',
-          heroDescription: '바로 확인할 경보와 처리 이력을 함께 정리합니다.',
+          heroTitle: '방제·알림',
+          heroDescription: '병해충·농약 검토와 긴급 알림을 함께 정리합니다.',
           tabs: [
-            { id: 'alerts-urgent', label: '긴급 알림' },
+            { id: 'alerts-protection', label: '농약 솔루션' },
             { id: 'alerts-warning', label: '확인 필요' },
             { id: 'alerts-history', label: '처리 이력' },
           ],
@@ -181,27 +196,32 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           path: '/assistant',
           label: '질문 도우미',
           shortLabel: '질문 도우미',
-          description: '질문과 자료 찾기를 한곳에서 처리합니다.',
+          description: '질문, 자료 찾기, 농약·양액 검토를 한곳에서 처리합니다.',
           icon: MessageCircle,
           workspace: 'knowledge',
-          heroTitle: '질문 도우미',
-          heroDescription: '질문과 자료 찾기를 한 화면에서 모아 봅니다.',
+          heroTitle: '질문 도우미와 재배 자료',
+          heroDescription: '질문과 목차형 자료 찾기를 한 화면에서 모아 봅니다.',
           tabs: [
             { id: 'assistant-chat', label: '질문' },
             { id: 'assistant-search', label: '자료 찾기' },
+            { id: 'assistant-solutions', label: '솔루션' },
           ],
         },
         {
           key: 'settings',
           path: '/settings',
-          label: '설정',
-          shortLabel: '설정',
-          description: '표시 기준, 연결 상태, 로컬 설정을 확인합니다.',
+          label: '연동 문의',
+          shortLabel: '연동 문의',
+          description: '표시 기준, 연결 상태, 운영 문의 준비 항목을 확인합니다.',
           icon: Settings,
           workspace: 'settings',
-          heroTitle: '설정',
+          heroTitle: '연동 상태와 운영 문의',
           heroDescription: '운영 화면의 기본값과 연결 상태를 정리합니다.',
-          tabs: [],
+          tabs: [
+            { id: 'contact-settings', label: '운영 기준' },
+            { id: 'contact-connections', label: '연결 상태' },
+            { id: 'contact-support', label: '문의 준비' },
+          ],
         },
       ]
     : [
@@ -233,8 +253,9 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           heroTitle: 'Control solutions',
           heroDescription: '',
           tabs: [
-            { id: 'control-strategy', label: 'Recommended control' },
+            { id: 'control-strategy', label: 'Climate solutions' },
             { id: 'control-devices', label: 'Devices' },
+            { id: 'control-runtime', label: 'Runtime' },
           ],
         },
         {
@@ -257,17 +278,17 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
         {
           key: 'scenarios',
           path: '/scenarios',
-          label: 'Scenario Lab',
+          label: 'Adjustment review',
           shortLabel: 'Scenarios',
-          description: 'Run process-model what-if and RTR partial sensitivity surfaces against the backend.',
+          description: 'Run process-model adjustment and RTR sensitivity checks against the backend.',
           icon: FlaskConical,
           workspace: 'rtr',
           advisorTab: 'environment',
-          heroTitle: 'Scenario Lab',
+          heroTitle: 'Greenhouse adjustment review',
           heroDescription: 'Estimate how temperature, CO2, and RH deltas affect yield and energy.',
           tabs: [
-            { id: 'scenario-model', label: 'Process what-if' },
-            { id: 'scenario-rtr', label: 'RTR scenario' },
+            { id: 'scenario-model', label: 'Adjustment effect' },
+            { id: 'scenario-rtr', label: 'RTR sensitivity' },
           ],
         },
         {
@@ -280,7 +301,11 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           workspace: 'trend',
           heroTitle: 'Trend',
           heroDescription: '',
-          tabs: [],
+          tabs: [
+            { id: 'trend-weather', label: 'Weather chart' },
+            { id: 'trend-market', label: 'Market chart' },
+            { id: 'trend-decision', label: 'Decision signals' },
+          ],
         },
         {
           key: 'crop-work',
@@ -319,16 +344,16 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
         {
           key: 'alerts',
           path: '/alerts',
-          label: 'Alerts',
-          shortLabel: 'Alerts',
-          description: 'Separate urgent warnings, watch items, and history.',
+          label: 'Protection',
+          shortLabel: 'Protection',
+          description: 'Separate pesticide solutions, watch items, and history.',
           icon: Bell,
           workspace: 'alerts',
           advisorTab: 'pesticide',
-          heroTitle: 'Alerts',
-          heroDescription: 'Keep the current warning queue and history in one page.',
+          heroTitle: 'Protection',
+          heroDescription: 'Keep pesticide review, warning queue, and history in one page.',
           tabs: [
-            { id: 'alerts-urgent', label: 'Urgent' },
+            { id: 'alerts-protection', label: 'Pesticide solution' },
             { id: 'alerts-warning', label: 'Watch' },
             { id: 'alerts-history', label: 'History' },
           ],
@@ -338,27 +363,32 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           path: '/assistant',
           label: 'Assistant',
           shortLabel: 'Assistant',
-          description: 'Keep ask and material search together.',
+          description: 'Keep questions, material lookup, and agronomy checks together.',
           icon: MessageCircle,
           workspace: 'knowledge',
-          heroTitle: 'Assistant',
-          heroDescription: 'Keep ask and material search in one place.',
+          heroTitle: 'Assistant and grower materials',
+          heroDescription: 'Keep consultation and material lookup in one place.',
           tabs: [
             { id: 'assistant-chat', label: 'Ask' },
             { id: 'assistant-search', label: 'Materials' },
+            { id: 'assistant-solutions', label: 'Solutions' },
           ],
         },
         {
           key: 'settings',
           path: '/settings',
-          label: 'Settings',
-          shortLabel: 'Settings',
-          description: 'Review display defaults, connection state, and local preferences.',
+          label: 'Contact',
+          shortLabel: 'Contact',
+          description: 'Review display basis, service links, and support readiness.',
           icon: Settings,
           workspace: 'settings',
-          heroTitle: 'Settings',
+          heroTitle: 'Connectivity and support',
           heroDescription: 'Keep operating defaults and connection status in one place.',
-          tabs: [],
+          tabs: [
+            { id: 'contact-settings', label: 'Settings' },
+            { id: 'contact-connections', label: 'Connections' },
+            { id: 'contact-support', label: 'Support' },
+          ],
         },
       ];
 }
@@ -367,15 +397,17 @@ export function findPhytoSection(
   sections: PhytoSectionDefinition[],
   pathname: string,
 ): PhytoSectionDefinition {
-  const normalizedPath = pathname.startsWith('/growth') || pathname.startsWith('/harvest')
-    ? '/crop-work'
-    : pathname.startsWith('/nutrient')
-      ? '/resources'
-      : pathname.startsWith('/protection')
-        ? '/alerts'
-        : pathname.startsWith('/assistant') || pathname.startsWith('/ask')
-          ? '/assistant'
-          : pathname;
+  const normalizedPath = pathname.startsWith('/dashboard') || pathname.startsWith('/rtr')
+    ? '/control'
+    : pathname.startsWith('/growth') || pathname.startsWith('/harvest')
+      ? '/crop-work'
+      : pathname.startsWith('/nutrient')
+        ? '/resources'
+        : pathname.startsWith('/protection')
+          ? '/alerts'
+          : pathname.startsWith('/assistant') || pathname.startsWith('/knowledge') || pathname.startsWith('/ask')
+            ? '/assistant'
+            : pathname;
 
   return sections.find((section) => normalizedPath === section.path || normalizedPath.startsWith(`${section.path}/`))
     ?? sections[0];
@@ -386,7 +418,7 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
     case 'command':
       return '/overview';
     case 'rtr':
-      return '/rtr';
+      return '/control#control-strategy';
     case 'trend':
       return '/trend';
     case 'crop':
@@ -397,7 +429,7 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
     case 'alerts':
       return '/alerts';
     case 'knowledge':
-      return '/assistant';
+      return '/knowledge#assistant-search';
     case 'settings':
       return '/settings';
     default:
@@ -408,17 +440,17 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
 export function getSectionPathForAdvisorTab(tab: PromptAdvisorTabKey): string {
   switch (tab) {
     case 'nutrient':
-      return '/nutrient';
+      return '/resources#resources-nutrient';
     case 'pesticide':
-      return '/protection';
+      return '/alerts#alerts-protection';
     case 'harvest_market':
-      return '/harvest';
+      return '/crop-work#crop-work-harvest';
     case 'environment':
-      return '/growth#environment';
+      return '/control#control-strategy';
     case 'work':
-      return '/growth#work';
+      return '/crop-work#crop-work-work';
     case 'physiology':
     default:
-      return '/growth#physiology';
+      return '/crop-work#crop-work-growth';
   }
 }

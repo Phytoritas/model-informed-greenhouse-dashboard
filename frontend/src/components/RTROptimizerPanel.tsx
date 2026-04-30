@@ -16,6 +16,7 @@ import type {
     RtrCropSpecificInsight,
     RtrOptimizationMode,
     RtrProfile,
+    RtrScenarioRow,
     SensorData,
     TemperatureSettings,
     TelemetryStatus,
@@ -67,6 +68,8 @@ export interface RTROptimizerStateLike {
     setIncludeCoolingCost: ReturnType<typeof useRtrOptimizer>['setIncludeCoolingCost'];
     includeLaborCost: ReturnType<typeof useRtrOptimizer>['includeLaborCost'];
     setIncludeLaborCost: ReturnType<typeof useRtrOptimizer>['setIncludeLaborCost'];
+    laborRateKrwHour: ReturnType<typeof useRtrOptimizer>['laborRateKrwHour'];
+    setLaborRateKrwHour: ReturnType<typeof useRtrOptimizer>['setLaborRateKrwHour'];
     telemetryOptimizationBlocked: ReturnType<typeof useRtrOptimizer>['telemetryOptimizationBlocked'];
     loading: ReturnType<typeof useRtrOptimizer>['loading'];
     loadingState: ReturnType<typeof useRtrOptimizer>['loadingState'];
@@ -173,11 +176,21 @@ function formatNumber(
     });
 }
 
+function formatValueWithUnit(
+    value: number | null | undefined,
+    digits: number,
+    unit: string,
+    locale: 'en' | 'ko' = 'ko',
+): string {
+    const formatted = formatNumber(value, digits, locale);
+    return formatted === '-' ? formatted : `${formatted} ${unit}`;
+}
+
 function getModeLabel(mode: string, locale: 'en' | 'ko'): string {
     if (locale === 'ko') {
         if (mode === 'yield_priority' || mode === 'growth_priority') return '수량 우선';
         if (mode === 'energy_priority' || mode === 'energy_saving') return '에너지 우선';
-        if (mode === 'labor_priority' || mode === 'labor_saving') return '노동 우선';
+        if (mode === 'labor_priority' || mode === 'labor_saving') return '작업 절감';
         if (mode === 'cooling_saving') return '냉방 절감';
         if (mode === 'heating_saving') return '난방 절감';
         if (mode === 'growth_priority') return '생장 우선';
@@ -199,6 +212,45 @@ function getModeLabel(mode: string, locale: 'en' | 'ko'): string {
     if (mode === 'custom_weights') return 'Custom';
     if (mode === 'baseline') return 'Baseline';
     return 'Balanced';
+}
+
+function getModeDescription(mode: string, locale: 'en' | 'ko'): string {
+    if (locale === 'ko') {
+        if (mode === 'yield_priority' || mode === 'growth_priority') return '수확 증가를 우선하고 비용 증가는 허용합니다.';
+        if (mode === 'energy_priority' || mode === 'energy_saving') return '난방·냉방 전력비 증가를 더 강하게 억제합니다.';
+        if (mode === 'labor_priority' || mode === 'labor_saving') return '수확·유인·적엽·적과 부담이 커지는 제어안을 피합니다.';
+        if (mode === 'cooling_saving') return '냉방 사용 증가를 특히 보수적으로 봅니다.';
+        if (mode === 'heating_saving') return '난방 사용 증가를 특히 보수적으로 봅니다.';
+        return '수량, 에너지, 작업 부담을 함께 비교합니다.';
+    }
+    if (mode === 'yield_priority' || mode === 'growth_priority') return 'Prioritizes yield even when cost rises.';
+    if (mode === 'energy_priority' || mode === 'energy_saving') return 'Constrains heating and cooling cost increases.';
+    if (mode === 'labor_priority' || mode === 'labor_saving') return 'Avoids controls that increase harvest, training, pruning, and thinning load.';
+    if (mode === 'cooling_saving') return 'Treats cooling increases conservatively.';
+    if (mode === 'heating_saving') return 'Treats heating increases conservatively.';
+    return 'Balances yield, energy, and workload.';
+}
+
+function getLaborRateSourceLabel(source: string | undefined, locale: 'en' | 'ko'): string {
+    if (source === 'user') {
+        return locale === 'ko' ? '사용자 입력 시급' : 'User hourly rate';
+    }
+    if (source === 'agricultural-income-reference') {
+        return locale === 'ko' ? '농업소득자료 기준 시급' : 'Agricultural income reference rate';
+    }
+    return locale === 'ko' ? '기준 시급' : 'Reference rate';
+}
+
+function getLaborBenchmarkLabel(
+    summary: { labor_benchmark_source_label_ko?: string; labor_benchmark_source_label_en?: string } | null,
+    locale: 'en' | 'ko',
+): string {
+    if (!summary) {
+        return locale === 'ko' ? '농업소득자료 기준' : 'Agricultural income benchmark';
+    }
+    return locale === 'ko'
+        ? summary.labor_benchmark_source_label_ko ?? '농업소득자료 기준'
+        : summary.labor_benchmark_source_label_en ?? 'Agricultural income benchmark';
 }
 
 function getScenarioLabel(label: string, locale: 'en' | 'ko'): string {
@@ -277,7 +329,7 @@ function getWarningLabel(code: string, locale: 'en' | 'ko'): string {
         recent_leaf_removal_missing: '최근 적엽 기록 필요',
         recent_fruit_thinning_missing: '최근 적과 기록 필요',
         risk_bound_active: '위험 제약 적용 중',
-        large_rtr_deviation_reason_required: 'RTR 편차 이유 설명 필요',
+        large_rtr_deviation_reason_required: '온도 기준 편차 이유 설명 필요',
     };
     const enMap: Record<string, string> = {
         recent_leaf_removal_missing: 'Leaf-removal history needed',
@@ -356,7 +408,7 @@ function getSensitivityTargetLabel(code: string, locale: 'en' | 'ko', crop?: Cro
         energy_cost: '총 에너지 비용',
         heating_energy_cost: '난방 에너지 비용',
         cooling_energy_cost: '냉방 에너지 비용',
-        labor_penalty: '노동 패널티',
+        labor_penalty: '작업부하 영향',
         humidity_penalty: '습도 위험 패널티',
         humidity_risk_penalty: '습도 위험 패널티',
         disease_penalty: '병해 위험 패널티',
@@ -469,7 +521,7 @@ function getTelemetryWarningCopy(status: TelemetryStatus, locale: 'en' | 'ko'): 
     }
     if (status === 'offline') {
         return locale === 'ko'
-            ? '센서가 오프라인 상태라 RTR 최적화는 마지막 유효 스냅샷 기준으로만 계산됩니다.'
+            ? '센서가 오프라인 상태라 온도 기준 최적화는 마지막 유효 기록 기준으로만 계산됩니다.'
             : 'Sensors are offline, so RTR optimization is running only on the last valid snapshot.';
     }
     return null;
@@ -526,6 +578,42 @@ function getYieldTrendClass(value: string): string {
         return 'bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]';
     }
     return 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]';
+}
+
+function getOptionalDelta(value: number | undefined, baseline: number | undefined): number | null {
+    if (typeof value !== 'number' || !Number.isFinite(value) || typeof baseline !== 'number' || !Number.isFinite(baseline)) {
+        return null;
+    }
+    return value - baseline;
+}
+
+function formatSignedDelta(
+    value: number | null,
+    digits: number,
+    locale: 'en' | 'ko',
+): string {
+    if (value === null || !Number.isFinite(value)) {
+        return '-';
+    }
+    const threshold = 1 / (10 ** digits);
+    if (Math.abs(value) < threshold) {
+        return formatNumber(0, digits, locale);
+    }
+    return `${value > 0 ? '+' : ''}${formatNumber(value, digits, locale)}`;
+}
+
+function getScenarioBaselineRow(rows: RtrScenarioRow[]): RtrScenarioRow | null {
+    return rows.find((row) => row.recommendation_badge === 'baseline')
+        ?? rows.find((row) => row.group === 'baseline')
+        ?? rows[0]
+        ?? null;
+}
+
+function getScenarioVisualWidth(value: number | null, maxAbs: number): string {
+    if (value === null || !Number.isFinite(value) || maxAbs <= 0) {
+        return '0%';
+    }
+    return `${Math.max(8, Math.min(100, (Math.abs(value) / maxAbs) * 100))}%`;
 }
 
 function renderCropSpecificInsight(
@@ -639,6 +727,8 @@ const RTROptimizerPanelContent = ({
         setIncludeCoolingCost,
         includeLaborCost,
         setIncludeLaborCost,
+        laborRateKrwHour,
+        setLaborRateKrwHour,
         telemetryOptimizationBlocked,
         loading: optimizerLoading,
         loadingState,
@@ -715,6 +805,18 @@ const RTROptimizerPanelContent = ({
     const handleTargetNodeInputBlur = () => {
         setIsTargetNodeInputActive(false);
     };
+    const handleLaborRateInputChange = (rawValue: string) => {
+        if (!DECIMAL_INPUT_PATTERN.test(rawValue)) {
+            return;
+        }
+        const normalized = rawValue.replace(',', '.');
+        if (!normalized || normalized.endsWith('.')) {
+            setLaborRateKrwHour(null);
+            return;
+        }
+        const parsed = Number(normalized);
+        setLaborRateKrwHour(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+    };
 
     const refreshCalibrationConsumers = async () => {
         await Promise.resolve(onRefreshProfiles?.());
@@ -741,7 +843,7 @@ const RTROptimizerPanelContent = ({
             predictedNode: `현재 예측 ${developmentLabelKo}`,
             recommendedMeanTemp: '추천 최소 평균온도',
             deltaTemp: '평소 설정 대비 ΔT',
-            rtrEquivalent: '최적 RTR 환산값',
+            rtrEquivalent: '최적 온도 기준 환산값',
             confidence: '반영 상태',
             nodeGuideTitle: `평균 온도별 예상 ${developmentLabelKo}`,
             nodeGuideRange: '유효 온도 범위',
@@ -753,8 +855,8 @@ const RTROptimizerPanelContent = ({
             gainLoss: '이득/손실 균형',
             cropInsight: '작물별 해석',
             setpoints: '추천 제어값',
-            scenarios: '시나리오 비교',
-            customScenarioTitle: '사용자 비교 시나리오',
+            scenarios: '조정안 비교',
+            customScenarioTitle: '사용자 비교 조정안',
             customScenarioBody: '난방·냉방·환기·스크린·팬·CO₂ 후보를 직접 넣어 평소 설정안과 권장안을 비교합니다.',
             customLabel: '비교 이름',
             customApply: '비교에 반영',
@@ -763,7 +865,7 @@ const RTROptimizerPanelContent = ({
             refresh: '다시 계산',
             includeEnergy: '에너지 비용 포함',
             includeCooling: '냉방 비용 포함',
-            includeLabor: '작업부하 포함',
+            includeLabor: '작업시간·작업비 반영',
             dayMin: '주간 최소 평균온도',
             nightMin: '야간 최소 평균온도',
             dayHeating: '주간 난방 기준',
@@ -779,11 +881,18 @@ const RTROptimizerPanelContent = ({
             carbonMargin: '탄소 마진',
             assimilationGain: '광합성 이득',
             respirationCost: '호흡 부담',
-            sinkOverload: 'sink 과부하 위험',
+            sinkOverload: '착과 부담 과부하 위험',
             energyCost: '총 에너지 비용',
             heatingEnergy: '난방 에너지',
             coolingEnergy: '냉방 에너지',
-            laborCost: '작업부하',
+            laborCost: '예상 작업비',
+            laborLoadIndex: '작업부하 지수',
+            laborHours: '예상 작업시간',
+            laborBasis: '작업비 기준',
+            laborRate: '우리 농장 시급',
+            laborRateHint: '비워두면 농업소득자료 기준 시급을 사용합니다.',
+            laborBenchmark: '농업소득자료 기준',
+            laborDefinition: '작업부하지수는 수확, 유인, 적엽, 적과, 잎관리 부담을 합친 상대 지수입니다.',
             yieldChange: '예상 수량 변화',
             humidityRisk: '습도 위험',
             diseaseRisk: '병해/결로 리스크',
@@ -793,18 +902,18 @@ const RTROptimizerPanelContent = ({
             yes: '충족',
             no: '보류',
             sensitivity: '제어 민감도',
-            noScenario: '시나리오 계산 결과가 아직 없습니다.',
+            noScenario: '조정안 계산 결과가 아직 없습니다.',
             computing: '빛 맞춤 온도를 계산하는 중...',
-            modeHeader: '시나리오',
+            modeHeader: '조정안',
             meanHeader: '평균온도',
             nodeHeader: developmentHeaderKo,
             carbonHeader: '탄소/동화',
             riskHeader: '습도/병해',
             energyHeader: '냉난방 비용',
             yieldHeader: '수량 추세',
-            laborHeader: '노동',
+            laborHeader: '작업',
             telemetryBlockedTitle: '실시간 수신이 오래돼 새 계산을 잠시 멈췄습니다.',
-            telemetryBlockedBody: '센서가 오래되었거나 끊기면 마지막 유효 스냅샷 기준 비교만 유지합니다.',
+            telemetryBlockedBody: '센서가 오래되었거나 끊기면 마지막 유효 기록 기준 비교만 유지합니다.',
             disabledTitle: '평소 온도 설정 비교',
             disabledBody: '이 프로파일은 아직 자동 맞춤 계산을 켜지 않아 평소 설정 비교만 보여줍니다.',
             profileLoadingTitle: '빛 맞춤 설정 준비 중',
@@ -841,7 +950,7 @@ const RTROptimizerPanelContent = ({
             refresh: 'Refresh',
             includeEnergy: 'Include energy cost',
             includeCooling: 'Include cooling cost',
-            includeLabor: 'Include labor load',
+            includeLabor: 'Include labor time and cost',
             dayMin: 'Minimum mean temp',
             nightMin: 'Night mean temp',
             dayHeating: 'Day heating minimum',
@@ -861,7 +970,14 @@ const RTROptimizerPanelContent = ({
             energyCost: 'Total energy cost',
             heatingEnergy: 'Heating energy',
             coolingEnergy: 'Cooling energy',
-            laborCost: 'Labor load',
+            laborCost: 'Estimated labor cost',
+            laborLoadIndex: 'Workload index',
+            laborHours: 'Estimated labor hours',
+            laborBasis: 'Labor-cost basis',
+            laborRate: 'Farm labor rate',
+            laborRateHint: 'Leave blank to use the agricultural income benchmark rate.',
+            laborBenchmark: 'Agricultural income benchmark',
+            laborDefinition: 'The workload index combines harvest, training, pruning, thinning, cluster/pollination, and canopy-management pressure.',
             yieldChange: 'Yield change',
             humidityRisk: 'Humidity risk',
             diseaseRisk: 'Disease/condensation risk',
@@ -976,6 +1092,25 @@ const RTROptimizerPanelContent = ({
             }))
             .filter((entry) => entry.rows.length > 0);
     }, [scenarioRows]);
+    const scenarioVisualRows = useMemo(() => {
+        const baselineRow = getScenarioBaselineRow(scenarioRows);
+        const rows = scenarioRows.slice(0, 6).map((row) => ({
+            row,
+            energyDelta: getOptionalDelta(row.total_energy_cost_krw_m2_day, baselineRow?.total_energy_cost_krw_m2_day),
+            laborDelta: getOptionalDelta(row.labor_index, baselineRow?.labor_index),
+            yieldDelta: typeof row.harvest_trend_delta_pct === 'number' && Number.isFinite(row.harvest_trend_delta_pct)
+                ? row.harvest_trend_delta_pct
+                : null,
+            riskLoad: (row.humidity_penalty ?? 0) + (row.disease_penalty ?? 0),
+        }));
+        return {
+            rows,
+            maxEnergy: Math.max(1, ...rows.map((entry) => Math.abs(entry.energyDelta ?? 0))),
+            maxLabor: Math.max(0.1, ...rows.map((entry) => Math.abs(entry.laborDelta ?? 0))),
+            maxYield: Math.max(1, ...rows.map((entry) => Math.abs(entry.yieldDelta ?? 0))),
+            maxRisk: Math.max(0.1, ...rows.map((entry) => Math.abs(entry.riskLoad ?? 0))),
+        };
+    }, [scenarioRows]);
     const riskFlags = useMemo(
         () => (optimizeResponse?.feasibility.risk_flags ?? []).filter((riskFlag) => !shouldHideRiskFlag(riskFlag)),
         [optimizeResponse],
@@ -1065,7 +1200,7 @@ const RTROptimizerPanelContent = ({
             meanTemp: '평균 온도',
             nodeRate: developmentHeaderKo,
             energyCost: '에너지 비용',
-            laborCost: '작업량',
+            laborCost: '예상 작업비',
         }
         : {
             title: 'Recommended control',
@@ -1091,7 +1226,7 @@ const RTROptimizerPanelContent = ({
             meanTemp: 'Mean temp',
             nodeRate: 'Node rate',
             energyCost: 'Energy cost',
-            laborCost: 'Labor load',
+            laborCost: 'Estimated labor cost',
         };
     const compactPendingValue = locale === 'ko' ? '계산 중' : 'Calculating';
     const formatCompactValue = (
@@ -1109,7 +1244,7 @@ const RTROptimizerPanelContent = ({
         if (compactPending) {
             return compactPendingValue;
         }
-        return `${formatNumber(value, digits, locale)} ${locale === 'ko' ? '원' : 'KRW'}`;
+        return formatValueWithUnit(value, digits, locale === 'ko' ? '원' : 'KRW', locale);
     };
     const compactSummary = explanationCopy?.summary
         ?? (locale === 'ko'
@@ -1189,16 +1324,26 @@ const RTROptimizerPanelContent = ({
             label: compactCopy.laborCost,
             baseline: compactPending
                 ? compactPendingValue
-                : formatNumber(optimizeResponse?.baseline.objective_breakdown.labor_index, 3, locale),
+                : formatValueWithUnit(
+                    optimizeResponse?.baseline.objective_breakdown.labor_cost_krw ?? optimizeResponse?.baseline.objective_breakdown.labor_cost,
+                    0,
+                    locale === 'ko' ? '원' : 'KRW',
+                    locale,
+                ),
             recommended: compactPending
                 ? compactPendingValue
-                : formatNumber(laborSummary?.labor_index ?? optimizeResponse?.objective_breakdown.labor_index, 3, locale),
+                : formatValueWithUnit(
+                    laborSummary?.labor_cost_krw_m2_day ?? optimizeResponse?.objective_breakdown.labor_cost_krw ?? optimizeResponse?.objective_breakdown.labor_cost,
+                    0,
+                    locale === 'ko' ? '원' : 'KRW',
+                    locale,
+                ),
         },
     ];
 
     if (isProfilePending) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                             <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
                     <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.profileLoadingTitle}</p>
                     <p className="mt-1">{copy.profileLoadingBody}</p>
@@ -1209,7 +1354,7 @@ const RTROptimizerPanelContent = ({
 
     if (isProfileUnavailable || !optimizerEnabled) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                 {profileErrorCopy ? (
                     <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
                         {profileErrorCopy}
@@ -1238,7 +1383,7 @@ const RTROptimizerPanelContent = ({
 
     if (telemetryStatus === 'offline' || (telemetryStatus === 'stale' && !hasOptimizerSurface)) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                             <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
                     <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.telemetryBlockedTitle}</p>
                     <p className="mt-1">{copy.telemetryBlockedBody}</p>
@@ -1265,11 +1410,11 @@ const RTROptimizerPanelContent = ({
 
     if (compact) {
         return (
-            <div className="flex h-full flex-col rounded-[24px] bg-white/82 p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+            <div className="flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                 <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                         <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                            <CircleGauge className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                            <CircleGauge className="h-5 w-5 text-[color:var(--sg-color-olive)]" />
                             <h3 className="text-sm font-semibold">{compactCopy.title}</h3>
                         </div>
                         <p className="mt-1 text-xs text-[color:var(--sg-text-muted)]">{compactCopy.subtitle}</p>
@@ -1278,7 +1423,7 @@ const RTROptimizerPanelContent = ({
                         type="button"
                         onClick={() => void refreshOptimization()}
                         disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget || telemetryOptimizationBlocked}
-                        className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-rose)] hover:text-[color:var(--sg-accent-rose)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-accent-violet-soft)]"
+                        className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-color-primary)] hover:text-[color:var(--sg-color-primary)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-color-sage)]"
                     >
                         {copy.refresh}
                     </button>
@@ -1346,7 +1491,7 @@ const RTROptimizerPanelContent = ({
 
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)]">
                         <section className="sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4">
-                            <div className="sg-eyebrow text-[color:var(--sg-accent-violet)]">{compactCopy.summaryLabel}</div>
+                            <div className="sg-eyebrow text-[color:var(--sg-color-olive)]">{compactCopy.summaryLabel}</div>
                             <p className="mt-2 text-xl font-semibold leading-8 text-[color:var(--sg-text-strong)]">
                                 {optimizeResponse
                                     ? compactSummary
@@ -1384,7 +1529,7 @@ const RTROptimizerPanelContent = ({
                                 <div className={metricTileClass}>
                                     <div className={metricLabelClass}>{copy.confidence}</div>
                                     <div className="mt-1 flex items-center gap-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">
-                                        {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
+                                        {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-color-olive)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
                                         {readiness.label}
                                     </div>
                                 </div>
@@ -1422,7 +1567,7 @@ const RTROptimizerPanelContent = ({
                     <section className={sectionPanelClass}>
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                                <Thermometer className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                                 <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.nodeGuideTitle}</h4>
                             </div>
                             {nodeGuideRangeLabel ? (
@@ -1432,9 +1577,9 @@ const RTROptimizerPanelContent = ({
                             ) : null}
                         </div>
                         {nodeGuideRows.length > 0 ? (
-                            <div className="max-h-[200px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-white/72">
+                            <div className="max-h-[200px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)]">
                                 <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
-                                    <thead className="sticky top-0 bg-white/95 text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                                    <thead className="sticky top-0 bg-[color:var(--sg-surface-raised)] text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
                                         <tr>
                                             <th className="px-3 py-2">{copy.nodeGuideTemp}</th>
                                             <th className="px-3 py-2">{copy.nodeGuideNode}</th>
@@ -1468,7 +1613,7 @@ const RTROptimizerPanelContent = ({
 
                     <section className={sectionPanelClass}>
                         <div className="mb-3 flex items-center gap-2">
-                            <Activity className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                            <Activity className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                             <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{compactCopy.comparisonTitle}</h4>
                         </div>
                         <div className="overflow-x-auto">
@@ -1496,7 +1641,7 @@ const RTROptimizerPanelContent = ({
                     {compactReasonTags.length > 0 ? (
                         <section className={sectionPanelClass}>
                             <div className="mb-3 flex items-center gap-2">
-                                <Leaf className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                                <Leaf className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                                 <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{compactCopy.reasonTitle}</h4>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -1514,11 +1659,11 @@ const RTROptimizerPanelContent = ({
     }
 
     return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`flex h-full flex-col rounded-[24px] bg-[color:var(--sg-surface-raised)] ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                        <CircleGauge className="h-5 w-5 text-[color:var(--sg-accent-violet)]" />
+                        <CircleGauge className="h-5 w-5 text-[color:var(--sg-color-olive)]" />
                         <h3 className={compact ? 'text-sm font-semibold' : 'font-semibold'}>{copy.title}</h3>
                     </div>
                     {!compact ? (
@@ -1529,7 +1674,7 @@ const RTROptimizerPanelContent = ({
                     type="button"
                     onClick={() => void refreshOptimization()}
                     disabled={loadingState || loadingOptimize || optimizerLoading || waitingForTarget || telemetryOptimizationBlocked}
-                    className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-accent-rose)] hover:text-[color:var(--sg-accent-rose)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-accent-violet-soft)]"
+                    className="rounded-full border border-[color:var(--sg-outline-soft)] bg-white/84 px-3 py-2 text-xs font-medium text-[color:var(--sg-text)] transition hover:border-[color:var(--sg-color-primary)] hover:text-[color:var(--sg-color-primary)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sg-color-sage)]"
                 >
                     {copy.refresh}
                 </button>
@@ -1610,7 +1755,7 @@ const RTROptimizerPanelContent = ({
                     <div className={metricTileClass}>
                         <div className={metricLabelClass}>{copy.confidence}</div>
                         <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-[color:var(--sg-text-strong)]">
-                            {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
+                            {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-color-olive)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
                             {readiness.label}
                         </div>
                     </div>
@@ -1652,12 +1797,12 @@ const RTROptimizerPanelContent = ({
                     <div className={metricTileClass}>
                         <div className={metricLabelClass}>{copy.laborCost}</div>
                         <div className={metricValueLargeClass}>
-                            {formatNumber(laborSummary?.labor_index, 3, locale)}
+                            {formatValueWithUnit(laborSummary?.labor_cost_krw_m2_day, 0, locale === 'ko' ? '원/m²/일' : 'KRW/m²/day', locale)}
                         </div>
                         <div className={metricMetaClass}>
                             {locale === 'ko'
-                                ? `실면적 ${formatNumber(optimizeResponse?.actual_area_projection.labor_cost_krw_day, 0, locale)} 원/일`
-                                : `${formatNumber(optimizeResponse?.actual_area_projection.labor_cost_krw_day, 0, locale)} KRW/day @ actual area`}
+                                ? `작업 ${formatNumber(laborSummary?.labor_hours_m2_day, 4, locale)} h/m²/일 · 부하 ${formatNumber(laborSummary?.labor_index, 3, locale)}`
+                                : `${formatNumber(laborSummary?.labor_hours_m2_day, 4, locale)} h/m²/day · load ${formatNumber(laborSummary?.labor_index, 3, locale)}`}
                         </div>
                     </div>
                     <div className={metricTileClass}>
@@ -1676,7 +1821,7 @@ const RTROptimizerPanelContent = ({
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                            <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                            <Thermometer className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                             <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.nodeGuideTitle}</h4>
                         </div>
                         {nodeGuideRangeLabel ? (
@@ -1686,9 +1831,9 @@ const RTROptimizerPanelContent = ({
                         ) : null}
                     </div>
                     {nodeGuideRows.length > 0 ? (
-                        <div className="max-h-[220px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-white/72">
+                        <div className="max-h-[220px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-raised)]">
                             <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
-                                <thead className="sticky top-0 bg-white/95 text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                                <thead className="sticky top-0 bg-[color:var(--sg-surface-raised)] text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
                                     <tr>
                                         <th className="px-3 py-2">{copy.nodeGuideTemp}</th>
                                         <th className="px-3 py-2">{copy.nodeGuideNode}</th>
@@ -1711,22 +1856,27 @@ const RTROptimizerPanelContent = ({
                     )}
                 </section>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
                     {MODE_ORDER.map((mode) => (
                         <button
                             key={mode}
                             type="button"
                             onClick={() => setOptimizationMode(mode)}
                             disabled={telemetryOptimizationBlocked}
-                            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                            className={`rounded-[16px] border px-3 py-2 text-left text-xs font-medium transition ${
                                 optimizationMode === mode
-                                    ? 'bg-[color:var(--sg-accent-violet)] text-white'
-                                    : 'bg-[color:var(--sg-surface-muted)] text-[color:var(--sg-text)] hover:bg-[color:var(--sg-accent-earth-soft)]'
+                                    ? 'border-[color:var(--sg-color-olive)] bg-[color:var(--sg-color-olive)] text-white'
+                                    : 'border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] text-[color:var(--sg-text)] hover:border-[color:var(--sg-accent-earth)] hover:bg-[color:var(--sg-accent-earth-soft)]'
                             }`}
                         >
-                            {getModeLabel(mode, locale)}
+                            <span className="block font-semibold">{getModeLabel(mode, locale)}</span>
+                            <span className={`mt-1 block text-[10px] leading-4 ${optimizationMode === mode ? 'text-white/82' : 'text-[color:var(--sg-text-muted)]'}`}>
+                                {getModeDescription(mode, locale)}
+                            </span>
                         </button>
                     ))}
+                </div>
+                <div className="flex flex-wrap gap-3 rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-2">
                     <label className="ml-auto flex items-center gap-2 text-xs text-[color:var(--sg-text)]">
                         <input
                             type="checkbox"
@@ -1754,6 +1904,25 @@ const RTROptimizerPanelContent = ({
                         />
                         {copy.includeLabor}
                     </label>
+                </div>
+                <div className="grid gap-3 rounded-[18px] bg-[color:var(--sg-surface-muted)] px-3 py-3 md:grid-cols-[minmax(220px,280px),1fr]">
+                    <label className="text-xs font-medium text-[color:var(--sg-text)]">
+                        <span>{copy.laborRate}</span>
+                        <input
+                            aria-label={copy.laborRate}
+                            inputMode="decimal"
+                            disabled={telemetryOptimizationBlocked}
+                            className="sg-field-input mt-2"
+                            value={laborRateKrwHour ?? ''}
+                            placeholder={formatNumber(laborSummary?.labor_rate_krw_hour ?? profile?.optimizer?.labor_benchmark?.default_labor_rate_krw_hour, 0, locale)}
+                            onChange={(event) => handleLaborRateInputChange(event.target.value)}
+                        />
+                    </label>
+                    <div className="self-end text-xs leading-5 text-[color:var(--sg-text-muted)]">
+                        <span className="font-semibold text-[color:var(--sg-text-strong)]">{copy.laborBenchmark}</span>
+                        {' · '}
+                        {copy.laborRateHint}
+                    </div>
                 </div>
 
                 {warningBadges.length > 0 ? (
@@ -1812,7 +1981,7 @@ const RTROptimizerPanelContent = ({
 
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <Activity className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.gainLoss}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -1875,11 +2044,18 @@ const RTROptimizerPanelContent = ({
                         <div className={metricTileClass}>
                             <div className={metricLabelClass}>{copy.laborCost}</div>
                             <div className={metricValueClass}>
-                                {formatNumber(laborSummary?.labor_index, 3, locale)}
+                                {formatValueWithUnit(laborSummary?.labor_cost_krw_m2_day, 0, locale === 'ko' ? '원/m²/일' : 'KRW/m²/day', locale)}
                             </div>
                             <div className={metricMetaClass}>
-                                {formatNumber(laborSummary?.labor_hours_m2_day, 3, locale)} h/m²/day
+                                {locale === 'ko'
+                                    ? `${copy.laborHours} ${formatNumber(laborSummary?.labor_hours_m2_day, 4, locale)} h/m²/일`
+                                    : `${copy.laborHours} ${formatNumber(laborSummary?.labor_hours_m2_day, 4, locale)} h/m²/day`}
                             </div>
+                        </div>
+                        <div className={metricTileClass}>
+                            <div className={metricLabelClass}>{copy.laborLoadIndex}</div>
+                            <div className={metricValueClass}>{formatNumber(laborSummary?.labor_index, 3, locale)}</div>
+                            <div className={metricMetaClass}>{copy.laborDefinition}</div>
                         </div>
                         <div className={metricTileClass}>
                             <div className={metricLabelClass}>{copy.humidityRisk}</div>
@@ -1913,6 +2089,30 @@ const RTROptimizerPanelContent = ({
                             <div className={metricValueClass}>{targetHit ? copy.yes : copy.no}</div>
                         </div>
                     </div>
+                    {laborSummary ? (
+                        <div className="mt-4 rounded-lg bg-[color:var(--sg-surface-muted)] px-3 py-3 text-xs leading-5 text-[color:var(--sg-text)]">
+                            <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.laborBasis}</p>
+                            <p className="mt-1">
+                                {getLaborBenchmarkLabel(laborSummary, locale)}
+                                {' · '}
+                                {getLaborRateSourceLabel(laborSummary.labor_rate_source, locale)}
+                                {' · '}
+                                {formatValueWithUnit(laborSummary.labor_rate_krw_hour, 0, locale === 'ko' ? '원/시간' : 'KRW/hour', locale)}
+                                {' · '}
+                                {locale === 'ko'
+                                    ? `기준 작업시간 ${formatNumber(laborSummary.reference_labor_hours_10a_year, 0, locale)} h/10a/년`
+                                    : `reference ${formatNumber(laborSummary.reference_labor_hours_10a_year, 0, locale)} h/10a/year`}
+                            </p>
+                            {laborSummary.reference_labor_cost_krw_10a_year ? (
+                                <p className="mt-1">
+                                    {locale === 'ko'
+                                        ? `10a 기준 연간 작업비 ${formatValueWithUnit(laborSummary.reference_labor_cost_krw_10a_year, 0, '원', locale)}`
+                                        : `Annual labor cost per 10a ${formatValueWithUnit(laborSummary.reference_labor_cost_krw_10a_year, 0, 'KRW', locale)}`}
+                                </p>
+                            ) : null}
+                            <p className="mt-1 text-[color:var(--sg-text-muted)]">{copy.laborDefinition}</p>
+                        </div>
+                    ) : null}
                     {explanationCopy ? (
                         <div className="mt-4 rounded-lg bg-[color:var(--sg-status-live-bg)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
                             <p className="font-medium text-[color:var(--sg-text-strong)]">{explanationCopy.summary}</p>
@@ -1920,7 +2120,7 @@ const RTROptimizerPanelContent = ({
                             {explanationCopy.reason_tags.length > 0 ? (
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {explanationCopy.reason_tags.map((tag) => (
-                                        <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-status-live-text)] ring-1 ring-[color:var(--sg-outline-soft)]">
+                                        <span key={tag} className="rounded-full bg-[color:var(--sg-surface-raised)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-status-live-text)] ring-1 ring-[color:var(--sg-outline-soft)]">
                                             {getReasonTagLabel(tag, locale)}
                                         </span>
                                     ))}
@@ -1935,14 +2135,14 @@ const RTROptimizerPanelContent = ({
 
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Leaf className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <Leaf className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.cropInsight}</h4>
                     </div>
                     {renderCropSpecificInsight(optimizeResponse?.crop_specific_insight ?? null, locale)}
                 </section>
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <Thermometer className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.controlEffects}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -1970,7 +2170,7 @@ const RTROptimizerPanelContent = ({
                 </section>
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <Thermometer className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <Thermometer className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.setpoints}</h4>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -2036,7 +2236,7 @@ const RTROptimizerPanelContent = ({
 
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <FlaskConical className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <FlaskConical className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.sensitivity}</h4>
                     </div>
                     <div className="space-y-3">
@@ -2048,7 +2248,7 @@ const RTROptimizerPanelContent = ({
                                 </div>
                                 <div className="h-2 rounded-full bg-[color:var(--sg-surface-muted)]">
                                     <div
-                                        className={`h-2 rounded-full ${row.direction === 'increase' ? 'bg-[color:var(--sg-accent-violet)]' : 'bg-[color:var(--sg-accent-earth)]'}`}
+                                        className={`h-2 rounded-full ${row.direction === 'increase' ? 'bg-[color:var(--sg-color-olive)]' : 'bg-[color:var(--sg-accent-earth)]'}`}
                                         style={{ width: `${row.widthPct}%` }}
                                     />
                                 </div>
@@ -2059,7 +2259,7 @@ const RTROptimizerPanelContent = ({
 
                 <section className={sectionPanelClass}>
                     <div className="mb-3 flex items-center gap-2">
-                        <CircleGauge className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
+                        <CircleGauge className="h-4 w-4 text-[color:var(--sg-color-olive)]" />
                         <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.scenarios}</h4>
                     </div>
                     <div className="mb-4 rounded-lg border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] p-3">
@@ -2198,7 +2398,7 @@ const RTROptimizerPanelContent = ({
                                     );
                                 }}
                                 disabled={!hasCustomScenarioDraft || telemetryOptimizationBlocked}
-                                className="rounded-full bg-[color:var(--sg-accent-violet)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
+                                className="rounded-full bg-[color:var(--sg-color-primary)] px-3 py-2 text-xs font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[color:var(--sg-surface-muted)] disabled:text-[color:var(--sg-text-muted)]"
                             >
                                 {copy.customApply}
                             </button>
@@ -2222,7 +2422,81 @@ const RTROptimizerPanelContent = ({
                     {scenarioRows.length === 0 ? (
                         <p className="text-sm text-[color:var(--sg-text-muted)]">{copy.noScenario}</p>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="space-y-4">
+                            <div className="grid gap-3 xl:grid-cols-2">
+                                {scenarioVisualRows.rows.map(({ row, energyDelta, laborDelta, yieldDelta, riskLoad }, index) => {
+                                    const readableLabel = getScenarioLabel(row.label, locale);
+                                    const energyImproved = energyDelta !== null && energyDelta <= 0;
+                                    const laborImproved = laborDelta !== null && laborDelta <= 0;
+                                    const yieldImproved = yieldDelta !== null && yieldDelta >= 0;
+                                    return (
+                                        <article
+                                            key={`scenario-visual-${row.group ?? 'row'}-${row.label}-${index}`}
+                                            className="rounded-[var(--sg-radius-lg)] border border-[color:var(--sg-outline-soft)] bg-[linear-gradient(180deg,rgba(255,253,249,0.98),rgba(250,247,242,0.94))] p-3"
+                                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
+                                                        {getScenarioGroupLabel(row.group ?? 'optimizer', locale)}
+                                                    </p>
+                                                    <h5 className="mt-1 text-sm font-bold text-[color:var(--sg-text-strong)]">
+                                                        {locale === 'ko' ? '비교' : 'Visual'} · {readableLabel}
+                                                    </h5>
+                                                </div>
+                                                <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${getScenarioBadgeClass(row.recommendation_badge)}`}>
+                                                    {getScenarioBadgeLabel(row.recommendation_badge, locale)}
+                                                </span>
+                                            </div>
+                                            <div className="mt-3 grid gap-2">
+                                                <div>
+                                                    <div className="flex items-center justify-between gap-2 text-[11px] text-[color:var(--sg-text-muted)]">
+                                                        <span>{copy.yieldHeader}</span>
+                                                        <span className={yieldImproved ? 'text-[color:var(--sg-color-success)]' : 'text-[color:var(--sg-color-primary)]'}>
+                                                            {formatNumber(yieldDelta, 1, locale)}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-1 h-2 rounded-full bg-[color:var(--sg-surface-muted)]" aria-label={`${readableLabel} ${copy.yieldHeader} ${formatNumber(yieldDelta, 1, locale)}%`}>
+                                                        <div
+                                                            className={`h-2 rounded-full ${yieldImproved ? 'bg-[color:var(--sg-color-success)]' : 'bg-[color:var(--sg-color-primary)]'}`}
+                                                            style={{ width: getScenarioVisualWidth(yieldDelta, scenarioVisualRows.maxYield) }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center justify-between gap-2 text-[11px] text-[color:var(--sg-text-muted)]">
+                                                        <span>{copy.energyHeader}</span>
+                                                        <span className={energyImproved ? 'text-[color:var(--sg-color-success)]' : 'text-[color:var(--sg-color-primary)]'}>
+                                                            {formatSignedDelta(energyDelta, 0, locale)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-1 h-2 rounded-full bg-[color:var(--sg-surface-muted)]" aria-label={`${readableLabel} ${copy.energyHeader} ${energyDelta === null ? '-' : formatNumber(energyDelta, 0, locale)}`}>
+                                                        <div
+                                                            className={`h-2 rounded-full ${energyImproved ? 'bg-[color:var(--sg-color-success)]' : 'bg-[color:var(--sg-color-primary)]'}`}
+                                                            style={{ width: getScenarioVisualWidth(energyDelta, scenarioVisualRows.maxEnergy) }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid gap-2 sm:grid-cols-2">
+                                                    <div className="rounded-[var(--sg-radius-sm)] bg-white/76 px-3 py-2">
+                                                        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--sg-text-faint)]">{copy.laborHeader}</p>
+                                                        <p className={`sg-data-number mt-1 text-sm font-bold ${laborImproved ? 'text-[color:var(--sg-color-success)]' : 'text-[color:var(--sg-text-strong)]'}`}>
+                                                            {formatSignedDelta(laborDelta, 3, locale)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="rounded-[var(--sg-radius-sm)] bg-white/76 px-3 py-2">
+                                                        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--sg-text-faint)]">{copy.riskHeader}</p>
+                                                        <p className={`sg-data-number mt-1 text-sm font-bold ${riskLoad > 0.6 ? 'text-[color:var(--sg-color-primary)]' : 'text-[color:var(--sg-color-olive)]'}`}>
+                                                            {formatNumber(riskLoad, 3, locale)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                            <div className="overflow-x-auto">
                             <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
                                 <thead className="text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
                                     <tr>
@@ -2334,7 +2608,10 @@ const RTROptimizerPanelContent = ({
                                                         ) : null}
                                                     </td>
                                                     <td className="px-2 py-2">
-                                                        <div>{formatNumber(row.labor_index, 3, locale)}</div>
+                                                        <div>{copy.laborLoadIndex} {formatNumber(row.labor_index, 3, locale)}</div>
+                                                        <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
+                                                            {copy.laborHours} {formatNumber(row.labor_hours_m2_day ?? row.labor_summary?.labor_hours_m2_day, 4, locale)} {locale === 'ko' ? 'h/m²/일' : 'h/m²/day'}
+                                                        </div>
                                                         {row.actual_area_projection ? (
                                                             <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                                 {locale === 'ko'
@@ -2349,6 +2626,7 @@ const RTROptimizerPanelContent = ({
                                     ))}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     )}
                 </section>

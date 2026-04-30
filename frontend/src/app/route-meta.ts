@@ -73,10 +73,10 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       key: 'control',
       navKey: 'control',
       path: '/control',
-      label: isKo ? '온실 환경' : 'Control',
-      shortLabel: isKo ? '온실 환경' : 'Control',
-      description: isKo ? '추천 제어안과 장치 상태를 함께 봅니다.' : 'Review recommendations and device status together.',
-      title: isKo ? '온실 환경' : 'Control Solutions',
+      label: isKo ? '온실 환경' : 'Climate',
+      shortLabel: isKo ? '온실 환경' : 'Climate',
+      description: isKo ? '환경 솔루션, 온도 기준 제어안, 장치 상태를 함께 봅니다.' : 'Review climate solutions, RTR control, and device status together.',
+      title: isKo ? '온실 환경 솔루션' : 'Climate Solutions',
       heroDescription: '',
       icon: Thermometer,
       visibleInNav: true,
@@ -89,7 +89,7 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       shortLabel: isKo ? '날씨와 시세' : 'Trend',
       description: isKo ? '날씨와 도매 시세를 바로 확인합니다.' : 'Track weather and wholesale market trends in a separate lane.',
       title: isKo ? '날씨와 시세' : 'Trend',
-      heroDescription: '',
+      heroDescription: isKo ? '날씨 추세, 시세 흐름, 오늘의 판단 신호를 그래프로 확인합니다.' : 'Review weather charts, market movement, and current decision signals.',
       icon: TrendingUp,
       visibleInNav: true,
     },
@@ -99,9 +99,9 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       path: '/scenarios',
       label: isKo ? '시나리오' : 'Scenarios',
       shortLabel: isKo ? '시나리오' : 'Scenarios',
-      description: isKo ? '과정기반모델 What-if와 RTR 편미분을 별도 실험실에서 실행합니다.' : 'Run process-model what-if and RTR partial sensitivity experiments.',
-      title: isKo ? '시나리오 실험실' : 'Scenario Lab',
-      heroDescription: isKo ? '온도, CO2, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.' : 'Test how temperature, CO2, and RH changes move yield and energy.',
+      description: isKo ? '과정기반 계산 조정안과 온도 민감도 검토를 별도 화면에서 실행합니다.' : 'Run process-model adjustment reviews and RTR sensitivity checks in a dedicated lane.',
+      title: isKo ? '온실 조정 효과 검토' : 'Greenhouse adjustment review',
+      heroDescription: isKo ? '온도, 이산화탄소, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.' : 'Calculate how temperature, CO2, and RH changes move yield and energy.',
       icon: FlaskConical,
       visibleInNav: true,
     },
@@ -133,11 +133,11 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       key: 'alerts',
       navKey: 'alerts',
       path: '/alerts',
-      label: isKo ? '긴급 알림' : 'Alerts',
-      shortLabel: isKo ? '긴급 알림' : 'Alerts',
-      description: isKo ? '긴급 알림, 확인 필요, 처리 이력을 분리해 봅니다.' : 'Separate urgent alerts, warnings, and handling history.',
-      title: isKo ? '긴급 알림' : 'Alerts',
-      heroDescription: isKo ? '바로 확인할 긴급 알림과 처리 기록을 한 화면에서 정리했습니다.' : 'Keep the current alert queue and history in one place.',
+      label: isKo ? '방제·알림' : 'Protection',
+      shortLabel: isKo ? '방제·알림' : 'Protection',
+      description: isKo ? '농약 솔루션, 확인 필요, 처리 이력을 분리해 봅니다.' : 'Separate pesticide solutions, warnings, and handling history.',
+      title: isKo ? '방제·알림' : 'Protection',
+      heroDescription: isKo ? '병해충·농약 검토와 긴급 알림을 한 화면에서 정리했습니다.' : 'Keep pesticide review, warning queue, and history in one place.',
       icon: Bell,
       visibleInNav: true,
     },
@@ -147,9 +147,9 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       path: '/assistant',
       label: isKo ? '질문 도우미' : 'Assistant',
       shortLabel: isKo ? '질문 도우미' : 'Assistant',
-      description: isKo ? '질문과 자료 찾기를 한곳에서 처리합니다.' : 'Keep question flow and document lookup together.',
-      title: isKo ? '질문 도우미' : 'Assistant',
-      heroDescription: isKo ? '질문과 자료 찾기를 한곳에 모았습니다.' : 'Keep ask and search in one place.',
+      description: isKo ? '질문, 자료 찾기, 농약·양액 검토를 한곳에서 처리합니다.' : 'Keep questions, material lookup, and agronomy checks together.',
+      title: isKo ? '질문 도우미와 재배 자료' : 'Assistant and grower materials',
+      heroDescription: isKo ? '채팅 상담과 목차형 자료 검색을 같은 화면에서 진행합니다.' : 'Use consultation and table-of-contents material lookup together.',
       icon: MessageCircle,
       visibleInNav: true,
     },
@@ -157,11 +157,11 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       key: 'settings',
       navKey: 'settings',
       path: '/settings',
-      label: isKo ? '설정' : 'Settings',
-      shortLabel: isKo ? '설정' : 'Settings',
-      description: isKo ? '화면 기준과 연결 상태를 확인합니다.' : 'Review display defaults and connectivity.',
-      title: isKo ? '설정' : 'Settings',
-      heroDescription: isKo ? '표시 기준과 연결 상태를 확인합니다.' : 'Review display defaults and connectivity.',
+      label: isKo ? '연동 문의' : 'Contact',
+      shortLabel: isKo ? '문의' : 'Contact',
+      description: isKo ? '화면 기준, 연동 상태, 운영 문의 준비 항목을 확인합니다.' : 'Review display basis, service links, and support readiness.',
+      title: isKo ? '연동 상태와 운영 문의' : 'Connectivity and support',
+      heroDescription: isKo ? '연락/연동 상태와 작물별 가격·전력 단가를 확인합니다.' : 'Review service contact points, connectivity, and crop-specific assumptions.',
       icon: Settings,
       visibleInNav: true,
     },
@@ -169,13 +169,13 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       key: 'rtr',
       navKey: 'rtr',
       path: '/rtr',
-      label: isKo ? 'RTR 최적화' : 'RTR Optimizer',
-      shortLabel: isKo ? 'RTR' : 'RTR',
+      label: isKo ? '온도 기준 최적화' : 'RTR Optimizer',
+      shortLabel: isKo ? '온도 기준' : 'RTR',
       description: isKo ? '기준안과 최적안을 비교해 온도 전략을 조정합니다.' : 'Compare baseline and optimized temperature strategies.',
-      title: isKo ? 'RTR 최적화' : 'RTR Optimizer',
+      title: isKo ? '온도 기준 최적화' : 'RTR Optimizer',
       heroDescription: isKo ? '기준안, 최적안, 민감도, 면적 보정을 한곳에서 봅니다.' : 'Review baseline, optimized, sensitivity, and area-adjusted strategy views.',
       icon: CircleGauge,
-      visibleInNav: true,
+      visibleInNav: false,
     },
   ];
 }
@@ -186,14 +186,13 @@ export function buildPrimaryRoutes(locale: AppLocale): PrimaryRouteMeta[] {
 
 function getAppRouteKey(pathname: string): AppRouteKey {
   if (pathname === '/' || pathname.startsWith('/overview')) return 'overview';
-  if (pathname.startsWith('/control')) return 'control';
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/control') || pathname.startsWith('/rtr')) return 'control';
   if (pathname.startsWith('/trend')) return 'trend';
   if (pathname.startsWith('/scenarios')) return 'scenarios';
-  if (pathname.startsWith('/rtr')) return 'rtr';
   if (pathname.startsWith('/crop-work')) return 'crop-work';
   if (pathname.startsWith('/resources')) return 'resources';
   if (pathname.startsWith('/alerts')) return 'alerts';
-  if (pathname.startsWith('/assistant') || pathname.startsWith('/ask')) return 'assistant';
+  if (pathname.startsWith('/assistant') || pathname.startsWith('/knowledge') || pathname.startsWith('/ask')) return 'assistant';
   if (pathname.startsWith('/settings')) return 'settings';
 
   if (pathname.startsWith('/growth') || pathname.startsWith('/harvest')) return 'crop-work';

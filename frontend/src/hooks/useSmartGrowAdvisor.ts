@@ -81,6 +81,7 @@ export type ModelRuntimeScenarioOption = {
 };
 export type ModelRuntimePayload = {
     status: string;
+    runtime_mode?: 'current_state' | 'recommendation' | string;
     summary: string;
     state_snapshot: {
         crop?: string;
@@ -95,9 +96,19 @@ export type ModelRuntimePayload = {
         upper_leaf_activity?: number | null;
         middle_leaf_activity?: number | null;
         bottom_leaf_activity?: number | null;
+        node_count?: number | null;
+        active_trusses?: number | null;
         observed_signal_score?: number | null;
         dashboard_missing_fields?: string[];
         inferred_fields?: string[];
+    };
+    growth_diagnosis?: {
+        focus?: string | null;
+        signals?: Array<{
+            key?: string | null;
+            label?: string | null;
+            value?: number | string | null;
+        }>;
     };
     scenario: {
         baseline_outputs: ModelRuntimeScenarioOutput[];

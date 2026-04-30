@@ -20,10 +20,10 @@ function resolveInitialLocale(): AppLocale {
             return resolveAppLocale(storedLocale);
         }
     } catch {
-        // Ignore storage errors and fall back to browser locale.
+        // Ignore storage errors and keep the farmer-facing Korean default.
     }
 
-    return resolveAppLocale(window.navigator.language);
+    return 'ko';
 }
 
 export const LocaleProvider = ({ children }: { children: ReactNode }) => {

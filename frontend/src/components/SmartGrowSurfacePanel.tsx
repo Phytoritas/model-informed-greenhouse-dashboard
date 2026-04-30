@@ -41,15 +41,15 @@ function getSurfaceAccent(
             };
         case 'nutrient':
             return {
-                card: 'sg-tint-blue text-[color:var(--sg-text-strong)]',
-                badge: 'bg-white/90 text-[color:var(--sg-accent-blue)]',
-                button: 'bg-[color:var(--sg-accent-blue)] text-white',
+                card: 'sg-tint-neutral text-[color:var(--sg-text-strong)]',
+                badge: 'bg-white/90 text-[color:var(--sg-color-olive)]',
+                button: 'bg-[color:var(--sg-color-olive)] text-white',
             };
         default:
             return {
-                card: 'sg-tint-violet text-[color:var(--sg-text-strong)]',
-                badge: 'bg-white/90 text-[color:var(--sg-accent-violet)]',
-                button: 'bg-[color:var(--sg-accent-violet)] text-white',
+                card: 'sg-tint-rose text-[color:var(--sg-text-strong)]',
+                badge: 'bg-white/90 text-[color:var(--sg-accent-rose)]',
+                button: 'bg-[color:var(--sg-accent-rose)] text-white',
             };
     }
 }
@@ -88,8 +88,8 @@ export default function SmartGrowSurfacePanel({
     const cropLabel = getCropLabel(crop, locale);
     const copy = locale === 'ko'
         ? {
-            title: '바로 실행 도구',
-            subtitle: `${cropLabel} 운영에서 바로 실행할 수 있는 안전 계산기와 추천 도구입니다.`,
+            title: '농가 솔루션',
+            subtitle: `${cropLabel} 운영에서 바로 실행할 수 있는 농약·양액 추천 도구입니다.`,
             loading: '바로 실행 도구를 불러오는 중입니다...',
             unavailable: '도구 정보를 아직 불러오지 못했습니다.',
             pendingParser: '일부 참고 문서 파싱이 아직 진행 중입니다.',
@@ -123,8 +123,8 @@ export default function SmartGrowSurfacePanel({
             readyHint: '즉시 계산을 열 수 있습니다.',
         }
         : {
-            title: 'Quick operating tools',
-            subtitle: `Open the bounded operating tools for ${cropLabel}.`,
+            title: 'Grower solution tools',
+            subtitle: `Open pesticide and nutrient recommendation tools for ${cropLabel}.`,
             loading: 'Loading quick operating tools...',
             unavailable: 'Tool information is unavailable.',
             pendingParser: 'Some source documents are still being parsed.',
@@ -239,7 +239,7 @@ export default function SmartGrowSurfacePanel({
                             </p>
                         </div>
                         <div
-                            className="rounded-[24px] px-4 py-4 sg-tint-blue"
+                            className="rounded-[24px] px-4 py-4 sg-tint-neutral"
                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                         >
                             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
