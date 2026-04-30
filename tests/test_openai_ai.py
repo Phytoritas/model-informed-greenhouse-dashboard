@@ -118,6 +118,37 @@ def test_openai_helper_surfaces_invalid_key(monkeypatch: pytest.MonkeyPatch) -> 
         )
 
 
+def test_openai_helper_maps_insufficient_quota_to_runtime_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _QuotaError(Exception):
+        status_code = 429
+        body = {
+            "error": {
+                "message": "You exceeded your current quota.",
+                "code": "insufficient_quota",
+                "type": "insufficient_quota",
+            }
+        }
+
+    class _QuotaResponses:
+        def create(self, **kwargs):
+            raise _QuotaError("429 insufficient_quota")
+
+    class _QuotaOpenAI:
+        def __init__(self) -> None:
+            self.responses = _QuotaResponses()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(ai_service, "OpenAI", lambda: _QuotaOpenAI())
+
+    with pytest.raises(RuntimeError, match="OpenAI quota is exhausted"):
+        ai_service.generate_chat_reply(
+            crop="cucumber",
+            messages=[{"role": "user", "content": "상태 요약"}],
+        )
+
+
 def test_openai_helper_includes_knowledge_context_when_present(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

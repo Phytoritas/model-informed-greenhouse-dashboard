@@ -56,7 +56,7 @@ const TREND_ARROW: Record<KpiTileData['trend'], string> = {
 };
 
 const TELEMETRY_DOT_CLASS: Record<TelemetryStatus, string> = {
-    live: 'bg-[color:var(--sg-accent-violet)]',
+    live: 'bg-[color:var(--sg-color-success)]',
     delayed: 'bg-[color:var(--sg-accent-amber)]',
     stale: 'bg-[color:var(--sg-accent-earth)]',
     offline: 'bg-[color:var(--sg-accent-rose)]',
@@ -98,7 +98,7 @@ function KpiTile({ tile }: { tile: KpiTileData }) {
 
                     <div className="min-w-0 basis-full text-left sm:basis-auto sm:max-w-[8.5rem] sm:text-right">
                         <span className={`block text-xs font-medium leading-tight ${
-                            tile.trend === 'up' ? 'text-[color:var(--sg-accent-violet)]'
+                            tile.trend === 'up' ? 'text-[color:var(--sg-color-success)]'
                                 : tile.trend === 'down' ? 'text-[color:var(--sg-accent-earth)]'
                                     : 'text-[color:var(--sg-text-faint)]'
                         }`}>
@@ -144,7 +144,7 @@ export default function KpiStrip({
                     <button
                         type="button"
                         onClick={() => setExpanded((prev) => !prev)}
-                        className="flex items-center gap-1 text-xs font-medium text-[color:var(--sg-text-muted)] transition-colors hover:text-[color:var(--sg-text-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-accent-violet)]"
+                        className="flex items-center gap-1 text-xs font-medium text-[color:var(--sg-text-muted)] transition-colors hover:text-[color:var(--sg-text-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]"
                     >
                         {locale === 'ko' ? '추가 센서' : 'More sensors'}
                         {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}

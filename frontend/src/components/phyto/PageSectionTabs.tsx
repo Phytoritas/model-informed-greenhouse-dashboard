@@ -20,9 +20,11 @@ export default function PageSectionTabs({
         return null;
     }
 
+    const ariaLabel = '세부 화면 탭';
+
     return (
-        <Tabs aria-label="Page sections">
-            <TabsList role="tablist" aria-label="Page sections">
+        <Tabs aria-label={ariaLabel}>
+            <TabsList role="tablist" aria-label={ariaLabel}>
                 {tabs.map((tab) => (
                     <TabsTrigger
                         key={tab.id}

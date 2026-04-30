@@ -11,7 +11,6 @@ interface OverviewPageProps {
   liveMetricStrip: ReactNode;
   todayActionBoard: ReactNode;
   scenarioOptimizerPreview: ReactNode;
-  modelRuntimeBridge?: ReactNode;
   weatherMarketKnowledgeBridge: ReactNode;
   finalCta: ReactNode;
   footer: ReactNode;
@@ -25,7 +24,8 @@ const OVERVIEW_SECTION_BY_ACTION: Record<string, string> = {
   'overview-dashboard': 'overview-dashboard',
   'overview-watch': 'overview-watch',
   'scenario-optimizer': 'scenario-optimizer',
-  'backend-runtime-bridge': 'backend-runtime-bridge',
+  'runtime-bridge': 'runtime-bridge',
+  'backend-runtime-bridge': 'runtime-bridge',
   'live-overview': 'live-overview',
   'today-action-board': 'today-action-board',
 };
@@ -45,7 +45,6 @@ export default function OverviewPage({
   liveMetricStrip,
   todayActionBoard,
   scenarioOptimizerPreview,
-  modelRuntimeBridge,
   weatherMarketKnowledgeBridge,
   finalCta,
   footer,
@@ -58,9 +57,9 @@ export default function OverviewPage({
   const activeTab = normalizeOverviewTab(activeTabId);
   const tabs = locale === 'ko'
     ? [
-        { id: 'overview-core' as const, label: 'Command', description: '오늘 의사결정 요약' },
-        { id: 'overview-dashboard' as const, label: 'Dashboard', description: '전체 지표와 추세' },
-        { id: 'overview-watch' as const, label: 'Watch', description: '경보와 런타임 상태' },
+        { id: 'overview-core' as const, label: '오늘 판단', description: '오늘 의사결정 요약' },
+        { id: 'overview-dashboard' as const, label: '전체 지표', description: '센서와 추세' },
+        { id: 'overview-watch' as const, label: '주의 확인', description: '경보와 확인 항목' },
       ]
     : [
         { id: 'overview-core' as const, label: 'Command', description: 'Decision brief' },
@@ -104,7 +103,7 @@ export default function OverviewPage({
         <div className="overview-browser-frame">
           <div className="overview-frame-body">
             {topNavigation}
-            <nav className="overview-tab-strip" aria-label={locale === 'ko' ? 'Overview 탭' : 'Overview tabs'}>
+            <nav className="overview-tab-strip" aria-label={locale === 'ko' ? '오늘 운영 세부 탭' : 'Overview tabs'}>
               {tabs.map((tab) => (
                 <a
                   key={tab.id}
@@ -136,14 +135,13 @@ export default function OverviewPage({
                 {dashboardTab ?? (
                   <>
                     {liveMetricStrip}
-                    {modelRuntimeBridge}
                   </>
                 )}
               </section>
             ) : null}
             {activeTab === 'overview-watch' ? (
               <section id="overview-watch" tabIndex={-1} role="tabpanel" className="overview-tab-panel scroll-mt-24" aria-labelledby="overview-watch-tab">
-                {watchTab ?? modelRuntimeBridge}
+                {watchTab ?? todayActionBoard}
               </section>
             ) : null}
           </div>

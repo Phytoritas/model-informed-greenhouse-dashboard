@@ -12,8 +12,8 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
-            title: '수동 제어 확인',
-            note: '장치 버튼은 화면 확인용 로컬 상태입니다. 온도, CO₂, 배액 설정은 /api/config/ops로 저장되어 백엔드 자동 제어 기준에 반영됩니다.',
+            title: '장치 제어 상태',
+            note: '환기·관수·난방·차광 버튼과 온도·이산화탄소·배액 기준을 같은 운영 기준으로 저장합니다.',
             ventilation: '환기',
             irrigation: '관수',
             heating: '난방',
@@ -22,22 +22,22 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
             heatingThreshold: '난방 시작 온도',
             coolingThreshold: '냉방 시작 온도',
             pBand: '제어 밴드',
-            co2Target: 'CO₂ 목표',
+            co2Target: '이산화탄소 목표',
             drainTarget: '배액 목표',
         }
         : {
-            title: 'Manual control check',
-            note: 'Device buttons are local visual checks. Temperature, CO₂, and drain settings are saved to /api/config/ops for backend automatic control.',
-            ventilation: 'Vent',
-            irrigation: 'Water',
-            heating: 'Heat',
-            shading: 'Screen',
-            temperatureSettings: 'Temperature guide',
-            heatingThreshold: 'Heat start',
-            coolingThreshold: 'Cool start',
-            pBand: 'Control band',
-            co2Target: 'CO₂ target',
-            drainTarget: 'Drain target',
+            title: '장치 제어 상태',
+            note: '환기·관수·난방·차광 버튼과 온도·이산화탄소·배액 기준을 같은 운영 기준으로 저장합니다.',
+            ventilation: '환기',
+            irrigation: '관수',
+            heating: '난방',
+            shading: '차광',
+            temperatureSettings: '온도 설정',
+            heatingThreshold: '난방 시작 온도',
+            coolingThreshold: '냉방 시작 온도',
+            pBand: '제어 밴드',
+            co2Target: '이산화탄소 목표',
+            drainTarget: '배액 목표',
         };
     const pBand = status.settings.pBand ?? 4;
     const co2Target = status.settings.co2Target ?? 800;
@@ -53,7 +53,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                 <button
                     type="button"
                     onClick={() => onToggle('ventilation')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.ventilation ? 'bg-[color:var(--sg-accent-forest-soft)] text-[color:var(--sg-accent-forest)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[18px] border border-[color:var(--sg-outline-soft)] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.ventilation ? 'bg-[color:var(--sg-color-sage-soft)] text-[color:var(--sg-color-olive)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Fan className="h-6 w-6" />
@@ -62,7 +62,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                 <button
                     type="button"
                     onClick={() => onToggle('irrigation')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.irrigation ? 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[18px] border border-[color:var(--sg-outline-soft)] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.irrigation ? 'bg-[color:var(--sg-color-sage-soft)] text-[color:var(--sg-color-olive)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Droplets className="h-6 w-6" />
@@ -71,7 +71,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                 <button
                     type="button"
                     onClick={() => onToggle('heating')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.heating ? 'bg-[color:var(--sg-accent-violet-soft)] text-[color:var(--sg-accent-violet)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[18px] border border-[color:var(--sg-outline-soft)] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.heating ? 'bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary-strong)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Thermometer className="h-6 w-6" />
@@ -80,7 +80,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                 <button
                     type="button"
                     onClick={() => onToggle('shading')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.shading ? 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[18px] border border-[color:var(--sg-outline-soft)] p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] ${status.shading ? 'sg-tint-amber text-[color:var(--sg-text-strong)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Sun className="h-6 w-6" />
@@ -100,7 +100,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                             value={status.settings.heating}
                             onChange={(e) => onSettingsChange({ ...status.settings, heating: parseInt(e.target.value, 10) })}
                             className="w-full"
-                            style={{ accentColor: 'var(--sg-accent-violet)' }}
+                            style={{ accentColor: 'var(--sg-color-primary)' }}
                         />
                         <div className="flex justify-between text-xs text-[color:var(--sg-text-faint)]">
                             <span>10°C</span>
@@ -117,7 +117,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                             value={status.settings.cooling}
                             onChange={(e) => onSettingsChange({ ...status.settings, cooling: parseInt(e.target.value, 10) })}
                             className="w-full"
-                            style={{ accentColor: 'var(--sg-accent-earth)' }}
+                            style={{ accentColor: 'var(--sg-color-olive)' }}
                         />
                         <div className="flex justify-between text-xs text-[color:var(--sg-text-faint)]">
                             <span>15°C</span>

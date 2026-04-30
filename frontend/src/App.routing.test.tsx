@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
+import { useState } from 'react'
+import { cleanup, fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LocaleProvider } from './i18n/LocaleProvider'
@@ -72,9 +72,16 @@ const greenhouseState = {
   metricHistory: [] as MetricHistoryPoint[],
   forecast: [],
   controls: {
+    ventilation: false,
+    irrigation: false,
+    heating: false,
+    shading: false,
     settings: {
-      heatingMinTemp: 18,
-      coolingTargetTemp: 24,
+      heating: 18,
+      cooling: 24,
+      pBand: 4,
+      co2Target: 800,
+      drainTarget: 0.3,
     },
   },
   toggleControl: vi.fn(),
@@ -276,6 +283,14 @@ vi.mock('./hooks/useOverviewSignalTrends', () => ({
   }),
 }))
 
+vi.mock('./hooks/useAlertHistory', () => ({
+  useAlertHistory: () => ({
+    events: [],
+    loading: false,
+    error: null,
+  }),
+}))
+
 vi.mock('./hooks/useLegacyRecommendations', () => ({
   useLegacyRecommendations: () => ({
     recommendations: [
@@ -336,82 +351,6 @@ vi.mock('./hooks/useSmartGrowKnowledge', () => ({
     loading: false,
     error: null,
   }),
-}))
-
-vi.mock('./layout/AppShell', () => ({
-  default: ({ header, sidebar, children }: { header: ReactNode; sidebar: ReactNode; children: ReactNode }) => (
-    <div>
-      <div data-testid="app-topbar">{header}</div>
-      <div data-testid="app-sidebar">{sidebar}</div>
-      <main>{children}</main>
-    </div>
-  ),
-}))
-
-vi.mock('./components/shell/TopBar', () => ({
-  default: ({
-    pageTitle,
-    selectedCrop,
-    onCropChange,
-    onAssistantToggle,
-    onOpenSettings,
-  }: {
-    pageTitle: string
-    selectedCrop?: 'Cucumber' | 'Tomato'
-    onCropChange?: (crop: 'Cucumber' | 'Tomato') => void
-    onAssistantToggle?: () => void
-    onOpenSettings?: () => void
-  }) => (
-    <div>
-      <div data-testid="topbar-title">{pageTitle}</div>
-      <button type="button" aria-pressed={selectedCrop === 'Cucumber'} onClick={() => onCropChange?.('Cucumber')}>Cucumber</button>
-      <button type="button" aria-pressed={selectedCrop === 'Tomato'} onClick={() => onCropChange?.('Tomato')}>Tomato</button>
-      <button type="button" onClick={onAssistantToggle}>Toggle assistant</button>
-      <button type="button" onClick={onOpenSettings}>Open settings</button>
-    </div>
-  ),
-}))
-
-vi.mock('./components/shell/WorkspaceNav', () => ({
-  default: ({
-    items,
-    activeWorkspace,
-    activeActionId,
-    onSelect,
-    onSelectAction,
-  }: {
-    items: Array<{ key: string; label: string; actions?: Array<{ id: string; label: string }> }>
-    activeWorkspace: string
-    activeActionId?: string
-    onSelect: (value: string) => void
-    onSelectAction?: (workspace: string, actionId: string) => void
-  }) => (
-    <nav aria-label="Primary navigation">
-      {items.map((item) => (
-        <div key={item.key}>
-          <button
-            type="button"
-            aria-current={item.key === activeWorkspace ? 'page' : undefined}
-            onClick={() => onSelect(item.key)}
-          >
-            {item.label}
-          </button>
-          {item.key === activeWorkspace
-            ? item.actions?.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  aria-current={activeActionId === action.id ? 'step' : undefined}
-                  onClick={() => onSelectAction?.(item.key, action.id)}
-                >
-                  {`Action:${action.id}`}
-                </button>
-              ))
-            : null}
-        </div>
-      ))}
-    </nav>
-  ),
 }))
 
 vi.mock('./components/dashboard/HeroControlCard', () => ({
@@ -636,7 +575,7 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: '자료·질문' }).getAttribute('aria-current')).toBe('page')
     expect(screen.queryByRole('button', { name: 'Open assistant fab' })).toBeNull()
   }, 10000)
 
@@ -708,13 +647,13 @@ describe('App routed shell', () => {
     expect(screen.queryByTestId('app-sidebar')).toBeNull()
     expect(screen.queryByTestId('topbar-title')).toBeNull()
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'PhytoSync landing navigation' })).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control')
+    expect(screen.getByRole('navigation', { name: 'PhytoSync 랜딩 내비게이션' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('href')).toBe('/control')
     expect(screen.getByRole('link', { name: 'View Dashboard' }).getAttribute('href')).toBe('/control')
-    expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '질문하기' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Assistant' }))
+    fireEvent.click(screen.getByRole('button', { name: '질문하기' }))
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
   })
 
@@ -726,20 +665,31 @@ describe('App routed shell', () => {
     expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
-  it('navigates between routed shell pages from the sidebar', async () => {
+  it('renders resource and protection pages in the standalone product frame', async () => {
+    renderApp('/resources')
+
+    expect(await screen.findByRole('heading', { name: 'Keep cucumber nutrient and energy cost in one operating view' })).toBeTruthy()
+    expect(screen.queryByTestId('app-topbar')).toBeNull()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
+    expect(await screen.findByText('ResourcesCommandCenter:resources-nutrient', {}, { timeout: 5000 })).toBeTruthy()
+
+    cleanup()
+    renderApp('/alerts')
+
+    expect(await screen.findByText('AlertsCommandCenter:alerts-protection', {}, { timeout: 5000 })).toBeTruthy()
+    expect(screen.queryByTestId('app-topbar')).toBeNull()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
+  }, 15000)
+
+  it('renders the dashboard control route in the standalone product frame', async () => {
     renderApp('/control')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
-    expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
-
-    await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
-    })
-    expect(await screen.findByText('ResourcesCommandCenter:resources-nutrient', {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
-  }, 15000)
+    expect(await screen.findByRole('heading', { name: 'Review cucumber greenhouse climate before changing controls' }, { timeout: 5000 })).toBeTruthy()
+    expect(screen.queryByTestId('app-topbar')).toBeNull()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('aria-current')).toBe('page')
+  })
 
   it('keeps RTR state outside route-local control pages', async () => {
     renderApp('/control')
@@ -747,12 +697,12 @@ describe('App routed shell', () => {
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
+    fireEvent.click(screen.getByRole('link', { name: '날씨·시세' }))
     await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
+      expect(screen.getByRole('link', { name: '날씨·시세' }).getAttribute('aria-current')).toBe('page')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
+    fireEvent.click(screen.getByRole('link', { name: '온실환경' }))
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
   })
@@ -764,12 +714,12 @@ describe('App routed shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Persist RTR draft' }))
     expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
+    fireEvent.click(screen.getByRole('link', { name: '날씨·시세' }))
     await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
+      expect(screen.getByRole('link', { name: '날씨·시세' }).getAttribute('aria-current')).toBe('page')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
+    fireEvent.click(screen.getByRole('link', { name: '온실환경' }))
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
   })
@@ -831,10 +781,10 @@ describe('App routed shell', () => {
     renderApp('/overview')
 
     expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control')
-    expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend')
-    expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios')
-    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant#assistant-search')
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('href')).toBe('/control')
+    expect(screen.getByRole('link', { name: '날씨·시세' }).getAttribute('href')).toBe('/trend')
+    expect(screen.getByRole('link', { name: '조정검토' }).getAttribute('href')).toBe('/scenarios')
+    expect(screen.getByRole('link', { name: '자료·질문' }).getAttribute('href')).toBe('/knowledge#assistant-search')
     expect(screen.getByRole('region', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Live decision metrics' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Actions worth checking today' })).toBeTruthy()
@@ -843,80 +793,70 @@ describe('App routed shell', () => {
   it('keeps control section actions inline and leaves the recommended control surface visible', async () => {
     renderApp('/control')
 
-    expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.queryByText('ControlPanel')).toBeNull()
+    expect(screen.queryByText('AlertRail')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Action:control-devices' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tab:control-devices' }))
 
     expect(screen.queryByText('RTROptimizerPanel')).toBeNull()
-    expect(screen.getByText('AlertRail')).toBeTruthy()
+    expect(screen.queryByText('AlertRail')).toBeNull()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
     expect(screen.getByTestId('page-section-active').textContent).toBe('control-devices')
-    expect(screen.getByRole('button', { name: 'Action:control-devices' }).getAttribute('aria-current')).toBe('step')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Action:control-strategy' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tab:control-strategy' }))
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByText('AlertRail')).toBeTruthy()
-    expect(screen.getByText('ControlPanel')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-current')).toBe('step')
-    expect(screen.getByRole('button', { name: 'Climate' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByText('AlertRail')).toBeNull()
+    expect(screen.queryByText('ControlPanel')).toBeNull()
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {
+  it('opens the assistant drawer from the dashboard product nav without leaving the route', async () => {
     renderApp('/control')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
+    fireEvent.click(screen.getByRole('button', { name: '질문하기' }))
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
-    expect(screen.getByRole('button', { name: 'Climate' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByTestId('app-topbar')).toBeNull()
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('opens the assistant drawer from the floating button on non-assistant routes', async () => {
     renderApp('/control')
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
+    expect(screen.queryByTestId('app-topbar')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open assistant fab' }))
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('keeps resources and alerts as dedicated pages instead of overview fallbacks', async () => {
     renderApp('/resources')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
+    expect(await screen.findByRole('heading', { name: 'Keep cucumber nutrient and energy cost in one operating view' })).toBeTruthy()
     expect(await screen.findByText('ResourcesCommandCenter:resources-nutrient')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Protection' }))
+    cleanup()
+    renderApp('/alerts')
 
     expect(await screen.findByText('AlertsCommandCenter:alerts-protection')).toBeTruthy()
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Protection')
-    expect(screen.getByRole('button', { name: 'Protection' }).getAttribute('aria-current')).toBe('page')
+    expect(await screen.findByRole('heading', { name: 'Handle cucumber pest risk and alerts step by step' })).toBeTruthy()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
-  it('hydrates direct hash tab selections before restoring a workspace from the sidebar', async () => {
+  it('hydrates direct hash tab selections on the resources product route', async () => {
     renderApp('/resources#resources-market')
 
     expect(await screen.findByText('ResourcesCommandCenter:resources-market')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Action:resources-market' }).getAttribute('aria-current')).toBe('step')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Climate' }))
-    await waitFor(() => {
-      expect(screen.getByTestId('topbar-title').textContent).toBe('Climate Solutions')
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'Resources' }))
-
-    expect(await screen.findByText('ResourcesCommandCenter:resources-market')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Action:resources-market' }).getAttribute('aria-current')).toBe('step')
+    expect(screen.getByTestId('page-section-active').textContent).toBe('resources-market')
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
   it('keeps trend as a dedicated page separated from control', async () => {
@@ -925,18 +865,21 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Connect cucumber decisions to weather and prices' })).toBeTruthy()
     expect(screen.queryByTestId('app-topbar')).toBeNull()
     expect(screen.queryByTestId('app-sidebar')).toBeNull()
-    expect(await screen.findByText('WeatherOutlookPanel')).toBeTruthy()
+    expect(await screen.findByText('WeatherTrendPanel')).toBeTruthy()
+    expect(screen.queryByText('DecisionSnapshotGrid')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Tab:trend-decision' }))
     expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: '날씨·시세' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('keeps crop-work as a dedicated page instead of assembling it inline in App', async () => {
     renderApp('/crop-work')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
+    expect(await screen.findByRole('heading', { name: 'Read cucumber growth and today work in one page' })).toBeTruthy()
     expect(await screen.findByText('CropDetails')).toBeTruthy()
-    expect(await screen.findByText('TodayBoard')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
+    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
+    expect(screen.queryByText('TodayBoard')).toBeNull()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
   it.each([
@@ -946,24 +889,44 @@ describe('App routed shell', () => {
     ['/ask/search#ask-search', 'AskSearchPage:assistant-search'],
     ['/ask/history#ask-chat', 'AskSearchPage:assistant-chat'],
     ['/assistant#ask-search', 'AskSearchPage:assistant-search'],
+    ['/knowledge#assistant-search', 'AskSearchPage:assistant-search'],
+    ['/knowledge/sources#assistant-search', 'AskSearchPage:assistant-search'],
   ])('keeps legacy assistant hash compatibility for %s', async (path, expectedPanel) => {
     renderApp(path)
 
-    expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
     expect(await screen.findByText(expectedPanel)).toBeTruthy()
+    if (expectedPanel === 'AskSearchPage:assistant-chat') {
+      expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
+    } else {
+      expect((await screen.findAllByRole('heading', { name: 'Full assistant workspace' })).length).toBeGreaterThan(0)
+    }
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: '자료·질문' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('redirects the legacy control path to the standalone dashboard page', async () => {
+    renderApp('/control/legacy')
+
+    expect(await screen.findByRole('heading', { name: 'Review cucumber greenhouse climate before changing controls' })).toBeTruthy()
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
   })
 
   it.each([
-    ['/control/legacy', 'Climate Solutions'],
-    ['/rtr', 'RTR Optimizer'],
-    ['/resources/legacy', 'Resources'],
-    ['/alerts/legacy', 'Protection'],
+    ['/resources/legacy', 'Keep cucumber nutrient and energy cost in one operating view'],
+    ['/alerts/legacy', 'Handle cucumber pest risk and alerts step by step'],
   ])('redirects %s to the canonical routed page', async (path, heading) => {
     renderApp(path)
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe(heading)
+    expect(await screen.findByRole('heading', { name: heading })).toBeTruthy()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
+  })
+
+  it.each(['/dashboard', '/dashboard/legacy', '/rtr', '/rtr#rtr-area'])('redirects %s to the standalone dashboard page', async (path) => {
+    renderApp(path)
+
+    expect(await screen.findByRole('heading', { name: 'Review cucumber greenhouse climate before changing controls' })).toBeTruthy()
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('redirects the legacy trend path to the standalone insights page', async () => {
@@ -971,28 +934,28 @@ describe('App routed shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Connect cucumber decisions to weather and prices' })).toBeTruthy()
     expect(screen.queryByTestId('topbar-title')).toBeNull()
-    expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: '날씨·시세' }).getAttribute('aria-current')).toBe('page')
   })
 
-  it('keeps RTR hash tabs as active in-page route sections', async () => {
+  it('keeps legacy RTR links inside the dashboard strategy surface', async () => {
     renderApp('/rtr#rtr-area')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('RTR Optimizer')
-    expect((await screen.findByTestId('page-section-active')).textContent).toBe('rtr-area')
-    expect(screen.getByTestId('rtr-active-panel').getAttribute('id')).toBe('rtr-area')
+    expect(await screen.findByRole('heading', { name: 'Review cucumber greenhouse climate before changing controls' })).toBeTruthy()
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
+    expect((await screen.findByTestId('page-section-active')).textContent).toBe('control-strategy')
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
   })
 
-  it('switches RTR workspace tabs without leaving the RTR route', async () => {
+  it('switches dashboard control tabs without returning to the old RTR sidebar', async () => {
     renderApp('/rtr')
 
-    expect((await screen.findByTestId('page-section-active')).textContent).toBe('rtr-strategy')
+    expect((await screen.findByTestId('page-section-active')).textContent).toBe('control-strategy')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tab:rtr-sensitivity' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Tab:control-devices' }))
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('RTR Optimizer')
-    expect(screen.getByTestId('page-section-active').textContent).toBe('rtr-sensitivity')
-    expect(screen.getByTestId('rtr-active-panel').getAttribute('id')).toBe('rtr-sensitivity')
+    expect(screen.queryByTestId('topbar-title')).toBeNull()
+    expect(screen.getByTestId('page-section-active').textContent).toBe('control-devices')
+    expect(screen.getByRole('link', { name: '온실환경' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('redirects the legacy overview path to the standalone overview landing', async () => {
@@ -1006,59 +969,62 @@ describe('App routed shell', () => {
   it('opens the nutrient advisor lane through the live advisor tab surface', async () => {
     renderApp('/nutrient')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
+    expect(await screen.findByRole('heading', { name: 'Keep cucumber nutrient and energy cost in one operating view' })).toBeTruthy()
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
     expect(screen.getByTestId('advisor-correction-open').textContent).toBe('false')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
   it('preserves the legacy nutrient correction intent separately from the nutrient lane', async () => {
     renderApp('/nutrient#correction')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
+    expect(await screen.findByRole('heading', { name: 'Keep cucumber nutrient and energy cost in one operating view' })).toBeTruthy()
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
     expect(screen.getByTestId('advisor-correction-open').textContent).toBe('true')
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
   it('opens the harvest advisor lane through the live advisor tab surface', async () => {
     renderApp('/harvest')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
+    expect((await screen.findAllByRole('heading', { name: 'Growth, work, and harvest workspace' })).length).toBeGreaterThan(0)
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('harvest_market')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
   it('keeps nested harvest advisor aliases on the live advisor tab surface', async () => {
     renderApp('/harvest/week')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
+    expect((await screen.findAllByRole('heading', { name: 'Growth, work, and harvest workspace' })).length).toBeGreaterThan(0)
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('harvest_market')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
   it('opens the protection advisor lane through the live advisor tab surface', async () => {
     renderApp('/protection')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Protection')
+    expect(await screen.findByRole('heading', { name: 'Handle cucumber pest risk and alerts step by step' })).toBeTruthy()
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('pesticide')
-    expect(screen.getByRole('button', { name: 'Protection' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
-  it('keeps nested growth advisor aliases on the live advisor tab surface', async () => {
+  it('keeps nested growth work aliases on the dedicated work tab surface', async () => {
     renderApp('/growth/week#work')
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
-    expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
-    expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('work')
-    expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
+    expect((await screen.findAllByRole('heading', { name: 'Growth, work, and harvest workspace' })).length).toBeGreaterThan(0)
+    expect(await screen.findByText('TodayBoard')).toBeTruthy()
+    expect(await screen.findByText('ConsultingReport')).toBeTruthy()
+    expect(screen.queryByText('AdvisorTabs')).toBeNull()
+    expect(screen.getByTestId('page-section-active').textContent).toBe('crop-work-work')
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
   it('opens the assistant drawer when overview requests advisor detail', async () => {
@@ -1078,13 +1044,16 @@ describe('App routed shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
 
+    fireEvent.click(screen.getByRole('button', { name: 'Tab:assistant-solutions' }))
+    expect(await screen.findByText('SmartGrowSurfacePanel')).toBeTruthy()
+
     fireEvent.click(screen.getByRole('button', { name: 'Open nutrient correction' }))
 
-    expect(screen.getByTestId('topbar-title').textContent).toBe('Resources')
+    expect(await screen.findByRole('heading', { name: 'Keep cucumber nutrient and energy cost in one operating view' })).toBeTruthy()
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
     expect(screen.getByTestId('advisor-correction-open').textContent).toBe('true')
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
   it('keeps assistant flows inline inside the assistant route', async () => {
@@ -1107,7 +1076,7 @@ describe('App routed shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Find materials inline' }))
 
     expect(await screen.findByText('AskSearchPage:assistant-search')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
+    expect(screen.getAllByRole('heading', { name: 'Full assistant workspace' }).length).toBeGreaterThan(0)
     expect(screen.queryByText('AssistantDrawer:assistant-search')).toBeNull()
   })
 
@@ -1116,7 +1085,7 @@ describe('App routed shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Source-backed assistant for grower decisions' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Assistant' }))
+    fireEvent.click(screen.getByRole('button', { name: '질문하기' }))
 
     expect(await screen.findByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-chat')
@@ -1128,10 +1097,10 @@ describe('App routed shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Connect cucumber decisions to weather and prices' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Assistant' }))
+    fireEvent.click(screen.getByRole('button', { name: '질문하기' }))
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('link', { name: 'CONTACT' }))
+    fireEvent.click(screen.getByRole('link', { name: '연동문의' }))
 
     expect(await screen.findByRole('heading', { name: 'Collect links and operating basis before support' })).toBeTruthy()
     await waitFor(() => expect(screen.queryByText('AssistantDrawer:assistant-chat')).toBeNull())

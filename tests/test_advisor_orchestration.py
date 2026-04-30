@@ -559,6 +559,53 @@ def test_build_advisor_chat_response_wraps_generate_chat_reply(
     assert payload["machine_payload"]["retrieval_context"]["status"] == "skipped"
 
 
+def test_build_advisor_chat_fallback_response_keeps_model_runtime_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_chat_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {
+                "status": "skipped",
+                "mode": "chat_first",
+                "query_count": 0,
+                "returned_count": 0,
+                "intent": None,
+                "sub_intent": None,
+            },
+            "llm_context": None,
+            "internal_provenance": {
+                "knowledge_queries": [],
+                "document_ids": [],
+                "chunk_ids": [],
+                "confidence_source": ["not_requested"],
+            },
+        },
+    )
+
+    payload = advisor_orchestration.build_advisor_chat_fallback_response(
+        crop="cucumber",
+        messages=[{"role": "user", "content": "지금 CO2를 올리면?"}],
+        dashboard={"currentData": {"temperature": 24.4}},
+        language="ko",
+        reason="openai_unavailable",
+    )
+
+    assert payload["status"] == "degraded"
+    assert payload["family"] == "advisor_chat"
+    assert "Advisor chat failed" not in payload["text"]
+    assert "openai_unavailable" in payload["machine_payload"]["missing_data"]
+    assert payload["machine_payload"]["model_runtime"]
+    assert payload["machine_payload"]["display"]
+
+
 def test_build_chat_advisor_context_compacts_retrieved_evidence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -2883,7 +2930,169 @@ def test_build_advisor_chat_response_uses_latest_user_turn_for_answer_focus(
     assert answer_focus["matched_user_request"] is True
     assert answer_focus["control"] == "rh_target"
     assert answer_focus["matched_delta"] == pytest.approx(-5.0)
-    assert "습도 -5%" in payload["text"]
+    assert "상대습도 목표 -5%" in payload["text"]
+
+
+def test_build_advisor_chat_response_keeps_growth_status_current_state_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    llm_called = False
+
+    def _fake_generate_chat_reply(**kwargs):
+        nonlocal llm_called
+        llm_called = True
+        return "## 핵심 요약\n- 현재 생육 상태를 기준으로 잎면적과 소스-싱크 균형을 확인했습니다."
+
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "generate_chat_reply",
+        _fake_generate_chat_reply,
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_chat_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {
+                "status": "skipped",
+                "mode": "chat_seeded",
+                "intent": "crop_physiology",
+                "sub_intent": "current_state_diagnosis",
+            },
+            "llm_context": None,
+            "internal_provenance": {
+                "knowledge_queries": [],
+                "document_ids": [],
+                "chunk_ids": [],
+                "confidence_source": ["not_requested"],
+            },
+        },
+    )
+
+    payload = advisor_orchestration.build_advisor_chat_response(
+        crop="cucumber",
+        messages=[{"role": "user", "content": "지금 생육 상태는?"}],
+        dashboard=_runtime_ready_dashboard(),
+        language="ko",
+    )
+
+    runtime = payload["machine_payload"]["model_runtime"]
+    assert runtime["runtime_mode"] == "current_state"
+    assert runtime["answer_focus"] is None
+    assert runtime["scenario"]["recommended"] is None
+    assert runtime["recommendations"] == []
+    assert runtime["best_actions"] == []
+    assert runtime["growth_diagnosis"]["focus"] == "current_growth_status"
+    assert runtime["provenance"]["recommendations_surface"] == "suppressed_for_current_state"
+    assert payload["machine_payload"]["display"]["summary"].startswith("현재 생육")
+    assert payload["machine_payload"]["display"]["actions_now"] == []
+    assert payload["machine_payload"]["display"]["actions_today"] == []
+
+    assert llm_called is False
+    assert payload["text"].startswith("## 핵심 요약")
+    assert not payload["text"].startswith("## 모델 계산 결과")
+    assert "소스-싱크" not in payload["text"]
+    assert "metrics." not in payload["text"]
+
+
+def test_build_advisor_chat_response_keeps_node_status_current_state_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "generate_chat_reply",
+        lambda **_: pytest.fail("current-state node answers should not call the LLM"),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_chat_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {"status": "skipped", "mode": "chat_seeded"},
+            "llm_context": None,
+            "internal_provenance": {
+                "knowledge_queries": [],
+                "document_ids": [],
+                "chunk_ids": [],
+                "confidence_source": ["not_requested"],
+            },
+        },
+    )
+    dashboard = _runtime_ready_dashboard()
+    dashboard["metrics"]["growth"]["nodeCount"] = 5
+
+    payload = advisor_orchestration.build_advisor_chat_response(
+        crop="cucumber",
+        messages=[{"role": "user", "content": "마디는 얼마나 전개되었지?"}],
+        dashboard=dashboard,
+        language="ko",
+    )
+
+    runtime = payload["machine_payload"]["model_runtime"]
+    assert runtime["runtime_mode"] == "current_state"
+    assert runtime["state_snapshot"]["node_count"] == 5
+    assert runtime["answer_focus"] is None
+    assert runtime["scenario"]["recommended"] is None
+    assert runtime["recommendations"] == []
+    assert payload["machine_payload"]["display"]["summary"] == "현재 마디수는 5개입니다."
+    assert payload["text"].startswith("## 핵심 요약")
+    assert "현재 마디수는 5개입니다." in payload["text"]
+    assert "nodeCount" not in payload["text"]
+
+
+def test_build_advisor_chat_response_explains_limited_temperature_delta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_knowledge_catalog",
+        lambda crop: _catalog_stub(),
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "generate_chat_reply",
+        lambda **_: "## 핵심 요약\n- 요청 온도 조정의 비용을 계산했습니다.",
+    )
+    monkeypatch.setattr(
+        advisor_orchestration,
+        "build_chat_advisor_context",
+        lambda **_: {
+            "status": "skipped",
+            "summary": {"status": "skipped", "mode": "chat_seeded"},
+            "llm_context": None,
+            "internal_provenance": {
+                "knowledge_queries": [],
+                "document_ids": [],
+                "chunk_ids": [],
+                "confidence_source": ["not_requested"],
+            },
+        },
+    )
+
+    payload = advisor_orchestration.build_advisor_chat_response(
+        crop="cucumber",
+        messages=[{"role": "user", "content": "현재 온도 10도 올리면 에너지 비용이 더 많이 들겠지?"}],
+        dashboard=_runtime_ready_dashboard(),
+        language="ko",
+    )
+
+    answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
+    assert answer_focus["matched_user_request"] is True
+    assert answer_focus["control"] == "temperature_day"
+    assert answer_focus["requested_delta"] == pytest.approx(10.0)
+    assert answer_focus["is_limited_delta"] is True
+    assert "안전 계산 범위" in payload["text"]
+    assert "+10°C" in payload["text"]
 
 
 def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
@@ -2923,8 +3132,9 @@ def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
     )
 
     answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
-    assert "was calculated by the process-model bounded scenario" in answer_focus["summary"]
+    assert "daytime CO2 +100ppm was compared by the crop model" in answer_focus["summary"]
     assert "조정은" not in answer_focus["summary"]
+    assert "주간 CO2" not in answer_focus["summary"]
     assert payload["text"].startswith("## Model-calculated effect")
 
 

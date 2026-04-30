@@ -13,7 +13,6 @@ import type {
 } from '../types';
 import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
-import { getReadinessDescriptor } from '../lib/design/readiness';
 import { buildAiDashboardContext } from '../utils/aiDashboardContext';
 import { getCropLabel } from '../utils/displayCopy';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
@@ -101,6 +100,33 @@ function localizeDirection(direction: string | null | undefined, locale: 'ko' | 
     return locale === 'ko' ? '유지' : 'Hold';
 }
 
+function getEvidenceLabel(value: number | null | undefined, locale: 'ko' | 'en'): string | null {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+        return null;
+    }
+    const normalized = value > 1 ? Math.max(0, Math.min(1, value / 100)) : Math.max(0, Math.min(1, value));
+    if (normalized >= 0.82) {
+        return locale === 'ko' ? '자료 충분' : 'Enough context';
+    }
+    if (normalized >= 0.68) {
+        return locale === 'ko' ? '일부 자료 보완 필요' : 'Some context missing';
+    }
+    return locale === 'ko' ? '자료 부족' : 'Limited context';
+}
+
+function formatLimitingFactor(value: string | null | undefined, locale: 'ko' | 'en'): string {
+    const normalized = String(value ?? '').trim().toLowerCase();
+    if (!normalized) return '-';
+    if (locale === 'en') {
+        if (normalized === 'rubisco') return 'CO2/stomata';
+        if (normalized === 'electron_transport') return 'Light reaction';
+        return value ?? '-';
+    }
+    if (normalized === 'rubisco') return 'CO2·기공 반응';
+    if (normalized === 'electron_transport') return '광 반응';
+    return value ?? '-';
+}
+
 function ActionTag({
     title,
     items,
@@ -141,7 +167,7 @@ function StructuredReply({
     copy: Record<string, string>;
     locale: 'ko' | 'en';
 }) {
-    const readiness = getReadinessDescriptor(display.confidence, locale);
+    const evidenceLabel = getEvidenceLabel(display.confidence, locale);
 
     return (
         <div
@@ -187,9 +213,9 @@ function StructuredReply({
                     </ul>
                 </div>
             ) : null}
-            {typeof display.confidence === 'number' ? (
+            {evidenceLabel ? (
                 <div className="text-[11px] font-medium text-[color:var(--sg-text-faint)]">
-                    {readiness.lead}: {readiness.label}
+                    {copy.confidenceLabel}: {evidenceLabel}
                 </div>
             ) : null}
         </div>
@@ -340,7 +366,7 @@ const ChatAssistant = ({
             title: '질문 도우미',
             close: '질문 도우미 닫기',
             send: '질문 보내기',
-            placeholder: '예: 지금 CO2를 100ppm 더 올리면 어떻게 되나요?',
+            placeholder: '예: 지금 이산화탄소를 100ppm 더 올리면 어떻게 되나요?',
             noResponse: '응답이 없습니다.',
             unknownError: '알 수 없는 오류가 발생했습니다.',
             aiUnavailable: '모델 상담을 사용할 수 없습니다',
@@ -349,15 +375,17 @@ const ChatAssistant = ({
             smartGrowUnavailable: '도구 상태를 아직 불러오지 못했습니다.',
             smartGrowHint: '필요한 자료와 실행 화면을 이어서 확인할 수 있습니다.',
             knowledgeSearch: '자료 찾기',
-            runtimeTitle: '예측 모델 분석',
-            runtimeReady: '예측 반영',
+            runtimeTitle: '계산 요약',
+            runtimeCurrentTitle: '생육 상태 스냅샷',
+            runtimeReady: '계산 완료',
+            runtimeCurrentReady: '상태 확인',
             runtimeFallback: '상태 해석 우선',
             runtimeUnavailable: '분석 정보 없음',
             runtimeRecommended: '추천',
             runtimeLevers: '주요 환경 요인',
             runtimeConstraints: '제약',
             runtimeNoConstraints: '위반 없음',
-            runtimeLai: 'LAI',
+            runtimeLai: '잎면적',
             runtimeBalance: '공급/수요 균형',
             runtimeCanopyA: '캐노피 동화량',
             runtimeLimiting: '병목',
@@ -366,15 +394,20 @@ const ChatAssistant = ({
             runtimePhysiologyEffect: '생리 반응',
             runtimeCostRiskEffect: '비용/리스크',
             runtimeConfidence: '계산 신뢰도',
+            runtimeYield14d: '14일',
+            runtimeYield72h: '72시간',
+            runtimeCanopyShort: '동화량',
+            runtimeBalanceShort: '균형',
+            runtimeEnergyShort: '에너지',
             summaryTitle: '한줄 요약',
             risksTitle: '주의할 점',
             monitorTitle: '모니터링',
             nowTitle: '지금',
             todayTitle: '오늘',
             weekTitle: '이번 주',
-            confidenceLabel: '반영 상태',
+            confidenceLabel: '자료 반영도',
             farmerSummaryTitle: '농가용 요약',
-            farmerActionTitle: '작업 순서',
+            farmerActionTitle: '확인할 내용',
             fullAnswerTitle: '전체 답변 보기',
             promptPesticide: `${cropLabel} 흰가루병 후보 농약을 요약해줘`,
             promptNutrient: `${cropLabel} 현재 단계 양액 레시피와 경계 조건을 정리해줘`,
@@ -394,8 +427,10 @@ const ChatAssistant = ({
             smartGrowUnavailable: 'Tool status is unavailable.',
             smartGrowHint: 'Open the linked material or move into the connected workflow.',
             knowledgeSearch: 'Find materials',
-            runtimeTitle: 'Prediction status',
-            runtimeReady: 'Recommendation linked',
+            runtimeTitle: 'Calculation summary',
+            runtimeCurrentTitle: 'Growth snapshot',
+            runtimeReady: 'Calculated',
+            runtimeCurrentReady: 'Status checked',
             runtimeFallback: 'Monitoring first',
             runtimeUnavailable: 'Runtime unavailable',
             runtimeRecommended: 'Recommended',
@@ -411,6 +446,11 @@ const ChatAssistant = ({
             runtimePhysiologyEffect: 'Physiology',
             runtimeCostRiskEffect: 'Cost/risk',
             runtimeConfidence: 'Confidence',
+            runtimeYield14d: '14d',
+            runtimeYield72h: '72h',
+            runtimeCanopyShort: 'Assimilation',
+            runtimeBalanceShort: 'Balance',
+            runtimeEnergyShort: 'Energy',
             summaryTitle: 'Summary',
             risksTitle: 'Risks',
             monitorTitle: 'Monitor',
@@ -479,19 +519,25 @@ const ChatAssistant = ({
 
     const renderRuntimeStrip = (runtime: ModelRuntimePayload) => {
         const state = runtime.state_snapshot ?? {};
-        const topLevers = (runtime.sensitivity?.top_levers ?? []).slice(0, 2);
-        const recommendedAction =
-            runtime.scenario?.recommended?.action
-            ?? runtime.recommendations?.[0]?.action
-            ?? null;
-        const violations = runtime.constraint_checks?.violated_constraints ?? [];
+        const isCurrentState = runtime.runtime_mode === 'current_state';
         const answerFocus = runtime.answer_focus?.matched_user_request ? runtime.answer_focus : null;
+        const topLevers = isCurrentState || answerFocus ? [] : (runtime.sensitivity?.top_levers ?? []).slice(0, 2);
+        const recommendedAction =
+            isCurrentState || answerFocus
+                ? null
+                : runtime.scenario?.recommended?.action
+                    ?? runtime.recommendations?.[0]?.action
+                    ?? null;
+        const violations = runtime.constraint_checks?.violated_constraints ?? [];
         const focusEffects = answerFocus?.effects ?? {};
-        const statusLabel = runtime.status === 'ready'
+        const statusLabel = isCurrentState
+            ? copy.runtimeCurrentReady
+            : runtime.status === 'ready'
             ? copy.runtimeReady
             : runtime.status === 'unavailable'
                 ? copy.runtimeUnavailable
                 : copy.runtimeFallback;
+        const titleLabel = isCurrentState ? copy.runtimeCurrentTitle : copy.runtimeTitle;
         const toneClasses = runtime.status === 'ready'
             ? 'sg-tint-green'
             : runtime.status === 'unavailable'
@@ -508,7 +554,7 @@ const ChatAssistant = ({
                 <div className="flex items-start justify-between gap-3">
                     <div>
                         <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-                            {copy.runtimeTitle}
+                            {titleLabel}
                         </div>
                         <p className="mt-1 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
                             {runtime.summary}
@@ -537,7 +583,7 @@ const ChatAssistant = ({
                     </div>
                     <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
                         <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeLimiting}</div>
-                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">{state.limiting_factor ?? '-'}</div>
+                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">{formatLimitingFactor(state.limiting_factor, locale)}</div>
                     </div>
                 </div>
                 {answerFocus ? (
@@ -559,21 +605,21 @@ const ChatAssistant = ({
                             <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
                                 <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeYieldEffect}</div>
                                 <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
-                                    14d {formatSignedRuntimeValue(focusEffects.yield_delta_14d)}
+                                    {copy.runtimeYield14d} {formatSignedRuntimeValue(focusEffects.yield_delta_14d)}
                                 </div>
-                                <div className="mt-0.5 tabular-nums">72h {formatSignedRuntimeValue(focusEffects.yield_delta_72h)}</div>
+                                <div className="mt-0.5 tabular-nums">{copy.runtimeYield72h} {formatSignedRuntimeValue(focusEffects.yield_delta_72h)}</div>
                             </div>
                             <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
                                 <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimePhysiologyEffect}</div>
                                 <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
-                                    A {formatSignedRuntimeValue(focusEffects.canopy_delta_72h)}
+                                    {copy.runtimeCanopyShort} {formatSignedRuntimeValue(focusEffects.canopy_delta_72h)}
                                 </div>
-                                <div className="mt-0.5 tabular-nums">S/S {formatSignedRuntimeValue(focusEffects.source_sink_balance_delta)}</div>
+                                <div className="mt-0.5 tabular-nums">{copy.runtimeBalanceShort} {formatSignedRuntimeValue(focusEffects.source_sink_balance_delta)}</div>
                             </div>
                             <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
                                 <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeCostRiskEffect}</div>
                                 <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
-                                    E {formatSignedRuntimeValue(focusEffects.energy_delta)}
+                                    {copy.runtimeEnergyShort} {formatSignedRuntimeValue(focusEffects.energy_delta)}
                                 </div>
                                 <div className="mt-0.5 tabular-nums">{copy.runtimeConfidence} {answerFocus.confidence === null || answerFocus.confidence === undefined ? '-' : `${Math.round(answerFocus.confidence * 100)}%`}</div>
                             </div>
@@ -800,7 +846,16 @@ const ChatAssistant = ({
                                         <StructuredReply display={message.display} copy={copy} locale={locale} />
                                     ) : null}
                                     {message.modelRuntime ? renderRuntimeStrip(message.modelRuntime) : null}
-                                    {message.text.length > 220 || message.text.includes('\n') || message.display ? (
+                                    {message.display ? (
+                                        <details className="mt-3 rounded-[20px] border border-[color:var(--sg-outline-soft)] bg-white/72 px-3 py-2">
+                                            <summary className="cursor-pointer text-xs font-semibold text-[color:var(--sg-text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]">
+                                                {copy.fullAnswerTitle}
+                                            </summary>
+                                            <div className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                                                <MarkdownAnswer text={message.text} />
+                                            </div>
+                                        </details>
+                                    ) : message.text.length > 220 || message.text.includes('\n') ? (
                                         <FarmerFriendlyAnswer text={message.text} copy={copy} />
                                     ) : (
                                         <MarkdownAnswer text={message.text} />

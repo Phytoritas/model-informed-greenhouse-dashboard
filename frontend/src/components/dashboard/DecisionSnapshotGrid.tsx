@@ -345,8 +345,12 @@ export default function DecisionSnapshotGrid({
   const marketHeadline = produceLoading || !selectedMarket?.item
     ? copy.marketLoading
     : `${preferredProduceName} ${selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${copy.marketUnit}`;
-  const energyHeadline = `${modelMetrics.energy.consumption.toFixed(1)} kW · COP ${modelMetrics.energy.efficiency.toFixed(2)}`;
-  const cropHeadline = `광합성 ${currentData.photosynthesis.toFixed(1)} · LAI ${modelMetrics.growth.lai.toFixed(2)}`;
+  const energyHeadline = locale === 'ko'
+    ? `${modelMetrics.energy.consumption.toFixed(1)} kW · 열효율 ${modelMetrics.energy.efficiency.toFixed(2)}`
+    : `${modelMetrics.energy.consumption.toFixed(1)} kW · COP ${modelMetrics.energy.efficiency.toFixed(2)}`;
+  const cropHeadline = locale === 'ko'
+    ? `광합성 ${currentData.photosynthesis.toFixed(1)} · 잎면적 ${modelMetrics.growth.lai.toFixed(2)}`
+    : `Photosynthesis ${currentData.photosynthesis.toFixed(1)} · LAI ${modelMetrics.growth.lai.toFixed(2)}`;
 
   return (
     <DashboardCard

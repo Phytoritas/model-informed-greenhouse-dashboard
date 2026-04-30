@@ -190,8 +190,11 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
                 disease_penalty: 0.01,
                 energy_cost: 2.4,
                 energy_cost_krw: 290,
-                labor_cost: 0.14,
+                labor_cost: 140,
+                labor_cost_krw: 140,
+                labor_objective_penalty: 0.42,
                 labor_index: 0.42,
+                labor_hours_m2_day: 0.0016,
             },
             feasibility: {
                 target_node_hit: false,
@@ -224,8 +227,11 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
             disease_penalty: 0.02,
             energy_cost: 2.9,
             energy_cost_krw: 348,
-            labor_cost: 0.22,
+            labor_cost: 220,
+            labor_cost_krw: 220,
+            labor_objective_penalty: 0.57,
             labor_index: 0.57,
+            labor_hours_m2_day: 0.0022,
         },
         feasibility: {
             target_node_hit: true,
@@ -267,6 +273,8 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
             energy_kwh_m2_day: 2.9,
             energy_krw_m2_day: 348,
             labor_index_m2_day: 0.57,
+            labor_hours_m2_day: 0.0022,
+            labor_cost_krw_m2_day: 220,
             node_development_day: 0.68,
         },
         actual_area_projection: {
@@ -277,6 +285,31 @@ function buildOptimizeResponse(): RtrOptimizeResponse {
             energy_kwh_day: 8140.2,
             energy_krw_day: 977880,
             labor_index_day: 1601.65,
+            labor_hours_day: 6.18,
+            labor_cost_krw_day: 618200,
+        },
+        labor_summary: {
+            harvest_load_index: 0.26,
+            training_load_index: 0.18,
+            pruning_load_index: 0.08,
+            thinning_load_index: 0.03,
+            pollination_or_cluster_management_index: 0,
+            canopy_management_load_index: 0.02,
+            labor_index: 0.57,
+            labor_hours_m2_day: 0.0022,
+            labor_cost_krw_m2_day: 220,
+            labor_rate_krw_hour: 16800,
+            labor_rate_source: 'agricultural-income-reference',
+            labor_hours_basis: 'crop_profile_labor_benchmark',
+            labor_benchmark_source_label_ko: '농업소득자료 기준',
+            labor_benchmark_source_label_en: 'Agricultural income benchmark',
+            reference_year: 2023,
+            reference_labor_hours_10a_year: 782,
+            reference_workload_index: 0.55,
+            reference_labor_hours_m2_day: 0.002142,
+            reference_labor_cost_krw_10a_year: 13137600,
+            labor_reference_source: 'facility cucumber income/labor benchmark',
+            definition: 'labor index test definition',
         },
         explanation_payload: {
             summary: '목표 마디 전개를 맞추기 위해 평소 설정값보다 소폭 높은 평균 온도가 필요합니다.',
@@ -616,8 +649,8 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getByText('목표 마디 속도 방어')).toBeTruthy();
         expect(screen.getByText('에너지 비용 고려')).toBeTruthy();
         expect(screen.getByText('위험 제약 적용 중')).toBeTruthy();
-        expect(screen.getByText('RTR 편차 이유 설명 필요')).toBeTruthy();
-        expect(screen.getByText('시나리오 비교')).toBeTruthy();
+        expect(screen.getByText('온도 기준 편차 이유 설명 필요')).toBeTruthy();
+        expect(screen.getByText('조정안 비교')).toBeTruthy();
         expect(screen.getAllByText('균형').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('평소 설정').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('평소 설정 +0.3°C')).toBeTruthy();
@@ -628,6 +661,11 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getByText('평소 설정 비교 카드 내용')).toBeTruthy();
         expect(screen.getByText('실면적 120.8 kg/일 · 845.6 kg/주')).toBeTruthy();
         expect(screen.getByText('실면적 8,140.2 kWh/일 · 977,880 원/일')).toBeTruthy();
+        expect(screen.getByLabelText('우리 농장 시급')).toBeTruthy();
+        expect(screen.getAllByText('농업소득자료 기준').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText(/농업소득자료 기준 시급/).length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText(/기준 작업시간 782 h\/10a\/년/)).toBeTruthy();
+        expect(screen.getByText(/10a 기준 연간 작업비 13,137,600 원/)).toBeTruthy();
     });
 
     it('keeps the target development tile synced with the current target state when the optimize echo is stale', async () => {
@@ -730,7 +768,7 @@ describe('RTROptimizerPanel', () => {
         expect(screen.getByText('Large RTR deviation')).toBeTruthy();
         expect(screen.getByLabelText('Target node progression')).toBeTruthy();
         expect(screen.getByText('348 KRW')).toBeTruthy();
-        expect(screen.getAllByText('0.570').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('220 KRW')).toBeTruthy();
         expect(screen.queryByText('Scenario review')).toBeNull();
         expect(screen.queryByText('Custom review row')).toBeNull();
         expect(screen.queryByText('RTR calibration workspace stub')).toBeNull();

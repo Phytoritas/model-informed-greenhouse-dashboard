@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-04-03T11:22:11.514973+00:00",
+  "updatedAt": "2026-04-27T22:56:55.877317+00:00",
   "availableModes": [
     "baseline",
     "optimizer"
@@ -46,15 +46,27 @@
           "risk": 120.0,
           "energy": 25.0,
           "labor": 18.0
+        },
+        "labor_benchmark": {
+          "source_key": "agricultural-income-reference",
+          "source_label_ko": "농업소득자료 기준",
+          "source_label_en": "Agricultural income benchmark",
+          "source_note": "Facility tomato hydroponic labor-time benchmark from public agricultural income reporting; adjust with house records.",
+          "source_url": "https://www.rda.go.kr/board/board.do?boardId=pubreal&currPage=27&dataNo=100000521140&menu_id=opp&mode=updateCnt&prgId=opr_pubreal&searchKey=&searchVal=",
+          "reference_year": 2023,
+          "reference_labor_hours_10a_year": 687.0,
+          "reference_workload_index": 0.55,
+          "default_labor_rate_krw_hour": 16800.0,
+          "default_labor_rate_basis": "daily agricultural wage / 8h"
         }
       }
     },
     "Cucumber": {
       "crop": "Cucumber",
       "strategyLabel": "Cucumber house-fit RTR line",
-      "sourceNote": "Calibrated from 27 quality-filtered daily RTR points across 1 curated good-production window(s). Keep refining the window spec as higher-confidence operating periods become available.",
-      "baseTempC": 18.132,
-      "slopeCPerMjM2": 0.3099,
+      "sourceNote": "Calibrated from 27 quality-filtered daily RTR points across 2 curated good-production window(s). Keep refining the window spec as higher-confidence operating periods become available.",
+      "baseTempC": 18.094,
+      "slopeCPerMjM2": 0.3159,
       "toleranceC": 1.0,
       "lightToRadiantDivisor": 4.57,
       "calibration": {
@@ -63,16 +75,16 @@
         "fitStartDate": "2021-04-15",
         "fitEndDate": "2021-05-12",
         "minCoverageHours": 20.0,
-        "rSquared": 0.8973,
-        "meanAbsoluteErrorC": 0.2542,
+        "rSquared": 0.8907,
+        "meanAbsoluteErrorC": 0.2612,
         "selectionSource": "curated-windows",
-        "windowCount": 1
+        "windowCount": 2
       },
       "baseline": {
-        "baseTempC": 18.132,
-        "slopeCPerMjM2": 0.3099,
+        "baseTempC": 18.094,
+        "slopeCPerMjM2": 0.3159,
         "toleranceC": 1.0,
-        "baseline_target_C": 18.132
+        "baseline_target_C": 18.3
       },
       "optimizer": {
         "enabled": true,
@@ -89,6 +101,18 @@
           "risk": 120.0,
           "energy": 25.0,
           "labor": 20.0
+        },
+        "labor_benchmark": {
+          "source_key": "agricultural-income-reference",
+          "source_label_ko": "농업소득자료 기준",
+          "source_label_en": "Agricultural income benchmark",
+          "source_note": "Facility cucumber labor-time benchmark from public agricultural income reporting; adjust with house records.",
+          "source_url": "https://www.rda.go.kr/board/board.do?boardId=pubreal&currPage=27&dataNo=100000521140&menu_id=opp&mode=updateCnt&prgId=opr_pubreal&searchKey=&searchVal=",
+          "reference_year": 2023,
+          "reference_labor_hours_10a_year": 782.0,
+          "reference_workload_index": 0.55,
+          "default_labor_rate_krw_hour": 16800.0,
+          "default_labor_rate_basis": "daily agricultural wage / 8h"
         }
       }
     }

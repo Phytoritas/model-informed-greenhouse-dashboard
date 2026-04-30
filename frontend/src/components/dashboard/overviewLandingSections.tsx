@@ -22,6 +22,7 @@ import type { KpiTileData } from '../KpiStrip';
 import type {
   AdvancedModelMetrics,
   CropType,
+  MetricHistoryPoint,
   ProducePricesPayload,
   RtrProfile,
   SensorData,
@@ -32,14 +33,15 @@ import { API_URL } from '../../config';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { formatMetricValue } from '../../utils/formatValue';
 import { getCropLabel } from '../../utils/displayCopy';
+import { appendFiniteValue, pickNumericSeries } from '../../utils/metricTrendSeries';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import { buildRTRLiveSnapshot, getRtrProfile } from '../../utils/rtr';
 import { cn } from '../../utils/cn';
 import { AlertCard } from '../ui/alert-card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { MetricCard } from '../ui/metric-card';
 import { StatusChip } from '../ui/status-chip';
+import MetricTrendCard from './MetricTrendCard';
 
 function formatNumber(value: number | null | undefined, digits = 1): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -75,6 +77,26 @@ function compactMetricUnit(unit: string | undefined): string | undefined {
     return 'mol';
   }
   return unit;
+}
+
+const liveMetricSeriesKey: Record<string, keyof SensorData> = {
+  temperature: 'temperature',
+  humidity: 'humidity',
+  co2: 'co2',
+  light: 'light',
+  vpd: 'vpd',
+  stomatalConductance: 'stomatalConductance',
+};
+
+function buildLiveTileSeries(tile: KpiTileData, history: SensorData[], limit = 24): number[] {
+  const key = liveMetricSeriesKey[tile.key];
+  if (!key) {
+    return [];
+  }
+  const series = pickNumericSeries(history, key, limit);
+  return typeof tile.value === 'number'
+    ? appendFiniteValue(series, tile.value, limit)
+    : series;
 }
 
 function metricToneForTile(tile: KpiTileData): 'normal' | 'warning' | 'critical' | 'muted' {
@@ -131,27 +153,34 @@ interface TopNavigationProps {
 }
 
 export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
-  const { locale } = useLocale();
   const location = useLocation();
   const nav = [
-    ['HOME', '/overview'],
-    ['DASHBOARD', '/control'],
-    ['INSIGHTS', '/trend'],
-    ['SCENARIOS', '/scenarios'],
-    ['KNOWLEDGE', '/assistant#assistant-search'],
-    ['CONTACT', '/settings'],
+    ['홈', '/overview'],
+    ['온실환경', '/control'],
+    ['날씨·시세', '/trend'],
+    ['조정검토', '/scenarios'],
+    ['자료·질문', '/knowledge#assistant-search'],
+    ['연동문의', '/settings'],
   ];
-  const assistantLabel = locale === 'ko' ? '질문하기' : 'Ask Assistant';
-  const dashboardLabel = locale === 'ko' ? '대시보드 열기' : 'Open Dashboard';
+  const assistantLabel = '질문하기';
+  const dashboardLabel = '운영 화면 열기';
   const isActiveNav = (to: string) => {
     const [pathname, hash = ''] = to.split('#');
-    if (pathname !== location.pathname && !(pathname === '/overview' && location.pathname === '/')) {
+    const isAssistantKnowledgeAlias = (pathname === '/knowledge' && location.pathname === '/assistant')
+      || (pathname === '/assistant' && location.pathname === '/knowledge');
+    const pathnameMatches = pathname === location.pathname
+      || (pathname !== '/overview' && location.pathname.startsWith(`${pathname}/`))
+      || (pathname === '/overview' && location.pathname === '/')
+      || isAssistantKnowledgeAlias;
+    if (!pathnameMatches) {
       return false;
     }
     if (!hash) {
-      return !location.hash || location.hash === '#overview-core';
+      return pathname === '/overview'
+        ? (!location.hash || location.hash === '#overview-core')
+        : true;
     }
-    if (pathname !== '/overview' && location.pathname === pathname) {
+    if (pathname !== '/overview' && (location.pathname === pathname || isAssistantKnowledgeAlias)) {
       return true;
     }
     return location.hash === `#${hash}`;
@@ -159,7 +188,7 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
 
   return (
     <header>
-      <nav aria-label={locale === 'ko' ? 'PhytoSync 랜딩 내비게이션' : 'PhytoSync landing navigation'} className="overview-nav">
+      <nav aria-label="PhytoSync 랜딩 내비게이션" className="overview-nav">
         <Link to="/overview" className="inline-flex items-center gap-2 text-base font-bold text-[color:var(--sg-text-strong)]">
           <Leaf className="h-5 w-5 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
           PhytoSync
@@ -210,7 +239,7 @@ export function HeroDecisionBrief({ heroCard }: { heroCard: ReactNode }) {
         badge: '실시간 온실 의사결정',
         title: '스마트온실 인공지능 의사결정 플랫폼',
         support: '기후, 작물, 시세, 지식 신호를 한 화면에서 묶어 오늘의 의사결정을 더 빠르게 정리합니다.',
-        primary: '대시보드 보기',
+        primary: '온실 환경 보기',
         secondary: '시나리오 검토',
       }
     : {
@@ -255,13 +284,25 @@ export function HeroDecisionBrief({ heroCard }: { heroCard: ReactNode }) {
   );
 }
 
-export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[]; yieldOutlookKg?: number | null }) {
+export function LiveMetricStrip({
+  tiles,
+  yieldOutlookKg,
+  history = [],
+  metricHistory = [],
+}: {
+  tiles: KpiTileData[];
+  yieldOutlookKg?: number | null;
+  history?: SensorData[];
+  metricHistory?: MetricHistoryPoint[];
+}) {
   const { locale } = useLocale();
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Live Overview',
+        eyebrow: '실시간 요약',
         title: '실시간 의사결정 지표',
         description: '센서 상태 기준',
+        emptyTrend: '데이터 수신 대기',
+        recentTrend: '최근 흐름',
         yield: '수확 전망',
         yieldDetail: '이번 주 예측',
         yieldUnit: 'kg/주',
@@ -270,6 +311,8 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
         eyebrow: 'Live Overview',
         title: 'Live decision metrics',
         description: 'Sensor freshness',
+        emptyTrend: 'Waiting for data',
+        recentTrend: 'Recent trend',
         yield: 'Yield Outlook',
         yieldDetail: 'weekly forecast',
         yieldUnit: 'kg/wk',
@@ -293,8 +336,9 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
           const isNumeric = typeof tile.value === 'number';
           const value = isNumeric ? formatMetricValue(Number(tile.value), tile.fractionDigits) : '-';
           const tone = metricToneForTile(tile);
+          const series = buildLiveTileSeries(tile, history);
           return (
-            <MetricCard
+            <MetricTrendCard
               key={tile.key}
               label={tile.label}
               value={value}
@@ -304,10 +348,14 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
               trendLabel={compactTrendLabel(tile.trendDetail) || tile.availabilityLabel}
               icon={tile.icon}
               tone={tone}
+              series={series}
+              chartKind="bar"
+              chartLabel={`${tile.label} ${copy.recentTrend}`}
+              emptyLabel={copy.emptyTrend}
             />
           );
         })}
-        <MetricCard
+        <MetricTrendCard
           label={copy.yield}
           value={yieldValue}
           unit={yieldValue === '-' ? undefined : copy.yieldUnit}
@@ -316,6 +364,10 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
           trendLabel={copy.yieldDetail}
           icon={TrendingUp}
           tone={yieldValue === '-' ? 'muted' : 'normal'}
+          series={appendFiniteValue(pickNumericSeries(metricHistory, 'predictedWeeklyYield', 24), yieldOutlookKg, 24)}
+          chartKind="bar"
+          chartLabel={`${copy.yield} ${copy.recentTrend}`}
+          emptyLabel={copy.emptyTrend}
         />
       </div>
     </section>
@@ -352,23 +404,23 @@ export function TodayActionBoard({
   const vpdTone = currentData.vpd < 0.75 || currentData.vpd > 1.25 ? 'warning' : 'normal';
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Today Action Board',
+        eyebrow: '오늘의 조치',
         title: '오늘 바로 볼 조치',
-        description: '환기, 관수, 병해 위험, RTR 시나리오를 행동 단위로 정리합니다.',
+        description: '환기, 관수, 병해 위험, 권장 온도 검토를 행동 단위로 정리합니다.',
         ventilation: '환기 조정',
         irrigation: '관수 타이밍',
         disease: '병해 위험',
-        rtr: 'RTR 시나리오',
+        rtr: '온도 기준 검토',
         impact: '영향 큼',
         moderate: '확인 필요',
         recommended: '정상 범위',
         compare: '비교',
         details: '자세히',
         highRisk: '위험 높음',
-        vpdFallback: `VPD ${formatNumber(currentData.vpd, 2)} kPa입니다. 증산 요구에 맞춰 환기 상태를 확인하세요.`,
+        vpdFallback: `습도 부담 ${formatNumber(currentData.vpd, 2)} kPa입니다. 증산 요구에 맞춰 환기 상태를 확인하세요.`,
         irrigationFallback: `토양수분은 ${formatNumber(currentData.soilMoisture, 1)}%입니다. 정오 전 다음 관수 창을 확인하세요.`,
-        diseaseFallback: `RH ${formatNumber(currentData.humidity, 0)}%와 VPD ${formatNumber(currentData.vpd, 2)} kPa 기준으로 병해 감시 수준을 봅니다.`,
-        rtrFallback: `예상 수확량은 주 ${formatNumber(modelMetrics.yield.predictedWeekly, 1)} kg입니다. 설정값 변경 전 RTR 목표 온도를 비교하세요.`,
+        diseaseFallback: `상대습도 ${formatNumber(currentData.humidity, 0)}%와 습도 부담 ${formatNumber(currentData.vpd, 2)} kPa 기준으로 병해 감시 수준을 봅니다.`,
+        rtrFallback: `예상 수확량은 주 ${formatNumber(modelMetrics.yield.predictedWeekly, 1)} kg입니다. 설정값 변경 전 권장 온도 기준을 비교하세요.`,
       }
     : {
         eyebrow: 'Today Action Board',
@@ -550,17 +602,17 @@ export function ScenarioOptimizerPreview({
       : (locale === 'ko' ? '광량 대비 저온' : 'Cool for light');
   const copy = locale === 'ko'
     ? {
-        eyebrow: '시나리오 옵티마이저',
-        title: '현재 상태와 RTR 기준 비교',
-        description: '관측값과 RTR 프로파일 목표를 비교합니다. 실제 권장 제어 계산은 온실 환경 화면의 optimizer 결과를 사용합니다.',
+        eyebrow: '시나리오 최적화',
+        title: '현재 상태와 권장 기준 비교',
+        description: '관측값과 권장 목표를 비교합니다. 자세한 권장 제어 계산은 온실 환경 화면에서 확인합니다.',
         baseline: '현재 관측',
-        optimized: 'RTR 기준',
+        optimized: '권장 기준',
         current: '센서 기반 현재 상태',
-        recommended: optimizerEnabled ? '옵티마이저 실행 가능' : '프로파일 기반 목표',
+        recommended: optimizerEnabled ? '계산 준비됨' : '기준 목표 표시',
         weeklyYield: '예상 주간 수확',
-        targetReady: optimizerEnabled ? '옵티마이저 준비됨' : 'RTR 기준만 표시',
+        targetReady: optimizerEnabled ? '계산 준비됨' : '권장 기준 표시',
         meanTemp: '평균온도',
-        rtrDelta: 'RTR 편차',
+        rtrDelta: '온도 편차',
         radiation: '누적광량',
         calibration: '보정 상태',
         coverage: '범위',
@@ -612,7 +664,7 @@ export function ScenarioOptimizerPreview({
             <div className="hidden h-7 w-7 items-center justify-center rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-color-primary)] shadow-[var(--sg-shadow-card)] md:flex">
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </div>
-            <ScenarioCard title={copy.optimized} subtitle={copy.recommended} rows={setpointRows.map((row) => [row.label, row.optimized])} badgeLabel={balanceLabel} badgeCaption="RTR" emphasized />
+            <ScenarioCard title={copy.optimized} subtitle={copy.recommended} rows={setpointRows.map((row) => [row.label, row.optimized])} badgeLabel={balanceLabel} badgeCaption={locale === 'ko' ? '권장' : 'RTR'} emphasized />
           </div>
         </div>
         {trendNode ? <div className="xl:col-span-4">{trendNode}</div> : null}
@@ -719,14 +771,14 @@ export function WeatherMarketKnowledgeBridge({
         strong: '강함',
         steady: '보통',
         newGuide: '새 가이드',
-        readySurfaces: '준비 표면',
+        readySurfaces: '준비된 자료',
         livePar: '실시간 PAR',
-        weatherFallback: '대구 실시간 날씨 전망은 backend weather service를 통해 연결됩니다.',
-        marketFallback: '도매 시세 신호는 produce price hook을 통해 연결됩니다.',
-        knowledgeFallback: '지식 상태는 SmartGrow advisory catalog를 통해 연결됩니다.',
+        weatherFallback: '대구 실시간 날씨 전망을 불러오는 중입니다.',
+        marketFallback: '도매 시세 신호를 불러오는 중입니다.',
+        knowledgeFallback: '재배 자료와 권고 목록을 불러오는 중입니다.',
         priceTrendUp: '가격 상승',
         marketContext: '시세 맥락',
-        advisorySurfaces: '자문 표면',
+        advisorySurfaces: '추천 자료',
         irradianceContext: '일사 맥락',
       }
     : {
@@ -785,9 +837,11 @@ export function WeatherMarketKnowledgeBridge({
   const marketSupport = produceError
     ? produceError
     : selectedMarket?.item
-      ? `${selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')} KRW / ${selectedMarket.item.unit}`
+      ? locale === 'ko'
+        ? `${selectedMarket.item.current_price_krw.toLocaleString('ko-KR')}원 / ${selectedMarket.item.unit}`
+        : `${selectedMarket.item.current_price_krw.toLocaleString('en-US')} KRW / ${selectedMarket.item.unit}`
       : locale === 'ko'
-        ? `${cropLabel} 도매 시세 신호를 produce price hook에서 기다립니다.`
+        ? `${cropLabel} 도매 시세 신호를 기다립니다.`
         : `${cropLabel} wholesale market signal is waiting on the produce price hook.`;
   const knowledgeSupport = knowledgeError
     ? knowledgeError
@@ -814,7 +868,9 @@ export function WeatherMarketKnowledgeBridge({
   ].filter((row): row is [string, string] => row !== null).slice(0, 2);
   const marketRows = selectedMarket?.item
     ? [
-        [copy.currentPrice, `${selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')} KRW`] as [string, string],
+        [copy.currentPrice, locale === 'ko'
+          ? `${selectedMarket.item.current_price_krw.toLocaleString('ko-KR')}원`
+          : `${selectedMarket.item.current_price_krw.toLocaleString('en-US')} KRW`] as [string, string],
         [copy.priceTrend, `${selectedMarket.item.day_over_day_pct >= 0 ? '+' : ''}${formatNumber(selectedMarket.item.day_over_day_pct, 1)}%`] as [string, string],
         [copy.demand, selectedMarket.item.direction === 'up' ? copy.strong : copy.steady] as [string, string],
       ].slice(0, 2)

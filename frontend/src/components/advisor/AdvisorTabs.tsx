@@ -1407,16 +1407,16 @@ const AdvisorTabs = ({
                                 {completedCount}/{ADVISOR_TAB_REGISTRY.length}
                             </span>
                             <span className="sg-advisor-pill">
-                                delegate: /api{activeTabEntry.endpoint}
+                                {locale === 'ko' ? '세부 권고 연결' : 'Advisor lane connected'}
                             </span>
                             {activeTabEntry.exactEndpoint ? (
                                 <span className="sg-advisor-pill">
-                                    exact: {activeTabEntry.exactEndpoint}
+                                    {locale === 'ko' ? '정밀 진단 가능' : 'Exact check ready'}
                                 </span>
                             ) : null}
                             {activeTabEntry.publicEndpoint ? (
                                 <span className="sg-advisor-pill">
-                                    public: {activeTabEntry.publicEndpoint}
+                                    {locale === 'ko' ? '추천 실행 가능' : 'Recommendation ready'}
                                 </span>
                             ) : null}
                         </div>

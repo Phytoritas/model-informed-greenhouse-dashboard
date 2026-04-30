@@ -42,8 +42,6 @@
   --sg-text-faint: #7e8a93;
   --sg-text-subtle: #95857a;
 
-  --sg-accent-violet: var(--sg-color-primary);
-  --sg-accent-violet-soft: var(--sg-color-primary-soft);
   --sg-accent-forest: var(--sg-color-success);
   --sg-accent-forest-soft: var(--sg-color-sage-soft);
   --sg-accent-blue: var(--sg-color-olive);

@@ -102,7 +102,7 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
             dataKeys: [
                 { key: 'energyUsage', name: copy.electricalDemandLine, color: '#f59e0b' },
             ],
-            icon: <Zap className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />,
+            icon: <Zap className="h-4 w-4 text-[color:var(--sg-color-olive)]" />,
         },
     ], [copy]);
     const visibleChartCards = chartCards;

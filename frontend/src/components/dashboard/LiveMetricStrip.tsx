@@ -26,11 +26,11 @@ function MetricTile({
         : tile.value;
     const isMissing = tile.availabilityState === 'missing';
     const toneClass = tile.color.includes('sky') || tile.color.includes('blue') || tile.color.includes('cyan')
-        ? 'sg-tint-blue'
+        ? 'sg-tint-green'
         : tile.color.includes('amber') || tile.color.includes('orange')
             ? 'sg-tint-amber'
             : tile.color.includes('violet') || tile.color.includes('purple')
-                ? 'sg-tint-violet'
+                ? 'sg-tint-neutral'
                 : 'sg-tint-green';
 
     if (featured) {
@@ -149,7 +149,7 @@ export default function LiveMetricStrip({
                         <div className="grid gap-3">
                             {supportingLeadTile ? (
                                 <div
-                                    className="rounded-[30px] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(239,244,255,0.92))] p-4"
+                                    className="rounded-[30px] bg-[linear-gradient(135deg,rgba(255,253,249,0.98),rgba(232,241,227,0.92))] p-4"
                                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                 >
                                     <MetricTile tile={supportingLeadTile} />

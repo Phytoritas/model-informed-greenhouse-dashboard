@@ -21,13 +21,12 @@ describe('backend integration inventory', () => {
     ).toEqual([]);
   });
 
-  it('keeps restored feature routes visible in the workspace navigation', () => {
+  it('keeps restored feature routes visible without duplicating RTR as a top-level nav item', () => {
     const visibleRoutes = buildPrimaryRoutes('en').map((route) => route.key);
 
     expect(visibleRoutes).toEqual([
       'overview',
       'control',
-      'rtr',
       'scenarios',
       'trend',
       'crop-work',
@@ -36,7 +35,8 @@ describe('backend integration inventory', () => {
       'assistant',
       'settings',
     ]);
-    expect(getPrimaryRouteKey('/rtr')).toBe('rtr');
+    expect(getPrimaryRouteKey('/rtr')).toBe('control');
+    expect(getPrimaryRouteKey('/dashboard')).toBe('control');
     expect(getPrimaryRouteKey('/scenarios')).toBe('scenarios');
     expect(getPrimaryRouteKey('/assistant')).toBe('assistant');
     expect(getPrimaryRouteKey('/settings')).toBe('settings');

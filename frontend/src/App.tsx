@@ -14,8 +14,6 @@ import type {
   RTROptimizerCustomScenarioDraft,
   RTROptimizerUiStateLike,
 } from './components/RTROptimizerPanel';
-import TopBar from './components/shell/TopBar';
-import WorkspaceNav, { type WorkspaceNavItem } from './components/shell/WorkspaceNav';
 import type { PromptAdvisorTabKey } from './components/advisor/advisorTabRegistry';
 import type { RagAssistantOpenRequest } from './components/chat/ragAssistantTypes';
 import AssistantDrawer from './features/assistant/AssistantDrawer';
@@ -30,12 +28,10 @@ import { useOverviewSignalTrends } from './hooks/useOverviewSignalTrends';
 import { formatLegacyRecommendation, useLegacyRecommendations } from './hooks/useLegacyRecommendations';
 import { useSmartGrowKnowledge } from './hooks/useSmartGrowKnowledge';
 import { useWeatherOutlook } from './hooks/useWeatherOutlook';
-import AppShell from './layout/AppShell';
 import type { CropType, SensorData, SensorFieldAvailability, SensorFieldKey, SensorFieldState, TelemetryStatus } from './types';
 import type { AppLocale } from './i18n/locale';
 import { useLocale } from './i18n/LocaleProvider';
 import { formatLocaleTime } from './i18n/locale';
-import { buildPrimaryRoutes, getPrimaryRouteMeta, getPrimaryRouteKey } from './app/route-meta';
 import {
   buildPhytoSections,
   findPhytoSection,
@@ -80,7 +76,8 @@ const APP_COPY = {
 } as const;
 
 type SensorMetricKey = 'temperature' | 'humidity' | 'co2' | 'light' | 'vpd' | 'stomatalConductance';
-type AssistantPanelId = 'assistant-chat' | 'assistant-search' | 'assistant-history';
+type AssistantPanelId = 'assistant-chat' | 'assistant-search' | 'assistant-history' | 'assistant-solutions';
+type AssistantDrawerPanelId = 'assistant-chat' | 'assistant-search' | 'assistant-history';
 type RagAssistantLaunchRequest = Omit<RagAssistantOpenRequest, 'nonce'>;
 type AssistantChatOpenRequest = {
   nonce: number;
@@ -101,7 +98,6 @@ const ControlRoutePage = lazy(() => import('./pages/control-route-page'));
 const CropWorkRoutePage = lazy(() => import('./pages/crop-work-route-page'));
 const OverviewRoutePage = lazy(() => import('./pages/overview-route-page'));
 const ResourcesRoutePage = lazy(() => import('./pages/resources-route-page'));
-const RtrRoutePage = lazy(() => import('./pages/rtr-route-page'));
 const ScenariosRoutePage = lazy(() => import('./pages/scenarios-route-page'));
 const SettingsRoutePage = lazy(() => import('./pages/settings-route-page'));
 const TrendRoutePage = lazy(() => import('./pages/trend-route-page'));
@@ -286,6 +282,9 @@ function normalizeAssistantPanelId(panelId: string | null | undefined): Assistan
     case 'ask-search':
     case 'assistant-search':
       return 'assistant-search';
+    case 'ask-solutions':
+    case 'assistant-solutions':
+      return 'assistant-solutions';
     case 'ask-history':
     case 'assistant-history':
       return 'assistant-search';
@@ -305,7 +304,7 @@ function resolveSensorDisplayState(
 function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { locale, setLocale } = useLocale();
+  const { locale } = useLocale();
   const { areaByCrop } = useAreaUnit();
   const copy = APP_COPY[locale];
   const sensorCopy = getDashboardSensorCopy(locale);
@@ -367,9 +366,9 @@ function App() {
   } = useLegacyRecommendations(selectedCrop);
 
   const [assistantSearchRequest, setAssistantSearchRequest] = useState<RagAssistantOpenRequest | null>(null);
-  const [assistantChatRequest, setAssistantChatRequest] = useState<AssistantChatOpenRequest | null>(null);
+  const [assistantChatRequest] = useState<AssistantChatOpenRequest | null>(null);
   const [assistantDrawerOpen, setAssistantDrawerOpen] = useState(false);
-  const [assistantDrawerPanel, setAssistantDrawerPanel] = useState<AssistantPanelId>('assistant-chat');
+  const [assistantDrawerPanel, setAssistantDrawerPanel] = useState<AssistantDrawerPanelId>('assistant-chat');
   const [telemetryClock, setTelemetryClock] = useState(() => Date.now());
   const [sectionTabSelections, setSectionTabSelections] = useState<Record<string, string>>({});
   const lastAutoAnalysisRef = useRef<Record<CropType, AdvisorAutoRefreshState>>({
@@ -383,21 +382,22 @@ function App() {
   const deferredHistory = useDeferredValue(history);
   const deferredForecast = useDeferredValue(forecast);
   const deferredModelMetrics = useDeferredValue(modelMetrics);
-  const primaryRoutes = useMemo(() => buildPrimaryRoutes(locale), [locale]);
-  const activePrimaryRouteKey = useMemo(() => getPrimaryRouteKey(location.pathname), [location.pathname]);
-  const activePrimaryRoute = useMemo(
-    () => getPrimaryRouteMeta(location.pathname, locale),
-    [location.pathname, locale],
-  );
   const sections = useMemo(() => buildPhytoSections(locale), [locale]);
   const activeSection = useMemo(
     () => findPhytoSection(sections, location.pathname),
     [location.pathname, sections],
   );
-  const isAssistantRoute = location.pathname.startsWith('/assistant') || location.pathname.startsWith('/ask');
+  const isAssistantRoute = location.pathname.startsWith('/assistant')
+    || location.pathname.startsWith('/knowledge')
+    || location.pathname.startsWith('/ask');
+  const assistantRoutePath = location.pathname.startsWith('/knowledge') ? '/knowledge' : '/assistant';
   const assistantSection = useMemo(
     () => sections.find((section) => section.key === 'assistant') ?? sections[0],
     [sections],
+  );
+  const assistantDrawerTabs = useMemo(
+    () => assistantSection.tabs.filter((tab) => tab.id !== 'assistant-solutions'),
+    [assistantSection.tabs],
   );
   const routeHashTabId = activeSection.key === 'assistant'
     ? normalizeAssistantPanelId(location.hash.replace(/^#/, ''))
@@ -662,7 +662,7 @@ function App() {
       ? {
         fallbackSummary: '오늘 제어 우선순위와 모델 기반 추천을 한 화면에서 정리했습니다.',
         telemetryStale: '센서 갱신이 지연되어 추천안은 보수적으로 보는 것이 좋습니다.',
-        telemetryOffline: '실시간 텔레메트리가 끊겨 수동 확인이 필요합니다.',
+        telemetryOffline: '실시간 센서 연결이 끊겨 수동 확인이 필요합니다.',
         optimizerReady: '온실 환경 비교안과 추천 온도를 바로 비교할 수 있습니다.',
         optimizerBlocked: '추천 제어안은 평소 설정 비교로만 보여줍니다.',
         commandTrayTitle: '오늘 운영 방향',
@@ -698,8 +698,8 @@ function App() {
         confidenceLead: '반영 상태',
         freshnessLead: '센서 상태',
         workingModeLead: '현재 운영 모드',
-        scenarioReady: '시나리오 비교 가능',
-        cropSnapshot: '생육 스냅샷',
+        scenarioReady: '조정안 비교 가능',
+        cropSnapshot: '생육 기록',
         cropSnapshotDescription: '현재 생육 단계와 수동 제어 상태를 함께 확인합니다.',
         telemetryLive: '실시간 데이터가 정상 수신 중입니다.',
       }
@@ -749,7 +749,7 @@ function App() {
       }
   ), [locale]);
 
-  const openAssistantDrawer = useCallback((panel: AssistantPanelId) => {
+  const openAssistantDrawer = useCallback((panel: AssistantDrawerPanelId) => {
     setAssistantDrawerPanel(panel);
     setAssistantDrawerOpen(true);
   }, [setAssistantDrawerOpen, setAssistantDrawerPanel]);
@@ -758,11 +758,11 @@ function App() {
     if (isAssistantRoute) {
       setAssistantDrawerOpen(false);
       setAssistantDrawerPanel('assistant-chat');
-      navigate({ pathname: '/assistant', hash: '#assistant-chat' });
+      navigate({ pathname: assistantRoutePath, hash: '#assistant-chat' });
       return;
     }
     openAssistantDrawer('assistant-chat');
-  }, [isAssistantRoute, navigate, openAssistantDrawer, setAssistantDrawerOpen, setAssistantDrawerPanel]);
+  }, [assistantRoutePath, isAssistantRoute, navigate, openAssistantDrawer, setAssistantDrawerOpen, setAssistantDrawerPanel]);
 
   const handleOpenRagAssistant = useCallback((request?: RagAssistantLaunchRequest) => {
     const defaultRequest: RagAssistantLaunchRequest = smartGrowSummary?.nutrientCorrectionReady
@@ -808,11 +808,12 @@ function App() {
     if (isAssistantRoute) {
       setAssistantDrawerOpen(false);
       setAssistantDrawerPanel('assistant-search');
-      navigate({ pathname: '/assistant', hash: '#assistant-search' });
+      navigate({ pathname: assistantRoutePath, hash: '#assistant-search' });
       return;
     }
     openAssistantDrawer('assistant-search');
   }, [
+    assistantRoutePath,
     isAssistantRoute,
     locale,
     navigate,
@@ -823,29 +824,6 @@ function App() {
     setAssistantSearchRequest,
     smartGrowSummary,
   ]);
-
-  const handleTopBarSearchSubmit = useCallback((query: string) => {
-    const normalizedQuery = query.trim();
-    if (!normalizedQuery) {
-      return;
-    }
-    setAssistantChatRequest({
-      nonce: Date.now(),
-      query: normalizedQuery,
-    });
-    if (isAssistantRoute) {
-      setAssistantDrawerOpen(false);
-      setAssistantDrawerPanel('assistant-chat');
-      navigate({ pathname: '/assistant', hash: '#assistant-chat' });
-      return;
-    }
-    openAssistantDrawer('assistant-chat');
-  }, [isAssistantRoute, navigate, openAssistantDrawer, setAssistantChatRequest, setAssistantDrawerOpen, setAssistantDrawerPanel]);
-
-  const handleOpenSettings = useCallback(() => {
-    setAssistantDrawerOpen(false);
-    navigate('/settings');
-  }, [navigate, setAssistantDrawerOpen]);
 
   const handleStandaloneProductClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     const target = event.target;
@@ -861,11 +839,6 @@ function App() {
       setAssistantDrawerOpen(false);
     }
   }, [setAssistantDrawerOpen]);
-
-  const handleOpenAlerts = useCallback(() => {
-    setAssistantDrawerOpen(false);
-    navigate({ pathname: '/alerts', hash: '#alerts-protection' });
-  }, [navigate, setAssistantDrawerOpen]);
 
   const handleOpenAdvisorTabs = useCallback((
     tab: PromptAdvisorTabKey = 'environment',
@@ -910,76 +883,11 @@ function App() {
     return { pathname: '/crop-work', hash: '#crop-work-growth' };
   }, [location.hash]);
 
-  const resolveRoutePath = useCallback((key: string) => {
-    switch (key) {
-      case 'overview':
-        return '/overview';
-      case 'control':
-        return '/control';
-      case 'rtr':
-        return '/rtr';
-      case 'scenarios':
-        return '/scenarios';
-      case 'trend':
-        return '/trend';
-      case 'growth':
-      case 'crop-work':
-        return '/crop-work';
-      case 'nutrient':
-      case 'resources':
-        return '/resources';
-      case 'harvest':
-        return '/crop-work#crop-work-harvest';
-      case 'protection':
-      case 'alerts':
-        return '/alerts';
-      case 'ask':
-      case 'assistant':
-        return '/assistant';
-      case 'settings':
-        return '/settings';
-      default:
-        return sections.find((section) => section.key === key)?.path ?? '/overview';
-    }
-  }, [sections]);
-
-  const handleWorkspaceSelect = useCallback((workspace: string) => {
-    setAssistantDrawerOpen(false);
-    if (activeSectionTabId) {
-      setSectionTabSelections((current) => (
-        current[activeSection.key] === activeSectionTabId
-          ? current
-          : { ...current, [activeSection.key]: activeSectionTabId }
-      ));
-    }
-    const nextRoute = primaryRoutes.find((route) => route.key === workspace);
-    navigate(nextRoute?.path ?? resolveRoutePath(workspace));
-  }, [
-    activeSection.key,
-    activeSectionTabId,
-    navigate,
-    primaryRoutes,
-    resolveRoutePath,
-    setAssistantDrawerOpen,
-    setSectionTabSelections,
-  ]);
-
   const handleSectionTabSelect = useCallback((tabId: string) => {
     setSectionTabSelections((current) => ({ ...current, [activeSection.key]: tabId }));
 
     navigate({ pathname: activeSection.path, hash: `#${tabId}` }, { replace: true });
   }, [activeSection.key, activeSection.path, navigate, setSectionTabSelections]);
-
-  const handleWorkspaceActionSelect = useCallback((workspace: string, tabId: string) => {
-    const targetSection = sections.find((section) => section.key === workspace);
-    if (!targetSection) {
-      return;
-    }
-
-    setSectionTabSelections((current) => ({ ...current, [targetSection.key]: tabId }));
-
-    navigate({ pathname: targetSection.path, hash: `#${tabId}` }, { replace: true });
-  }, [navigate, sections, setSectionTabSelections]);
 
   useEffect(() => {
     if (activeSection.key !== 'assistant') {
@@ -993,8 +901,8 @@ function App() {
       return;
     }
 
-    navigate({ pathname: activeSection.path, hash: `#${normalizedHash}` }, { replace: true });
-  }, [activeSection.key, activeSection.path, location.hash, navigate]);
+    navigate({ pathname: assistantRoutePath, hash: `#${normalizedHash}` }, { replace: true });
+  }, [activeSection.key, assistantRoutePath, location.hash, navigate]);
 
   useEffect(() => {
     if (activeSection.key !== 'control' || routeHashTabId !== 'control-action') {
@@ -1119,17 +1027,6 @@ function App() {
     telemetry.lastMessageAt,
     weather,
   ]);
-
-  const workspaceItems = useMemo<WorkspaceNavItem[]>(() => (
-    primaryRoutes.map((route) => ({
-      key: route.key,
-      label: route.label,
-      shortLabel: route.shortLabel,
-      description: route.description,
-      icon: route.icon,
-      actions: sections.find((section) => section.key === route.key)?.tabs ?? [],
-    }))
-  ), [primaryRoutes, sections]);
 
   const heroPrimaryNarrative = runtimeRecommendedAction
     ? (locale === 'ko' ? `지금: ${runtimeRecommendedAction}` : `Now: ${runtimeRecommendedAction}`)
@@ -1325,26 +1222,6 @@ function App() {
       body: risk,
     })),
   ];
-  const navStatusLabel = locale === 'ko'
-    ? ({
-        live: '센서 정상',
-        delayed: '갱신 지연',
-        stale: '오래된 값',
-        offline: '수동 확인 필요',
-        blocked: '수동 확인 필요',
-        provisional: '임시 계산',
-        loading: '값 들어오는 중',
-      } as const)[telemetry.status]
-    : ({
-        live: 'Sensors live',
-        delayed: 'Update delayed',
-        stale: 'Stale values',
-        offline: 'Manual check needed',
-        blocked: 'Manual check needed',
-        provisional: 'Provisional',
-        loading: 'Loading',
-      } as const)[telemetry.status];
-
   const cropWorkPage = (
     <CropWorkRoutePage
       locale={locale}
@@ -1352,6 +1229,7 @@ function App() {
       currentData={currentData}
       modelMetrics={deferredModelMetrics}
       history={deferredHistory}
+      metricHistory={metricHistory}
       forecast={deferredForecast}
       summary={smartGrowSummary}
       producePrices={producePrices}
@@ -1392,6 +1270,7 @@ function App() {
       tabs={activeSection.tabs}
       activeTabId={activePanelId}
       onSelectTab={handleSectionTabSelect}
+      onOpenAssistant={handleChatToggle}
     />
   );
 
@@ -1417,6 +1296,7 @@ function App() {
       tabs={activeSection.tabs}
       activeTabId={activePanelId}
       onSelectTab={handleSectionTabSelect}
+      onOpenAssistant={handleChatToggle}
     />
   );
 
@@ -1438,38 +1318,54 @@ function App() {
       knowledgeLoading={isSmartGrowLoading}
       knowledgeError={smartGrowError}
       onOpenAssistant={handleChatToggle}
-    />
-  );
-
-  const rtrPage = (
-    <RtrRoutePage
-      locale={locale}
-      crop={selectedCrop}
-      currentData={currentData}
-      history={deferredHistory}
-      telemetryStatus={telemetry.status}
-      temperatureSettings={controls.settings}
-      weather={weather}
-      weatherLoading={isWeatherLoading}
-      weatherError={weatherError}
-      profile={selectedRtrProfile}
-      profileLoading={isRtrProfileLoading}
-      profileError={rtrProfileError}
-      optimizerEnabled={optimizerEnabled}
-      defaultMode={selectedRtrProfile?.optimizer?.default_mode}
-      onRefreshProfiles={refreshRtrProfiles}
-      controls={controls}
-      onToggle={toggleControl}
-      onSettingsChange={setTempSettings}
-      modelMetrics={deferredModelMetrics}
-      producePrices={producePrices}
-      produceLoading={isProducePricesLoading}
-      optimizerState={rtrOptimizerState}
-      uiState={rtrOptimizerUiState}
       tabs={activeSection.tabs}
       activeTabId={activePanelId}
       onSelectTab={handleSectionTabSelect}
     />
+  );
+
+  const controlRouteElement = (
+    <Suspense fallback={<RouteLoadingFallback />}>
+      <ControlRoutePage
+        locale={locale}
+        activePanel={activePanelId === 'control-runtime'
+          ? 'control-runtime'
+          : activePanelId === 'control-devices'
+            ? 'control-devices'
+            : 'control-strategy'}
+        crop={selectedCrop}
+        telemetryStatus={telemetry.status}
+        telemetryDetail={telemetryDetail}
+        controls={controls}
+        onToggle={toggleControl}
+        onSettingsChange={setTempSettings}
+        summary={smartGrowSummary}
+        alertItems={alertItems}
+        fallbackAlertBody={heroCopy.telemetryLive}
+        history={deferredHistory}
+        currentData={currentData}
+        modelMetrics={deferredModelMetrics}
+        forecast={deferredForecast}
+        producePrices={producePrices}
+        weather={weather}
+        weatherLoading={isWeatherLoading}
+        weatherError={weatherError}
+        temperatureSettings={controls.settings}
+        profile={selectedRtrProfile}
+        profileLoading={isRtrProfileLoading}
+        profileError={rtrProfileError}
+        optimizerEnabled={optimizerEnabled}
+        defaultMode={selectedRtrProfile?.optimizer?.default_mode}
+        onRefreshProfiles={refreshRtrProfiles}
+        optimizerState={rtrOptimizerState}
+        uiState={rtrOptimizerUiState}
+        tabs={activeSection.tabs}
+        activeTabId={activePanelId}
+        onSelectTab={handleSectionTabSelect}
+        onCropChange={setSelectedCrop}
+        onOpenAssistant={handleChatToggle}
+      />
+    </Suspense>
   );
 
   const scenariosPage = (
@@ -1543,6 +1439,9 @@ function App() {
       weather={weather}
       producePrices={producePrices}
       knowledgeSummary={smartGrowSummary}
+      tabs={activeSection.tabs}
+      activeTabId={activePanelId}
+      onSelectTab={handleSectionTabSelect}
       onOpenAssistant={handleChatToggle}
     />
   );
@@ -1572,6 +1471,7 @@ function App() {
         alertItems={alertItems}
         fallbackAlertBody={heroCopy.telemetryLive}
         history={deferredHistory}
+        metricHistory={metricHistory}
         currentData={currentData}
         modelMetrics={modelMetrics}
         overviewSignals={overviewSignals}
@@ -1593,32 +1493,49 @@ function App() {
         monitor={aiDisplay?.monitor ?? []}
         rtrProfile={selectedRtrProfile}
         activeTabId={activePanelId}
-        onOpenRtr={() => navigate('/rtr')}
+        onOpenRtr={() => navigate({ pathname: '/control', hash: '#control-strategy' })}
         onOpenAdvisor={handleChatToggle}
         onOpenAssistant={handleChatToggle}
       />
     </Suspense>
   );
 
-  const standaloneProductPaths = ['/overview', '/trend', '/scenarios', '/assistant', '/settings'];
-  const shouldRenderStandaloneOverview = location.pathname === '/'
-    || standaloneProductPaths.some((pathname) => location.pathname === pathname || location.pathname.startsWith(`${pathname}/`));
-
-  if (shouldRenderStandaloneOverview) {
-    return (
-      <div
-        className="min-h-screen bg-[color:var(--sg-bg)] px-4 py-4 font-sans text-[color:var(--sg-text)] sm:px-6 lg:px-8"
-        onClickCapture={handleStandaloneProductClick}
-      >
+  return (
+    <div
+      className="min-h-screen bg-[color:var(--sg-bg)] px-4 py-4 font-sans text-[color:var(--sg-text)] sm:px-6 lg:px-8"
+      onClickCapture={handleStandaloneProductClick}
+    >
         <Routes>
           <Route path="/" element={<Navigate to="/overview" replace />} />
           <Route path="/overview" element={overviewRouteElement} />
+          <Route path="/overview/legacy" element={<Navigate to="/overview" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/control" replace />} />
+          <Route path="/dashboard/*" element={<Navigate to="/control" replace />} />
+          <Route path="/control" element={controlRouteElement} />
+          <Route path="/control/legacy" element={<Navigate to="/control" replace />} />
+          <Route path="/rtr" element={<Navigate to={{ pathname: '/control', hash: '#control-strategy' }} replace />} />
+          <Route path="/rtr/*" element={<Navigate to={{ pathname: '/control', hash: '#control-strategy' }} replace />} />
           <Route path="/trend" element={<Suspense fallback={<RouteLoadingFallback />}>{trendPage}</Suspense>} />
           <Route path="/trend/legacy" element={<Navigate to="/trend" replace />} />
           <Route path="/scenarios" element={<Suspense fallback={<RouteLoadingFallback />}>{scenariosPage}</Suspense>} />
+          <Route path="/crop-work" element={<Suspense fallback={<RouteLoadingFallback />}>{cropWorkPage}</Suspense>} />
+          <Route path="/crop-work/*" element={<Suspense fallback={<RouteLoadingFallback />}>{cropWorkPage}</Suspense>} />
+          <Route path="/resources" element={<Suspense fallback={<RouteLoadingFallback />}>{resourcesPage}</Suspense>} />
+          <Route path="/resources/legacy" element={<Navigate to="/resources" replace />} />
+          <Route path="/resources/*" element={<Suspense fallback={<RouteLoadingFallback />}>{resourcesPage}</Suspense>} />
+          <Route path="/alerts" element={<Suspense fallback={<RouteLoadingFallback />}>{alertsPage}</Suspense>} />
+          <Route path="/alerts/legacy" element={<Navigate to="/alerts" replace />} />
+          <Route path="/alerts/*" element={<Suspense fallback={<RouteLoadingFallback />}>{alertsPage}</Suspense>} />
           <Route path="/assistant" element={<Suspense fallback={<RouteLoadingFallback />}>{assistantPage}</Suspense>} />
+          <Route path="/knowledge" element={<Suspense fallback={<RouteLoadingFallback />}>{assistantPage}</Suspense>} />
+          <Route path="/knowledge/*" element={<Suspense fallback={<RouteLoadingFallback />}>{assistantPage}</Suspense>} />
           <Route path="/ask" element={<Navigate to="/assistant#assistant-chat" replace />} />
           <Route path="/ask/:panelId" element={<Navigate to="/assistant#assistant-chat" replace />} />
+          <Route path="/ask/*" element={<Navigate to={{ pathname: '/assistant', hash: location.hash || '#assistant-chat' }} replace />} />
+          <Route path="/growth/*" element={<Navigate to={growthAliasTarget} replace />} />
+          <Route path="/nutrient/*" element={<Navigate to={nutrientAliasTarget} replace />} />
+          <Route path="/protection/*" element={<Navigate to={{ pathname: '/alerts', hash: '#alerts-protection' }} replace />} />
+          <Route path="/harvest/*" element={<Navigate to={{ pathname: '/crop-work', hash: '#crop-work-harvest' }} replace />} />
           <Route path="/settings" element={<Suspense fallback={<RouteLoadingFallback />}>{settingsPage}</Suspense>} />
           <Route path="*" element={<Navigate to="/overview" replace />} />
         </Routes>
@@ -1627,7 +1544,7 @@ function App() {
           locale={locale}
           crop={selectedCrop}
           cropLabel={selectedCropLabel}
-          panelTabs={assistantSection.tabs}
+          panelTabs={assistantDrawerTabs}
           activePanel={assistantDrawerPanel}
           summary={smartGrowSummary}
           searchRequest={assistantSearchRequest}
@@ -1642,142 +1559,16 @@ function App() {
           smartGrowLoading={isSmartGrowLoading}
           smartGrowError={smartGrowError}
           onClose={() => setAssistantDrawerOpen(false)}
-          onSelectPanel={(panelId) => setAssistantDrawerPanel(panelId as AssistantPanelId)}
+          onSelectPanel={(panelId) => {
+            const normalizedPanel = normalizeAssistantPanelId(panelId);
+            setAssistantDrawerPanel(normalizedPanel === 'assistant-search' ? 'assistant-search' : 'assistant-chat');
+          }}
           onOpenSearch={handleOpenRagAssistant}
         />
-        {!location.pathname.startsWith('/assistant') ? (
+        {!location.pathname.startsWith('/assistant') && !location.pathname.startsWith('/knowledge') ? (
           <AssistantFab onClick={handleChatToggle} />
         ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <AppShell
-      header={(
-        <TopBar
-          locale={locale}
-          selectedCrop={selectedCrop}
-          telemetryStatus={telemetry.status}
-          telemetryDetail={telemetryDetail}
-          pageTitle={activePrimaryRoute.title}
-          pageDescription={activePrimaryRoute.heroDescription}
-          onLocaleChange={setLocale}
-          onCropChange={setSelectedCrop}
-          onAssistantToggle={handleChatToggle}
-          onOpenAlerts={handleOpenAlerts}
-          onSearchSubmit={handleTopBarSearchSubmit}
-          onOpenSettings={handleOpenSettings}
-          assistantOpen={assistantDrawerOpen}
-          getCropLabel={getCropLabel}
-        />
-      )}
-      sidebar={(
-        <WorkspaceNav
-          items={workspaceItems}
-          activeWorkspace={activePrimaryRouteKey}
-          activeActionId={activePanelId}
-          statusLabel={navStatusLabel}
-          onSelect={handleWorkspaceSelect}
-          onSelectAction={handleWorkspaceActionSelect}
-        />
-      )}
-    >
-      <Routes>
-        <Route path="/" element={<Navigate to="/overview" replace />} />
-        <Route
-          path="/overview"
-          element={overviewRouteElement}
-        />
-        <Route
-          path="/control"
-          element={(
-            <Suspense fallback={<RouteLoadingFallback />}>
-              <ControlRoutePage
-                locale={locale}
-                activePanel={activePanelId === 'control-devices'
-                  ? 'control-devices'
-                  : 'control-strategy'}
-                crop={selectedCrop}
-                telemetryStatus={telemetry.status}
-                telemetryDetail={telemetryDetail}
-                controls={controls}
-                onToggle={toggleControl}
-                onSettingsChange={setTempSettings}
-                summary={smartGrowSummary}
-                alertItems={alertItems}
-                fallbackAlertBody={heroCopy.telemetryLive}
-                history={deferredHistory}
-                currentData={currentData}
-                modelMetrics={deferredModelMetrics}
-                forecast={deferredForecast}
-                producePrices={producePrices}
-                weather={weather}
-                weatherLoading={isWeatherLoading}
-                weatherError={weatherError}
-                temperatureSettings={controls.settings}
-                profile={selectedRtrProfile}
-                profileLoading={isRtrProfileLoading}
-                profileError={rtrProfileError}
-                optimizerEnabled={optimizerEnabled}
-                defaultMode={selectedRtrProfile?.optimizer?.default_mode}
-                onRefreshProfiles={refreshRtrProfiles}
-                optimizerState={rtrOptimizerState}
-                uiState={rtrOptimizerUiState}
-                tabs={activeSection.tabs}
-                activeTabId={activePanelId}
-                onSelectTab={handleSectionTabSelect}
-              />
-            </Suspense>
-          )}
-        />
-        <Route path="/rtr" element={<Suspense fallback={<RouteLoadingFallback />}>{rtrPage}</Suspense>} />
-        <Route path="/scenarios" element={<Suspense fallback={<RouteLoadingFallback />}>{scenariosPage}</Suspense>} />
-        <Route path="/trend" element={<Suspense fallback={<RouteLoadingFallback />}>{trendPage}</Suspense>} />
-        <Route path="/crop-work" element={<Suspense fallback={<RouteLoadingFallback />}>{cropWorkPage}</Suspense>} />
-        <Route path="/resources" element={<Suspense fallback={<RouteLoadingFallback />}>{resourcesPage}</Suspense>} />
-        <Route path="/alerts" element={<Suspense fallback={<RouteLoadingFallback />}>{alertsPage}</Suspense>} />
-        <Route path="/assistant" element={<Suspense fallback={<RouteLoadingFallback />}>{assistantPage}</Suspense>} />
-        <Route path="/settings" element={<Suspense fallback={<RouteLoadingFallback />}>{settingsPage}</Suspense>} />
-        <Route path="/overview/legacy" element={<Navigate to="/overview" replace />} />
-        <Route path="/control/legacy" element={<Navigate to="/control" replace />} />
-        <Route path="/trend/legacy" element={<Navigate to="/trend" replace />} />
-        <Route path="/resources/legacy" element={<Navigate to="/resources" replace />} />
-        <Route path="/alerts/legacy" element={<Navigate to="/alerts" replace />} />
-        <Route path="/growth/*" element={<Navigate to={growthAliasTarget} replace />} />
-        <Route path="/nutrient/*" element={<Navigate to={nutrientAliasTarget} replace />} />
-        <Route path="/protection/*" element={<Navigate to={{ pathname: '/alerts', hash: '#alerts-protection' }} replace />} />
-        <Route path="/harvest/*" element={<Navigate to={{ pathname: '/crop-work', hash: '#crop-work-harvest' }} replace />} />
-        <Route path="/ask/*" element={<Navigate to={{ pathname: '/assistant', hash: location.hash }} replace />} />
-        <Route path="*" element={<Navigate to="/overview" replace />} />
-      </Routes>
-      <AssistantDrawer
-        open={assistantDrawerOpen}
-        locale={locale}
-        crop={selectedCrop}
-        cropLabel={selectedCropLabel}
-        panelTabs={assistantSection.tabs}
-        activePanel={assistantDrawerPanel}
-        summary={smartGrowSummary}
-        searchRequest={assistantSearchRequest}
-        chatRequest={assistantChatRequest}
-        currentData={currentData}
-        metrics={deferredModelMetrics}
-        forecast={deferredForecast}
-        history={deferredHistory}
-        producePrices={producePrices}
-        weather={weather}
-        rtrProfile={selectedRtrProfile}
-        smartGrowLoading={isSmartGrowLoading}
-        smartGrowError={smartGrowError}
-        onClose={() => setAssistantDrawerOpen(false)}
-        onSelectPanel={(panelId) => setAssistantDrawerPanel(panelId as AssistantPanelId)}
-        onOpenSearch={handleOpenRagAssistant}
-      />
-      {!location.pathname.startsWith('/assistant') ? (
-        <AssistantFab onClick={handleChatToggle} />
-      ) : null}
-    </AppShell>
+    </div>
   );
 }
 

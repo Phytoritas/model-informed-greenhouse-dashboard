@@ -13,7 +13,6 @@ describe('route-meta', () => {
     expect(koRoutes.map((route) => route.key)).toEqual([
       'overview',
       'control',
-      'rtr',
       'scenarios',
       'trend',
       'crop-work',
@@ -28,8 +27,9 @@ describe('route-meta', () => {
   it('maps direct and legacy paths to the new top-level route keys', () => {
     expect(getPrimaryRouteKey('/overview')).toBe('overview');
     expect(getPrimaryRouteKey('/control')).toBe('control');
+    expect(getPrimaryRouteKey('/dashboard')).toBe('control');
     expect(getPrimaryRouteKey('/trend')).toBe('trend');
-    expect(getPrimaryRouteKey('/rtr')).toBe('rtr');
+    expect(getPrimaryRouteKey('/rtr')).toBe('control');
     expect(getPrimaryRouteKey('/scenarios')).toBe('scenarios');
     expect(getPrimaryRouteKey('/crop-work')).toBe('crop-work');
     expect(getPrimaryRouteKey('/assistant')).toBe('assistant');
@@ -47,7 +47,7 @@ describe('route-meta', () => {
     expect(getPrimaryRouteMeta('/trend', 'ko').label).toBe('날씨와 시세');
     expect(getPrimaryRouteMeta('/assistant', 'ko').label).toBe('질문 도우미');
     expect(getPrimaryRouteMeta('/settings', 'en').label).toBe('Contact');
-    expect(getPrimaryRouteMeta('/rtr', 'en').title).toBe('RTR Optimizer');
+    expect(getPrimaryRouteMeta('/rtr', 'en').title).toBe('Climate Solutions');
     expect(getPrimaryRouteMeta('/scenarios', 'en').title).toBe('Greenhouse adjustment review');
   });
 });

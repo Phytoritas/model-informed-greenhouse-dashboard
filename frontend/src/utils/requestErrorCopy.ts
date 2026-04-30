@@ -25,7 +25,7 @@ export function getRequestErrorCopy(
 
   if (NETWORK_FAILURE_PATTERN.test(normalized)) {
     return locale === "ko"
-      ? `백엔드 연결이 없어 ${options.resourceKo} 불러오지 못했습니다.`
+      ? `서비스 연결이 없어 ${options.resourceKo} 불러오지 못했습니다.`
       : `Could not reach the backend to load ${options.resourceEn}.`;
   }
 

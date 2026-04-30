@@ -14,7 +14,6 @@ import type {
   WeatherOutlook,
 } from '../types';
 import type { AlertRailItem } from '../components/dashboard/AlertRail';
-import AlertRail from '../components/dashboard/AlertRail';
 import SimulationRuntimePanel from '../components/dashboard/SimulationRuntimePanel';
 import type { PageCanvasTab } from '../components/layout/PageCanvas';
 import ControlPanel from '../components/ControlPanel';
@@ -58,6 +57,8 @@ interface ControlRoutePageProps {
   tabs?: PageCanvasTab[];
   activeTabId?: string;
   onSelectTab?: (tabId: string) => void;
+  onCropChange?: (crop: CropType) => void;
+  onOpenAssistant?: () => void;
 }
 
 export default function ControlRoutePage({
@@ -70,8 +71,6 @@ export default function ControlRoutePage({
   onToggle,
   onSettingsChange,
   summary = null,
-  alertItems,
-  fallbackAlertBody,
   history,
   currentData,
   modelMetrics,
@@ -92,23 +91,26 @@ export default function ControlRoutePage({
   tabs = [],
   activeTabId,
   onSelectTab,
+  onCropChange,
+  onOpenAssistant = () => undefined,
 }: ControlRoutePageProps) {
-  const fallbackAlerts = alertItems.length
-    ? alertItems
-    : [{
-        id: 'control-ready',
-        severity: 'resolved' as const,
-        title: locale === 'ko' ? '제어 차단 항목 없음' : 'No urgent warning',
-        body: fallbackAlertBody,
-      }];
-
   return (
     <ControlPage
       locale={locale}
+      crop={crop}
       activePanel={activePanel}
+      currentData={currentData}
+      modelMetrics={modelMetrics}
+      history={history}
+      telemetryStatus={telemetryStatus}
+      temperatureSettings={temperatureSettings}
+      profile={profile}
+      controls={controls}
       tabs={tabs}
       activeTabId={activeTabId}
       onSelectTab={onSelectTab}
+      onCropChange={onCropChange}
+      onOpenAssistant={onOpenAssistant}
       strategySurface={(
         <Suspense
           fallback={(
@@ -147,7 +149,6 @@ export default function ControlRoutePage({
           onSettingsChange={onSettingsChange}
         />
       )}
-      controlActions={<AlertRail items={fallbackAlerts} compact />}
       environmentAdvisorSurface={(
         <AdvisorTabs
           key={`${crop}-environment`}

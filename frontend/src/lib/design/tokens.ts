@@ -1,7 +1,7 @@
 export const phytoSyncTokens = {
   brand: {
     name: 'PhytoSync',
-    accent: 'var(--sg-accent-violet)',
+    accent: 'var(--sg-color-primary)',
   },
   cropAccent: {
     cucumber: {
@@ -15,14 +15,14 @@ export const phytoSyncTokens = {
   },
   workspaceTone: {
     overview: 'sg-tint-green',
-    control: 'sg-tint-violet',
+    control: 'sg-tint-rose',
     growth: 'sg-tint-green',
-    nutrient: 'sg-tint-blue',
+    nutrient: 'sg-tint-green',
     protection: 'sg-tint-amber',
     harvest: 'sg-tint-amber',
     resources: 'sg-tint-green',
     alerts: 'sg-tint-amber',
-    ask: 'sg-tint-violet',
+    ask: 'sg-tint-rose',
   },
 } as const;
 

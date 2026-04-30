@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CircleDollarSign, ClipboardCheck, CloudSun, LifeBuoy, MessageCircle, PlugZap, ShieldCheck, Sprout } from 'lucide-react';
 import DashboardCard from '../components/common/DashboardCard';
 import { Button } from '../components/ui/button';
@@ -7,7 +7,9 @@ import { StatusChip } from '../components/ui/status-chip';
 import { API_URL } from '../config';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
+import type { PhytoSectionTab } from '../routes/phytosyncSections';
 import type { CropType, ProducePricesPayload, WeatherOutlook } from '../types';
+import { getRequestErrorCopy } from '../utils/requestErrorCopy';
 import SettingsPage from './settings-page';
 
 interface SettingsRoutePageProps {
@@ -21,6 +23,9 @@ interface SettingsRoutePageProps {
   weather: WeatherOutlook | null;
   producePrices: ProducePricesPayload | null;
   knowledgeSummary: SmartGrowKnowledgeSummary | null;
+  tabs?: PhytoSectionTab[];
+  activeTabId?: string;
+  onSelectTab?: (tabId: string) => void;
   onOpenAssistant: () => void;
 }
 
@@ -47,6 +52,9 @@ export default function SettingsRoutePage({
   weather,
   producePrices,
   knowledgeSummary,
+  tabs,
+  activeTabId,
+  onSelectTab,
   onOpenAssistant,
 }: SettingsRoutePageProps) {
   const [pricePerKg, setPricePerKg] = useState('3000');
@@ -79,6 +87,20 @@ export default function SettingsRoutePage({
         invalid: 'Check numeric values.',
       };
 
+  const getVisibleSettingsError = useCallback((error: unknown, fallback: string): string => {
+    if (!(error instanceof Error)) {
+      return fallback;
+    }
+    if (error.message === saveCopy.invalid) {
+      return saveCopy.invalid;
+    }
+    const friendly = getRequestErrorCopy(error.message, locale, {
+      resourceKo: '운영 설정',
+      resourceEn: 'operating settings',
+    });
+    return friendly && friendly !== error.message ? friendly : fallback;
+  }, [locale, saveCopy.invalid]);
+
   useEffect(() => {
     const controller = new AbortController();
     setLoadState('loading');
@@ -108,13 +130,13 @@ export default function SettingsRoutePage({
           return;
         }
         setLoadState('error');
-        setStatusMessage(error instanceof Error ? error.message : saveCopy.loadError);
+        setStatusMessage(getVisibleSettingsError(error, saveCopy.loadError));
       }
     }
 
     void loadSettings();
     return () => controller.abort();
-  }, [cropKey, saveCopy.loadError]);
+  }, [cropKey, getVisibleSettingsError, saveCopy.loadError]);
 
   const handleSaveSettings = async () => {
     setSaveState('saving');
@@ -141,7 +163,7 @@ export default function SettingsRoutePage({
       }
       setSaveState('saved');
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : saveCopy.error);
+      setStatusMessage(getVisibleSettingsError(error, saveCopy.error));
       setSaveState('error');
     }
   };
@@ -162,6 +184,9 @@ export default function SettingsRoutePage({
       weather={weather}
       producePrices={producePrices}
       knowledgeSummary={knowledgeSummary}
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onSelectTab={onSelectTab}
       onOpenAssistant={onOpenAssistant}
       shellCard={(
         <DashboardCard
@@ -204,7 +229,7 @@ export default function SettingsRoutePage({
       )}
       laneCard={(
         <DashboardCard
-          eyebrow={locale === 'ko' ? 'Contact' : 'Contact'}
+          eyebrow={locale === 'ko' ? '연동 상태' : 'Contact'}
           title={locale === 'ko' ? '연동 상태와 비용 기준' : 'Connectivity and cost assumptions'}
           description={locale === 'ko' ? '센서 상태와 날씨·시세 연동, 작물별 가격/전력 단가를 저장합니다.' : 'Review sensor freshness, weather/market links, and crop-specific price/cost values.'}
           className="sg-tint-rose"
@@ -297,7 +322,7 @@ export default function SettingsRoutePage({
                 <h3 className="text-sm font-bold text-[color:var(--sg-text-strong)]">{locale === 'ko' ? '비용 기준' : 'Cost basis'}</h3>
               </div>
               <p className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
-                {locale === 'ko' ? `현재 ${selectedCropLabel} 기준 판매가와 전력비를 저장해 RTR·시세 판단에 같은 기준을 사용합니다.` : `Saved ${selectedCropLabel} price and power cost keep RTR and market decisions on the same basis.`}
+                {locale === 'ko' ? `현재 ${selectedCropLabel} 기준 판매가와 전력비를 저장해 온도 기준·시세 판단에 같은 기준을 사용합니다.` : `Saved ${selectedCropLabel} price and power cost keep RTR and market decisions on the same basis.`}
               </p>
             </article>
             <article className="sg-panel bg-[color:var(--sg-surface-raised)] px-4 py-4">

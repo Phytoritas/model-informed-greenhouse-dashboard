@@ -1,6 +1,6 @@
 """Pydantic schemas for data validation and API contracts."""
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Literal
 from pydantic import BaseModel, Field
 
 
@@ -87,6 +87,33 @@ class OpsConfig(BaseModel):
     p_band_C: float = Field(ge=0.5, le=5)
     co2_target_ppm: float = Field(ge=400, le=1500)
     drain_target_fraction: float = Field(ge=0.1, le=0.5)
+
+
+class ControlStateUpdate(BaseModel):
+    """Manual actuator state update from the UI control lane."""
+
+    ventilation: Optional[bool] = None
+    irrigation: Optional[bool] = None
+    heating: Optional[bool] = None
+    shading: Optional[bool] = None
+    source: Optional[str] = Field(default="frontend", max_length=80)
+
+
+class AlertHistoryEvent(BaseModel):
+    """Alert event persisted by the backend history lane."""
+
+    id: str = Field(min_length=1, max_length=160)
+    severity: Literal["critical", "warning", "info", "resolved"]
+    title: str = Field(min_length=1, max_length=240)
+    body: str = Field(default="", max_length=1200)
+    source: Optional[str] = Field(default="frontend", max_length=80)
+    observed_at: Optional[datetime] = None
+
+
+class AlertHistoryRequest(BaseModel):
+    """Batch of alert events observed by the frontend."""
+
+    events: List[AlertHistoryEvent] = Field(default_factory=list, max_length=40)
 
 
 class CropConfig(BaseModel):

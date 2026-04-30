@@ -43,7 +43,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             operatingMode: '운영 모드',
             recoveryObjective: '회복 목표',
             targetBand: '목표 범위',
-            targetBandUnavailable: 'RTR 목표 범위를 아직 계산하지 못했습니다.',
+            targetBandUnavailable: '권장 온도 목표 범위를 아직 계산하지 못했습니다.',
             deviation: '편차',
             hypotheses: '원인 가설',
             focusAreas: '조치 초점',
@@ -57,9 +57,9 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             outsideHumidity: '외기 습도',
             outsideCloud: '외기 운량',
             currentWeather: '외기 상태',
-            rtrTarget: 'RTR 목표온도',
-            rtrDelta: 'RTR 편차',
-            rtrBalance: 'RTR 균형',
+            rtrTarget: '권장 목표온도',
+            rtrDelta: '온도 편차',
+            rtrBalance: '온도 균형',
             tempTrend: '온도 추세',
             humidityTrend: '습도 추세',
             vpdTrend: 'VPD 추세',
@@ -323,7 +323,7 @@ const EnvironmentTab = (props: EnvironmentTabProps) => {
             title={copy.title}
             subtitle={
                 locale === 'ko'
-                    ? '이 탭은 실시간 센서, 날씨, RTR를 묶어 현재 환경 제어 제안을 보여주는 환경제어 어드바이저 영역입니다.'
+                    ? '이 탭은 실시간 센서, 날씨, 온도 기준을 묶어 현재 환경 제어 제안을 보여주는 환경제어 상담 영역입니다.'
                     : 'This tab combines live telemetry, weather, and RTR into the current steering guidance surface.'
             }
             notes={locale === 'ko'

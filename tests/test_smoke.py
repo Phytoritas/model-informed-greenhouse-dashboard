@@ -55,6 +55,8 @@ def reset_runtime_state() -> None:
         crop_state["last_energy"] = None
         crop_state["latest_forecast"] = None
         crop_state["ops_config"] = None
+        crop_state["control_state"] = None
+        crop_state["alert_history"] = []
         crop_state["crop_config"] = None
         crop_state["pending_prune_reset"] = False
         crop_state["last_runtime_snapshot_at"] = None
@@ -237,6 +239,57 @@ def test_ops_config_update_can_target_single_crop() -> None:
     assert backend_main._get_ops_config("cucumber")["heating_set_C"] == 18
 
 
+def test_control_state_endpoint_persists_manual_commands() -> None:
+    backend_main = _backend_main()
+    client = TestClient(get_app())
+
+    response = client.post(
+        "/api/control/commands?crop=cucumber",
+        json={"ventilation": True, "heating": True, "source": "test-ui"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    devices = payload["control_state"]["devices"]
+    assert devices["ventilation"] is True
+    assert devices["heating"] is True
+    assert backend_main.app_state["cucumber"]["control_state"]["source"] == "test-ui"
+
+    status_response = client.get("/api/status")
+    assert status_response.status_code == 200
+    status_payload = status_response.json()
+    assert status_payload["greenhouses"]["cucumber"]["control_state"]["devices"]["ventilation"] is True
+
+
+def test_alert_history_endpoint_keeps_backend_history() -> None:
+    client = TestClient(get_app())
+
+    response = client.post(
+        "/api/alerts/history?crop=cucumber",
+        json={
+            "events": [
+                {
+                    "id": "test-alert-history",
+                    "severity": "warning",
+                    "title": "VPD check",
+                    "body": "Review venting before noon.",
+                    "source": "test",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source"]["persisted"] is True
+    assert payload["events"][0]["id"] == "test-alert-history"
+
+    history_response = client.get("/api/alerts/history?crop=cucumber")
+    assert history_response.status_code == 200
+    history_payload = history_response.json()
+    assert any(event["id"] == "test-alert-history" for event in history_payload["events"])
+
+
 def test_ai_consult_degrades_gracefully_without_openai_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -325,6 +378,37 @@ def test_ai_chat_degrades_gracefully_without_openai_key(
     payload = response.json()
     assert payload["status"] == "degraded"
     assert payload["text"] == "AI chat is temporarily unavailable. Please try again shortly."
+
+
+def test_advisor_chat_degrades_to_model_payload_on_openai_quota_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend_main = _backend_main()
+
+    def _raise_quota(**kwargs):
+        raise RuntimeError("OpenAI quota is exhausted. Check billing.")
+
+    monkeypatch.setattr(backend_main, "build_advisor_chat_response", _raise_quota)
+    client = TestClient(get_app())
+
+    response = client.post(
+        "/api/advisor/chat",
+        json={
+            "crop": "cucumber",
+            "messages": [{"role": "user", "content": "지금 CO2를 올리면?"}],
+            "dashboard": {"currentData": {}, "metrics": {}},
+            "language": "ko",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "degraded"
+    assert payload["family"] == "advisor_chat"
+    assert "Advisor chat failed" not in payload["text"]
+    assert "429" not in payload["text"]
+    assert payload["machine_payload"]["model_runtime"]
+    assert "openai_unavailable" in payload["machine_payload"]["missing_data"]
 
 
 def test_knowledge_status_endpoint_returns_crop_scoped_catalog(

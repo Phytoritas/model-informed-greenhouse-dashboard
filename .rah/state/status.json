@@ -1,7 +1,7 @@
 {
   "mode": "hybrid",
   "current_stage": "issue124-backend-integration-restoration",
-  "phase": "validated-tabbed-workspace-reconnection",
+  "phase": "validated-standalone-shell-removal-and-chart-first-scenario",
   "implementation_gate": "open",
   "repository_profile": "python-greenhouse-dashboard-with-model-first-smartgrow-runtime-and-phytosync-route-shell",
   "active_issue": 124,
@@ -13,18 +13,18 @@
   "sync_branch": null,
   "implementation_blocked": false,
   "earliest_restart_point": "Resume from branch fix/124-restore-tab-integrations-ui after re-reading AGENTS.md, Phytoritas.md, .rah/memory/wakeup.md, and .rah/plans/current_loop.md.",
-  "restart_point": "PR #125 is open for issue #124. Current slice restores backend-backed workspace tabs, redirects legacy advisor lanes into canonical pages, and validates frontend plus backend suites locally.",
+  "restart_point": "PR #125 is open for issue #124. Current slice removes the old AppShell/WorkspaceNav fallback, deletes unused legacy wrappers, adds chart-first model scenario result summaries, and validates frontend plus backend suites locally.",
   "next_action": "Review PR #125 diff, push the current validation-backed commit, then continue any remaining UI or backend integration gaps as separate bounded slices.",
-  "next_recommended_action": "Keep detailed backend surfaces in dedicated tabs and keep Overview Command summary-only against the PNG visual source of truth.",
+  "next_recommended_action": "Keep all production routes on the standalone PNG-style frame; keep detailed backend surfaces in dedicated tabs and expand text-only panels with visual summaries.",
   "source_project": "C:\\Users\\yhmoo\\OneDrive\\Model\\10_Projects\\10_AI_Platform\\dashboard-eng_1.1",
   "directive_file": "docs/design/codex_image_based_greenhouse_ui_prompt.md",
   "doctor_state": "warn",
-  "last_doctor_at": "2026-04-27T08:58:13+00:00",
+  "last_doctor_at": "2026-04-30T08:34:24+00:00",
   "memento_workspace": "model-informed-greenhouse-dashboard",
   "memento_topic": "frontend-ui-system",
   "memento_session_id": "model-informed-greenhouse-dashboard#124:restore-tab-integrations-ui",
   "memento_case_id": "case/model-informed-greenhouse-dashboard/124/restore-tab-integrations-ui",
   "memento_last_context_at": "2026-04-27T16:31:00+09:00",
   "memento_last_recall_at": "2026-04-27T16:31:00+09:00",
-  "memory_freshness": "issue124-validated"
+  "memory_freshness": "issue124-standalone-shell-validated"
 }

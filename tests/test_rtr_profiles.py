@@ -7,6 +7,7 @@ from model_informed_greenhouse_dashboard.backend.app.services.rtr_profiles impor
     filter_rtr_good_windows_for_house,
     fit_rtr_profile,
     load_rtr_good_windows,
+    load_rtr_profiles,
     normalize_rtr_good_windows,
     save_rtr_good_windows,
     upsert_rtr_good_windows,
@@ -133,6 +134,38 @@ def test_load_rtr_good_windows_normalizes_lowercase_crop_keys(tmp_path) -> None:
     assert payload["crops"]["Tomato"][0]["endDate"] == "2026-04-06"
     assert payload["crops"]["Cucumber"][0]["label"] == "cucumber-q1"
     assert payload["crops"]["Tomato"][0]["approvalStatus"] == "heuristic-demo"
+
+
+def test_load_rtr_profiles_preserves_crop_labor_benchmark_defaults(tmp_path) -> None:
+    config_path = tmp_path / "rtr_profiles.json"
+    config_path.write_text(
+        """
+{
+  "version": 2,
+  "updatedAt": "2026-04-03T00:00:00Z",
+  "profiles": {
+    "cucumber": {
+      "optimizer": {
+        "labor_benchmark": {
+          "reference_labor_hours_10a_year": 810,
+          "default_labor_rate_krw_hour": 19000
+        }
+      }
+    }
+  }
+}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    payload = load_rtr_profiles(config_path)
+
+    cucumber_benchmark = payload["profiles"]["Cucumber"]["optimizer"]["labor_benchmark"]
+    tomato_benchmark = payload["profiles"]["Tomato"]["optimizer"]["labor_benchmark"]
+    assert cucumber_benchmark["source_label_ko"] == "농업소득자료 기준"
+    assert cucumber_benchmark["reference_labor_hours_10a_year"] == 810
+    assert cucumber_benchmark["default_labor_rate_krw_hour"] == 19000
+    assert tomato_benchmark["reference_labor_hours_10a_year"] == 687.0
 
 
 def test_load_rtr_good_windows_preserves_approved_window_metadata(tmp_path) -> None:

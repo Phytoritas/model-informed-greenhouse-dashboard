@@ -49,12 +49,12 @@ const RTRCalibrationWorkspace = ({
 
     const copy = locale === 'ko'
         ? {
-            title: 'RTR 칼리브레이션 워크스페이스',
-            subtitle: `${getCropLabel(crop, locale)} 고생산 구간을 직접 입력해 RTR 설정을 다시 맞춥니다.`,
+            title: '온도 기준 보정 워크스페이스',
+            subtitle: `${getCropLabel(crop, locale)} 고생산 구간을 직접 입력해 온도 기준 설정을 다시 맞춥니다.`,
             loading: '보정 상태를 불러오는 중...',
             rangeTitle: '사용 가능한 환경 이력',
             rangeMissing: '아직 이 작물의 환경 이력이 로드되지 않았습니다. 시뮬레이터 시작 후 다시 시도하세요.',
-            rangeReady: '현재 로드된 환경 이력에서 일별 RTR 포인트를 다시 계산합니다.',
+            rangeReady: '현재 로드된 환경 이력에서 일별 온도 기준 포인트를 다시 계산합니다.',
             currentTitle: '현재 보정 상태',
             currentMode: '현재 모드',
             currentSamples: '샘플 일수',
@@ -84,7 +84,7 @@ const RTRCalibrationWorkspace = ({
             previewSource: '선정 경로',
             previewFiltered: '사용 일수',
             previewFit: '미리 보기 적합도',
-            saveDone: '저장 후 RTR profile을 즉시 다시 불러옵니다.',
+            saveDone: '저장 후 온도 기준 설정을 즉시 다시 불러옵니다.',
             houseWindow: '하우스 입력 구간',
             growerApproved: '농가 승인',
             managerApproved: '매니저 승인',

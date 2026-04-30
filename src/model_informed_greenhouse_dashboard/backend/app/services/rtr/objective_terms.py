@@ -146,6 +146,7 @@ def evaluate_rtr_candidate(
             else state["crop_specific"]["tomato"]
         ),
         user_labor_cost_coefficient=optimization_inputs.user_labor_cost_coefficient,
+        labor_benchmark=(state.get("optimizer", {}) or {}).get("labor_benchmark"),
     )
 
     base_yield_kg_m2_day = max(0.0, float(growth["harvested_fruit_dry_matter_g_m2"]) / 1000.0)
@@ -158,7 +159,9 @@ def evaluate_rtr_candidate(
         ((yield_proxy_kg_m2_day - base_yield_kg_m2_day) / max(base_yield_kg_m2_day, 1e-6)) * 100.0
     ) if base_yield_kg_m2_day > 0 else 0.0
     yield_penalty = max(0.0, -harvest_trend_delta_pct / 100.0)
-    gross_margin_proxy_krw_m2_day = (yield_proxy_kg_m2_day * 3200.0) - total_energy_cost_krw - float(labor_summary["labor_cost_krw_m2_day"])
+    labor_index = float(labor_summary["labor_index"])
+    labor_cost_krw_m2_day = float(labor_summary["labor_cost_krw_m2_day"])
+    gross_margin_proxy_krw_m2_day = (yield_proxy_kg_m2_day * 3200.0) - total_energy_cost_krw - labor_cost_krw_m2_day
 
     phase_humidity_penalty = _weighted_mean(
         float(actuator_eval["phases"]["day"]["risk"]["humidity_penalty"]),
@@ -225,7 +228,7 @@ def evaluate_rtr_candidate(
         + (weight("heating") * heating_energy_kwh_m2_day)
         + (weight("cooling") * cooling_energy_kwh_m2_day)
         + (weight("ventilation") * ventilation_energy_kwh_m2_day)
-        + (weight("labor") * float(labor_summary["labor_cost_krw_m2_day"]))
+        + (weight("labor") * labor_index)
         + (weight("yield") * yield_penalty)
         + (weight("humidity") * humidity_penalty)
         + (weight("disease") * disease_penalty)
@@ -255,8 +258,10 @@ def evaluate_rtr_candidate(
             "heating_energy_cost_krw": round(heating_energy_cost_krw, 6),
             "cooling_energy_cost_krw": round(cooling_energy_cost_krw, 6),
             "ventilation_energy_cost_krw": round(ventilation_energy_cost_krw, 6),
-            "labor_cost": round(float(labor_summary["labor_cost_krw_m2_day"]), 6),
-            "labor_index": round(float(labor_summary["labor_index"]), 6),
+            "labor_cost": round(labor_cost_krw_m2_day, 6),
+            "labor_cost_krw": round(labor_cost_krw_m2_day, 6),
+            "labor_objective_penalty": round(labor_index, 6),
+            "labor_index": round(labor_index, 6),
             "labor_hours_m2_day": round(float(labor_summary["labor_hours_m2_day"]), 6),
             "yield_penalty": round(yield_penalty, 6),
             "gross_margin_proxy_krw_m2_day": round(gross_margin_proxy_krw_m2_day, 6),

@@ -25,6 +25,16 @@ const formatNumber = (value: number | null | undefined, digits = 1, locale: 'en'
     });
 };
 
+const formatWithUnit = (
+    value: number | null | undefined,
+    digits: number,
+    unit: string,
+    locale: 'en' | 'ko',
+): string => {
+    const formatted = formatNumber(value, digits, locale);
+    return formatted === '-' ? formatted : `${formatted} ${unit}`;
+};
+
 const AreaUnitPanel = ({
     crop,
     canonicalAreaM2,
@@ -44,7 +54,7 @@ const AreaUnitPanel = ({
             pyeong: '실평수',
             m2: '실면적 (m²)',
             canonical: '기준 면적',
-            canonicalMetrics: 'm² 기준 지표',
+            canonicalMetrics: '단위면적 기준',
             actualProjection: '실평수 총량 환산',
             sourceDefault: '실면적을 아직 입력하지 않았습니다. 서버 기본 면적을 받으면 자동으로 반영됩니다.',
             sourceServer: '현재는 서버에 저장된 하우스 기준 면적으로 총량을 환산하고 있습니다.',
@@ -52,27 +62,27 @@ const AreaUnitPanel = ({
             sourceChipDefault: '기본값 대기',
             sourceChipServer: '서버 기준',
             sourceChipLocal: '직접 입력',
-            canonicalYieldDay: '수확량 / 일 (kg/m²/day)',
-            canonicalYieldWeek: '수확량 / 주 (kg/m²/week)',
-            canonicalEnergy: '에너지 / 일 (kWh/m²/day)',
-            canonicalCost: '에너지 비용 / 일 (KRW/m²/day)',
-            canonicalHeating: '난방 / 일 (kWh/m²/day)',
-            canonicalCooling: '냉방 / 일 (kWh/m²/day)',
-            canonicalLabor: '작업부하 / 일 (index/m²/day)',
-            canonicalLaborHours: '작업시간 / 일 (h/m²/day)',
-            canonicalLaborCost: '노동비 / 일 (KRW/m²/day)',
-            canonicalNode: '마디 전개 / 일 (nodes/day)',
-            canonicalMargin: '마진 추정 / 일 (KRW/m²/day)',
+            canonicalYieldDay: '하루 예상 수확',
+            canonicalYieldWeek: '주간 예상 수확',
+            canonicalEnergy: '하루 전력 사용',
+            canonicalCost: '하루 전력비',
+            canonicalHeating: '하루 난방 사용',
+            canonicalCooling: '하루 냉방 사용',
+            canonicalLabor: '하루 작업 부담',
+            canonicalLaborHours: '하루 작업시간',
+            canonicalLaborCost: '하루 작업비',
+            canonicalNode: '하루 마디 진행',
+            canonicalMargin: '하루 수지 추정',
             projectionYieldDay: '총 수확량 / 일',
             projectionYieldWeek: '총 수확량 / 주',
             projectionEnergy: '총 에너지 / 일',
             projectionHeating: '총 난방 / 일',
             projectionCooling: '총 냉방 / 일',
             projectionCost: '총 에너지 비용 / 일',
-            projectionLabor: '총 작업부하 지수 / 일',
-            projectionLaborHours: '총 작업시간 / 일',
-            projectionLaborCost: '총 노동비 / 일',
-            projectionMargin: '총 마진 추정 / 일',
+            projectionLabor: '총 작업 부담 / 일',
+            projectionLaborHours: '총 예상 작업시간 / 일',
+            projectionLaborCost: '총 예상 작업비 / 일',
+            projectionMargin: '총 수지 추정 / 일',
             pyeongPlaceholder: '예: 850',
             m2Placeholder: '예: 2809.9',
             costUnit: '원',
@@ -189,7 +199,7 @@ const AreaUnitPanel = ({
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalCost}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.energy_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatWithUnit(unitsM2.energy_krw_m2_day, 0, copy.costUnit, locale)}</dd>
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalHeating}</dt>
@@ -205,11 +215,11 @@ const AreaUnitPanel = ({
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalLaborHours}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.labor_hours_m2_day, 3, locale)} h</dd>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatWithUnit(unitsM2.labor_hours_m2_day, 4, 'h', locale)}</dd>
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalLaborCost}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.labor_cost_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatWithUnit(unitsM2.labor_cost_krw_m2_day, 0, copy.costUnit, locale)}</dd>
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalNode}</dt>
@@ -217,7 +227,7 @@ const AreaUnitPanel = ({
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.canonicalMargin}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(unitsM2.gross_margin_proxy_krw_m2_day, 0, locale)} {copy.costUnit}</dd>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatWithUnit(unitsM2.gross_margin_proxy_krw_m2_day, 0, copy.costUnit, locale)}</dd>
                         </div>
                     </dl>
                 </div>
@@ -249,7 +259,7 @@ const AreaUnitPanel = ({
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionCost}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.energy_krw_day, 0, locale)} {copy.costUnit}</dd>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatWithUnit(projection.energy_krw_day, 0, copy.costUnit, locale)}</dd>
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionLabor}</dt>
@@ -257,15 +267,15 @@ const AreaUnitPanel = ({
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionLaborHours}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.labor_hours_day, 2, locale)} h</dd>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatWithUnit(projection.labor_hours_day, 2, 'h', locale)}</dd>
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionLaborCost}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.labor_cost_krw_day, 0, locale)} {copy.costUnit}</dd>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatWithUnit(projection.labor_cost_krw_day, 0, copy.costUnit, locale)}</dd>
                         </div>
                         <div className="sg-warm-subpanel px-3 py-2">
                             <dt className="text-[11px] text-[color:var(--sg-text-faint)]">{copy.projectionMargin}</dt>
-                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatNumber(projection.margin_krw_day, 0, locale)} {copy.costUnit}</dd>
+                            <dd className="mt-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{formatWithUnit(projection.margin_krw_day, 0, copy.costUnit, locale)}</dd>
                         </div>
                     </dl>
                 </div>

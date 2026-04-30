@@ -13,6 +13,13 @@
 - `/`, `/overview`, and `/overview/legacy` render the reference landing surface outside `AppShell`, while detailed backend-backed features remain in dedicated workspace routes.
 - `/control`, `/rtr`, `/scenarios`, `/crop-work`, `/resources`, `/alerts`, and `/assistant` expose in-page workspace tabs instead of hiding restored features behind sidebar-only actions.
 - `/growth/*`, `/nutrient/*`, `/protection/*`, and `/harvest/*` now redirect into canonical workspace tabs that use the full connected panels.
+- `/crop-work`, `/resources`, `/alerts`, `/growth/*`, `/nutrient/*`, `/protection/*`, and `/harvest/*` now render in the standalone PNG-style product frame instead of falling through to `AppShell` + `WorkspaceNav`.
+- `/rtr` remains a compatibility URL into Dashboard > climate strategy, but it is no longer duplicated as a visible top-level route item.
+- Crop Work, Resources, and Protection now use `FeatureLandingFrame` summaries with metric strips, action boards, baseline-vs-recommended comparisons, and bridge cards before their full backend-backed panels.
+- Resources and Protection summary cards now include compact visual trend/timeline bars so energy/weather/market and alert-history signals are not text-only.
+- The old `AppShell` / `WorkspaceNav` / `TopBar` fallback was removed from production routing, so unknown URLs now redirect inside the standalone PNG-style frame instead of briefly rendering the side-panel shell.
+- Unused legacy wrappers for resources, crop work, alerts, RTR, advisor lanes, and phyto shell re-exports were deleted after route tests confirmed the connected standalone pages still render.
+- The model What-if workspace now pairs backend scenario and sensitivity results with horizon-level effect bars and derivative bars before the detailed result table.
 - `useGreenhouse` connects to `/ws/forecast/{crop}` through `FORECAST_WS_URL` while retaining `/api/forecast/{crop}` polling as the cold-start and fallback hydrator.
 - `frontend/src/app/backend-integration-inventory.ts` records required backend surfaces and tests that they remain represented in frontend routes or panels, including hidden compatibility endpoints intentionally delegated through `/api/advisor/tab/*`.
 - Overview Dashboard fills the chart gap with RTR trend and consulting workload cards.
@@ -23,11 +30,13 @@
 ## Validation
 - `npm run --prefix frontend lint` passed.
 - `npm run --prefix frontend build` passed.
-- `npm run --prefix frontend test -- --maxWorkers=1 --no-file-parallelism` passed: 39 files, 163 tests. npm printed non-blocking unknown-config warnings for those passthrough flags.
-- `.\.venv\Scripts\ruff.exe check src tests scripts` passed. `poetry run ruff check ...` timed out in this Windows session, so direct venv execution was used after verifying the same venv.
-- `.\.venv\Scripts\pytest.exe -q` passed: 184 tests, 44 warnings. `poetry run pytest` timed out in this Windows session, so direct venv execution was used after collection succeeded.
-- Focused `npx vitest run src/App.routing.test.tsx src/app/backend-integration-inventory.test.ts --maxWorkers=1 --no-file-parallelism` passed: 43 tests.
+- `npm run --prefix frontend test` passed: 36 files, 166 tests.
+- `.\.venv\Scripts\ruff.exe check src tests scripts` passed.
+- `.\.venv\Scripts\pytest.exe -q` passed: 186 tests, 46 warnings.
+- Focused `npm run --prefix frontend test -- src/App.routing.test.tsx --maxWorkers=1 --no-file-parallelism` passed: 50 tests. npm printed non-blocking unknown-config warnings for those passthrough flags.
 - Visual evidence was captured under `docs/design/` for Command, Dashboard, Watch, tablet, and mobile overview states.
+- Current browser smoke used Vite on `127.0.0.1:5174` and Playwright MCP for `/overview`, `/trend#trend-weather`, `/trend#trend-market`, `/scenarios#scenario-model`, `/assistant#assistant-search`, `/resources`, `/alerts`, and `/unknown-route`; each rendered the standalone product frame with no `app-sidebar` route chrome and 0 console errors.
+- A viewport screenshot was captured as `docs/design/overview-standalone-smoke.png`.
 
 ## Exact Next Step
 1. Review the PR `#125` diff and avoid including unrelated local edits.

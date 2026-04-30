@@ -88,7 +88,7 @@ export default function AlertRail({ items, compact = false }: AlertRailProps) {
             eyebrow: '긴급 알림',
             title: '바로 조치 · 확인 필요 · 운영 메모',
             description: '지금 손봐야 하거나 확인이 필요한 운영 이슈만 먼저 모아 보여줍니다.',
-            empty: '현재 바로 조치할 알림은 없지만, RTR 권장안과 운영 메모는 계속 확인해 주세요.',
+            empty: '현재 바로 조치할 알림은 없지만, 권장 온도와 운영 메모는 계속 확인해 주세요.',
             severity: {
                 critical: '바로 조치',
                 warning: '확인 필요',

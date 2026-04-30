@@ -11,8 +11,18 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { AppLocale } from '../i18n/locale';
-import type { DashboardWorkspaceKey } from '../components/shell/WorkspaceNav';
 import type { PromptAdvisorTabKey } from '../components/advisor/advisorTabRegistry';
+
+export type DashboardWorkspaceKey =
+  | 'command'
+  | 'advisor'
+  | 'rtr'
+  | 'trend'
+  | 'crop'
+  | 'resources'
+  | 'alerts'
+  | 'knowledge'
+  | 'settings';
 
 export type PhytoSectionKey =
   | 'overview'
@@ -59,9 +69,9 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           heroTitle: '오늘 운영',
           heroDescription: '핵심 판단, 오늘 조치, 주의 신호를 한 화면에 둡니다.',
           tabs: [
-            { id: 'overview-core', label: '오늘 운영' },
-            { id: 'overview-dashboard', label: '대시보드' },
-            { id: 'overview-watch', label: '주의' },
+            { id: 'overview-core', label: '오늘 판단' },
+            { id: 'overview-dashboard', label: '전체 지표' },
+            { id: 'overview-watch', label: '주의 확인' },
           ],
         },
         {
@@ -78,18 +88,19 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           tabs: [
             { id: 'control-strategy', label: '환경 솔루션' },
             { id: 'control-devices', label: '장치 상태' },
+            { id: 'control-runtime', label: '구동 제어' },
           ],
         },
         {
           key: 'rtr',
           path: '/rtr',
-          label: 'RTR 최적화',
-          shortLabel: 'RTR',
+          label: '온도 기준 최적화',
+          shortLabel: '온도 기준',
           description: '기준안, 최적안, 민감도, 면적 보정을 따로 봅니다.',
           icon: CircleGauge,
           workspace: 'rtr',
           advisorTab: 'environment',
-          heroTitle: 'RTR 최적화',
+          heroTitle: '온도 기준 최적화',
           heroDescription: '기준안과 최적안 비교를 온실 환경 판단과 연결합니다.',
           tabs: [
             { id: 'rtr-strategy', label: '전략 비교' },
@@ -102,15 +113,15 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           path: '/scenarios',
           label: '온실 조정 검토',
           shortLabel: '시나리오',
-          description: '과정기반모델 조정안과 RTR 민감도 검토를 실제 백엔드로 실행합니다.',
+          description: '과정기반 계산과 온도 민감도 검토를 실제 계산 화면에서 실행합니다.',
           icon: FlaskConical,
           workspace: 'rtr',
           advisorTab: 'environment',
-          heroTitle: '온실 What-if 검토',
-          heroDescription: '온도, CO2, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.',
+          heroTitle: '온실 조정 효과 검토',
+          heroDescription: '온도, 이산화탄소, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.',
           tabs: [
             { id: 'scenario-model', label: '조정안 계산' },
-            { id: 'scenario-rtr', label: 'RTR 민감도' },
+            { id: 'scenario-rtr', label: '온도 민감도' },
           ],
         },
         {
@@ -123,7 +134,11 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           workspace: 'trend',
           heroTitle: '날씨와 시세',
           heroDescription: '',
-          tabs: [],
+          tabs: [
+            { id: 'trend-weather', label: '외기 그래프' },
+            { id: 'trend-market', label: '시세 그래프' },
+            { id: 'trend-decision', label: '판단 신호' },
+          ],
         },
         {
           key: 'crop-work',
@@ -189,6 +204,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           tabs: [
             { id: 'assistant-chat', label: '질문' },
             { id: 'assistant-search', label: '자료 찾기' },
+            { id: 'assistant-solutions', label: '솔루션' },
           ],
         },
         {
@@ -201,7 +217,11 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           workspace: 'settings',
           heroTitle: '연동 상태와 운영 문의',
           heroDescription: '운영 화면의 기본값과 연결 상태를 정리합니다.',
-          tabs: [],
+          tabs: [
+            { id: 'contact-settings', label: '운영 기준' },
+            { id: 'contact-connections', label: '연결 상태' },
+            { id: 'contact-support', label: '문의 준비' },
+          ],
         },
       ]
     : [
@@ -235,6 +255,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           tabs: [
             { id: 'control-strategy', label: 'Climate solutions' },
             { id: 'control-devices', label: 'Devices' },
+            { id: 'control-runtime', label: 'Runtime' },
           ],
         },
         {
@@ -280,7 +301,11 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           workspace: 'trend',
           heroTitle: 'Trend',
           heroDescription: '',
-          tabs: [],
+          tabs: [
+            { id: 'trend-weather', label: 'Weather chart' },
+            { id: 'trend-market', label: 'Market chart' },
+            { id: 'trend-decision', label: 'Decision signals' },
+          ],
         },
         {
           key: 'crop-work',
@@ -346,6 +371,7 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           tabs: [
             { id: 'assistant-chat', label: 'Ask' },
             { id: 'assistant-search', label: 'Materials' },
+            { id: 'assistant-solutions', label: 'Solutions' },
           ],
         },
         {
@@ -358,7 +384,11 @@ export function buildPhytoSections(locale: AppLocale): PhytoSectionDefinition[] 
           workspace: 'settings',
           heroTitle: 'Connectivity and support',
           heroDescription: 'Keep operating defaults and connection status in one place.',
-          tabs: [],
+          tabs: [
+            { id: 'contact-settings', label: 'Settings' },
+            { id: 'contact-connections', label: 'Connections' },
+            { id: 'contact-support', label: 'Support' },
+          ],
         },
       ];
 }
@@ -367,15 +397,17 @@ export function findPhytoSection(
   sections: PhytoSectionDefinition[],
   pathname: string,
 ): PhytoSectionDefinition {
-  const normalizedPath = pathname.startsWith('/growth') || pathname.startsWith('/harvest')
-    ? '/crop-work'
-    : pathname.startsWith('/nutrient')
-      ? '/resources'
-      : pathname.startsWith('/protection')
-        ? '/alerts'
-        : pathname.startsWith('/assistant') || pathname.startsWith('/ask')
-          ? '/assistant'
-          : pathname;
+  const normalizedPath = pathname.startsWith('/dashboard') || pathname.startsWith('/rtr')
+    ? '/control'
+    : pathname.startsWith('/growth') || pathname.startsWith('/harvest')
+      ? '/crop-work'
+      : pathname.startsWith('/nutrient')
+        ? '/resources'
+        : pathname.startsWith('/protection')
+          ? '/alerts'
+          : pathname.startsWith('/assistant') || pathname.startsWith('/knowledge') || pathname.startsWith('/ask')
+            ? '/assistant'
+            : pathname;
 
   return sections.find((section) => normalizedPath === section.path || normalizedPath.startsWith(`${section.path}/`))
     ?? sections[0];
@@ -386,7 +418,7 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
     case 'command':
       return '/overview';
     case 'rtr':
-      return '/rtr';
+      return '/control#control-strategy';
     case 'trend':
       return '/trend';
     case 'crop':
@@ -397,7 +429,7 @@ export function getDefaultSectionPathForWorkspace(workspace: DashboardWorkspaceK
     case 'alerts':
       return '/alerts';
     case 'knowledge':
-      return '/assistant';
+      return '/knowledge#assistant-search';
     case 'settings':
       return '/settings';
     default:

@@ -75,7 +75,7 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       path: '/control',
       label: isKo ? '온실 환경' : 'Climate',
       shortLabel: isKo ? '온실 환경' : 'Climate',
-      description: isKo ? '환경 솔루션, RTR 제어안, 장치 상태를 함께 봅니다.' : 'Review climate solutions, RTR control, and device status together.',
+      description: isKo ? '환경 솔루션, 온도 기준 제어안, 장치 상태를 함께 봅니다.' : 'Review climate solutions, RTR control, and device status together.',
       title: isKo ? '온실 환경 솔루션' : 'Climate Solutions',
       heroDescription: '',
       icon: Thermometer,
@@ -99,9 +99,9 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       path: '/scenarios',
       label: isKo ? '시나리오' : 'Scenarios',
       shortLabel: isKo ? '시나리오' : 'Scenarios',
-      description: isKo ? '과정기반모델 조정안과 RTR 민감도 검토를 별도 화면에서 실행합니다.' : 'Run process-model adjustment reviews and RTR sensitivity checks in a dedicated lane.',
-      title: isKo ? '온실 What-if 검토' : 'Greenhouse adjustment review',
-      heroDescription: isKo ? '온도, CO2, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.' : 'Calculate how temperature, CO2, and RH changes move yield and energy.',
+      description: isKo ? '과정기반 계산 조정안과 온도 민감도 검토를 별도 화면에서 실행합니다.' : 'Run process-model adjustment reviews and RTR sensitivity checks in a dedicated lane.',
+      title: isKo ? '온실 조정 효과 검토' : 'Greenhouse adjustment review',
+      heroDescription: isKo ? '온도, 이산화탄소, 상대습도 변경이 수량과 에너지에 미치는 영향을 계산합니다.' : 'Calculate how temperature, CO2, and RH changes move yield and energy.',
       icon: FlaskConical,
       visibleInNav: true,
     },
@@ -169,13 +169,13 @@ function buildRouteCatalog(locale: AppLocale): PrimaryRouteMeta[] {
       key: 'rtr',
       navKey: 'rtr',
       path: '/rtr',
-      label: isKo ? 'RTR 최적화' : 'RTR Optimizer',
-      shortLabel: isKo ? 'RTR' : 'RTR',
+      label: isKo ? '온도 기준 최적화' : 'RTR Optimizer',
+      shortLabel: isKo ? '온도 기준' : 'RTR',
       description: isKo ? '기준안과 최적안을 비교해 온도 전략을 조정합니다.' : 'Compare baseline and optimized temperature strategies.',
-      title: isKo ? 'RTR 최적화' : 'RTR Optimizer',
+      title: isKo ? '온도 기준 최적화' : 'RTR Optimizer',
       heroDescription: isKo ? '기준안, 최적안, 민감도, 면적 보정을 한곳에서 봅니다.' : 'Review baseline, optimized, sensitivity, and area-adjusted strategy views.',
       icon: CircleGauge,
-      visibleInNav: true,
+      visibleInNav: false,
     },
   ];
 }
@@ -186,14 +186,13 @@ export function buildPrimaryRoutes(locale: AppLocale): PrimaryRouteMeta[] {
 
 function getAppRouteKey(pathname: string): AppRouteKey {
   if (pathname === '/' || pathname.startsWith('/overview')) return 'overview';
-  if (pathname.startsWith('/control')) return 'control';
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/control') || pathname.startsWith('/rtr')) return 'control';
   if (pathname.startsWith('/trend')) return 'trend';
   if (pathname.startsWith('/scenarios')) return 'scenarios';
-  if (pathname.startsWith('/rtr')) return 'rtr';
   if (pathname.startsWith('/crop-work')) return 'crop-work';
   if (pathname.startsWith('/resources')) return 'resources';
   if (pathname.startsWith('/alerts')) return 'alerts';
-  if (pathname.startsWith('/assistant') || pathname.startsWith('/ask')) return 'assistant';
+  if (pathname.startsWith('/assistant') || pathname.startsWith('/knowledge') || pathname.startsWith('/ask')) return 'assistant';
   if (pathname.startsWith('/settings')) return 'settings';
 
   if (pathname.startsWith('/growth') || pathname.startsWith('/harvest')) return 'crop-work';

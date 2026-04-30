@@ -45,6 +45,7 @@ type PersistedRtrOptimizerCropState = {
     includeEnergyCost: boolean;
     includeCoolingCost: boolean;
     includeLaborCost: boolean;
+    laborRateKrwHour: number | null;
     hasManualTarget: boolean;
     hasManualMode: boolean;
 };
@@ -59,6 +60,7 @@ function createDefaultPersistedCropState(defaultMode: RtrOptimizationMode): Pers
         includeEnergyCost: true,
         includeCoolingCost: true,
         includeLaborCost: true,
+        laborRateKrwHour: null,
         hasManualTarget: false,
         hasManualMode: false,
     };
@@ -81,6 +83,10 @@ function isPersistedCropState(
         && typeof candidate.includeEnergyCost === 'boolean'
         && typeof candidate.includeCoolingCost === 'boolean'
         && typeof candidate.includeLaborCost === 'boolean'
+        && (
+            candidate.laborRateKrwHour === undefined
+            || isFiniteOrNull(candidate.laborRateKrwHour)
+        )
         && typeof candidate.hasManualTarget === 'boolean'
         && typeof candidate.hasManualMode === 'boolean'
         && (candidate.customScenario === null || typeof candidate.customScenario === 'object')
@@ -157,6 +163,9 @@ export const useRtrOptimizer = ({
     const [includeLaborCost, setIncludeLaborCost] = useState(
         () => persistedStateRef.current.includeLaborCost,
     );
+    const [laborRateKrwHour, setLaborRateKrwHour] = useState<number | null>(
+        () => persistedStateRef.current.laborRateKrwHour,
+    );
     const [loadingState, setLoadingState] = useState(true);
     const [loadingOptimize, setLoadingOptimize] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -196,6 +205,7 @@ export const useRtrOptimizer = ({
         setIncludeEnergyCost(persistedState.includeEnergyCost);
         setIncludeCoolingCost(persistedState.includeCoolingCost);
         setIncludeLaborCost(persistedState.includeLaborCost);
+        setLaborRateKrwHour(persistedState.laborRateKrwHour);
         setLoadingState(true);
         setError(null);
     }, [crop]);
@@ -289,6 +299,7 @@ export const useRtrOptimizer = ({
             include_energy_cost: includeEnergyCost,
             include_cooling_cost: includeCoolingCost,
             include_labor_cost: includeLaborCost,
+            user_labor_cost_coefficient: laborRateKrwHour ?? undefined,
             user_actual_area_m2: actualAreaM2 ?? undefined,
             user_actual_area_pyeong: actualAreaPyeong ?? undefined,
             target_horizon: 'today',
@@ -301,6 +312,7 @@ export const useRtrOptimizer = ({
         includeEnergyCost,
         includeCoolingCost,
         includeLaborCost,
+        laborRateKrwHour,
         optimizationModeState,
         optimizerEnabled,
         telemetryOptimizationBlocked,
@@ -494,6 +506,7 @@ export const useRtrOptimizer = ({
                 includeEnergyCost,
                 includeCoolingCost,
                 includeLaborCost,
+                laborRateKrwHour,
                 hasManualTarget: hasManualTargetRef.current,
                 hasManualMode: hasManualModeRef.current,
             };
@@ -507,6 +520,7 @@ export const useRtrOptimizer = ({
         includeCoolingCost,
         includeEnergyCost,
         includeLaborCost,
+        laborRateKrwHour,
         optimizationModeState,
         targetNodeDevelopmentPerDay,
     ]);
@@ -528,6 +542,8 @@ export const useRtrOptimizer = ({
         setIncludeCoolingCost,
         includeLaborCost,
         setIncludeLaborCost,
+        laborRateKrwHour,
+        setLaborRateKrwHour,
         telemetryOptimizationBlocked,
         loading: loadingState || loadingOptimize,
         loadingState,

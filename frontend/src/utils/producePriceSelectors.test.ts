@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { CropType, ProducePriceEntry, ProducePricesPayload } from '../types';
-import { selectProduceItemForCrop } from './producePriceSelectors';
+import {
+    filterFeaturedPriceEntries,
+    filterFeaturedPriceTrendSeries,
+    selectProduceItemForCrop,
+} from './producePriceSelectors';
 
 function makeItem(overrides: Partial<ProducePriceEntry>): ProducePriceEntry {
     return {
@@ -124,5 +128,36 @@ describe('selectProduceItemForCrop', () => {
         const selected = selectProduceItemForCrop(payload, 'Cucumber' satisfies CropType);
         expect(selected?.marketKey).toBe('retail');
         expect(selected?.item.display_name).toBe('Cucumber (Dadagi)');
+    });
+});
+
+describe('featured produce price filters', () => {
+    it('keeps only tomato, chuicheong cucumber, and dadagi cucumber entries', () => {
+        const items = [
+            makeItem({ key: 'tomato', display_name: 'Tomato', source_name: 'Tomato/Tomato' }),
+            makeItem({ key: 'cherry', display_name: 'Cherry Tomato', source_name: 'Cherry Tomato' }),
+            makeItem({ key: 'chuicheong', display_name: 'Cucumber (Chuicheong)', source_name: 'Cucumber/Chuicheong' }),
+            makeItem({ key: 'dadagi', display_name: 'Cucumber (Dadagi)', source_name: 'Cucumber/Dadagi' }),
+            makeItem({ key: 'strawberry', display_name: 'Strawberry', source_name: 'Strawberry' }),
+        ];
+
+        expect(filterFeaturedPriceEntries(items).map((item) => item.key)).toEqual([
+            'tomato',
+            'chuicheong',
+            'dadagi',
+        ]);
+    });
+
+    it('applies the same featured crop rule to chart series', () => {
+        const series = [
+            { key: 'tomato', display_name: 'Tomato', source_name: 'Tomato/Tomato', unit: 'kg', reference_date: '2026-04-10', history_days: 14, forecast_days: 7, points: [] },
+            { key: 'paprika', display_name: 'Paprika', source_name: 'Paprika', unit: 'kg', reference_date: '2026-04-10', history_days: 14, forecast_days: 7, points: [] },
+            { key: 'baekdadagi', display_name: 'Cucumber (Baekdadagi)', source_name: 'Cucumber/Baekdadagi', unit: 'kg', reference_date: '2026-04-10', history_days: 14, forecast_days: 7, points: [] },
+        ];
+
+        expect(filterFeaturedPriceTrendSeries(series).map((item) => item.key)).toEqual([
+            'tomato',
+            'baekdadagi',
+        ]);
     });
 });

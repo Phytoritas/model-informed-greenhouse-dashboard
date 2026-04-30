@@ -1,7 +1,5 @@
 import { Suspense, lazy } from 'react';
-import PageSectionTabs from '../components/phyto/PageSectionTabs';
 import AskSearchPage from '../components/phyto/AskSearchPage';
-import AiCompatibilityPanel from '../components/assistant/AiCompatibilityPanel';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { SmartGrowAdvisorySurfaceSummary, SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
@@ -27,7 +25,7 @@ interface AssistantRoutePageProps {
   panelTabs: PhytoSectionTab[];
   onSelectPanel: (panelId: string) => void;
   summary: SmartGrowKnowledgeSummary | null;
-  activePanel?: 'assistant-chat' | 'assistant-search' | 'assistant-history';
+  activePanel?: 'assistant-chat' | 'assistant-search' | 'assistant-history' | 'assistant-solutions';
   searchRequest?: RagAssistantOpenRequest | null;
   chatRequest?: { query: string; nonce: number } | null;
   currentData: SensorData;
@@ -82,66 +80,56 @@ export default function AssistantRoutePage({
       summary={summary}
       smartGrowLoading={smartGrowLoading}
       smartGrowError={smartGrowError}
+      sectionTabs={panelTabs}
+      activeSectionId={activePanel}
+      onSelectSection={onSelectPanel}
       onOpenAssistant={onOpenAssistant}
       surface={(
         <div className="space-y-6">
-          <PageSectionTabs
-            tabs={panelTabs}
-            activeId={activePanel}
-            onSelect={onSelectPanel}
-          />
-          <AskSearchPage
-            locale={locale}
-            crop={crop}
-            cropLabel={cropLabel}
-            summary={summary}
-            activePanel={activePanel}
-            searchRequest={searchRequest}
-            chatRequest={chatRequest}
-            currentData={currentData}
-            metrics={metrics}
-            forecast={forecast}
-            history={history}
-            producePrices={producePrices}
-            weather={weather}
-            rtrProfile={rtrProfile}
-            smartGrowLoading={smartGrowLoading}
-            smartGrowError={smartGrowError}
-            onOpenSearch={onOpenSearch}
-          />
-        </div>
-      )}
-      summaryRail={(
-        <div className="space-y-6">
-          <AiCompatibilityPanel
-            locale={locale}
-            crop={crop}
-            currentData={currentData}
-            metrics={metrics}
-            forecast={forecast}
-            history={history}
-            producePrices={producePrices}
-            weather={weather}
-            rtrProfile={rtrProfile}
-          />
-          <Suspense
-            fallback={(
-              <LoadingSkeleton
-                title={locale === 'ko' ? '운영 솔루션 도구' : 'Operating solution tools'}
-                loadingMessage={locale === 'ko' ? '자료 기반 솔루션 도구를 불러오는 중입니다...' : 'Loading source-backed solution tools...'}
-                minHeightClassName="min-h-[320px]"
+          {activePanel === 'assistant-solutions' ? (
+            <section id="assistant-solutions" className="scroll-mt-24" tabIndex={-1}>
+              <Suspense
+                fallback={(
+                  <LoadingSkeleton
+                    title={locale === 'ko' ? '재배 솔루션' : 'Operating solution tools'}
+                    loadingMessage={locale === 'ko' ? '농약·양액 솔루션을 불러오는 중입니다...' : 'Loading source-backed solution tools...'}
+                    minHeightClassName="min-h-[320px]"
+                  />
+                )}
+              >
+                <SmartGrowSurfacePanel
+                  crop={crop}
+                  summary={summary}
+                  loading={smartGrowLoading}
+                  error={smartGrowError}
+                  onOpenSurface={onOpenSurface}
+                  layoutMode="compact"
+                />
+              </Suspense>
+            </section>
+          ) : (
+            <section id={activePanel === 'assistant-search' ? 'assistant-search' : 'assistant-chat'} className="scroll-mt-24" tabIndex={-1}>
+              <AskSearchPage
+                locale={locale}
+                crop={crop}
+                cropLabel={cropLabel}
+                summary={summary}
+                activePanel={activePanel}
+                searchRequest={searchRequest}
+                chatRequest={chatRequest}
+                currentData={currentData}
+                metrics={metrics}
+                forecast={forecast}
+                history={history}
+                producePrices={producePrices}
+                weather={weather}
+                rtrProfile={rtrProfile}
+                smartGrowLoading={smartGrowLoading}
+                smartGrowError={smartGrowError}
+                onOpenSearch={onOpenSearch}
               />
-            )}
-          >
-            <SmartGrowSurfacePanel
-              crop={crop}
-              summary={summary}
-              loading={smartGrowLoading}
-              error={smartGrowError}
-              onOpenSurface={onOpenSurface}
-              layoutMode="compact"
-            />
-          </Suspense>
+            </section>
+          )}
         </div>
       )}
     />

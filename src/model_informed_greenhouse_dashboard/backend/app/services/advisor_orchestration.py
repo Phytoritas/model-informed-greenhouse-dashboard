@@ -74,6 +74,68 @@ _MODEL_RUNTIME_CONTROL_LABELS = {
     "rh_target": "상대습도 목표",
     "screen_close": "스크린 닫힘",
 }
+_MODEL_RUNTIME_CONTROL_LABELS_EN = {
+    "co2_setpoint_day": "daytime CO2",
+    "temperature_day": "day temperature",
+    "temperature_night": "night temperature",
+    "rh_target": "relative humidity target",
+    "screen_close": "screen closure",
+}
+_CHAT_CURRENT_STATE_TERMS = (
+    "생육",
+    "생장",
+    "발달",
+    "전개",
+    "마디",
+    "마디수",
+    "노드",
+    "엽수",
+    "작물 상태",
+    "현재 상태",
+    "지금 상태",
+    "상태 어때",
+    "상태는",
+    "진단",
+    "canopy balance",
+    "growth status",
+    "crop status",
+    "current state",
+    "node",
+    "nodes",
+    "node count",
+    "leaf count",
+    "development status",
+)
+_CHAT_WHAT_IF_TERMS = (
+    "올리",
+    "높",
+    "내리",
+    "낮추",
+    "줄이",
+    "늘리",
+    "조정",
+    "변경",
+    "바꾸",
+    "하면",
+    "올리면",
+    "낮추면",
+    "하려면",
+    "어떻게",
+    "방법",
+    "솔루션",
+    "추천",
+    "what if",
+    "what-if",
+    "raise",
+    "lower",
+    "increase",
+    "decrease",
+    "adjust",
+    "change",
+    "how to",
+    "should",
+    "recommend",
+)
 _WORK_EVENT_COMPARE_HORIZONS_HOURS = (24, 72, 168, 336)
 logger = logging.getLogger(__name__)
 
@@ -341,6 +403,40 @@ def _latest_user_transcript(messages: Optional[list[dict[str, str]]]) -> str:
     return ""
 
 
+def _classify_chat_runtime_mode(messages: Optional[list[dict[str, str]]]) -> str:
+    latest_user_turn = _latest_user_transcript(messages)
+    if not latest_user_turn:
+        return "recommendation"
+
+    asks_current_state = any(term in latest_user_turn for term in _CHAT_CURRENT_STATE_TERMS)
+    asks_control_change = any(term in latest_user_turn for term in _CHAT_WHAT_IF_TERMS)
+    mentions_numeric_delta = bool(
+        re.search(r"([+-]?\d+(?:\.\d+)?)\s*(?:ppm|피피엠|℃|°c|c|도|%|퍼센트|pct)", latest_user_turn)
+    )
+    mentions_control = any(
+        term in latest_user_turn
+        for term in (
+            "co2",
+            "이산화탄소",
+            "ppm",
+            "온도",
+            "temperature",
+            "temp",
+            "습도",
+            "humidity",
+            "rh",
+            "vpd",
+            "screen",
+            "스크린",
+            "차광",
+        )
+    )
+
+    if asks_current_state and not (asks_control_change or (mentions_control and mentions_numeric_delta)):
+        return "current_state"
+    return "recommendation"
+
+
 def _signed_delta_from_text(value: float, text: str) -> float:
     if value < 0:
         return value
@@ -400,6 +496,49 @@ def _format_signed_delta(value: Any, digits: int = 3) -> str:
     return f"{numeric:+.{digits}f}"
 
 
+def _format_user_delta(
+    value: Any,
+    unit: Any,
+    *,
+    language: str = "ko",
+) -> str:
+    numeric = _coerce_float(value)
+    if numeric is None:
+        return "추가 데이터 필요" if not language.lower().startswith("en") else "missing data"
+    unit_text = str(unit or "")
+    if unit_text == "C":
+        unit_text = "°C"
+    if unit_text == "pct":
+        unit_text = "%"
+    digits = 0 if abs(numeric) >= 10 or float(numeric).is_integer() else 1
+    return f"{numeric:+.{digits}f}{unit_text}"
+
+
+def _user_visible_limiting_factor(value: Any, *, language: str = "ko") -> str:
+    normalized = str(value or "").strip().casefold()
+    if language.lower().startswith("en"):
+        return {
+            "rubisco": "CO2 or stomatal response",
+            "electron_transport": "light reaction",
+        }.get(normalized, str(value or "-"))
+    return {
+        "rubisco": "CO2·기공 반응 제한",
+        "electron_transport": "광 반응 제한",
+    }.get(normalized, str(value or "-"))
+
+
+def _user_visible_control_label(
+    control_name: Any,
+    fallback: Any,
+    *,
+    language: str = "ko",
+) -> str:
+    control_key = str(control_name or "")
+    if language.lower().startswith("en"):
+        return _MODEL_RUNTIME_CONTROL_LABELS_EN.get(control_key, str(fallback or control_key or "control"))
+    return _MODEL_RUNTIME_CONTROL_LABELS.get(control_key, str(fallback or control_key or "조정 항목"))
+
+
 def _build_runtime_answer_focus(
     *,
     messages: Optional[list[dict[str, str]]],
@@ -410,18 +549,18 @@ def _build_runtime_answer_focus(
         return None
 
     requested_candidates: list[tuple[dict[str, Any], float | None]] = []
-    fallback_candidates: list[tuple[dict[str, Any], float | None]] = []
     for family in recommendation_families:
         requested_delta = _extract_requested_runtime_delta(
             messages=messages,
             control_name=str(family.get("control") or ""),
         )
-        if requested_delta is None:
-            fallback_candidates.append((family, None))
-        else:
+        if requested_delta is not None:
             requested_candidates.append((family, requested_delta))
 
-    for family, requested_delta in [*requested_candidates, *fallback_candidates]:
+    if not requested_candidates:
+        return None
+
+    for family, requested_delta in requested_candidates:
         steps = [
             step
             for step in family.get("steps", [])
@@ -440,8 +579,28 @@ def _build_runtime_answer_focus(
         if not isinstance(step, dict):
             continue
 
-        label = str(family.get("label") or family.get("control") or "control")
+        control_name = str(family.get("control") or "")
+        label = _user_visible_control_label(
+            control_name,
+            family.get("label") or family.get("control"),
+            language=language,
+        )
         step_label = str(step.get("step_label") or "")
+        requested_label = _format_user_delta(
+            requested_delta,
+            family.get("unit"),
+            language=language,
+        )
+        matched_label = _format_user_delta(
+            step.get("applied_delta"),
+            family.get("unit"),
+            language=language,
+        )
+        is_limited_delta = (
+            requested_delta is not None
+            and _coerce_float(step.get("applied_delta")) is not None
+            and abs(float(requested_delta) - float(step.get("applied_delta"))) > 1e-6
+        )
         effects = {
             "yield_delta_24h": step.get("yield_delta_24h"),
             "yield_delta_72h": step.get("yield_delta_72h"),
@@ -456,20 +615,32 @@ def _build_runtime_answer_focus(
             "disease_penalty_delta": step.get("disease_penalty_delta"),
         }
         if language.lower().startswith("en"):
-            summary = (
-                f"{label} {step_label} was calculated by the process-model bounded scenario as "
+            if is_limited_delta:
+                summary = (
+                    f"The requested {label} {requested_label} is outside the safe calculation range, "
+                    f"so the model compared {matched_label} instead: "
+                )
+            else:
+                summary = f"{label} {matched_label} was compared by the crop model: "
+            summary += (
                 f"14d yield {_format_signed_delta(effects['yield_delta_14d'])}, "
                 f"72h canopy assimilation {_format_signed_delta(effects['canopy_delta_72h'])}, "
-                f"source/sink balance {_format_signed_delta(effects['source_sink_balance_delta'])}, "
-                f"and energy {_format_signed_delta(effects['energy_delta'])}."
+                f"supply/demand balance {_format_signed_delta(effects['source_sink_balance_delta'])}, "
+                f"energy {_format_signed_delta(effects['energy_delta'])}."
             )
         else:
-            summary = (
-                f"{label} {step_label} 조정은 process-model bounded scenario에서 "
+            if is_limited_delta:
+                summary = (
+                    f"요청한 {label} {requested_label} 조정은 안전 계산 범위를 넘어 "
+                    f"{matched_label}까지만 제한해 비교했습니다. "
+                )
+            else:
+                summary = f"{label} {matched_label} 조정은 작물 모델에서 비교했습니다. "
+            summary += (
                 f"14일 예상 수량 {_format_signed_delta(effects['yield_delta_14d'])}, "
-                f"72시간 캐노피 동화량 {_format_signed_delta(effects['canopy_delta_72h'])}, "
-                f"소스-싱크 균형 {_format_signed_delta(effects['source_sink_balance_delta'])}, "
-                f"에너지 {_format_signed_delta(effects['energy_delta'])}로 계산됐습니다."
+                f"72시간 군락 동화량 {_format_signed_delta(effects['canopy_delta_72h'])}, "
+                f"공급/수요 균형 {_format_signed_delta(effects['source_sink_balance_delta'])}, "
+                f"에너지 비용 {_format_signed_delta(effects['energy_delta'])}입니다."
             )
         return {
             "kind": "model_what_if",
@@ -478,6 +649,7 @@ def _build_runtime_answer_focus(
             "label": label,
             "requested_delta": requested_delta,
             "matched_delta": step.get("applied_delta"),
+            "is_limited_delta": is_limited_delta,
             "unit": family.get("unit"),
             "step_label": step_label,
             "action": f"{label} {step_label} 조정",
@@ -973,19 +1145,45 @@ def _build_model_runtime_payload(
             partial_state_snapshot=partial_state_snapshot,
         )
 
-    derivative_target = "canopy_A_72h" if tab_name == "physiology" else "predicted_yield_14d"
-    selected_controls = _select_runtime_controls(tab_name=tab_name, messages=messages)
+    metrics_payload = _get_dashboard_context(dashboard, "metrics") or {}
+    growth_metrics = metrics_payload.get("growth", {}) if isinstance(metrics_payload, dict) else {}
+    node_count = _coerce_float(growth_metrics.get("nodeCount"))
+    active_trusses = _coerce_float(growth_metrics.get("activeTrusses"))
+    chat_runtime_mode = (
+        _classify_chat_runtime_mode(messages)
+        if tab_name == "chat"
+        else "recommendation"
+    )
+    current_state_mode = chat_runtime_mode == "current_state"
+    derivative_target = (
+        "canopy_A_72h"
+        if tab_name == "physiology" or current_state_mode
+        else "predicted_yield_14d"
+    )
+    selected_controls = (
+        []
+        if current_state_mode
+        else _select_runtime_controls(tab_name=tab_name, messages=messages)
+    )
     try:
         baseline_payload = run_bounded_scenario(
             snapshot_record,
             controls={},
             horizons_hours=list(_MODEL_RUNTIME_HORIZONS_HOURS),
         )
-        sensitivity_payload = compute_local_sensitivities(
-            snapshot_record,
-            derivative_target=derivative_target,
-            controls=selected_controls,
-        )
+        if current_state_mode:
+            sensitivity_payload = {
+                "derivative_target": derivative_target,
+                "horizon_hours": 72,
+                "confidence": baseline_payload.get("confidence"),
+                "sensitivities": [],
+            }
+        else:
+            sensitivity_payload = compute_local_sensitivities(
+                snapshot_record,
+                derivative_target=derivative_target,
+                controls=selected_controls,
+            )
     except Exception:
         return _build_unavailable_model_runtime_payload(
             tab_name=tab_name,
@@ -999,6 +1197,107 @@ def _build_model_runtime_payload(
     baseline_72h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 72)
     baseline_168h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 168)
     baseline_336h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 336)
+    baseline_24h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 24)
+    state = snapshot_record["normalized_snapshot"]["state"]
+    gas_exchange = snapshot_record["normalized_snapshot"]["gas_exchange"]
+    live_observation = snapshot_record["normalized_snapshot"]["live_observation"]
+
+    if current_state_mode:
+        state_snapshot = {
+            "crop": crop,
+            "lai": state.get("lai"),
+            "fruit_load": state.get("fruit_load"),
+            "source_capacity": state.get("source_capacity"),
+            "sink_demand": state.get("sink_demand"),
+            "source_sink_balance": baseline_payload.get("runtime_inputs", {}).get("source_sink_balance"),
+            "limiting_factor": baseline_payload.get("runtime_inputs", {}).get("limiting_factor"),
+            "canopy_temperature_c": live_observation.get("canopy_temperature_c"),
+            "canopy_net_assimilation_umol_m2_s": gas_exchange.get("canopy_net_assimilation_umol_m2_s"),
+            "upper_leaf_activity": state.get("upper_leaf_activity"),
+            "middle_leaf_activity": state.get("middle_leaf_activity"),
+            "bottom_leaf_activity": state.get("bottom_leaf_activity"),
+            "node_count": int(node_count) if node_count is not None else None,
+            "active_trusses": int(active_trusses) if active_trusses is not None else None,
+            "observed_signal_score": observed_signal_score,
+            "dashboard_missing_fields": dashboard_missing_fields,
+            "inferred_fields": inferred_fields,
+        }
+        return {
+            "status": "ready",
+            "runtime_mode": "current_state",
+            "summary": "현재 생육 상태를 잎면적, 공급/수요 균형, 군락 동화량, 제한요인 중심으로 진단합니다. 제어 변경 효과는 사용자가 조정 범위를 물을 때만 계산합니다.",
+            "state_snapshot": state_snapshot,
+            "growth_diagnosis": {
+                "focus": "current_growth_status",
+                "signals": [
+                    {
+                        "key": "node_count",
+                        "label": "마디수",
+                        "value": state_snapshot.get("node_count"),
+                    },
+                    {
+                        "key": "lai",
+                        "label": "잎면적",
+                        "value": state_snapshot.get("lai"),
+                    },
+                    {
+                        "key": "source_sink_balance",
+                        "label": "공급/수요 균형",
+                        "value": state_snapshot.get("source_sink_balance"),
+                    },
+                    {
+                        "key": "canopy_net_assimilation",
+                        "label": "군락 동화량",
+                        "value": state_snapshot.get("canopy_net_assimilation_umol_m2_s"),
+                    },
+                    {
+                        "key": "limiting_factor",
+                        "label": "제한 요인",
+                        "value": state_snapshot.get("limiting_factor"),
+                    },
+                ],
+            },
+            "scenario": {
+                "baseline_outputs": baseline_payload.get("baseline_outputs", []),
+                "options": [],
+                "recommended": None,
+                "confidence": baseline_payload.get("confidence"),
+                "baseline_canopy_A_24h": baseline_24h.get("canopy_A_pred"),
+            },
+            "sensitivity": {
+                "target": sensitivity_payload.get("derivative_target"),
+                "analysis_horizon_hours": sensitivity_payload.get("horizon_hours"),
+                "confidence": sensitivity_payload.get("confidence"),
+                "top_levers": [],
+            },
+            "constraint_checks": {
+                "status": "monitoring-first",
+                "violated_constraints": [],
+                "penalties": {},
+            },
+            "recommendation_families": [],
+            "best_actions": [],
+            "control_precision_matrix": {},
+            "operator_view": {"now": [], "today": [], "this_week": []},
+            "tradeoff_summary": {
+                "yield_vs_energy": [],
+                "yield_vs_disease": [],
+                "yield_vs_source_sink": [],
+            },
+            "answer_focus": None,
+            "recommendations": [],
+            "provenance": {
+                "source": "dashboard_synthesized_snapshot",
+                "tab_name": tab_name,
+                "runtime_mode": "current_state",
+                "selected_controls": [],
+                "derivative_target": derivative_target,
+                "horizons_hours": list(_MODEL_RUNTIME_HORIZONS_HOURS),
+                "dashboard_missing_fields": dashboard_missing_fields,
+                "inferred_fields": inferred_fields,
+                "recommendations_surface": "suppressed_for_current_state",
+            },
+        }
 
     sensitivity_rows = {
         str(row.get("control")): row
@@ -1103,13 +1402,18 @@ def _build_model_runtime_payload(
         if energy_delta_72h > 0:
             risk_flags.append("에너지 증가")
         if source_sink_balance_delta < 0:
-            risk_flags.append("균형 약화")
+            risk_flags.append("공급/수요 균형 약화")
         if str(sensitivity_row.get("nonlinearity_hint") or "") in {"nonlinear", "direction_conflict"}:
             risk_flags.append("비선형성 경고")
         if scenario_score <= 0:
             risk_flags.append("효과 제한적")
         dominant_tradeoff = "수량 개선 우세"
-        tradeoff_candidates = [("에너지 증가", max(0.0, energy_delta_72h)), ("습도 리스크", max(0.0, humidity_penalty_delta)), ("병해 리스크", max(0.0, disease_penalty_delta)), ("소스-싱크 약화", max(0.0, -source_sink_balance_delta))]
+        tradeoff_candidates = [
+            ("에너지 증가", max(0.0, energy_delta_72h)),
+            ("습도 리스크", max(0.0, humidity_penalty_delta)),
+            ("병해 리스크", max(0.0, disease_penalty_delta)),
+            ("공급/수요 균형 약화", max(0.0, -source_sink_balance_delta)),
+        ]
         top_tradeoff = max(tradeoff_candidates, key=lambda item: item[1])
         if top_tradeoff[1] > 1e-9:
             dominant_tradeoff = top_tradeoff[0]
@@ -1202,9 +1506,37 @@ def _build_model_runtime_payload(
                 micro_cost = abs(float(micro.get("energy_delta", 0.0))) + float(micro.get("disease_penalty_delta", 0.0)) + float(micro.get("humidity_penalty_delta", 0.0))
                 macro_cost = abs(float(macro.get("energy_delta", 0.0))) + float(macro.get("disease_penalty_delta", 0.0)) + float(macro.get("humidity_penalty_delta", 0.0)) - micro_cost
                 diminishing_return = {"is_present": (macro_gain / max(abs(micro_gain), 1e-9)) < 0.85 or (macro_cost / max(abs(micro_cost), 1e-9)) > 1.1, "marginal_gain_micro": round(micro_gain, 6), "marginal_gain_macro": round(macro_gain, 6), "marginal_cost_micro": round(micro_cost, 6), "marginal_cost_macro": round(macro_cost, 6), "micro_to_macro_gain_ratio": round(macro_gain / max(abs(micro_gain), 1e-9), 6), "micro_to_macro_cost_ratio": round(macro_cost / max(abs(micro_cost), 1e-9), 6), "energy_per_yield_ratio": round(abs(float(macro.get("energy_delta", 0.0))) / max(abs(float(macro.get("yield_delta_14d", 0.0))), 1e-9), 6)}
-        operator_summary = {"headline": f"{spec.ui_label}은 지금 유지가 안전합니다.", "why": "bounded scenario에서 신뢰 가능한 이득이 확인된 조정 폭이 없습니다.", "watch_out": "현재 조건에서는 큰 조정보다 관측 신호를 더 모으는 편이 안전합니다.", "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(_MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"), "오늘")}
+        operator_summary = {
+            "headline": f"{spec.ui_label}은 지금 유지가 안전합니다.",
+            "why": "작물 모델에서 신뢰할 만한 이득이 확인된 조정 폭이 없습니다.",
+            "watch_out": "현재 조건에서는 큰 조정보다 관측 신호를 더 모으는 편이 안전합니다.",
+            "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(
+                _MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"),
+                "오늘",
+            ),
+        }
         if recommended_step:
-            operator_summary = {"headline": f"{spec.ui_label}는 {recommended_step['step_label']} 조정이 가장 유리합니다.", "why": f"14일 예상 수량 {float(recommended_step.get('yield_delta_14d', 0.0)):+.3f}, 72시간 캐노피 동화량 {float(recommended_step.get('canopy_delta_72h', 0.0)):+.3f}, 균형 지수 {float(recommended_step.get('source_sink_balance_delta', 0.0)):+.3f}입니다.", "watch_out": "더 크게 조정하면 추가 이득보다 비용 또는 리스크가 먼저 커질 수 있습니다." if precision_mode == "micro_preferred" else "미세 조정보다 한 단계 더 크게 움직일 때 이득이 더 분명합니다." if precision_mode == "macro_preferred" else "미세 조정과 강한 조정이 모두 유효해 운영 여유 범위가 있습니다." if precision_mode == "range_preferred" else "신뢰 구간 안에서만 조정 강도를 비교해 주세요.", "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(_MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"), "오늘")}
+            operator_summary = {
+                "headline": f"{spec.ui_label}는 {recommended_step['step_label']} 조정이 가장 유리합니다.",
+                "why": (
+                    f"14일 예상 수량 {float(recommended_step.get('yield_delta_14d', 0.0)):+.3f}, "
+                    f"72시간 군락 동화량 {float(recommended_step.get('canopy_delta_72h', 0.0)):+.3f}, "
+                    f"공급/수요 균형 {float(recommended_step.get('source_sink_balance_delta', 0.0)):+.3f}입니다."
+                ),
+                "watch_out": (
+                    "더 크게 조정하면 추가 이득보다 비용 또는 리스크가 먼저 커질 수 있습니다."
+                    if precision_mode == "micro_preferred"
+                    else "미세 조정보다 한 단계 더 크게 움직일 때 이득이 더 분명합니다."
+                    if precision_mode == "macro_preferred"
+                    else "미세 조정과 강한 조정이 모두 유효해 운영 여유 범위가 있습니다."
+                    if precision_mode == "range_preferred"
+                    else "신뢰 구간 안에서만 조정 강도를 비교해 주세요."
+                ),
+                "time_window": {"now": "지금", "today": "오늘", "this_week": "이번주"}.get(
+                    _MODEL_RUNTIME_TIME_WINDOWS.get(control_name, "today"),
+                    "오늘",
+                ),
+            }
         recommended_band = None
         if recommended_step:
             same_sign_values = [float(item.get("applied_delta", 0.0)) for item in steps if item.get("ui_visible") and (1 if float(item.get("applied_delta", 0.0)) > 0 else -1) == (1 if float(recommended_step.get("applied_delta", 0.0)) > 0 else -1) and item.get("step_class") in {"micro", "macro"}]
@@ -1269,10 +1601,6 @@ def _build_model_runtime_payload(
         }
         for lever in _top_runtime_levers(sensitivity_payload)
     ]
-    state = snapshot_record["normalized_snapshot"]["state"]
-    gas_exchange = snapshot_record["normalized_snapshot"]["gas_exchange"]
-    live_observation = snapshot_record["normalized_snapshot"]["live_observation"]
-    baseline_24h = _scenario_row_by_horizon(baseline_payload.get("baseline_outputs", []), 24)
     control_precision_matrix = {
         str(family.get("control")): [
             {
@@ -1364,7 +1692,8 @@ def _build_model_runtime_payload(
 
     return {
         "status": "ready",
-        "summary": "현재 운전점 기준의 편미분과 bounded scenario를 함께 사용해 조정 강도를 비교했습니다.",
+        "runtime_mode": "recommendation",
+        "summary": "현재 온실 상태를 기준으로 조정 후보의 효과와 비용을 비교했습니다.",
         "state_snapshot": {
             "crop": crop,
             "lai": state.get("lai"),
@@ -4974,12 +5303,12 @@ def _build_chat_answer_focus_markdown(
             f"72시간 {_format_signed_delta(effects.get('yield_delta_72h'))}, "
             f"7일 {_format_signed_delta(effects.get('yield_delta_7d'))}, "
             f"14일 {_format_signed_delta(effects.get('yield_delta_14d'))}.\n"
-            f"- 생리 반응: 72시간 캐노피 동화량 {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
-            f"소스-싱크 균형 {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
+            f"- 생리 반응: 72시간 군락 동화량 {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
+            f"공급/수요 균형 {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
             f"RTR {_format_signed_delta(effects.get('rtr_delta_72h'))}.\n"
             f"- 비용/리스크: 에너지 {_format_signed_delta(effects.get('energy_delta'))}, "
-            f"습도 패널티 {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
-            f"병해 패널티 {_format_signed_delta(effects.get('disease_penalty_delta'))}; "
+            f"습도 부담 {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
+            f"병해 부담 {_format_signed_delta(effects.get('disease_penalty_delta'))}; "
             f"{constraint_text}, 계산 신뢰도 {confidence_text}.\n"
             f"- 해석: {operator_summary.get('why') or '모델 계산값을 기준으로 효과와 비용을 함께 비교했습니다.'}\n"
         )
@@ -4994,7 +5323,7 @@ def _build_chat_answer_focus_markdown(
         f"7d {_format_signed_delta(effects.get('yield_delta_7d'))}, "
         f"14d {_format_signed_delta(effects.get('yield_delta_14d'))}.\n"
         f"- Physiology: 72h canopy assimilation {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
-        f"source/sink balance {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
+        f"supply/demand balance {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
         f"RTR {_format_signed_delta(effects.get('rtr_delta_72h'))}.\n"
         f"- Cost/risk: energy {_format_signed_delta(effects.get('energy_delta'))}, "
         f"humidity penalty {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
@@ -5019,6 +5348,261 @@ def _prepend_chat_answer_focus(
     return f"{focus_markdown}\n{text.lstrip()}"
 
 
+def _build_chat_fallback_markdown(
+    *,
+    language: str,
+    model_runtime: dict[str, Any],
+    reason: str,
+) -> str:
+    locale = "ko" if not language.lower().startswith("en") else "en"
+    focus_markdown = _build_chat_answer_focus_markdown(
+        model_runtime=model_runtime,
+        language=language,
+    )
+    if focus_markdown:
+        suffix = (
+            "## 답변 상태\n"
+            "- 외부 LLM 문장 생성은 잠시 사용할 수 없어, 현재 화면의 모델 계산값으로 먼저 답변했습니다.\n"
+            "- 수치 적용 전에는 최근 센서와 작업 기록이 최신인지 한 번 더 확인하세요.\n"
+            if locale == "ko"
+            else "## Answer status\n"
+            "- External LLM wording is temporarily unavailable, so the current process-model calculation is shown first.\n"
+            "- Confirm the latest telemetry and work-event records before applying numeric changes.\n"
+        )
+        return f"{focus_markdown}\n{suffix}"
+
+    return _build_summary_fallback_markdown(
+        language=language,
+        model_runtime=model_runtime,
+        reason=reason,
+    )
+
+
+def _format_optional_number(
+    value: Any,
+    *,
+    digits: int = 1,
+    suffix: str = "",
+) -> str:
+    numeric = _coerce_float(value)
+    if numeric is None:
+        return "추가 데이터 필요"
+    return f"{numeric:.{digits}f}{suffix}"
+
+
+def _is_node_status_question(messages: Optional[list[dict[str, str]]]) -> bool:
+    latest_user_turn = _latest_user_transcript(messages)
+    return any(term in latest_user_turn for term in ("마디", "마디수", "노드", "node", "nodes", "node count"))
+
+
+def _build_current_state_chat_display_payload(
+    *,
+    model_runtime: dict[str, Any],
+    messages: Optional[list[dict[str, str]]],
+    language: str,
+    confidence: float | None,
+) -> dict[str, Any]:
+    locale = "ko" if not language.lower().startswith("en") else "en"
+    state = _coerce_dict(model_runtime.get("state_snapshot"))
+    node_count = _coerce_float(state.get("node_count"))
+    lai = _coerce_float(state.get("lai"))
+    balance = _coerce_float(state.get("source_sink_balance"))
+    canopy_a = _coerce_float(state.get("canopy_net_assimilation_umol_m2_s"))
+    limiting_factor = _user_visible_limiting_factor(
+        state.get("limiting_factor"),
+        language=language,
+    )
+
+    if locale == "en":
+        if _is_node_status_question(messages) and node_count is not None:
+            summary = f"Current node count is {node_count:.0f}."
+        else:
+            summary = (
+                f"Current growth status: LAI {_format_optional_number(lai, digits=2)}, "
+                f"supply/demand balance {_format_optional_number(balance, digits=2)}, "
+                f"canopy assimilation {_format_optional_number(canopy_a, digits=1, suffix=' umol')}, "
+                f"main bottleneck {limiting_factor}."
+            )
+        monitor = [
+            "Record node count, LAI, and canopy assimilation together at the next observation.",
+            "Ask a separate what-if question when you want a control-change calculation.",
+        ]
+        sections = [
+            {"key": "summary", "title": "Summary", "body": f"- {summary}"},
+            {"key": "monitor", "title": "Monitor", "body": "\n".join(f"- {item}" for item in monitor)},
+        ]
+        return {
+            "language": locale,
+            "summary": summary,
+            "risks": [],
+            "actions_now": [],
+            "actions_today": [],
+            "actions_week": [],
+            "monitor": monitor,
+            "confidence": confidence,
+            "sections": sections,
+        }
+
+    if _is_node_status_question(messages) and node_count is not None:
+        summary = f"현재 마디수는 {node_count:.0f}개입니다."
+    else:
+        summary = (
+            f"현재 생육은 잎면적 {_format_optional_number(lai, digits=2)}, "
+            f"공급/수요 균형 {_format_optional_number(balance, digits=2)}, "
+            f"군락 동화량 {_format_optional_number(canopy_a, digits=1, suffix=' µmol')}, "
+            f"주요 병목 {limiting_factor} 기준으로 봅니다."
+        )
+    monitor = [
+        "다음 관측 때 마디수, 잎면적, 군락 동화량을 같은 시간대에 같이 기록하세요.",
+        "온도·CO2·습도를 바꾸면 어떤 효과가 나는지는 별도 what-if 질문으로 확인하세요.",
+    ]
+    sections = [
+        {"key": "summary", "title": "핵심 요약", "body": f"- {summary}"},
+        {"key": "monitor", "title": "모니터링", "body": "\n".join(f"- {item}" for item in monitor)},
+    ]
+    return {
+        "language": locale,
+        "summary": summary,
+        "risks": [],
+        "actions_now": [],
+        "actions_today": [],
+        "actions_week": [],
+        "monitor": monitor,
+        "confidence": confidence,
+        "sections": sections,
+    }
+
+
+def _build_chat_display_payload(
+    *,
+    text: str,
+    model_runtime: dict[str, Any],
+    messages: Optional[list[dict[str, str]]],
+    language: str,
+    confidence: float | None,
+) -> dict[str, Any]:
+    if model_runtime.get("runtime_mode") == "current_state":
+        return _build_current_state_chat_display_payload(
+            model_runtime=model_runtime,
+            messages=messages,
+            language=language,
+            confidence=confidence,
+        )
+    return build_advisory_display_payload(
+        text,
+        language=language,
+        confidence=confidence,
+    )
+
+
+def _build_display_markdown(
+    display: dict[str, Any],
+    *,
+    language: str,
+) -> str:
+    locale = "ko" if not language.lower().startswith("en") else "en"
+    summary = str(display.get("summary") or "").strip()
+    risks = [str(item) for item in display.get("risks", []) if str(item).strip()]
+    actions = [
+        str(item)
+        for item in [
+            *display.get("actions_now", []),
+            *display.get("actions_today", []),
+            *display.get("actions_week", []),
+        ]
+        if str(item).strip()
+    ]
+    monitor = [str(item) for item in display.get("monitor", []) if str(item).strip()]
+
+    if locale == "en":
+        sections = [f"## Summary\n- {summary or 'Current crop status was checked from the model snapshot.'}"]
+        if actions:
+            sections.append("## Recommended checks\n" + "\n".join(f"- {item}" for item in actions))
+        if risks:
+            sections.append("## Watch-outs\n" + "\n".join(f"- {item}" for item in risks))
+        if monitor:
+            sections.append("## Monitor\n" + "\n".join(f"- {item}" for item in monitor))
+        return "\n\n".join(sections)
+
+    sections = [f"## 핵심 요약\n- {summary or '현재 생육 상태를 모델 스냅샷 기준으로 확인했습니다.'}"]
+    if actions:
+        sections.append("## 확인할 내용\n" + "\n".join(f"- {item}" for item in actions))
+    if risks:
+        sections.append("## 주의할 점\n" + "\n".join(f"- {item}" for item in risks))
+    if monitor:
+        sections.append("## 모니터링\n" + "\n".join(f"- {item}" for item in monitor))
+    return "\n\n".join(sections)
+
+
+def build_advisor_chat_fallback_response(
+    *,
+    crop: str,
+    messages: list[dict[str, str]],
+    dashboard: Optional[dict[str, Any]] = None,
+    language: str = "ko",
+    reason: str = "openai_unavailable",
+) -> dict[str, Any]:
+    dashboard_payload = dashboard or {}
+    catalog_payload = build_knowledge_catalog(crop)
+    advisory_surfaces = catalog_payload.get("advisory_surfaces", {})
+    retrieval_context = build_chat_advisor_context(
+        crop=crop,
+        messages=messages,
+    )
+    model_runtime = _build_model_runtime_payload(
+        crop=crop,
+        dashboard=dashboard_payload,
+        tab_name="chat",
+        messages=messages,
+        language=language,
+    )
+    if model_runtime.get("runtime_mode") == "current_state":
+        display = _build_chat_display_payload(
+            text="",
+            model_runtime=model_runtime,
+            messages=messages,
+            language=language,
+            confidence=_context_completeness(dashboard_payload),
+        )
+        text = _build_display_markdown(display, language=language)
+    else:
+        text = _build_chat_fallback_markdown(
+            language=language,
+            model_runtime=model_runtime,
+            reason=reason,
+        )
+        display = _build_chat_display_payload(
+            text=text,
+            model_runtime=model_runtime,
+            messages=messages,
+            language=language,
+            confidence=_context_completeness(dashboard_payload),
+        )
+
+    return {
+        "status": "degraded",
+        "family": "advisor_chat",
+        "crop": crop,
+        "text": text,
+        "machine_payload": {
+            "domains": _infer_domains(dashboard_payload, advisory_surfaces),
+            "context_completeness": _context_completeness(dashboard_payload),
+            "missing_data": [
+                *_collect_missing_data_flags(dashboard_payload),
+                "openai_unavailable",
+            ],
+            "retrieval_context": retrieval_context.get("summary", {}),
+            "model_runtime": model_runtime,
+            "display": display,
+            "internal_provenance": _build_internal_provenance(
+                catalog_payload,
+                advisory_surfaces,
+                retrieval_context=retrieval_context,
+            ),
+        },
+    }
+
+
 def build_advisor_chat_response(
     *,
     crop: str,
@@ -5040,6 +5624,35 @@ def build_advisor_chat_response(
         messages=messages,
         language=language,
     )
+    if model_runtime.get("runtime_mode") == "current_state":
+        display = _build_chat_display_payload(
+            text="",
+            model_runtime=model_runtime,
+            messages=messages,
+            language=language,
+            confidence=_context_completeness(dashboard_payload),
+        )
+        text = _build_display_markdown(display, language=language)
+        return {
+            "status": "success",
+            "family": "advisor_chat",
+            "crop": crop,
+            "text": text,
+            "machine_payload": {
+                "domains": _infer_domains(dashboard_payload, advisory_surfaces),
+                "context_completeness": _context_completeness(dashboard_payload),
+                "missing_data": _collect_missing_data_flags(dashboard_payload),
+                "retrieval_context": retrieval_context.get("summary", {}),
+                "model_runtime": model_runtime,
+                "display": display,
+                "internal_provenance": _build_internal_provenance(
+                    catalog_payload,
+                    advisory_surfaces,
+                    retrieval_context=retrieval_context,
+                ),
+            },
+        }
+
     llm_dashboard = _inject_model_runtime_context(
         _inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
         model_runtime,
@@ -5055,8 +5668,10 @@ def build_advisor_chat_response(
         model_runtime=model_runtime,
         language=language,
     )
-    display = build_advisory_display_payload(
-        text,
+    display = _build_chat_display_payload(
+        text=text,
+        model_runtime=model_runtime,
+        messages=messages,
         language=language,
         confidence=_context_completeness(dashboard_payload),
     )

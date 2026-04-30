@@ -29,6 +29,54 @@ function formatScopeLabel(scope: string | null, locale: 'ko' | 'en', cropLabel: 
     return scope;
 }
 
+function formatMaterialLabel(value: string | null | undefined, locale: 'ko' | 'en') {
+    if (!value) {
+        return locale === 'ko' ? '재배 자료' : 'Material';
+    }
+    if (locale !== 'ko') {
+        return value;
+    }
+
+    const normalized = value.toLowerCase().replace(/[_-]+/g, ' ');
+    const map: Record<string, string> = {
+        pdf: '문서',
+        document: '문서',
+        manual: '재배 매뉴얼',
+        table: '표 자료',
+        chunk: '본문',
+        text: '본문',
+        page: '페이지',
+    };
+    return map[normalized] ?? normalized.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatTopicLabel(value: string | null | undefined, locale: 'ko' | 'en') {
+    if (!value) {
+        return locale === 'ko' ? '일반' : 'General';
+    }
+    if (locale !== 'ko') {
+        return value;
+    }
+
+    const normalized = value.toLowerCase().replace(/[_-]+/g, ' ');
+    const map: Record<string, string> = {
+        protection: '병해충',
+        pesticide: '농약',
+        disease: '병해',
+        nutrient: '양액',
+        irrigation: '관수',
+        climate: '온실 환경',
+        weather: '외기',
+        market: '시세',
+        cucumber: '오이',
+        tomato: '토마토',
+        growth: '생육',
+        harvest: '수확',
+        work: '작업',
+    };
+    return map[normalized] ?? value;
+}
+
 export default function AskKnowledgeBoard({
     locale,
     crop,
@@ -131,10 +179,10 @@ export default function AskKnowledgeBoard({
         () => results.map((item, index) => ({
             key: `${item.document.relative_path}-${item.score}-${index}`,
             title: item.document.title,
-            topic: item.topic_minor ?? item.topic_major ?? item.document.asset_family,
+            topic: formatTopicLabel(item.topic_minor ?? item.topic_major ?? item.document.asset_family, locale),
             score: `${Math.round(item.score * 100)}%`,
         })),
-        [results],
+        [locale, results],
     );
 
     return (
@@ -240,9 +288,9 @@ export default function AskKnowledgeBoard({
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 <div className="flex flex-wrap gap-2">
-                                    <Badge variant="default">{activeResult.document.source_type}</Badge>
-                                    {activeResult.topic_major ? <Badge variant="muted">{activeResult.topic_major}</Badge> : null}
-                                    {activeResult.chunk_type ? <Badge variant="forest">{activeResult.chunk_type}</Badge> : null}
+                                    <Badge variant="default">{formatMaterialLabel(activeResult.document.source_type, locale)}</Badge>
+                                    {activeResult.topic_major ? <Badge variant="muted">{formatTopicLabel(activeResult.topic_major, locale)}</Badge> : null}
+                                    {activeResult.chunk_type ? <Badge variant="forest">{formatMaterialLabel(activeResult.chunk_type, locale)}</Badge> : null}
                                 </div>
                                 <div className="mt-4 flex items-start gap-3">
                                     <div className="rounded-[18px] bg-[color:var(--sg-color-sage-soft)] p-2 text-[color:var(--sg-color-olive)]">
@@ -261,7 +309,7 @@ export default function AskKnowledgeBoard({
                                     {activeResult.text}
                                 </p>
                                 <div className="mt-4 grid gap-2 rounded-[20px] bg-[color:var(--sg-color-ivory)] px-3 py-3 text-xs text-[color:var(--sg-text-muted)] sm:grid-cols-2">
-                                    <div>{copy.openFrom}: {activeResult.document.relative_path}</div>
+                                    <div>{copy.openFrom}: {locale === 'ko' ? activeResult.document.title : activeResult.document.relative_path}</div>
                                     <div>{copy.score}: {Math.round(activeResult.score * 100)}%</div>
                                 </div>
                                 <div className="mt-4 flex flex-wrap justify-between gap-2">

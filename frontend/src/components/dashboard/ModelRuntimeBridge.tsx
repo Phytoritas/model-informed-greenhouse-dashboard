@@ -58,6 +58,23 @@ function statusTone(state: ModelRuntimeRunState): 'growth' | 'stable' | 'warning
   return 'muted';
 }
 
+function runStatusLabel(state: ModelRuntimeRunState, locale: 'ko' | 'en'): string {
+  if (locale !== 'ko') {
+    return state.status;
+  }
+  switch (state.status) {
+    case 'success':
+      return '완료';
+    case 'error':
+      return '확인 필요';
+    case 'loading':
+      return '계산 중';
+    case 'idle':
+    default:
+      return '대기';
+  }
+}
+
 function resultSummary(
   key: RuntimeActionCard['key'],
   state: ModelRuntimeRunState,
@@ -66,14 +83,14 @@ function resultSummary(
   const copy = locale === 'ko'
     ? {
         idle: '아직 실행하지 않았습니다.',
-        loading: '백엔드 응답을 확인하는 중입니다.',
-        snapshot: '스냅샷 저장됨',
-        scenario: '시나리오 계산됨',
-        replay: '작업 이벤트 replay 완료',
+        loading: '계산 결과를 확인하는 중입니다.',
+        snapshot: '현재 상태 저장됨',
+        scenario: '수량 변화 계산됨',
+        replay: '작업 영향 다시 계산됨',
         sensitivity: '민감도 계산됨',
-        reindex: '지식 카탈로그 재색인 완료',
-        outputs: '개 출력',
-        levers: '개 lever',
+        reindex: '재배 자료 새로고침 완료',
+        outputs: '개 결과',
+        levers: '개 조정값',
         confidence: '신뢰도',
       }
     : {
@@ -100,6 +117,9 @@ function resultSummary(
   }
 
   if (key === 'snapshot') {
+    if (locale === 'ko') {
+      return copy.snapshot;
+    }
     const snapshotId = asText(state.result.snapshot_id) ?? '-';
     return `${copy.snapshot}: ${snapshotId}`;
   }
@@ -111,8 +131,10 @@ function resultSummary(
   }
 
   if (key === 'replay') {
-    const finalSnapshotId = asText(state.result.final_snapshot_id) ?? '-';
-    return `${copy.replay}: ${finalSnapshotId} · ${asArray(state.result.events).length} ${copy.outputs}`;
+    if (locale === 'ko') {
+      return `${copy.replay} · ${asArray(state.result.events).length} ${copy.outputs}`;
+    }
+    return `${copy.replay} · ${asArray(state.result.events).length} ${copy.outputs}`;
   }
 
   if (key === 'sensitivity') {
@@ -140,31 +162,27 @@ export default function ModelRuntimeBridge({ crop, onOpenAssistant }: ModelRunti
 
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Backend Runtime Bridge',
-        title: '백엔드 모델 기능을 실제 화면에서 확인',
-        description: '스냅샷, 시나리오, 민감도, 지식 재색인을 overview에서 수동 확인합니다.',
-        snapshot: '모델 스냅샷',
-        snapshotDescription: '현재 live adapter 상태를 정규화해 저장합니다.',
-        replay: '작업 이벤트 replay',
-        replayDescription: '저장된 스냅샷 또는 live 상태 위에 canonical work event를 재생합니다.',
-        scenario: '시나리오 실행',
-        scenarioDescription: '저장된 스냅샷 또는 live 상태로 24h, 72h, 336h 예측을 계산합니다.',
-        sensitivity: '민감도 분석',
-        sensitivityDescription: '온도, CO2, 습도 lever가 14일 수확 예측에 주는 국소 영향을 확인합니다.',
-        reindex: '지식 재색인',
-        reindexDescription: 'SmartGrow 지식 카탈로그를 현재 작물 범위로 다시 구성합니다.',
-        runSnapshot: '스냅샷 저장',
-        runReplay: 'Replay 실행',
+        eyebrow: '계산 도구',
+        title: '모델 계산과 자료 새로고침',
+        description: '현재 온실 데이터로 수량 변화, 작업 영향, 조정 민감도를 확인합니다.',
+        snapshot: '현재 상태 저장',
+        snapshotDescription: '지금 온실 상태를 계산 기준으로 저장합니다.',
+        replay: '작업 영향 다시 보기',
+        replayDescription: '최근 작업이 생육과 수확 흐름에 준 영향을 다시 계산합니다.',
+        scenario: '수량 변화 계산',
+        scenarioDescription: '하루, 사흘, 2주 단위의 수확 전망 변화를 계산합니다.',
+        sensitivity: '조정 민감도',
+        sensitivityDescription: '온도, CO2, 습도 조정이 수확 예측에 주는 영향을 확인합니다.',
+        reindex: '재배 자료 새로고침',
+        reindexDescription: '현재 작물에 맞춰 자료와 권고 목록을 다시 정리합니다.',
+        runSnapshot: '상태 저장',
+        runReplay: '다시 계산',
         runScenario: '시나리오 실행',
         runSensitivity: '민감도 실행',
-        runReindex: '재색인',
-        currentSnapshot: '현재 스냅샷',
-        noSnapshot: 'live 상태 사용',
-        advisor: 'Advisor exact endpoints는 /advisor/tab/* delegate와 채팅으로 연결됨',
-        deterministic: '환경·작업·방제·양액 deterministic recommend는 advisor tab에서 사용됨',
-        stream: 'simulation control과 forecast websocket은 기존 실시간 hook에 유지됨',
-        legacy: '구 /ai/chat, /ai/consult는 Assistant 호환 패널에 보존됨',
-        ask: '채팅에서 해석',
+        runReindex: '자료 새로고침',
+        currentSnapshot: '계산 기준',
+        noSnapshot: '현재 상태 사용',
+        ask: '질문 도우미로 해석',
       }
     : {
         eyebrow: 'Backend Runtime Bridge',
@@ -242,15 +260,13 @@ export default function ModelRuntimeBridge({ crop, onOpenAssistant }: ModelRunti
     },
   ];
 
-  const auditItems = [copy.advisor, copy.deterministic, copy.stream, copy.legacy];
-
   return (
-    <section id="backend-runtime-bridge" tabIndex={-1} className="scroll-mt-24 space-y-4" aria-labelledby="backend-runtime-bridge-title">
+    <section id="process-model-tools" tabIndex={-1} className="scroll-mt-24 space-y-4" aria-labelledby="process-model-tools-title">
       <div className="sg-panel p-3.5">
         <div className="mb-3 flex flex-col gap-2 border-b border-[color:var(--sg-outline-soft)] pb-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="sg-eyebrow">{copy.eyebrow}</p>
-            <h2 id="backend-runtime-bridge-title" className="mt-1 text-base font-bold text-[color:var(--sg-text-strong)]">{copy.title}</h2>
+            <h2 id="process-model-tools-title" className="mt-1 text-base font-bold text-[color:var(--sg-text-strong)]">{copy.title}</h2>
             <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.description}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -269,14 +285,8 @@ export default function ModelRuntimeBridge({ crop, onOpenAssistant }: ModelRunti
               card={card}
               state={runs[card.key]}
               summary={resultSummary(card.key, runs[card.key], locale)}
+              statusLabel={runStatusLabel(runs[card.key], locale)}
             />
-          ))}
-        </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {auditItems.map((item) => (
-            <div key={item} className="rounded-[var(--sg-radius-xs)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] px-3 py-1.5 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">
-              {item}
-            </div>
           ))}
         </div>
       </div>
@@ -288,10 +298,12 @@ function RuntimeCard({
   card,
   state,
   summary,
+  statusLabel,
 }: {
   card: RuntimeActionCard;
   state: ModelRuntimeRunState;
   summary: string;
+  statusLabel: string;
 }) {
   const Icon = card.icon;
   const isLoading = state.status === 'loading';
@@ -301,7 +313,7 @@ function RuntimeCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-xs font-bold text-[color:var(--sg-text-strong)]">{card.title}</h3>
-          <p className="mt-1 font-mono text-[11px] text-[color:var(--sg-text-faint)]">{card.endpoint}</p>
+          <p className="mt-1 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">{card.description}</p>
         </div>
         <span className={cn(
           'flex h-7 w-7 items-center justify-center rounded-[var(--sg-radius-xs)]',
@@ -317,7 +329,7 @@ function RuntimeCard({
         {summary}
       </div>
       <div className="mt-auto flex items-center justify-between gap-3">
-        <StatusChip tone={statusTone(state)}>{state.status}</StatusChip>
+        <StatusChip tone={statusTone(state)}>{statusLabel}</StatusChip>
         <Button size="sm" variant={state.status === 'error' ? 'danger' : 'secondary'} disabled={isLoading} onClick={card.onRun}>
           {card.buttonLabel}
         </Button>

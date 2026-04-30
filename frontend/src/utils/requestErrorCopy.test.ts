@@ -8,7 +8,7 @@ describe('getRequestErrorCopy', () => {
         resourceKo: '환경 제어 추천',
         resourceEn: 'the control recommendation',
       }),
-    ).toBe('백엔드 연결이 없어 환경 제어 추천 불러오지 못했습니다.');
+    ).toBe('서비스 연결이 없어 환경 제어 추천 불러오지 못했습니다.');
   });
 
   it('localizes 5xx responses for English screens', () => {

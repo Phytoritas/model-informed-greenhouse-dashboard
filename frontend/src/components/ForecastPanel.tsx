@@ -28,7 +28,7 @@ function ForecastMetricTile({
 }) {
     const toneClass = {
         green: 'sg-tint-green text-[color:var(--sg-accent-forest)]',
-        blue: 'sg-tint-blue text-[color:var(--sg-accent-blue)]',
+        blue: 'sg-tint-green text-[color:var(--sg-color-olive)]',
         amber: 'sg-tint-amber text-[color:var(--sg-accent-amber)]',
     }[tone];
 
@@ -280,7 +280,7 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                                     <Bar
                                         dataKey="ETc_mm"
                                         name={copy.cropTranspiration}
-                                        fill="#4c9bd8"
+                                        fill="#596b4a"
                                         radius={[6, 6, 0, 0]}
                                         maxBarSize={40}
                                     />
