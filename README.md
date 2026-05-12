@@ -32,27 +32,30 @@ poetry run ruff check .
 
 Quick launcher:
 
+Windows PowerShell:
+
 ```powershell
 .\start_all.bat
 .\start_all.bat check
 ```
 
+macOS, Linux, WSL, or Git Bash:
+
 ```bash
-bash scripts/start_all.sh
-bash scripts/start_all.sh check
+chmod +x scripts/start_all.sh
+./scripts/start_all.sh
+./scripts/start_all.sh check
 ```
 
 - In PowerShell, use `.\start_all.bat`; PowerShell does not execute files from the current directory without the explicit `.\` prefix.
 - `.\start_all.bat` opens separate backend/frontend windows on Windows and installs missing dependencies on first run.
-- `bash scripts/start_all.sh` provides the same workflow for Git Bash, WSL, or Unix-like shells.
-- `.\start_all.bat check` or `bash scripts/start_all.sh check` validates the launcher prerequisites without starting servers.
+- `./scripts/start_all.sh` provides the same workflow for macOS, Linux, WSL, or Git Bash. If execute permissions are unavailable, use `bash scripts/start_all.sh` instead.
+- `.\start_all.bat check` or `./scripts/start_all.sh check` validates the launcher prerequisites without starting servers.
 - If you switch between Windows and WSL/Git Bash, the launcher now tries to repair the current platform's Rollup native package automatically and only falls back to a clean `node_modules` reinstall when that repair is insufficient.
 - The launcher now clears stale listeners on ports `8000` and `5173` before starting fresh backend/frontend processes, so route mismatches such as `/api/weather/daegu` returning `404 Not Found` from an older backend should not persist across relaunches.
 - RTR steering profiles now live in `configs/rtr_profiles.json`, and you can recalibrate their baseline prior from local history with `poetry run python scripts/calibrate_rtr.py --windows configs/rtr_good_windows.yaml`.
-- GitHub Actions CI now mirrors the local validation ladder in `.github/workflows/ci.yml` by running Poetry `ruff`/`pytest` plus frontend `lint`/`build` on pushes and pull requests.
 
 ## Current status
-- Harness bootstrap is complete under `docs/architecture/` and `.rah/`.
 - The backend runtime and legacy crop models from `dashboard-eng_1.1` now live under `src/model_informed_greenhouse_dashboard/`.
 - The source `frontend/` Vite workspace has been migrated into `frontend/` and validated with typecheck, lint, and production build.
 - Crop-scoped control/config endpoints now preserve per-crop state instead of falling back to the source project's shared-state assumptions.
