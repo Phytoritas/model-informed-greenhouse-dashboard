@@ -13,14 +13,17 @@ results/
 runs*/
 logs/
 .playwright-mcp/
-.rah/logs/
-!.rah/logs/
-!.rah/logs/activity_log.md
-.rah/logs/*.log
-.rah/helpers/
-.rah/state/deployment.json
-.rah/memory/*.json
-.rah/state/memento_status.json
+.rah/
+Phytoritas.md
+docs/architecture/
+.github/
+scripts/GitHubProject.Common.ps1
+scripts/Link-GitHubProjectRepository.ps1
+scripts/New-GitHubIssueBranch.ps1
+scripts/New-GitHubPullRequest.ps1
+scripts/Set-GitHubProjectField.ps1
+scripts/Set-GitHubProjectStatus.ps1
+scripts/Sync-GitHubLabels.ps1
 
 .env
 config.yaml
