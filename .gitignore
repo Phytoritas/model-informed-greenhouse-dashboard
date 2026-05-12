@@ -15,7 +15,7 @@ logs/
 .playwright-mcp/
 .rah/
 Phytoritas.md
-docs/architecture/
+docs/
 .github/
 scripts/GitHubProject.Common.ps1
 scripts/Link-GitHubProjectRepository.ps1
