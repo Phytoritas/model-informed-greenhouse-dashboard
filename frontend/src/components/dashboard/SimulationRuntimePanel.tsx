@@ -3,8 +3,11 @@ import { Activity, Gauge, Loader2, Pause, Play, RotateCcw, SkipForward, Square, 
 import type { AppLocale } from '../../i18n/locale';
 import type { CropType, TelemetryStatus } from '../../types';
 import {
+  DEFAULT_SIMULATION_PACE,
+  readStoredSimulationPace,
   simulationRuntimePacePresets,
   simulationRuntimeTimeSteps,
+  writeStoredSimulationPace,
   type SimulationRuntimeAction,
   type SimulationRuntimePacePreset,
   type SimulationRuntimeTimeStep,
@@ -22,8 +25,6 @@ interface SimulationRuntimePanelProps {
 }
 
 const ACTION_ORDER: SimulationRuntimeAction[] = ['start', 'step', 'run', 'pause', 'resume', 'stop', 'speed'];
-const DEFAULT_SIMULATION_PACE: SimulationRuntimePacePreset = 600;
-const PACE_STORAGE_KEY = 'sg-sim-pace';
 
 function statusTone(status: TelemetryStatus): 'growth' | 'stable' | 'warning' | 'critical' {
   if (status === 'live') return 'growth';
@@ -39,35 +40,6 @@ function requestTone(status: 'idle' | 'loading' | 'success' | 'error'): 'growth'
   return 'muted';
 }
 
-function isPacePreset(value: number): value is SimulationRuntimePacePreset {
-  return simulationRuntimePacePresets.some((preset) => preset === value);
-}
-
-function readStoredPace(): SimulationRuntimePacePreset {
-  if (typeof window === 'undefined') {
-    return DEFAULT_SIMULATION_PACE;
-  }
-
-  try {
-    const storedPace = Number(window.localStorage.getItem(PACE_STORAGE_KEY));
-    return isPacePreset(storedPace) ? storedPace : DEFAULT_SIMULATION_PACE;
-  } catch {
-    return DEFAULT_SIMULATION_PACE;
-  }
-}
-
-function persistPace(value: SimulationRuntimePacePreset): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(PACE_STORAGE_KEY, String(value));
-  } catch {
-    // Keep runtime controls usable when storage is unavailable.
-  }
-}
-
 export default function SimulationRuntimePanel({
   locale,
   crop,
@@ -75,7 +47,9 @@ export default function SimulationRuntimePanel({
   telemetryDetail = null,
 }: SimulationRuntimePanelProps) {
   const [timeStep, setTimeStep] = useState<SimulationRuntimeTimeStep>('auto');
-  const [pace, setPace] = useState<SimulationRuntimePacePreset>(() => readStoredPace());
+  const [pace, setPace] = useState<SimulationRuntimePacePreset>(
+    () => readStoredSimulationPace() ?? DEFAULT_SIMULATION_PACE,
+  );
   const runtime = useSimulationRuntimeControls(crop);
   const isBusy = ACTION_ORDER.some((action) => runtime.state[action].status === 'loading');
   const latestAction = useMemo(() => (
@@ -126,9 +100,16 @@ export default function SimulationRuntimePanel({
 
   const latestState = runtime.state[latestAction];
 
-  const handlePaceSelect = (nextPace: SimulationRuntimePacePreset) => {
+  const handlePaceSelect = async (nextPace: SimulationRuntimePacePreset) => {
+    const result = await runtime.setSpeed(nextPace);
+    if (result === null) {
+      // R10: the /api/speed request failed. Keep the previously active preset and
+      // let the runtime error state surface below instead of showing a pace that
+      // the backend never accepted.
+      return;
+    }
     setPace(nextPace);
-    persistPace(nextPace);
+    writeStoredSimulationPace(nextPace);
   };
 
   return (
@@ -191,7 +172,8 @@ export default function SimulationRuntimePanel({
                   pressed={pace === preset}
                   aria-label={`${preset} s/s`}
                   aria-pressed={pace === preset}
-                  onClick={() => handlePaceSelect(preset)}
+                  disabled={runtime.state.speed.status === 'loading'}
+                  onClick={() => { void handlePaceSelect(preset); }}
                   className="inline-flex h-10 min-w-0 items-baseline justify-center gap-1 rounded-[var(--sg-radius-sm)] px-2 py-2"
                 >
                   <span className="sg-data-number text-sm font-bold">{preset}</span>

@@ -12,6 +12,7 @@ import type {
     MetricHistoryPoint,
 } from '../types';
 import { API_URL, FORECAST_WS_URL, WS_URL } from '../config';
+import { buildSimulationPaceRequest, readStoredSimulationPace } from './useSimulationRuntimeControls';
 import { useAreaUnit } from '../context/AreaUnitContext';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
@@ -111,6 +112,7 @@ const TELEMETRY_HEALTH_POLL_MS = 2_000;
 const SIMULATION_RECOVERY_BACKOFF_MS = 15_000;
 const STATUS_REQUEST_TIMEOUT_MS = 4_000;
 const START_REQUEST_TIMEOUT_MS = 8_000;
+const PACE_REQUEST_TIMEOUT_MS = 4_000;
 
 const DEFAULT_SENSOR_FIELD_AVAILABILITY: SensorFieldAvailability = {
     temperature: false,
@@ -365,6 +367,29 @@ export const useGreenhouse = () => {
         }));
         setWsConnectionNonce((prev) => prev + 1);
     }, [selectedCrop]);
+
+    // Reapply the user's persisted simulation pace after a (re)connection so a fresh
+    // start or a WebSocket reconnect keeps the selected pace instead of snapping back
+    // to the backend default (R11). Skipped when no pace is stored so the backend's
+    // own default stands.
+    const applyStoredSimulationPace = useCallback(async (cropType: CropType) => {
+        const storedPace = readStoredSimulationPace();
+        if (storedPace === null) {
+            return;
+        }
+
+        const { path, init } = buildSimulationPaceRequest(cropType, storedPace);
+        try {
+            await fetchWithTimeout(`${API_URL}${path}`, init, PACE_REQUEST_TIMEOUT_MS);
+        } catch (err) {
+            const errorName = err instanceof Error ? err.name : '';
+            if (errorName === 'AbortError') {
+                console.warn(`Simulation pace restore for ${cropType} was aborted:`, err);
+                return;
+            }
+            console.warn(`Failed to restore stored simulation pace for ${cropType}:`, err);
+        }
+    }, []);
 
     const ensureSimulationRunning = useCallback(async (cropType: CropType) => {
         if (recoveryRequestInFlightRef.current[cropType]) {
@@ -748,6 +773,7 @@ export const useGreenhouse = () => {
                     status: 'loading',
                 },
             }));
+            void applyStoredSimulationPace(cropAtConnection);
         };
 
         ws.onmessage = (event) => {
@@ -853,7 +879,7 @@ export const useGreenhouse = () => {
                 wsRef.current = null;
             }
         };
-    }, [flushCropState, mapPayloadToData, selectedCrop, wsConnectionNonce]);
+    }, [applyStoredSimulationPace, flushCropState, mapPayloadToData, selectedCrop, wsConnectionNonce]);
 
     useEffect(() => {
         const cropAtConnection = selectedCrop;
