@@ -3,13 +3,16 @@ import { Activity, Gauge, Loader2, Pause, Play, RotateCcw, SkipForward, Square, 
 import type { AppLocale } from '../../i18n/locale';
 import type { CropType, TelemetryStatus } from '../../types';
 import {
+  simulationRuntimePacePresets,
   simulationRuntimeTimeSteps,
   type SimulationRuntimeAction,
+  type SimulationRuntimePacePreset,
   type SimulationRuntimeTimeStep,
   useSimulationRuntimeControls,
 } from '../../hooks/useSimulationRuntimeControls';
 import { Button } from '../ui/button';
 import { StatusChip } from '../ui/status-chip';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
 interface SimulationRuntimePanelProps {
   locale: AppLocale;
@@ -19,6 +22,8 @@ interface SimulationRuntimePanelProps {
 }
 
 const ACTION_ORDER: SimulationRuntimeAction[] = ['start', 'step', 'run', 'pause', 'resume', 'stop', 'speed'];
+const DEFAULT_SIMULATION_PACE: SimulationRuntimePacePreset = 600;
+const PACE_STORAGE_KEY = 'sg-sim-pace';
 
 function statusTone(status: TelemetryStatus): 'growth' | 'stable' | 'warning' | 'critical' {
   if (status === 'live') return 'growth';
@@ -34,6 +39,35 @@ function requestTone(status: 'idle' | 'loading' | 'success' | 'error'): 'growth'
   return 'muted';
 }
 
+function isPacePreset(value: number): value is SimulationRuntimePacePreset {
+  return simulationRuntimePacePresets.some((preset) => preset === value);
+}
+
+function readStoredPace(): SimulationRuntimePacePreset {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SIMULATION_PACE;
+  }
+
+  try {
+    const storedPace = Number(window.localStorage.getItem(PACE_STORAGE_KEY));
+    return isPacePreset(storedPace) ? storedPace : DEFAULT_SIMULATION_PACE;
+  } catch {
+    return DEFAULT_SIMULATION_PACE;
+  }
+}
+
+function persistPace(value: SimulationRuntimePacePreset): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(PACE_STORAGE_KEY, String(value));
+  } catch {
+    // Keep runtime controls usable when storage is unavailable.
+  }
+}
+
 export default function SimulationRuntimePanel({
   locale,
   crop,
@@ -41,7 +75,7 @@ export default function SimulationRuntimePanel({
   telemetryDetail = null,
 }: SimulationRuntimePanelProps) {
   const [timeStep, setTimeStep] = useState<SimulationRuntimeTimeStep>('auto');
-  const [speed, setSpeedValue] = useState(1);
+  const [pace, setPace] = useState<SimulationRuntimePacePreset>(() => readStoredPace());
   const runtime = useSimulationRuntimeControls(crop);
   const isBusy = ACTION_ORDER.some((action) => runtime.state[action].status === 'loading');
   const latestAction = useMemo(() => (
@@ -92,6 +126,11 @@ export default function SimulationRuntimePanel({
 
   const latestState = runtime.state[latestAction];
 
+  const handlePaceSelect = (nextPace: SimulationRuntimePacePreset) => {
+    setPace(nextPace);
+    persistPace(nextPace);
+  };
+
   return (
     <section className="sg-panel p-4" aria-labelledby="simulation-runtime-title">
       <div className="flex flex-col gap-3 border-b border-[color:var(--sg-outline-soft)] pb-3 lg:flex-row lg:items-end lg:justify-between">
@@ -138,19 +177,28 @@ export default function SimulationRuntimePanel({
             </select>
           </div>
           <div>
-            <label htmlFor="runtime-speed" className="text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
+            <span id="runtime-speed-label" className="text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
               {copy.speed}
-            </label>
-            <input
-              id="runtime-speed"
-              type="number"
-              min="0.1"
-              max="100"
-              step="0.1"
-              value={speed}
-              onChange={(event) => setSpeedValue(Number(event.target.value))}
-              className="sg-data-number mt-2 h-10 w-full rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-white px-3 text-sm font-semibold text-[color:var(--sg-text-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
-            />
+            </span>
+            <ToggleGroup
+              role="group"
+              aria-labelledby="runtime-speed-label"
+              className="mt-2 grid w-full grid-cols-3 gap-1 rounded-[var(--sg-radius-sm)] bg-white p-1 shadow-none"
+            >
+              {simulationRuntimePacePresets.map((preset) => (
+                <ToggleGroupItem
+                  key={preset}
+                  pressed={pace === preset}
+                  aria-label={`${preset} s/s`}
+                  aria-pressed={pace === preset}
+                  onClick={() => handlePaceSelect(preset)}
+                  className="inline-flex h-10 min-w-0 items-baseline justify-center gap-1 rounded-[var(--sg-radius-sm)] px-2 py-2"
+                >
+                  <span className="sg-data-number text-sm font-bold">{preset}</span>
+                  <span className="text-[10px] font-bold uppercase opacity-70">s/s</span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
         </div>
 
@@ -167,7 +215,7 @@ export default function SimulationRuntimePanel({
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
             {copy.run}
           </Button>
-          <Button variant="secondary" disabled={isBusy || !Number.isFinite(speed) || speed <= 0} onClick={() => { void runtime.setSpeed(speed); }}>
+          <Button variant="secondary" disabled={isBusy} onClick={() => { void runtime.setSpeed(pace); }}>
             <Gauge className="h-4 w-4" aria-hidden="true" />
             {copy.applySpeed}
           </Button>
