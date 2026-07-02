@@ -24,6 +24,22 @@ export type SimulationRuntimeTimeStep = typeof TIME_STEP_OPTIONS[number];
 
 export const simulationRuntimeTimeSteps = [...TIME_STEP_OPTIONS];
 
+const PACE_PRESETS = [10, 20, 30, 60, 600, 6000] as const;
+export type SimulationRuntimePacePreset = typeof PACE_PRESETS[number];
+
+export const simulationRuntimePacePresets = [...PACE_PRESETS];
+
+const LEGACY_DEFAULT_STEP_SIM_SECONDS = 600;
+const LEGACY_REAL_SECONDS_PER_STEP = 0.1;
+
+export function deriveLegacySpeedFromPace(simSecondsPerRealSecond: number): number {
+  return (
+    Number(simSecondsPerRealSecond)
+    * LEGACY_REAL_SECONDS_PER_STEP
+    / LEGACY_DEFAULT_STEP_SIM_SECONDS
+  );
+}
+
 function cropToApiKey(crop: CropType): Lowercase<CropType> {
   return crop.toLowerCase() as Lowercase<CropType>;
 }
@@ -153,8 +169,11 @@ export function useSimulationRuntimeControls(crop: CropType) {
   const pause = useCallback(() => execute('pause', `/pause?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
   const resume = useCallback(() => execute('resume', `/resume?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
   const stop = useCallback(() => execute('stop', `/stop?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
-  const setSpeed = useCallback((speed: number) => execute('speed', `/speed?crop=${encodeURIComponent(cropKey)}`, {
-    body: JSON.stringify({ speed }),
+  const setSpeed = useCallback((simSecondsPerRealSecond: number) => execute('speed', `/speed?crop=${encodeURIComponent(cropKey)}`, {
+    body: JSON.stringify({
+      sim_seconds_per_real_second: simSecondsPerRealSecond,
+      speed: deriveLegacySpeedFromPace(simSecondsPerRealSecond),
+    }),
   }), [cropKey, execute]);
 
   return {
