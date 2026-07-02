@@ -1,6 +1,7 @@
 """Simulation orchestrator managing model execution and state."""
 
 import logging
+import math
 from datetime import datetime
 from typing import Any, Callable, Dict, List
 
@@ -9,6 +10,10 @@ import pandas as pd
 from ..adapters.base import ModelAdapter
 
 logger = logging.getLogger(__name__)
+
+MIN_SIM_SECONDS_PER_REAL_SECOND = 1.0
+MAX_SIM_SECONDS_PER_REAL_SECOND = 86400.0
+LEGACY_REAL_SECONDS_PER_STEP = 0.1
 
 
 class Simulator:
@@ -24,6 +29,8 @@ class Simulator:
         greenhouse_config=None,
         operations_config=None,
         dt_hours: float = 1.0,
+        step_sim_duration_seconds: float | None = None,
+        sim_seconds_per_real_second: float | None = None,
     ):
         """Initialize simulator.
 
@@ -36,6 +43,8 @@ class Simulator:
             greenhouse_config: Optional greenhouse configuration dict
             operations_config: Optional crop-scoped operational settings
             dt_hours: Timestep duration in hours
+            step_sim_duration_seconds: Simulated seconds advanced by one stream step
+            sim_seconds_per_real_second: Simulated seconds advanced per real second
         """
         self.adapter = adapter
         self.broadcast = broadcaster
@@ -45,11 +54,24 @@ class Simulator:
         self.greenhouse_config = greenhouse_config
         self.operations_config = operations_config or {}
         self.dt_hours = dt_hours
+        self.step_sim_duration_seconds = max(
+            1.0,
+            float(
+                step_sim_duration_seconds
+                if step_sim_duration_seconds is not None
+                else dt_hours * 3600.0
+            ),
+        )
 
         self.idx = 0
         self.running = False
         self.paused = False
         self.speed = 1.0  # Speed multiplier (1.0 = real-time, 10.0 = 10x)
+        self.sim_seconds_per_real_second = self._clamp_sim_seconds_per_real_second(
+            sim_seconds_per_real_second
+            if sim_seconds_per_real_second is not None
+            else self._legacy_speed_to_sim_seconds_per_real_second(self.speed)
+        )
 
         logger.info(f"Initialized Simulator with {len(self.df_env)} rows")
 
@@ -74,14 +96,57 @@ class Simulator:
         self.paused = False
         logger.info("Simulator resumed")
 
-    def set_speed(self, speed: float):
+    @staticmethod
+    def _clamp_sim_seconds_per_real_second(value: float) -> float:
+        return max(
+            MIN_SIM_SECONDS_PER_REAL_SECOND,
+            min(MAX_SIM_SECONDS_PER_REAL_SECOND, float(value)),
+        )
+
+    def _legacy_speed_to_sim_seconds_per_real_second(self, speed: float) -> float:
+        return self._clamp_sim_seconds_per_real_second(
+            self.step_sim_duration_seconds * float(speed) / LEGACY_REAL_SECONDS_PER_STEP
+        )
+
+    def set_speed(self, speed: float) -> float:
         """Set simulation speed multiplier.
 
         Args:
             speed: Speed multiplier (1.0 = real-time, 10.0 = 10x)
         """
-        self.speed = max(0.1, min(100.0, speed))
-        logger.info(f"Simulator speed set to {self.speed}x")
+        speed_value = float(speed)
+        if not math.isfinite(speed_value):
+            speed_value = 1.0
+
+        self.speed = max(0.1, min(100.0, speed_value))
+        self.sim_seconds_per_real_second = (
+            self._legacy_speed_to_sim_seconds_per_real_second(self.speed)
+        )
+        logger.info(
+            "Simulator speed set to %sx (%s sim seconds per real second)",
+            self.speed,
+            self.sim_seconds_per_real_second,
+        )
+        return self.sim_seconds_per_real_second
+
+    def set_sim_seconds_per_real_second(self, value: float) -> float:
+        """Set absolute simulation pacing in simulated seconds per real second."""
+        pace = float(value)
+        if not math.isfinite(pace) or pace <= 0:
+            raise ValueError("sim_seconds_per_real_second must be finite and positive")
+
+        self.sim_seconds_per_real_second = self._clamp_sim_seconds_per_real_second(pace)
+        equivalent_speed = (
+            self.sim_seconds_per_real_second
+            * LEGACY_REAL_SECONDS_PER_STEP
+            / max(self.step_sim_duration_seconds, 1e-9)
+        )
+        self.speed = max(0.1, min(100.0, equivalent_speed))
+        logger.info(
+            "Simulator pace set to %s sim seconds per real second",
+            self.sim_seconds_per_real_second,
+        )
+        return self.sim_seconds_per_real_second
 
     def step(self, row: Dict[str, Any]) -> Dict[str, Any]:
         """Execute one simulation step.
