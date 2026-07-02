@@ -12,6 +12,10 @@ out/
 results/
 runs*/
 logs/
+screenshots/
+*.screenshot.png
+*.screenshot.jpg
+*.screenshot.jpeg
 .playwright-mcp/
 .rah/
 Phytoritas.md
