@@ -12,7 +12,11 @@ import type {
     MetricHistoryPoint,
 } from '../types';
 import { API_URL, FORECAST_WS_URL, WS_URL } from '../config';
-import { buildSimulationPaceRequest, readStoredSimulationPace } from './useSimulationRuntimeControls';
+import {
+    buildSimulationPaceRequest,
+    DEFAULT_SIMULATION_PACE,
+    readStoredSimulationPace,
+} from './useSimulationRuntimeControls';
 import { useAreaUnit } from '../context/AreaUnitContext';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
@@ -368,17 +372,15 @@ export const useGreenhouse = () => {
         setWsConnectionNonce((prev) => prev + 1);
     }, [selectedCrop]);
 
-    // Reapply the user's persisted simulation pace after a (re)connection so a fresh
-    // start or a WebSocket reconnect keeps the selected pace instead of snapping back
-    // to the backend default (R11). Skipped when no pace is stored so the backend's
-    // own default stands.
+    // Reapply the effective simulation pace after a (re)connection so a fresh start or
+    // a WebSocket reconnect keeps the selected pace instead of snapping back to the
+    // backend default (R11). A stored pace wins; otherwise the readable default of 600
+    // sim-seconds/real-second is applied so a fresh load does not run at the legacy
+    // pace (R28), which the backend would otherwise derive as step_sim_duration / 0.1.
     const applyStoredSimulationPace = useCallback(async (cropType: CropType) => {
-        const storedPace = readStoredSimulationPace();
-        if (storedPace === null) {
-            return;
-        }
+        const paceToApply = readStoredSimulationPace() ?? DEFAULT_SIMULATION_PACE;
 
-        const { path, init } = buildSimulationPaceRequest(cropType, storedPace);
+        const { path, init } = buildSimulationPaceRequest(cropType, paceToApply);
         try {
             await fetchWithTimeout(`${API_URL}${path}`, init, PACE_REQUEST_TIMEOUT_MS);
         } catch (err) {

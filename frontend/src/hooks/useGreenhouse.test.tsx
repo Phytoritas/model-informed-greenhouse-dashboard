@@ -362,4 +362,44 @@ describe('useGreenhouse', () => {
 
         unmount();
     });
+
+    it('applies the default 600 pace on a fresh connect when nothing is stored (R28)', async () => {
+        // Negative test for R28: with an empty sg-sim-pace the readable default of 600
+        // sim-seconds/real-second must actually be POSTed on the telemetry socket open.
+        // Without this, the backend keeps its legacy step_sim_duration/0.1 fallback
+        // (6000 for the default 10-min data) and the simulation runs away at ~100 sim
+        // minutes per real second while the control still highlights 600.
+        expect(window.localStorage.getItem('sg-sim-pace')).toBeNull();
+
+        const { unmount } = renderHook(() => useGreenhouse());
+
+        await waitFor(() => {
+            expect(findSocket('/ws/sim/cucumber')).toBeDefined();
+        });
+
+        const simSocket = findSocket('/ws/sim/cucumber')!;
+
+        fetchMock.mockClear();
+        await act(async () => {
+            simSocket.readyState = MockWebSocket.OPEN;
+            simSocket.onopen?.(new Event('open'));
+            await Promise.resolve();
+        });
+
+        await waitFor(() => {
+            expect(fetchMock).toHaveBeenCalledWith(
+                expect.stringContaining('/speed'),
+                expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining('"sim_seconds_per_real_second":600,'),
+                }),
+            );
+        });
+
+        // 600 is the default, not a persisted user choice, so storage stays empty and a
+        // later change to the default constant would still take effect (R28 precedence).
+        expect(window.localStorage.getItem('sg-sim-pace')).toBeNull();
+
+        unmount();
+    });
 });
