@@ -357,7 +357,7 @@ vi.mock('./components/shell/TopBar', () => ({
   ),
 }))
 
-vi.mock('./components/shell/WorkspaceNav', () => ({
+vi.mock('./components/shell/WorkspaceTopNav', () => ({
   default: ({
     items,
     activeWorkspace,
@@ -683,7 +683,7 @@ describe('App routed shell', () => {
     expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
-  it('navigates between routed shell pages from the sidebar', async () => {
+  it('navigates between routed shell pages from the workspace top nav', async () => {
     renderApp('/trend')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
