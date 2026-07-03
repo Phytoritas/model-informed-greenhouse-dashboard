@@ -503,7 +503,6 @@ vi.mock('./components/phyto/PageSectionTabs', () => ({
   ),
 }))
 vi.mock('./components/status/ConfidenceBadge', () => ({ default: () => <div>ConfidenceBadge</div> }))
-vi.mock('./features/advisor/AdvisorPanelFallback', () => ({ default: () => <div>AdvisorPanelFallback</div> }))
 vi.mock('./features/common/LoadingSkeleton', () => ({ default: ({ title }: { title?: string }) => <div>{title ?? 'LoadingSkeleton'}</div> }))
 vi.mock('./components/Charts', () => ({ default: () => <div>Charts</div> }))
 vi.mock('./components/ForecastPanel', () => ({ default: () => <div>ForecastPanel</div> }))
