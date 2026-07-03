@@ -12,7 +12,9 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
+            eyebrow: 'Manual Override',
             title: '수동 제어',
+            description: '환기·관수·난방·차광을 즉시 전환하고 온도 제어 기준을 조정합니다.',
             ventilation: '환기',
             irrigation: '관수',
             heating: '난방',
@@ -25,7 +27,9 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
             drainTarget: '배액 목표',
         }
         : {
+            eyebrow: 'Manual Override',
             title: 'Quick controls',
+            description: 'Toggle ventilation, irrigation, heating, and shading directly and tune the temperature guide.',
             ventilation: 'Vent',
             irrigation: 'Water',
             heating: 'Heat',
@@ -43,11 +47,15 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
 
     return (
         <div className="sg-warm-panel p-6">
-            <h3 className="mb-4 text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
+            <div className="mb-4">
+                <p className="sg-eyebrow">{copy.eyebrow}</p>
+                <h3 className="mt-1 text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
+                <p className="mt-1 text-sm leading-6 text-[color:var(--sg-text-muted)]">{copy.description}</p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
                 <button
                     onClick={() => onToggle('ventilation')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors ${status.ventilation ? 'bg-[color:var(--sg-accent-forest-soft)] text-[color:var(--sg-accent-forest)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[var(--sg-radius-lg)] p-4 transition-colors ${status.ventilation ? 'bg-[color:var(--sg-accent-forest-soft)] text-[color:var(--sg-accent-forest)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Fan className="h-6 w-6" />
@@ -55,7 +63,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                 </button>
                 <button
                     onClick={() => onToggle('irrigation')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors ${status.irrigation ? 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[var(--sg-radius-lg)] p-4 transition-colors ${status.irrigation ? 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Droplets className="h-6 w-6" />
@@ -63,7 +71,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                 </button>
                 <button
                     onClick={() => onToggle('heating')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors ${status.heating ? 'bg-[color:var(--sg-accent-violet-soft)] text-[color:var(--sg-accent-violet)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[var(--sg-radius-lg)] p-4 transition-colors ${status.heating ? 'bg-[color:var(--sg-accent-violet-soft)] text-[color:var(--sg-accent-violet)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Thermometer className="h-6 w-6" />
@@ -71,7 +79,7 @@ const ControlPanel = ({ status, onToggle, onSettingsChange }: ControlPanelProps)
                 </button>
                 <button
                     onClick={() => onToggle('shading')}
-                    className={`flex flex-col items-center gap-2 rounded-[22px] p-4 transition-colors ${status.shading ? 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
+                    className={`flex flex-col items-center gap-2 rounded-[var(--sg-radius-lg)] p-4 transition-colors ${status.shading ? 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]' : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-text-muted)]'
                         }`}
                 >
                     <Sun className="h-6 w-6" />

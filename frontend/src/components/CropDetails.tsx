@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Settings, Sprout, Activity, Droplets, Leaf, CheckCircle } from 'lucide-react';
+import { Sprout, Activity, Droplets, Leaf, CheckCircle } from 'lucide-react';
 import type { SensorData, AdvancedModelMetrics, CropType } from '../types';
 import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
-import { getReadinessDescriptor } from '../lib/design/readiness';
+import { getReadinessDescriptor, type ReadinessTone } from '../lib/design/readiness';
 import { UNIT_LABELS, getCropLabel, getCropStatusLabel } from '../utils/displayCopy';
 import { formatMetricValue } from '../utils/formatValue';
+import DashboardCard from './common/DashboardCard';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { MetricCard, type MetricTone } from './ui/metric-card';
+
+const READINESS_METRIC_TONE: Record<ReadinessTone, MetricTone> = {
+    success: 'growth',
+    info: 'stable',
+    warning: 'warning',
+    neutral: 'muted',
+};
 
 interface CropDetailsProps {
     crop: CropType;
@@ -17,7 +28,10 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
     const { locale } = useLocale();
     const copy = locale === 'ko'
         ? {
+            managementEyebrow: 'Crop Operations',
             managementTitle: `${getCropLabel(crop, locale)} 관리 및 작업`,
+            managementDescription: '작물 설정을 조정하고 전정 작업을 기록합니다.',
+            growthTrendChip: '생장 진행',
             hideSettings: '설정 숨기기',
             showSettings: '설정 보기',
             fruitsPerTruss: '화방당 과실 수',
@@ -43,7 +57,10 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
             pruneFailure: '전정 처리에 실패했습니다.',
         }
         : {
+            managementEyebrow: 'Crop Operations',
             managementTitle: `${crop} Management & Operations`,
+            managementDescription: 'Adjust crop configuration and record pruning operations.',
+            growthTrendChip: 'Growing',
             hideSettings: 'Hide Settings',
             showSettings: 'Show Settings',
             fruitsPerTruss: 'Fruits per Truss',
@@ -149,139 +166,117 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
     return (
         <div className="space-y-6">
             {/* Control Panel */}
-            <div className="sg-warm-panel overflow-hidden">
-                <div className="flex items-center justify-between border-b border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] p-4">
-                    <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)] font-semibold">
-                        <Settings className="w-5 h-5 text-[color:var(--sg-text-muted)]" />
-                        <span>{copy.managementTitle}</span>
-                    </div>
-                    <button
-                        onClick={() => setShowSettings(!showSettings)}
-                        className="text-sm text-[color:var(--sg-accent-earth)] hover:text-[color:var(--sg-accent-earth)]/90 font-medium"
-                    >
+            <DashboardCard
+                eyebrow={copy.managementEyebrow}
+                title={copy.managementTitle}
+                description={copy.managementDescription}
+                actions={(
+                    <Button variant="ghost" size="sm" onClick={() => setShowSettings(!showSettings)}>
                         {showSettings ? copy.hideSettings : copy.showSettings}
-                    </button>
-                </div>
-
-                {showSettings && (
-                    <div className="bg-[color:var(--sg-surface-raised)] p-6">
-                        {crop === 'Tomato' ? (
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-[color:var(--sg-text-strong)] mb-1">{copy.fruitsPerTruss}</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="number"
-                                            min="1" max="10"
-                                            value={nFruitsPerTruss}
-                                            onChange={(e) => setNFruitsPerTruss(Number(e.target.value))}
-                                            className="sg-field-input flex-1"
-                                        />
-                                        <button
-                                            onClick={handleUpdateConfig}
-                                            className="rounded-lg bg-[linear-gradient(135deg,var(--sg-accent-earth),#c45d47)] px-4 py-2 font-medium text-white shadow-[var(--sg-shadow-card)] hover:brightness-[1.04]"
-                                        >
-                                            {copy.update}
-                                        </button>
-                                    </div>
-                                    <p className="text-xs text-[color:var(--sg-text-muted)] mt-1">{copy.fruitsPerTrussHint}</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-[color:var(--sg-text-strong)] mb-1">{copy.pruningThreshold}</label>
-                                        <input
-                                            type="number"
-                                            min="10" max="30"
-                                            value={pruningThreshold}
-                                            onChange={(e) => setPruningThreshold(Number(e.target.value))}
-                                            className="sg-field-input w-full"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-[color:var(--sg-text-strong)] mb-1">{copy.targetLeafCount}</label>
-                                        <input
-                                            type="number"
-                                            min="10" max="30"
-                                            value={targetLeafCount}
-                                            onChange={(e) => setTargetLeafCount(Number(e.target.value))}
-                                            className="sg-field-input w-full"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 pt-2">
-                                    <button
-                                        onClick={handleUpdateConfig}
-                                        className="flex-1 rounded-lg bg-[linear-gradient(135deg,var(--sg-accent-earth),#c45d47)] px-4 py-2 font-medium text-white shadow-[var(--sg-shadow-card)] hover:brightness-[1.04]"
-                                    >
-                                        {copy.applySettings}
-                                    </button>
-                                    <button
-                                        onClick={handlePrune}
-                                        disabled={pruneLoading}
-                                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[color:var(--sg-accent-forest)] px-4 py-2 font-medium text-white shadow-[var(--sg-shadow-card)] hover:brightness-[1.03] disabled:opacity-50"
-                                    >
-                                        <CheckCircle className="w-4 h-4" />
-                                        {pruneLoading ? copy.processing : copy.markPruned}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    </Button>
                 )}
-            </div>
+            >
+                {showSettings ? (
+                    crop === 'Tomato' ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-[color:var(--sg-text-strong)] mb-1">{copy.fruitsPerTruss}</label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        type="number"
+                                        min="1" max="10"
+                                        value={nFruitsPerTruss}
+                                        onChange={(e) => setNFruitsPerTruss(Number(e.target.value))}
+                                        className="flex-1"
+                                    />
+                                    <Button variant="primary" onClick={handleUpdateConfig}>
+                                        {copy.update}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-[color:var(--sg-text-muted)] mt-1">{copy.fruitsPerTrussHint}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-[color:var(--sg-text-strong)] mb-1">{copy.pruningThreshold}</label>
+                                    <Input
+                                        type="number"
+                                        min="10" max="30"
+                                        value={pruningThreshold}
+                                        onChange={(e) => setPruningThreshold(Number(e.target.value))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-[color:var(--sg-text-strong)] mb-1">{copy.targetLeafCount}</label>
+                                    <Input
+                                        type="number"
+                                        min="10" max="30"
+                                        value={targetLeafCount}
+                                        onChange={(e) => setTargetLeafCount(Number(e.target.value))}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <Button variant="primary" className="flex-1" onClick={handleUpdateConfig}>
+                                    {copy.applySettings}
+                                </Button>
+                                <button
+                                    onClick={handlePrune}
+                                    disabled={pruneLoading}
+                                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-accent-forest)] px-4 py-2 text-sm font-semibold text-white shadow-[var(--sg-shadow-card)] hover:brightness-[1.03] disabled:opacity-50"
+                                >
+                                    <CheckCircle className="w-4 h-4" />
+                                    {pruneLoading ? copy.processing : copy.markPruned}
+                                </button>
+                            </div>
+                        </div>
+                    )
+                ) : null}
+            </DashboardCard>
 
             {/* Detailed Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="sg-warm-subpanel p-4">
-                    <div className="flex items-center gap-2 mb-2 text-[color:var(--sg-text-muted)]">
-                        <Sprout className="w-4 h-4" />
-                        <span className="text-sm font-medium">{crop === 'Tomato' ? copy.trussStatus : copy.growthStatus}</span>
-                    </div>
-                    <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-[color:var(--sg-text-muted)]">{getCropStatusLabel(crop, locale)}</span>
-                            <span className="font-semibold text-[color:var(--sg-text-strong)]">{growthStatusValue ?? '-'}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-[color:var(--sg-text-muted)]">{copy.leafAreaIndex}</span>
-                            <span className="font-semibold text-[color:var(--sg-accent-earth)]">{metrics.growth.lai.toFixed(2)}</span>
-                        </div>
-                    </div>
-                    <p className="text-xs text-[color:var(--sg-text-muted)] mt-2 leading-snug">{UNIT_LABELS.leafAreaIndex}</p>
-                </div>
-
-                <div className="sg-warm-subpanel p-4">
-                    <div className="flex items-center gap-2 mb-2 text-[color:var(--sg-text-muted)]">
-                        <Activity className="w-4 h-4" />
-                        <span className="text-sm font-medium">{copy.dailyBiomassGrowth}</span>
-                    </div>
-                    <div className="text-3xl font-bold text-[color:var(--sg-accent-earth)]">{metrics.growth.growthRate.toFixed(1)}</div>
-                    <p className="text-xs text-[color:var(--sg-text-muted)] mt-1 leading-snug">{UNIT_LABELS.biomassGrowthRate}</p>
-                    <p className="text-xs text-[color:var(--sg-text-subtle)] mt-1">{copy.biomassTrend}</p>
-                </div>
-
-                <div className="sg-warm-subpanel p-4">
-                    <div className="flex items-center gap-2 mb-2 text-[color:var(--sg-text-muted)]">
-                        <Leaf className="w-4 h-4" />
-                        <span className="text-sm font-medium">{copy.yieldPotential}</span>
-                    </div>
-                    <div className="text-3xl font-bold text-[color:var(--sg-accent-earth)]">{metrics.yield.predictedWeekly.toFixed(1)}</div>
-                    <p className="text-xs text-[color:var(--sg-text-muted)] mt-1 leading-snug">{UNIT_LABELS.weeklyYield}</p>
-                    <p className="text-xs text-[color:var(--sg-text-subtle)] mt-1">{readiness.lead}: {readiness.label}</p>
-                </div>
-
-                <div className="sg-warm-subpanel p-4">
-                    <div className="flex items-center gap-2 mb-2 text-[color:var(--sg-text-muted)]">
-                        <Droplets className="w-4 h-4" />
-                        <span className="text-sm font-medium">{copy.transpiration}</span>
-                    </div>
-                    <div className="text-3xl font-bold text-[color:var(--sg-accent-harvest)]">{formatMetricValue(currentData.transpiration)}</div>
-                    <p className="text-xs text-[color:var(--sg-text-muted)] mt-1 leading-snug">{UNIT_LABELS.transpirationRate}</p>
-                    <p className="text-xs text-[color:var(--sg-text-subtle)] mt-1">{copy.canopyActivity}</p>
-                </div>
+                <MetricCard
+                    icon={Sprout}
+                    label={crop === 'Tomato' ? copy.trussStatus : copy.growthStatus}
+                    value={String(growthStatusValue ?? '-')}
+                    unit={getCropStatusLabel(crop, locale)}
+                    tone="stable"
+                    trend="stable"
+                    trendLabel={`LAI ${metrics.growth.lai.toFixed(2)}`}
+                    detail={`${copy.leafAreaIndex} ${UNIT_LABELS.leafAreaIndex}`}
+                />
+                <MetricCard
+                    icon={Activity}
+                    label={copy.dailyBiomassGrowth}
+                    value={metrics.growth.growthRate.toFixed(1)}
+                    unit={UNIT_LABELS.biomassGrowthRate}
+                    tone="growth"
+                    trend="up"
+                    trendLabel={copy.growthTrendChip}
+                    detail={copy.biomassTrend}
+                />
+                <MetricCard
+                    icon={Leaf}
+                    label={copy.yieldPotential}
+                    value={metrics.yield.predictedWeekly.toFixed(1)}
+                    unit={UNIT_LABELS.weeklyYield}
+                    tone={READINESS_METRIC_TONE[readiness.tone]}
+                    trend={readiness.tone === 'success' ? 'up' : 'stable'}
+                    trendLabel={readiness.label}
+                    detail={readiness.lead}
+                />
+                <MetricCard
+                    icon={Droplets}
+                    label={copy.transpiration}
+                    value={formatMetricValue(currentData.transpiration)}
+                    unit={UNIT_LABELS.transpirationRate}
+                    tone="stable"
+                    trend="stable"
+                    trendLabel={copy.canopyActivity}
+                />
             </div>
         </div>
     );
