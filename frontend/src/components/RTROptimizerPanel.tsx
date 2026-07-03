@@ -30,6 +30,7 @@ import { useRtrOptimizer } from '../hooks/useRtrOptimizer';
 import AreaUnitPanel from './AreaUnitPanel';
 import RTROutlookPanel from './RTROutlookPanel';
 import { StatusChip, type StatusChipTone } from './ui/status-chip';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 interface RTROptimizerPanelProps {
     crop: CropType;
@@ -1438,22 +1439,22 @@ const RTROptimizerPanelContent = ({
                         </div>
                         {nodeGuideRows.length > 0 ? (
                             <div className="max-h-[200px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-white/72">
-                                <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
-                                    <thead className="sticky top-0 bg-white/95 text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                                <Table className="min-w-full text-xs">
+                                    <TableHeader className="sticky top-0 bg-white/95 tracking-wide">
                                         <tr>
-                                            <th className="px-3 py-2">{copy.nodeGuideTemp}</th>
-                                            <th className="px-3 py-2">{copy.nodeGuideNode}</th>
+                                            <TableHead className="px-3 py-2">{copy.nodeGuideTemp}</TableHead>
+                                            <TableHead className="px-3 py-2">{copy.nodeGuideNode}</TableHead>
                                         </tr>
-                                    </thead>
-                                    <tbody>
+                                    </TableHeader>
+                                    <TableBody>
                                         {nodeGuideRows.map((row) => (
-                                            <tr key={`compact-${row.meanTempC}`} className="border-t border-[color:var(--sg-outline-soft)]">
-                                                <td className="px-3 py-2">{formatNumber(row.meanTempC, 1, locale)}°C</td>
-                                                <td className="px-3 py-2">{formatNumber(row.nodeRate, 3, locale)}</td>
-                                            </tr>
+                                            <TableRow key={`compact-${row.meanTempC}`}>
+                                                <TableCell className="sg-data-number px-3 py-2">{formatNumber(row.meanTempC, 1, locale)}°C</TableCell>
+                                                <TableCell className="sg-data-number px-3 py-2">{formatNumber(row.nodeRate, 3, locale)}</TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         ) : (
                             <div className="rounded-[14px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
@@ -1477,24 +1478,24 @@ const RTROptimizerPanelContent = ({
                             <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{compactCopy.comparisonTitle}</h4>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
-                                <thead className="text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                            <Table className="min-w-full text-xs">
+                                <TableHeader className="tracking-wide">
                                     <tr>
-                                        <th className="px-2 py-2">{compactCopy.metricHeader}</th>
-                                        <th className="px-2 py-2">{compactCopy.baselineHeader}</th>
-                                        <th className="px-2 py-2">{compactCopy.recommendedHeader}</th>
+                                        <TableHead className="px-2 py-2">{compactCopy.metricHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{compactCopy.baselineHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{compactCopy.recommendedHeader}</TableHead>
                                     </tr>
-                                </thead>
-                                <tbody>
+                                </TableHeader>
+                                <TableBody>
                                     {compactComparisonRows.map((row) => (
-                                        <tr key={row.label} className="border-t border-[color:var(--sg-outline-soft)]">
-                                            <td className="px-2 py-2 font-medium text-[color:var(--sg-text-strong)]">{row.label}</td>
-                                            <td className="px-2 py-2">{row.baseline}</td>
-                                            <td className="px-2 py-2">{row.recommended}</td>
-                                        </tr>
+                                        <TableRow key={row.label}>
+                                            <TableCell className="px-2 py-2 font-medium">{row.label}</TableCell>
+                                            <TableCell className="sg-data-number px-2 py-2">{row.baseline}</TableCell>
+                                            <TableCell className="sg-data-number px-2 py-2">{row.recommended}</TableCell>
+                                        </TableRow>
                                     ))}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
                     </section>
 
@@ -1692,22 +1693,22 @@ const RTROptimizerPanelContent = ({
                     </div>
                     {nodeGuideRows.length > 0 ? (
                         <div className="max-h-[220px] overflow-y-auto rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-white/72">
-                            <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
-                                <thead className="sticky top-0 bg-white/95 text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                            <Table className="min-w-full text-xs">
+                                <TableHeader className="sticky top-0 bg-white/95 tracking-wide">
                                     <tr>
-                                        <th className="px-3 py-2">{copy.nodeGuideTemp}</th>
-                                        <th className="px-3 py-2">{copy.nodeGuideNode}</th>
+                                        <TableHead className="px-3 py-2">{copy.nodeGuideTemp}</TableHead>
+                                        <TableHead className="px-3 py-2">{copy.nodeGuideNode}</TableHead>
                                     </tr>
-                                </thead>
-                                <tbody>
+                                </TableHeader>
+                                <TableBody>
                                     {nodeGuideRows.map((row) => (
-                                        <tr key={row.meanTempC} className="border-t border-[color:var(--sg-outline-soft)]">
-                                            <td className="px-3 py-2">{formatNumber(row.meanTempC, 1, locale)}°C</td>
-                                            <td className="px-3 py-2">{formatNumber(row.nodeRate, 3, locale)}</td>
-                                        </tr>
+                                        <TableRow key={row.meanTempC}>
+                                            <TableCell className="sg-data-number px-3 py-2">{formatNumber(row.meanTempC, 1, locale)}°C</TableCell>
+                                            <TableCell className="sg-data-number px-3 py-2">{formatNumber(row.nodeRate, 3, locale)}</TableCell>
+                                        </TableRow>
                                     ))}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
                     ) : (
                         <div className="rounded-[14px] bg-[color:var(--sg-surface-muted)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-text)]">
@@ -2225,30 +2226,30 @@ const RTROptimizerPanelContent = ({
                         <p className="text-sm text-[color:var(--sg-text-muted)]">{copy.noScenario}</p>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="min-w-full text-left text-xs text-[color:var(--sg-text)]">
-                                <thead className="text-[11px] uppercase tracking-wide text-[color:var(--sg-text-faint)]">
+                            <Table className="min-w-full text-xs">
+                                <TableHeader className="tracking-wide">
                                     <tr>
-                                        <th className="px-2 py-2">{copy.modeHeader}</th>
-                                        <th className="px-2 py-2">{copy.meanHeader}</th>
-                                        <th className="px-2 py-2">{copy.nodeHeader}</th>
-                                        <th className="px-2 py-2">{copy.carbonHeader}</th>
-                                        <th className="px-2 py-2">{copy.riskHeader}</th>
-                                        <th className="px-2 py-2">{copy.energyHeader}</th>
-                                        <th className="px-2 py-2">{copy.yieldHeader}</th>
-                                        <th className="px-2 py-2">{copy.laborHeader}</th>
+                                        <TableHead className="px-2 py-2">{copy.modeHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{copy.meanHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{copy.nodeHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{copy.carbonHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{copy.riskHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{copy.energyHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{copy.yieldHeader}</TableHead>
+                                        <TableHead className="px-2 py-2">{copy.laborHeader}</TableHead>
                                     </tr>
-                                </thead>
-                                <tbody>
+                                </TableHeader>
+                                <TableBody>
                                     {groupedScenarioRows.map((groupEntry) => (
                                         <Fragment key={`scenario-group-${groupEntry.group}`}>
-                                            <tr className="border-t border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)]">
+                                            <tr className="bg-[color:var(--sg-surface-muted)]">
                                                 <td colSpan={8} className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--sg-text-muted)]">
                                                     {getScenarioGroupLabel(groupEntry.group, locale)}
                                                 </td>
                                             </tr>
                                             {groupEntry.rows.map((row, index) => (
-                                                <tr key={`${groupEntry.group}-${row.label}-${row.mode}-${index}`} className="border-t border-[color:var(--sg-outline-soft)]">
-                                                    <td className="px-2 py-2 font-medium text-[color:var(--sg-text-strong)]">
+                                                <TableRow key={`${groupEntry.group}-${row.label}-${row.mode}-${index}`}>
+                                                    <TableCell className="px-2 py-2 font-medium">
                                                         <div>{getScenarioLabel(row.label, locale)}</div>
                                                         <div className="mt-1 flex flex-wrap gap-1">
                                                             <StatusChip tone={getScenarioBadgeTone(row.recommendation_badge)}>
@@ -2286,22 +2287,22 @@ const RTROptimizerPanelContent = ({
                                                                 </div>
                                                             );
                                                         })()}
-                                                    </td>
-                                                    <td className="px-2 py-2">{formatNumber(row.mean_temp_C, 1, locale)}°C</td>
-                                                    <td className="px-2 py-2">{formatNumber(row.node_rate_day, 3, locale)}</td>
-                                                    <td className="px-2 py-2">
+                                                    </TableCell>
+                                                    <TableCell className="sg-data-number px-2 py-2">{formatNumber(row.mean_temp_C, 1, locale)}°C</TableCell>
+                                                    <TableCell className="sg-data-number px-2 py-2">{formatNumber(row.node_rate_day, 3, locale)}</TableCell>
+                                                    <TableCell className="sg-data-number px-2 py-2">
                                                         <div>{formatNumber(row.net_carbon, 3, locale)}</div>
                                                         <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                             {formatNumber(row.net_assimilation, 3, locale)} μmol/m²/s
                                                         </div>
-                                                    </td>
-                                                    <td className="px-2 py-2">
+                                                    </TableCell>
+                                                    <TableCell className="sg-data-number px-2 py-2">
                                                         <div>{formatNumber(row.humidity_penalty, 3, locale)}</div>
                                                         <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                             {copy.diseaseRisk} {formatNumber(row.disease_penalty, 3, locale)}
                                                         </div>
-                                                    </td>
-                                                    <td className="px-2 py-2">
+                                                    </TableCell>
+                                                    <TableCell className="sg-data-number px-2 py-2">
                                                         <div>{formatNumber(row.total_energy_cost_krw_m2_day, 0, locale)} {locale === 'ko' ? '원' : 'KRW'}</div>
                                                         <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                             {copy.heatingEnergy} {formatNumber(row.heating_energy_kwh_m2_day, 2, locale)} · {copy.coolingEnergy} {formatNumber(row.cooling_energy_kwh_m2_day, 2, locale)}
@@ -2313,8 +2314,8 @@ const RTROptimizerPanelContent = ({
                                                                     : `${formatNumber(row.actual_area_projection.energy_kwh_day, 1, locale)} kWh/day · ${formatNumber(row.actual_area_projection.energy_krw_day, 0, locale)} KRW/day`}
                                                             </div>
                                                         ) : null}
-                                                    </td>
-                                                    <td className="px-2 py-2">
+                                                    </TableCell>
+                                                    <TableCell className="sg-data-number px-2 py-2">
                                                         <div>{formatNumber(row.yield_kg_m2_day, 3, locale)} kg/m²/day</div>
                                                         <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
                                                             Δ {formatNumber(row.harvest_trend_delta_pct, 1, locale)}%
@@ -2326,8 +2327,8 @@ const RTROptimizerPanelContent = ({
                                                                     : `${formatNumber(row.actual_area_projection.yield_kg_day, 1, locale)} kg/day · ${formatNumber(row.actual_area_projection.yield_kg_week, 1, locale)} kg/week`}
                                                             </div>
                                                         ) : null}
-                                                    </td>
-                                                    <td className="px-2 py-2">
+                                                    </TableCell>
+                                                    <TableCell className="sg-data-number px-2 py-2">
                                                         <div>{formatNumber(row.labor_index, 3, locale)}</div>
                                                         {row.actual_area_projection ? (
                                                             <div className="mt-1 text-[10px] text-[color:var(--sg-text-faint)]">
@@ -2336,13 +2337,13 @@ const RTROptimizerPanelContent = ({
                                                                     : `${formatNumber(row.actual_area_projection.labor_cost_krw_day, 0, locale)} KRW/day`}
                                                             </div>
                                                         ) : null}
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
                                         </Fragment>
                                     ))}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
                     )}
                 </section>
