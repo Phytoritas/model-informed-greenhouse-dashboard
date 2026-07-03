@@ -114,8 +114,8 @@ const DEFAULT_OPTIMIZATION_MODE: RtrOptimizationMode = 'balanced';
 const sectionPanelClass = 'sg-warm-panel border border-[color:var(--sg-outline-soft)] p-4';
 const metricTileClass = 'sg-warm-subpanel p-3';
 const metricLabelClass = 'text-[11px] text-[color:var(--sg-text-muted)]';
-const metricValueClass = 'mt-1 text-lg font-semibold text-[color:var(--sg-text-strong)]';
-const metricValueLargeClass = 'mt-1 text-xl font-semibold text-[color:var(--sg-text-strong)]';
+const metricValueClass = 'sg-data-number mt-1 text-lg font-semibold text-[color:var(--sg-text-strong)]';
+const metricValueLargeClass = 'sg-data-number mt-1 text-xl font-semibold text-[color:var(--sg-text-strong)]';
 const metricMetaClass = 'mt-1 text-[11px] text-[color:var(--sg-text-muted)]';
 const DECIMAL_INPUT_PATTERN = /^\d*(?:[.,]\d*)?$/;
 const RTRCalibrationWorkspace = lazy(() => import('./RTRCalibrationWorkspace'));
@@ -1198,7 +1198,7 @@ const RTROptimizerPanelContent = ({
 
     if (isProfilePending) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`sg-panel flex h-full flex-col ${compact ? 'p-3' : 'p-5'}`}>
                             <div className="rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
                     <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.profileLoadingTitle}</p>
                     <p className="mt-1">{copy.profileLoadingBody}</p>
@@ -1209,7 +1209,7 @@ const RTROptimizerPanelContent = ({
 
     if (isProfileUnavailable || !optimizerEnabled) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`sg-panel flex h-full flex-col ${compact ? 'p-3' : 'p-5'}`}>
                 {profileErrorCopy ? (
                     <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
                         {profileErrorCopy}
@@ -1238,7 +1238,7 @@ const RTROptimizerPanelContent = ({
 
     if (telemetryStatus === 'offline' || (telemetryStatus === 'stale' && !hasOptimizerSurface)) {
         return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`sg-panel flex h-full flex-col ${compact ? 'p-3' : 'p-5'}`}>
                             <div className="mb-4 rounded-[20px] bg-[color:var(--sg-surface-muted)] px-3 py-3 text-sm leading-6 text-[color:var(--sg-text)]">
                     <p className="font-semibold text-[color:var(--sg-text-strong)]">{copy.telemetryBlockedTitle}</p>
                     <p className="mt-1">{copy.telemetryBlockedBody}</p>
@@ -1265,7 +1265,7 @@ const RTROptimizerPanelContent = ({
 
     if (compact) {
         return (
-            <div className="flex h-full flex-col rounded-[24px] bg-white/82 p-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+            <div className="sg-panel flex h-full flex-col p-4">
                 <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                         <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
@@ -1514,7 +1514,7 @@ const RTROptimizerPanelContent = ({
     }
 
     return (
-                        <div className={`flex h-full flex-col rounded-[24px] bg-white/82 ${compact ? 'p-3' : 'p-5'}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className={`sg-panel flex h-full flex-col ${compact ? 'p-3' : 'p-5'}`}>
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
