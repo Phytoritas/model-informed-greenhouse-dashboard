@@ -29,6 +29,7 @@ import { useAreaUnit } from '../context/AreaUnitContext';
 import { useRtrOptimizer } from '../hooks/useRtrOptimizer';
 import AreaUnitPanel from './AreaUnitPanel';
 import RTROutlookPanel from './RTROutlookPanel';
+import { StatusChip, type StatusChipTone } from './ui/status-chip';
 
 interface RTROptimizerPanelProps {
     crop: CropType;
@@ -491,17 +492,14 @@ function getScenarioBadgeLabel(value: string, locale: 'en' | 'ko'): string {
     return (locale === 'ko' ? koMap[value] : enMap[value]) ?? value;
 }
 
-function getScenarioBadgeClass(value: string): string {
+function getScenarioBadgeTone(value: string): StatusChipTone {
     if (value === 'recommended') {
-        return 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]';
-    }
-    if (value === 'baseline') {
-        return 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]';
+        return 'growth';
     }
     if (value === 'custom') {
-        return 'bg-[color:var(--sg-accent-rose-soft)] text-[color:var(--sg-accent-rose)]';
+        return 'stable';
     }
-    return 'bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]';
+    return 'muted';
 }
 
 function getYieldTrendLabel(value: string, locale: 'en' | 'ko'): string {
@@ -518,14 +516,24 @@ function getYieldTrendLabel(value: string, locale: 'en' | 'ko'): string {
     return (locale === 'ko' ? koMap[value] : enMap[value]) ?? value;
 }
 
-function getYieldTrendClass(value: string): string {
+function getYieldTrendTone(value: string): StatusChipTone {
     if (value === 'up') {
-        return 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]';
+        return 'growth';
     }
     if (value === 'guarded') {
-        return 'bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]';
+        return 'warning';
     }
-    return 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]';
+    return 'muted';
+}
+
+function getConfidenceTone(tone: string): StatusChipTone {
+    if (tone === 'success') {
+        return 'growth';
+    }
+    if (tone === 'info') {
+        return 'warning';
+    }
+    return 'muted';
 }
 
 function renderCropSpecificInsight(
@@ -1309,12 +1317,9 @@ const RTROptimizerPanelContent = ({
                     {warningBadges.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                             {warningBadges.map((badge) => (
-                                <span
-                                    key={badge}
-                                    className="rounded-full bg-[color:var(--sg-status-delayed-bg)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-status-delayed-text)]"
-                                >
+                                <StatusChip key={badge} tone="warning">
                                     {getWarningLabel(badge, locale)}
-                                </span>
+                                </StatusChip>
                             ))}
                         </div>
                     ) : null}
@@ -1501,9 +1506,9 @@ const RTROptimizerPanelContent = ({
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {compactReasonTags.map((tag) => (
-                                    <span key={tag} className="rounded-full bg-[color:var(--sg-surface-muted)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-text)]">
+                                    <StatusChip key={tag} tone="muted">
                                         {getReasonTagLabel(tag, locale)}
-                                    </span>
+                                    </StatusChip>
                                 ))}
                             </div>
                         </section>
@@ -1759,12 +1764,9 @@ const RTROptimizerPanelContent = ({
                 {warningBadges.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                         {warningBadges.map((badge) => (
-                            <span
-                                key={badge}
-                                className="rounded-full bg-[color:var(--sg-status-delayed-bg)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-status-delayed-text)]"
-                            >
+                            <StatusChip key={badge} tone="warning">
                                 {getWarningLabel(badge, locale)}
-                            </span>
+                            </StatusChip>
                         ))}
                     </div>
                 ) : null}
@@ -1920,9 +1922,9 @@ const RTROptimizerPanelContent = ({
                             {explanationCopy.reason_tags.length > 0 ? (
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {explanationCopy.reason_tags.map((tag) => (
-                                        <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-status-live-text)] ring-1 ring-[color:var(--sg-outline-soft)]">
+                                        <StatusChip key={tag} tone="muted">
                                             {getReasonTagLabel(tag, locale)}
-                                        </span>
+                                        </StatusChip>
                                     ))}
                                 </div>
                             ) : null}
@@ -2249,23 +2251,15 @@ const RTROptimizerPanelContent = ({
                                                     <td className="px-2 py-2 font-medium text-[color:var(--sg-text-strong)]">
                                                         <div>{getScenarioLabel(row.label, locale)}</div>
                                                         <div className="mt-1 flex flex-wrap gap-1">
-                                                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getScenarioBadgeClass(row.recommendation_badge)}`}>
+                                                            <StatusChip tone={getScenarioBadgeTone(row.recommendation_badge)}>
                                                                 {getScenarioBadgeLabel(row.recommendation_badge, locale)}
-                                                            </span>
-                                                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getYieldTrendClass(row.yield_trend)}`}>
+                                                            </StatusChip>
+                                                            <StatusChip tone={getYieldTrendTone(row.yield_trend)}>
                                                                 {getYieldTrendLabel(row.yield_trend, locale)}
-                                                            </span>
-                                                            <span
-                                                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                                                    getReadinessDescriptor(row.confidence, locale).tone === 'success'
-                                                                        ? 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]'
-                                                                        : getReadinessDescriptor(row.confidence, locale).tone === 'info'
-                                                                            ? 'bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]'
-                                                                            : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]'
-                                                                }`}
-                                                            >
+                                                            </StatusChip>
+                                                            <StatusChip tone={getConfidenceTone(getReadinessDescriptor(row.confidence, locale).tone)}>
                                                                 {copy.confidence} {getReadinessDescriptor(row.confidence, locale).label}
-                                                            </span>
+                                                            </StatusChip>
                                                         </div>
                                                         <div className="mt-1 text-[10px] text-[color:var(--sg-text-muted)]">
                                                             {copy.dayHeating} {formatNumber(row.day_heating_min_temp_C ?? row.day_min_temp_C, 1, locale)}°C · {copy.dayCooling} {formatNumber(row.day_cooling_target_C, 1, locale)}°C
@@ -2284,9 +2278,9 @@ const RTROptimizerPanelContent = ({
                                                                     {visibleRiskFlags.slice(0, 2).map((riskFlag, riskIndex) => {
                                                                         const code = String(riskFlag.code ?? `row-risk-${riskIndex}`);
                                                                         return (
-                                                                            <span key={`${row.label}-${code}-${riskIndex}`} className="rounded-full bg-[color:var(--sg-surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[color:var(--sg-text)]">
+                                                                            <StatusChip key={`${row.label}-${code}-${riskIndex}`} tone="muted">
                                                                                 {getRiskFlagTitle(code, locale)}
-                                                                            </span>
+                                                                            </StatusChip>
                                                                         );
                                                                     })}
                                                                 </div>
