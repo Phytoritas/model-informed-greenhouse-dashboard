@@ -1,8 +1,17 @@
 import type { TelemetryStatus } from '../../types';
 import type { KpiTileData } from '../KpiStrip';
+import { cn } from '../../utils/cn';
 import DashboardCard from '../common/DashboardCard';
 import AlertRail, { type AlertRailItem } from '../dashboard/AlertRail';
 import LiveMetricStrip from '../dashboard/LiveMetricStrip';
+import { StatusChip, type StatusChipTone } from '../ui/status-chip';
+
+const SEVERITY_CHIP_TONE: Record<AlertRailItem['severity'], StatusChipTone> = {
+    critical: 'critical',
+    warning: 'warning',
+    info: 'muted',
+    resolved: 'growth',
+};
 
 interface AlertsCommandCenterProps {
     locale: 'ko' | 'en';
@@ -65,30 +74,34 @@ export default function AlertsCommandCenter({
         { critical: 0, warning: 0, info: 0, resolved: 0 },
     );
     const leadItem = items[0] ?? null;
-    const summaryCards = [
+    const summaryCards: { label: string; value: string; detail: string; tone: StatusChipTone; toneClass: string }[] = [
         {
             label: copy.critical,
             value: `${counts.critical}`,
             detail: leadItem?.severity === 'critical' ? leadItem.title : copy.empty,
+            tone: 'critical',
             toneClass: 'bg-[color:var(--sg-accent-rose-soft)]',
         },
         {
             label: copy.warning,
             value: `${counts.warning}`,
             detail: locale === 'ko' ? '결로·병해·센서 지연 같은 확인 항목입니다.' : 'Review condensation, disease, and delayed-sensor checks.',
-            toneClass: 'sg-tint-amber',
+            tone: 'warning',
+            toneClass: 'bg-[color:var(--sg-accent-amber-soft)]',
         },
         {
             label: copy.resolved,
             value: `${counts.resolved}`,
             detail: locale === 'ko' ? '최근 정리된 항목도 같은 화면에서 확인합니다.' : 'Keep recently resolved items in the same lane.',
-            toneClass: 'sg-tint-neutral',
+            tone: 'growth',
+            toneClass: 'bg-[color:var(--sg-color-sage-soft)]',
         },
         {
             label: copy.next,
             value: leadItem?.title ?? statusSummary,
             detail: leadItem?.body ?? copy.empty,
-            toneClass: 'bg-white/86',
+            tone: 'muted',
+            toneClass: 'bg-[color:var(--sg-surface-warm)]',
         },
     ];
     const resolvedItems = items.filter((item) => item.severity === 'resolved');
@@ -105,13 +118,10 @@ export default function AlertsCommandCenter({
                     {summaryCards.map((card) => (
                         <article
                             key={card.label}
-                            className={`rounded-[24px] px-4 py-4 ${card.toneClass}`}
-                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                            className={cn('sg-panel px-4 py-4', card.toneClass)}
                         >
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
-                                {card.label}
-                            </div>
-                            <div className="mt-2 text-lg font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+                            <StatusChip tone={card.tone}>{card.label}</StatusChip>
+                            <div className="sg-data-number mt-2 text-lg font-bold tracking-[-0.02em] text-[color:var(--sg-text-strong)]">
                                 {card.value}
                             </div>
                             <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
@@ -143,12 +153,11 @@ export default function AlertsCommandCenter({
                         {(resolvedItems.length ? resolvedItems : items.slice(0, 3)).map((item) => (
                             <article
                                 key={item.id}
-                                className="rounded-[22px] bg-white/78 px-4 py-4 text-sm leading-6 text-[color:var(--sg-text-strong)]"
-                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                className="sg-panel bg-white px-4 py-4 text-sm leading-6 text-[color:var(--sg-text-strong)]"
                             >
-                                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                                <StatusChip tone={SEVERITY_CHIP_TONE[item.severity]}>
                                     {copy.severity[item.severity]}
-                                </div>
+                                </StatusChip>
                                 <div className="mt-2 text-base font-semibold tracking-[-0.03em]">{item.title}</div>
                                 <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">{item.body}</p>
                             </article>
