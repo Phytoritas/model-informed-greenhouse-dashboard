@@ -1211,7 +1211,7 @@ const RTROptimizerPanelContent = ({
         return (
                         <div className={`sg-panel flex h-full flex-col ${compact ? 'p-3' : 'p-5'}`}>
                 {profileErrorCopy ? (
-                    <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                    <div className="mb-3 rounded-lg border border-[color:var(--sg-status-delayed-text)]/25 bg-[color:var(--sg-status-delayed-bg)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-status-delayed-text)]">
                         {profileErrorCopy}
                     </div>
                 ) : null}
@@ -1285,7 +1285,7 @@ const RTROptimizerPanelContent = ({
                 </div>
                 <div className="space-y-4">
                     {optimizerErrorCopy ? (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                        <div className="rounded-lg border border-[color:var(--sg-status-delayed-text)]/25 bg-[color:var(--sg-status-delayed-bg)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-status-delayed-text)]">
                             {optimizerErrorCopy}
                         </div>
                     ) : null}
@@ -1311,7 +1311,7 @@ const RTROptimizerPanelContent = ({
                             {warningBadges.map((badge) => (
                                 <span
                                     key={badge}
-                                    className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-medium text-amber-800"
+                                    className="rounded-full bg-[color:var(--sg-status-delayed-bg)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-status-delayed-text)]"
                                 >
                                     {getWarningLabel(badge, locale)}
                                 </span>
@@ -1321,7 +1321,7 @@ const RTROptimizerPanelContent = ({
                     {riskFlags.length > 0 ? (
                         <section className={sectionPanelClass}>
                             <div className="mb-3 flex items-center gap-2">
-                                <BadgeAlert className="h-4 w-4 text-amber-600" />
+                                <BadgeAlert className="h-4 w-4 text-[color:var(--sg-status-delayed-text)]" />
                                 <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                     {locale === 'ko' ? '주의와 제한' : 'Warnings and limits'}
                                 </h4>
@@ -1384,7 +1384,7 @@ const RTROptimizerPanelContent = ({
                                 <div className={metricTileClass}>
                                     <div className={metricLabelClass}>{copy.confidence}</div>
                                     <div className="mt-1 flex items-center gap-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">
-                                        {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
+                                        {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-[color:var(--sg-status-delayed-text)]" />}
                                         {readiness.label}
                                     </div>
                                 </div>
@@ -1536,7 +1536,7 @@ const RTROptimizerPanelContent = ({
             </div>
             <div className="space-y-4">
                 {optimizerErrorCopy ? (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                    <div className="rounded-lg border border-[color:var(--sg-status-delayed-text)]/25 bg-[color:var(--sg-status-delayed-bg)] px-3 py-2 text-xs leading-5 text-[color:var(--sg-status-delayed-text)]">
                         {optimizerErrorCopy}
                     </div>
                 ) : null}
@@ -1591,7 +1591,7 @@ const RTROptimizerPanelContent = ({
                         <div className={metricLabelClass}>{copy.deltaTemp}</div>
                         <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-[color:var(--sg-text-strong)]">
                             {(optimizeResponse?.rtr_equivalent.delta_temp_C ?? 0) >= 0 ? (
-                                <ArrowUpRight className="h-4 w-4 text-rose-600" />
+                                <ArrowUpRight className="h-4 w-4 text-[color:var(--sg-color-primary)]" />
                             ) : (
                                 <ArrowDownRight className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />
                             )}
@@ -1610,7 +1610,7 @@ const RTROptimizerPanelContent = ({
                     <div className={metricTileClass}>
                         <div className={metricLabelClass}>{copy.confidence}</div>
                         <div className="mt-1 flex items-center gap-2 text-xl font-semibold text-[color:var(--sg-text-strong)]">
-                            {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-amber-600" />}
+                            {targetHit ? <CheckCircle2 className="h-4 w-4 text-[color:var(--sg-accent-violet)]" /> : <BadgeAlert className="h-4 w-4 text-[color:var(--sg-status-delayed-text)]" />}
                             {readiness.label}
                         </div>
                     </div>
@@ -1761,7 +1761,7 @@ const RTROptimizerPanelContent = ({
                         {warningBadges.map((badge) => (
                             <span
                                 key={badge}
-                                className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-medium text-amber-800"
+                                className="rounded-full bg-[color:var(--sg-status-delayed-bg)] px-3 py-1 text-[11px] font-medium text-[color:var(--sg-status-delayed-text)]"
                             >
                                 {getWarningLabel(badge, locale)}
                             </span>
@@ -1771,7 +1771,7 @@ const RTROptimizerPanelContent = ({
                 {riskFlags.length > 0 ? (
                     <section className={sectionPanelClass}>
                         <div className="mb-3 flex items-center gap-2">
-                            <BadgeAlert className="h-4 w-4 text-amber-600" />
+                            <BadgeAlert className="h-4 w-4 text-[color:var(--sg-status-delayed-text)]" />
                             <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                 {locale === 'ko' ? '제약 및 위험 경고' : 'Constraint and risk warnings'}
                             </h4>
@@ -1927,7 +1927,7 @@ const RTROptimizerPanelContent = ({
                                 </div>
                             ) : null}
                             {explanationCopy.missing_work_event_warning ? (
-                                <p className="mt-3 text-xs text-amber-700">{explanationCopy.missing_work_event_warning}</p>
+                                <p className="mt-3 text-xs text-[color:var(--sg-status-delayed-text)]">{explanationCopy.missing_work_event_warning}</p>
                             ) : null}
                         </div>
                     ) : null}
@@ -2260,7 +2260,7 @@ const RTROptimizerPanelContent = ({
                                                                     getReadinessDescriptor(row.confidence, locale).tone === 'success'
                                                                         ? 'bg-[color:var(--sg-status-live-bg)] text-[color:var(--sg-status-live-text)]'
                                                                         : getReadinessDescriptor(row.confidence, locale).tone === 'info'
-                                                                            ? 'bg-amber-100 text-amber-800'
+                                                                            ? 'bg-[color:var(--sg-status-delayed-bg)] text-[color:var(--sg-status-delayed-text)]'
                                                                             : 'bg-[color:var(--sg-status-muted-bg)] text-[color:var(--sg-status-muted-text)]'
                                                                 }`}
                                                             >
