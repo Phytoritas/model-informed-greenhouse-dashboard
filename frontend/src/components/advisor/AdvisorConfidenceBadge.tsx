@@ -8,7 +8,7 @@ const TONE_CLASSES: Record<NonNullable<AdvisorConfidenceBadgeProps['tone']>, str
     info: 'bg-[color:var(--sg-accent-blue-soft)] text-[color:var(--sg-accent-blue)]',
     success: 'bg-[color:var(--sg-accent-forest-soft)] text-[color:var(--sg-accent-success)]',
     warning: 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]',
-    danger: 'bg-rose-100 text-rose-700',
+    danger: 'bg-[color:var(--sg-status-offline-bg)] text-[color:var(--sg-status-offline-text)]',
 };
 
 const AdvisorConfidenceBadge = ({

@@ -80,7 +80,7 @@ const AdvisorPendingTabPanel = ({
                         type="button"
                         onClick={onRun}
                         disabled={status === 'loading'}
-                        className="w-full rounded-2xl bg-[linear-gradient(135deg,var(--sg-accent-earth),#c45d47)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--sg-shadow-card)] transition-[filter] hover:brightness-[1.04] disabled:opacity-60"
+                        className="w-full rounded-2xl bg-[linear-gradient(135deg,var(--sg-accent-earth),var(--sg-color-terracotta))] px-4 py-3 text-sm font-semibold text-white shadow-[var(--sg-shadow-card)] transition-[filter] hover:brightness-[1.04] disabled:opacity-60"
                     >
                         {status === 'loading' ? copy.checking : copy.run}
                     </button>
@@ -89,7 +89,7 @@ const AdvisorPendingTabPanel = ({
 
             <div className="rounded-2xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] p-5">
                 {status === 'error' ? (
-                    <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-6 text-sm text-rose-700">
+                    <div className="rounded-2xl border border-[color:var(--sg-status-offline-text)]/25 bg-[color:var(--sg-status-offline-bg)] px-4 py-6 text-sm text-[color:var(--sg-status-offline-text)]">
                         {copy.failed}: {error}
                     </div>
                 ) : null}
