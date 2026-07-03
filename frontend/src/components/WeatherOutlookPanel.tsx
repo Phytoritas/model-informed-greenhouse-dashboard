@@ -34,13 +34,13 @@ function WeatherSignalTile({
 
     return (
         <article
-            className={`relative overflow-hidden rounded-[24px] px-4 py-4 ${toneClass}`}
+            className={`relative overflow-hidden rounded-[var(--sg-radius-lg)] px-4 py-4 ${toneClass}`}
             style={{ boxShadow: 'var(--sg-shadow-card)' }}
         >
             <div className="absolute right-3 top-3 h-16 w-16 rounded-full bg-white/18 blur-2xl" />
             <div className="relative flex items-start gap-3">
                 <div
-                    className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-white/84"
+                    className="flex h-11 w-11 items-center justify-center rounded-[var(--sg-radius-md)] bg-white/84"
                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                     <Icon className="h-4.5 w-4.5" />
@@ -168,22 +168,22 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
         >
             {loading ? (
                 <div
-                    className="rounded-[28px] bg-white/82 px-5 py-12 text-center text-sm text-[color:var(--sg-text-muted)]"
+                    className="rounded-[var(--sg-radius-xl)] bg-white/82 px-5 py-12 text-center text-sm text-[color:var(--sg-text-muted)]"
                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                     {copy.loading}
                 </div>
             ) : error || !weather ? (
-                <div className="rounded-[28px] bg-[color:var(--sg-tint-amber)] px-5 py-12 text-center text-sm text-[color:var(--sg-accent-amber)]">
+                <div className="rounded-[var(--sg-radius-xl)] bg-[color:var(--sg-tint-amber)] px-5 py-12 text-center text-sm text-[color:var(--sg-accent-amber)]">
                     {copy.unavailable}
                 </div>
             ) : (
                 <div className="flex h-full flex-col gap-4">
                     <div className={`grid gap-4 ${compact ? 'xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]'}`}>
                         <article
-                            className="relative overflow-hidden rounded-[32px] px-5 py-5"
+                            className="relative overflow-hidden rounded-[var(--sg-radius-xl)] px-5 py-5"
                             style={{
-                                background: 'linear-gradient(135deg, rgba(196,231,255,0.94), rgba(255,255,255,0.88))',
+                                background: 'var(--sg-tint-blue)',
                                 boxShadow: 'var(--sg-shadow-soft)',
                             }}
                         >
@@ -192,7 +192,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                 <div className="flex flex-wrap items-start justify-between gap-4">
                                     <div className="flex items-start gap-3">
                                         <div
-                                            className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
+                                            className="flex h-14 w-14 items-center justify-center rounded-[var(--sg-radius-lg)] bg-white/84"
                                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                         >
                                             <MapPinned className="h-5.5 w-5.5 text-[color:var(--sg-accent-blue)]" />
@@ -208,7 +208,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                         </div>
                                     </div>
                                     <div
-                                        className="rounded-[22px] bg-white/82 px-4 py-3 text-right text-xs text-[color:var(--sg-text-muted)]"
+                                        className="rounded-[var(--sg-radius-lg)] bg-white/82 px-4 py-3 text-right text-xs text-[color:var(--sg-text-muted)]"
                                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
                                         <div>{formatLocaleDateTime(locale, weather.current.time)}</div>
@@ -226,7 +226,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                         </p>
                                     </div>
                                     <div
-                                        className="rounded-[24px] bg-white/84 px-4 py-4"
+                                        className="rounded-[var(--sg-radius-lg)] bg-white/84 px-4 py-4"
                                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
                                         <div className="sg-eyebrow">{providerDisplayLabel}</div>
@@ -268,7 +268,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
 
                     {forecastCards.length > 0 ? (
                         <section
-                            className="rounded-[30px] bg-white/76 px-5 py-5"
+                            className="rounded-[var(--sg-radius-xl)] bg-white/76 px-5 py-5"
                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                         >
                             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -287,7 +287,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                 {forecastCards.map((day) => (
                                     <article
                                         key={day.date}
-                                        className="rounded-[24px] bg-[color:var(--sg-surface-strong)] px-4 py-4"
+                                        className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-surface-strong)] px-4 py-4"
                                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
                                         <div className="flex items-start justify-between gap-3">
@@ -304,19 +304,19 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                             </div>
                                         </div>
                                         <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-blue)] px-3 py-3">
+                                            <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-blue)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.rainRisk}</div>
                                                 <div className="sg-data-number mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                                                     {day.precipitation_probability_max_pct.toFixed(0)}%
                                                 </div>
                                             </div>
-                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-neutral)] px-3 py-3">
+                                            <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-neutral)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.shortwave}</div>
                                                 <div className="sg-data-number mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                                                     {day.shortwave_radiation_sum_mj_m2.toFixed(1)} MJ/m2
                                                 </div>
                                             </div>
-                                            <div className="rounded-[16px] bg-[color:var(--sg-tint-violet)] px-3 py-3">
+                                            <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-violet)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.windMax}</div>
                                                 <div className="sg-data-number mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                                                     {day.wind_speed_max_kmh.toFixed(1)} km/h
