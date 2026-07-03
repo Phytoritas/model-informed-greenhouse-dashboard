@@ -35,10 +35,11 @@ import { getCropLabel } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import { buildRTRLiveSnapshot, getRtrProfile } from '../../utils/rtr';
 import { cn } from '../../utils/cn';
+import { metricToneForTile } from '../../utils/metricTone';
 import { AlertCard } from '../ui/alert-card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { MetricCard, type MetricTone } from '../ui/metric-card';
+import { MetricCard } from '../ui/metric-card';
 import { SectionHeader } from '../ui/section-header';
 import { StatusChip } from '../ui/status-chip';
 
@@ -76,23 +77,6 @@ function compactMetricUnit(unit: string | undefined): string | undefined {
     return 'mol';
   }
   return unit;
-}
-
-function metricToneForTile(tile: KpiTileData): MetricTone {
-  if (tile.availabilityState === 'missing') {
-    return 'muted';
-  }
-  if (tile.availabilityState === 'offline') {
-    return 'critical';
-  }
-  if (tile.availabilityState === 'delayed' || tile.availabilityState === 'stale') {
-    return 'warning';
-  }
-  return tile.healthStatus === 'critical'
-    ? 'critical'
-    : tile.healthStatus === 'warning'
-      ? 'warning'
-      : 'growth';
 }
 
 const bridgeBodyClampStyle: CSSProperties = {
