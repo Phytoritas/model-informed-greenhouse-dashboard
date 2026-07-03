@@ -28,6 +28,7 @@ import type {
 import { getProduceDisplayName } from '../utils/displayCopy';
 import ChartFrame from './charts/ChartFrame';
 import DashboardCard from './common/DashboardCard';
+import { StatusChip } from './ui/status-chip';
 
 interface ProducePricesPanelProps {
     prices: ProducePricesPayload | null;
@@ -49,6 +50,22 @@ const formatCompactKrw = (locale: AppLocale, value: number): string => {
     }).format(value);
 
     return locale === 'ko' ? `${compactValue}원` : `KRW ${compactValue}`;
+};
+
+const calculateChangePct = (current: number, baseline: number): number | null => {
+    if (!Number.isFinite(current) || !Number.isFinite(baseline) || baseline === 0) {
+        return null;
+    }
+
+    return ((current - baseline) / baseline) * 100;
+};
+
+const formatSignedPercent = (value: number | null): string => {
+    if (value === null) {
+        return '-';
+    }
+
+    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
 };
 
 const formatSurveyDay = (locale: AppLocale, date: string): string => {
@@ -210,6 +227,40 @@ const ComparisonChip = ({
     </div>
 );
 
+const PriceChangeChip = ({
+    label,
+    percent,
+}: {
+    label: string;
+    percent: number | null;
+}) => {
+    const tone: 'growth' | 'stable' | 'warning' | 'muted' = percent === null
+        ? 'muted'
+        : percent > 0
+            ? 'warning'
+            : percent < 0
+                ? 'growth'
+                : 'stable';
+    const Icon = percent === null
+        ? Minus
+        : percent > 0
+            ? ArrowUpRight
+            : percent < 0
+                ? ArrowDownRight
+                : Minus;
+
+    return (
+        <StatusChip
+            tone={tone}
+            icon={<Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+            className="justify-between gap-2 px-2.5 py-1.5 text-[11px]"
+        >
+            <span>{label}</span>
+            <span className="sg-data-number font-bold">{formatSignedPercent(percent)}</span>
+        </StatusChip>
+    );
+};
+
 function MarketMetaTile({
     label,
     value,
@@ -241,56 +292,79 @@ const ProducePriceCard = ({
     item,
     locale,
     index,
+    sourceProvider,
 }: {
     item: ProducePriceEntry;
     locale: AppLocale;
     index: number;
+    sourceProvider: string;
 }) => {
     const direction = getDirectionMeta(locale)[item.direction];
+    const monthChangePct = calculateChangePct(item.current_price_krw, item.month_ago_price_krw);
+    const copy = locale === 'ko'
+        ? {
+            dayChange: '전일 대비',
+            monthChange: '1개월 대비',
+            previousDay: '전일 기준가',
+            monthAgo: '1개월 전 기준가',
+            reference: '기준일',
+        }
+        : {
+            dayChange: 'vs 1d',
+            monthChange: 'vs 1m',
+            previousDay: '1d reference',
+            monthAgo: '1m reference',
+            reference: 'Base date',
+        };
 
     return (
-        <div className="relative overflow-hidden rounded-[28px] bg-white/88 p-4 shadow-[var(--sg-shadow-card)]">
-            <div className="absolute right-4 top-4 text-sm font-semibold tracking-[-0.05em] text-[color:var(--sg-text-faint)]">
-                {String(index + 1).padStart(2, '0')}
-            </div>
-            <div className="flex items-start justify-between gap-3 pr-8">
+        <article
+            className="sg-panel flex h-full min-h-[220px] flex-col bg-white p-3"
+            data-testid={`produce-price-card-${item.key}`}
+        >
+            <div className="flex items-start justify-between gap-3">
                 <div>
-                    <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                    <div className="text-xs font-semibold text-[color:var(--sg-text-faint)]">
+                        {String(index + 1).padStart(2, '0')} · {localizeMarketLabel(item.market_label, locale)}
+                    </div>
+                    <div className="mt-1 text-sm font-bold text-[color:var(--sg-text-strong)]">
                         {getProduceDisplayName(item.display_name, locale)}
                     </div>
                     <div className="mt-1 text-[11px] text-[color:var(--sg-text-muted)]">
-                        {item.source_name} / {item.unit} / {localizeMarketLabel(item.market_label, locale)}
+                        {sourceProvider} · {item.unit} · {copy.reference} {item.latest_day}
                     </div>
                 </div>
                 <div
-                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold shadow-[var(--sg-shadow-card)] ${direction.accentClassName}`}
+                    className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold shadow-[var(--sg-shadow-card)] ${direction.accentClassName}`}
                 >
                     <direction.Icon className="h-3.5 w-3.5" />
                     <span>{direction.label}</span>
                 </div>
             </div>
-            <div className="mt-4 flex items-baseline justify-between gap-3">
-                <div className="text-xl font-bold text-[color:var(--sg-text-strong)]">
+
+            <div className="mt-4">
+                <div className="sg-data-number text-2xl font-bold leading-none text-[color:var(--sg-text-strong)]">
                     {formatKrw(locale, item.current_price_krw)}
                 </div>
-                <div className="text-xs font-medium text-[color:var(--sg-text-muted)]">
-                    {item.day_over_day_pct > 0 ? '+' : ''}
-                    {item.day_over_day_pct.toFixed(1)}% {locale === 'ko' ? '전일 대비' : 'vs 1d'}
+                <div className="mt-3 flex flex-wrap gap-2" data-testid={`produce-change-chips-${item.key}`}>
+                    <PriceChangeChip label={copy.dayChange} percent={item.day_over_day_pct} />
+                    <PriceChangeChip label={copy.monthChange} percent={monthChangePct} />
                 </div>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[color:var(--sg-text-muted)]">
+
+            <div className="mt-auto grid grid-cols-2 gap-2 pt-3 text-[11px] text-[color:var(--sg-text-muted)]">
                 <ComparisonChip
-                    label={locale === 'ko' ? '전일' : '1d ago'}
+                    label={copy.previousDay}
                     price={item.previous_day_price_krw}
                     locale={locale}
                 />
                 <ComparisonChip
-                    label={locale === 'ko' ? '1개월 전' : '1m ago'}
+                    label={copy.monthAgo}
                     price={item.month_ago_price_krw}
                     locale={locale}
                 />
             </div>
-        </div>
+        </article>
     );
 };
 
@@ -536,6 +610,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             currentSelection: '현재 선택',
             sourceLabel: '데이터 소스',
             sourceStatus: '소스 상태',
+            baseDate: '기준일',
         }
         : {
             title: 'Live Produce Prices',
@@ -556,6 +631,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             currentSelection: 'Current selection',
             sourceLabel: 'Data source',
             sourceStatus: 'Source status',
+            baseDate: 'Base date',
         };
 
     const activeMarketKey: ProduceMarketKey | null = prices
@@ -570,6 +646,15 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
     const activeMarket = prices && activeMarketKey ? prices.markets[activeMarketKey] : null;
     const leadMarketItem = activeMarket?.items?.[0] ?? null;
     const sourceHealth = prices ? getSourceHealthCopy(prices, locale) : null;
+    const sourceStatusTone: 'growth' | 'stable' | 'warning' | 'critical' | 'muted' = loading
+        ? 'warning'
+        : error
+            ? 'critical'
+            : sourceHealth?.degraded
+                ? 'warning'
+                : prices
+                    ? 'growth'
+                    : 'muted';
 
     return (
         <DashboardCard
@@ -578,8 +663,20 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             description={copy.subtitle}
             className="sg-tint-amber"
             actions={(
-                <div className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-amber)] shadow-[var(--sg-shadow-card)]">
-                    {sourceHealth?.label ?? 'KAMIS'}
+                <div className="flex flex-wrap justify-end gap-2">
+                    <StatusChip tone={sourceStatusTone} data-testid="produce-source-status-chip">
+                        {sourceHealth?.label ?? 'KAMIS'}
+                    </StatusChip>
+                    {prices ? (
+                        <>
+                            <StatusChip tone="stable">
+                                {copy.sourceLabel}: {prices.source.provider}
+                            </StatusChip>
+                            <StatusChip tone="muted">
+                                {copy.baseDate}: {formatSurveyDay(locale, prices.source.latest_day)}
+                            </StatusChip>
+                        </>
+                    ) : null}
                 </div>
             )}
         >
@@ -674,31 +771,28 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                 value={localizeMarketLabel(prices.trend.market_key, locale)}
                                 detail={copy.trendNote}
                             />
-                            {leadMarketItem ? (
-                                <ProducePriceCard item={leadMarketItem} locale={locale} index={0} />
-                            ) : (
-                                <div className="rounded-[24px] bg-white/82 px-4 py-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
-                                    {copy.noItems}
-                                </div>
-                            )}
+                            <MarketMetaTile
+                                label={copy.sourceStatus}
+                                value={sourceHealth?.label ?? prices.source.provider}
+                                detail={sourceHealth?.detail ?? prices.source.provider}
+                            />
                         </div>
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(250px,0.95fr)] lg:items-start">
-                        <div className="space-y-3">
-                            {activeMarketKey !== prices.trend.market_key ? (
-                                <div className="rounded-[22px] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-[11px] text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
-                                    <div className="font-semibold">{copy.trendNoteTitle}</div>
-                                    <div className="mt-1 leading-relaxed">{copy.trendNote}</div>
-                                </div>
-                            ) : null}
-                            <TrendChart prices={prices} locale={locale} />
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                            {activeMarket.items.length > 1 ? (
-                                activeMarket.items.slice(1).map((item, index) => (
-                                    <ProducePriceCard key={item.key} item={item} locale={locale} index={index + 1} />
+                    <div className="grid gap-4">
+                        <div
+                            className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+                            data-testid="produce-price-card-grid"
+                        >
+                            {activeMarket.items.length > 0 ? (
+                                activeMarket.items.map((item, index) => (
+                                    <ProducePriceCard
+                                        key={item.key}
+                                        item={item}
+                                        locale={locale}
+                                        index={index}
+                                        sourceProvider={prices.source.provider}
+                                    />
                                 ))
                             ) : (
                                 <div className="rounded-[24px] bg-white/82 px-4 py-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
@@ -706,6 +800,14 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                 </div>
                             )}
                         </div>
+
+                        {activeMarketKey !== prices.trend.market_key ? (
+                            <div className="rounded-[22px] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-[11px] text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
+                                <div className="font-semibold">{copy.trendNoteTitle}</div>
+                                <div className="mt-1 leading-relaxed">{copy.trendNote}</div>
+                            </div>
+                        ) : null}
+                        <TrendChart prices={prices} locale={locale} />
                     </div>
                 </div>
             ) : null}
