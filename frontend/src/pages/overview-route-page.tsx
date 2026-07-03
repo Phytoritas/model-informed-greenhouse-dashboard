@@ -200,7 +200,7 @@ export default function OverviewRoutePage({
         />
       )}
       dashboardTab={(
-        <div className="min-w-0 space-y-4">
+        <div className="min-w-0 space-y-4" data-command-surface="overview-dashboard">
           <section className="min-w-0 space-y-4" aria-labelledby="overview-dashboard-metrics-title">
             <SectionHeader
               density="compact"
@@ -278,7 +278,7 @@ export default function OverviewRoutePage({
         </div>
       )}
       watchTab={(
-        <div className="space-y-4">
+        <div className="space-y-4" data-command-surface="overview-watch">
           <AlertRail items={fallbackAlerts} />
           <TodayBoard
             actionsNow={actionsNow}
