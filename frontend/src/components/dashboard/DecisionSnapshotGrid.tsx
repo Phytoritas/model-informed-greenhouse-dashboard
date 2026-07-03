@@ -13,7 +13,7 @@ import type {
 import { getWeatherLabel } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import DashboardCard from '../common/DashboardCard';
-import { StatusChip } from '../ui/status-chip';
+import { StatusChip, type StatusChipTone } from '../ui/status-chip';
 
 interface DecisionSnapshotGridProps {
   crop: CropType;
@@ -158,8 +158,8 @@ function BridgeDecisionCard({
   contextLabel: string;
   toneClassName: string;
   detailRows: Array<[string, string]>;
-  actionTone?: 'normal' | 'growth' | 'stable' | 'warning' | 'critical' | 'muted';
-  contextTone?: 'normal' | 'growth' | 'stable' | 'warning' | 'critical' | 'muted';
+  actionTone?: StatusChipTone;
+  contextTone?: StatusChipTone;
 }) {
   return (
     <article

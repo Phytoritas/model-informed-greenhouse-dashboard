@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '../../utils/cn';
 
 type DashboardCardVariant = 'hero' | 'metric' | 'narrative' | 'table' | 'scenario' | 'alert' | 'empty' | 'loading';
 
-interface DashboardCardProps {
+interface DashboardCardProps extends HTMLAttributes<HTMLElement> {
     eyebrow?: string;
     title?: string;
     description?: string;
@@ -36,9 +36,10 @@ export default function DashboardCard({
     variant = 'narrative',
     className,
     contentClassName,
+    ...sectionProps
 }: DashboardCardProps) {
     return (
-        <section className={cn(VARIANT_CLASSNAME[variant], className)}>
+        <section {...sectionProps} className={cn(VARIANT_CLASSNAME[variant], className)}>
             {(eyebrow || title || description || actions) ? (
                 <header className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">

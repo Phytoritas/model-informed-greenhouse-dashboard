@@ -48,7 +48,7 @@ export default function TrendPage({
 
   return (
     <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
-      <section className="grid gap-4" aria-labelledby="trend-weather-title">
+      <section className="grid gap-4" aria-labelledby="trend-weather-title" data-command-surface="trend-weather">
         <SectionHeader
           eyebrow={copy.weatherEyebrow}
           title={copy.weatherTitle}
@@ -58,7 +58,7 @@ export default function TrendPage({
         {weatherSurface}
       </section>
 
-      <section className="grid gap-4" aria-labelledby="trend-market-title">
+      <section className="grid gap-4" aria-labelledby="trend-market-title" data-command-surface="trend-market">
         <SectionHeader
           eyebrow={copy.marketEyebrow}
           title={copy.marketTitle}
@@ -69,7 +69,7 @@ export default function TrendPage({
       </section>
 
       {decisionSurface ? (
-        <section className="grid gap-4" aria-labelledby="trend-decision-title">
+        <section className="grid gap-4" aria-labelledby="trend-decision-title" data-command-surface="trend-decision">
           <SectionHeader
             eyebrow={copy.decisionEyebrow}
             title={copy.decisionTitle}

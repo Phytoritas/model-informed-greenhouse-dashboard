@@ -28,7 +28,7 @@ import type {
 import { getProduceDisplayName } from '../utils/displayCopy';
 import ChartFrame from './charts/ChartFrame';
 import DashboardCard from './common/DashboardCard';
-import { StatusChip } from './ui/status-chip';
+import { StatusChip, type StatusChipTone } from './ui/status-chip';
 
 interface ProducePricesPanelProps {
     prices: ProducePricesPayload | null;
@@ -111,23 +111,23 @@ const getDirectionMeta = (locale: AppLocale): Record<
     {
         label: string;
         Icon: typeof ArrowUpRight;
-        accentClassName: string;
+        tone: StatusChipTone;
     }
 > => ({
     up: {
         label: locale === 'ko' ? '상승' : 'Up',
         Icon: ArrowUpRight,
-        accentClassName: 'border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-accent-earth-soft)] text-[color:var(--sg-accent-earth)]',
+        tone: 'growth',
     },
     down: {
         label: locale === 'ko' ? '하락' : 'Down',
         Icon: ArrowDownRight,
-        accentClassName: 'border-rose-100 bg-rose-50 text-rose-700',
+        tone: 'critical',
     },
     flat: {
         label: locale === 'ko' ? '보합' : 'Flat',
         Icon: Minus,
-        accentClassName: 'border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-warm)] text-[color:var(--sg-text-muted)]',
+        tone: 'stable',
     },
 });
 
@@ -223,7 +223,7 @@ const ComparisonChip = ({
 }) => (
     <div className="rounded-[18px] bg-white/82 px-3 py-3 shadow-[var(--sg-shadow-card)]">
         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{label}</div>
-        <div className="mt-2 font-semibold text-[color:var(--sg-text-strong)]">{formatKrw(locale, price)}</div>
+        <div className="sg-data-number mt-2 font-semibold text-[color:var(--sg-text-strong)]">{formatKrw(locale, price)}</div>
     </div>
 );
 
@@ -234,12 +234,12 @@ const PriceChangeChip = ({
     label: string;
     percent: number | null;
 }) => {
-    const tone: 'growth' | 'stable' | 'warning' | 'muted' = percent === null
+    const tone: 'growth' | 'stable' | 'critical' | 'muted' = percent === null
         ? 'muted'
         : percent > 0
-            ? 'warning'
+            ? 'growth'
             : percent < 0
-                ? 'growth'
+                ? 'critical'
                 : 'stable';
     const Icon = percent === null
         ? Minus
@@ -278,7 +278,7 @@ function MarketMetaTile({
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-text-faint)]">
                 {label}
             </div>
-            <div className="mt-3 text-lg font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
+            <div className="sg-data-number mt-3 text-lg font-semibold text-[color:var(--sg-text-strong)]">
                 {value}
             </div>
             <div className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
@@ -334,12 +334,13 @@ const ProducePriceCard = ({
                         {sourceProvider} · {item.unit} · {copy.reference} {item.latest_day}
                     </div>
                 </div>
-                <div
-                    className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold shadow-[var(--sg-shadow-card)] ${direction.accentClassName}`}
+                <StatusChip
+                    tone={direction.tone}
+                    icon={<direction.Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+                    className="shrink-0 px-2.5 py-1.5 text-[11px]"
                 >
-                    <direction.Icon className="h-3.5 w-3.5" />
                     <span>{direction.label}</span>
-                </div>
+                </StatusChip>
             </div>
 
             <div className="mt-4">

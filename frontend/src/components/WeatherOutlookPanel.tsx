@@ -4,6 +4,7 @@ import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
 import { getCountryLabel, getWeatherLabel } from '../utils/displayCopy';
 import type { WeatherOutlook } from '../types';
 import DashboardCard from './common/DashboardCard';
+import { StatusChip, type StatusChipTone } from './ui/status-chip';
 
 interface WeatherOutlookPanelProps {
     weather: WeatherOutlook | null;
@@ -46,7 +47,7 @@ function WeatherSignalTile({
                 </div>
                 <div className="min-w-0 flex-1">
                     <div className="sg-eyebrow">{label}</div>
-                    <div className="mt-2 text-lg font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
+                    <div className="sg-data-number mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">
                         {value}
                     </div>
                     <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">
@@ -137,6 +138,11 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
         : isSyntheticFallback
             ? copy.summaryFallback
             : copy.summaryLive;
+    const providerStatusTone: StatusChipTone = isSyntheticFallback
+        ? 'warning'
+        : isCachedFallback
+            ? 'stable'
+            : 'growth';
     const currentWeatherLabel = weather
         ? getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)
         : '';
@@ -155,12 +161,9 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
             description={!compact ? copy.subtitle : undefined}
             className="sg-tint-blue"
             actions={(
-                <div
-                    className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-blue)]"
-                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                >
+                <StatusChip tone={providerStatusTone} data-testid="weather-provider-status-chip">
                     {providerDisplayLabel}
-                </div>
+                </StatusChip>
             )}
         >
             {loading ? (
@@ -196,7 +199,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                         </div>
                                         <div className="min-w-0">
                                             <div className="sg-eyebrow">{copy.currentLead}</div>
-                                            <div className="mt-3 text-[clamp(2.2rem,2rem+1vw,3.4rem)] font-semibold tracking-[-0.07em] text-[color:var(--sg-text-strong)]">
+                                            <div className="sg-data-number mt-3 text-[clamp(2.2rem,2rem+1vw,3.4rem)] font-semibold text-[color:var(--sg-text-strong)]">
                                                 {weather.current.temperature_c.toFixed(1)}°C
                                             </div>
                                             <div className="mt-2 text-base font-semibold text-[color:var(--sg-text-strong)]">
@@ -227,7 +230,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
                                         <div className="sg-eyebrow">{providerDisplayLabel}</div>
-                                        <div className="mt-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                                        <div className="sg-data-number mt-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                             {copy.feelsLike} {weather.current.apparent_temperature_c.toFixed(1)}°C
                                         </div>
                                         <p className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
@@ -275,9 +278,9 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                         {copy.forecastBody}
                                     </p>
                                 </div>
-                                <div className="rounded-full bg-[color:var(--sg-tint-blue)] px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-blue)]">
+                                <StatusChip tone="stable">
                                     {locale === 'ko' ? `${forecastCards.length}일 요약` : `${forecastCards.length}-day summary`}
-                                </div>
+                                </StatusChip>
                             </div>
 
                             <div className="mt-5 grid gap-3 xl:grid-cols-3">
@@ -296,26 +299,26 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                                     {getWeatherLabel(day.weather_code, day.weather_label, locale)}
                                                 </div>
                                             </div>
-                                            <div className="text-right text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                                            <div className="sg-data-number text-right text-sm font-semibold text-[color:var(--sg-text-strong)]">
                                                 {day.temperature_max_c.toFixed(1)}° / {day.temperature_min_c.toFixed(1)}°
                                             </div>
                                         </div>
                                         <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
                                             <div className="rounded-[16px] bg-[color:var(--sg-tint-blue)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.rainRisk}</div>
-                                                <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
+                                                <div className="sg-data-number mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                                                     {day.precipitation_probability_max_pct.toFixed(0)}%
                                                 </div>
                                             </div>
                                             <div className="rounded-[16px] bg-[color:var(--sg-tint-neutral)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.shortwave}</div>
-                                                <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
+                                                <div className="sg-data-number mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                                                     {day.shortwave_radiation_sum_mj_m2.toFixed(1)} MJ/m2
                                                 </div>
                                             </div>
                                             <div className="rounded-[16px] bg-[color:var(--sg-tint-violet)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.windMax}</div>
-                                                <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
+                                                <div className="sg-data-number mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                                                     {day.wind_speed_max_kmh.toFixed(1)} km/h
                                                 </div>
                                             </div>
