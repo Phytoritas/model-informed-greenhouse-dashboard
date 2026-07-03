@@ -5,6 +5,7 @@ import { useLocale } from '../i18n/LocaleProvider';
 import { UNIT_LABELS, getCropLabel, getForecastTitle } from '../utils/displayCopy';
 import DashboardCard from './common/DashboardCard';
 import ChartFrame from './charts/ChartFrame';
+import { StatusChip } from './ui/status-chip';
 
 interface ForecastPanelProps {
     forecast: ForecastData | null;
@@ -146,12 +147,9 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
             description={copy.subtitle}
             className="sg-tint-green"
             actions={(
-                <div
-                    className="rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-forest)]"
-                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                >
+                <StatusChip tone="growth">
                     {cropLabel} · {forecast.daily.length} {copy.forecastDays}
-                </div>
+                </StatusChip>
             )}
         >
             <div className="flex flex-col gap-4">
@@ -171,9 +169,7 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                                     {hasHarvest ? `${forecast.total_harvest_kg.toFixed(1)} kg` : copy.noHarvest}
                                 </span>
                                 {!hasHarvest ? (
-                                    <span className="rounded-full bg-white/84 px-3 py-1 text-xs font-semibold text-[color:var(--sg-accent-amber)]">
-                                        {copy.noHarvest}
-                                    </span>
+                                    <StatusChip tone="muted">{copy.noHarvest}</StatusChip>
                                 ) : null}
                             </div>
                             <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
@@ -233,9 +229,9 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                                 {copy.chartBody}
                             </p>
                         </div>
-                        <div className="rounded-full bg-[color:var(--sg-tint-green)] px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-forest)]">
+                        <StatusChip tone="growth">
                             {forecast.daily.length} day view
-                        </div>
+                        </StatusChip>
                     </div>
 
                     <div className="mt-5">
@@ -247,40 +243,40 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                                     data={forecast.daily}
                                     margin={{ top: 10, right: 10, left: -18, bottom: 0 }}
                                 >
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148, 163, 184, 0.18)" />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--sg-outline-soft)" />
                                     <XAxis
                                         dataKey="date"
-                                        tick={{ fontSize: 12, fill: '#64748b' }}
+                                        tick={{ fontSize: 12, fill: 'var(--sg-text-faint)' }}
                                         axisLine={false}
                                         tickLine={false}
                                         tickFormatter={(value: string) => value.split('-').slice(1).join('/')}
                                     />
                                     <YAxis
-                                        tick={{ fontSize: 12, fill: '#64748b' }}
+                                        tick={{ fontSize: 12, fill: 'var(--sg-text-faint)' }}
                                         axisLine={false}
                                         tickLine={false}
                                     />
                                     <Tooltip
                                         contentStyle={{
-                                            backgroundColor: 'rgba(255,255,255,0.98)',
-                                            borderRadius: '18px',
-                                            border: '1px solid rgba(255,255,255,0.7)',
-                                            boxShadow: '0 18px 40px rgba(15, 23, 42, 0.12)',
+                                            backgroundColor: 'var(--sg-surface-raised)',
+                                            borderRadius: 'var(--sg-radius-lg)',
+                                            border: '1px solid var(--sg-outline-soft)',
+                                            boxShadow: 'var(--sg-shadow-soft)',
                                         }}
-                                        cursor={{ fill: 'rgba(237, 247, 231, 0.72)' }}
+                                        cursor={{ fill: 'var(--sg-color-sage-soft)' }}
                                         formatter={(value: number, name: string) => [value.toFixed(1), name]}
                                     />
                                     <Bar
                                         dataKey="harvest_kg"
                                         name={copy.harvestYield}
-                                        fill="#2f6a2d"
+                                        fill="var(--sg-color-success)"
                                         radius={[6, 6, 0, 0]}
                                         maxBarSize={40}
                                     />
                                     <Bar
                                         dataKey="ETc_mm"
                                         name={copy.cropTranspiration}
-                                        fill="#4c9bd8"
+                                        fill="var(--sg-accent-blue)"
                                         radius={[6, 6, 0, 0]}
                                         maxBarSize={40}
                                     />
