@@ -29,6 +29,7 @@ interface TrendRoutePageProps {
 }
 
 export default function TrendRoutePage({
+  locale,
   crop,
   currentData,
   modelMetrics,
@@ -43,6 +44,7 @@ export default function TrendRoutePage({
 }: TrendRoutePageProps) {
   return (
     <TrendPage
+      locale={locale}
       weatherSurface={(
         <div className="grid gap-5">
           <WeatherTrendPanel
