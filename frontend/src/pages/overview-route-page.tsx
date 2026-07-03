@@ -287,6 +287,8 @@ export default function OverviewRoutePage({
             monitor={monitor}
             advisorUpdatedAt={advisorUpdatedAt}
             advisorRefreshing={advisorRefreshing}
+            onOpenAdvisor={onOpenAdvisor}
+            onOpenRtr={onOpenRtr}
           />
         </div>
       )}
