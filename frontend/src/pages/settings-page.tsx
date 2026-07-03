@@ -26,7 +26,7 @@ export default function SettingsPage({
 
   return (
     <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="min-w-0">{shellCard}</div>
         <div className="min-w-0">{laneCard}</div>
       </div>

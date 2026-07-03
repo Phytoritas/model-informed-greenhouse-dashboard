@@ -69,7 +69,7 @@ export default function AssistantRoutePage({
     <AssistantPage
       locale={locale}
       surface={(
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <PageSectionTabs
             tabs={panelTabs}
             activeId={activePanel}
@@ -97,7 +97,7 @@ export default function AssistantRoutePage({
         </div>
       )}
       summaryRail={(
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <AiCompatibilityPanel
             locale={locale}
             crop={crop}

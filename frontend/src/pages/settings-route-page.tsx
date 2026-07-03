@@ -144,7 +144,7 @@ export default function SettingsRoutePage({
           title={locale === 'ko' ? '기본 표시 설정' : 'Display defaults'}
           description={locale === 'ko' ? '언어, 작물, 보조 패널 기준을 정리합니다.' : 'Review language, crop, and assistant defaults.'}
         >
-          <div className="grid gap-3 text-sm text-[color:var(--sg-text-muted)]">
+          <div className="grid min-w-0 gap-3 text-sm text-[color:var(--sg-text-muted)]">
             <div>{locale === 'ko' ? '현재 언어' : 'Current locale'}: {locale === 'ko' ? '한국어' : 'English'}</div>
             <div>{locale === 'ko' ? '현재 작물' : 'Current crop'}: {selectedCropLabel}</div>
             <div>{locale === 'ko' ? '질문 도우미' : 'Assistant'}: {assistantOpen ? (locale === 'ko' ? '열림' : 'Open') : (locale === 'ko' ? '닫힘' : 'Closed')}</div>
@@ -157,7 +157,7 @@ export default function SettingsRoutePage({
           title={locale === 'ko' ? '현재 연결 확인' : 'Current connections'}
           description={locale === 'ko' ? '센서 상태와 주요 연동 상태를 한곳에서 봅니다.' : 'Review sensor freshness and key service connectivity.'}
         >
-          <div className="grid gap-3 text-sm text-[color:var(--sg-text-muted)]">
+          <div className="grid min-w-0 gap-3 text-sm text-[color:var(--sg-text-muted)]">
             <div>{locale === 'ko' ? '센서 상태' : 'Sensor status'}: {telemetrySummary}</div>
             <div>{locale === 'ko' ? '기상 연동' : 'Weather'}: {weatherConnected ? (locale === 'ko' ? '연결됨' : 'Connected') : (locale === 'ko' ? '대기 중' : 'Pending')}</div>
             <div>{locale === 'ko' ? '시장 연동' : 'Market'}: {marketConnected ? (locale === 'ko' ? '연결됨' : 'Connected') : (locale === 'ko' ? '대기 중' : 'Pending')}</div>
@@ -169,8 +169,8 @@ export default function SettingsRoutePage({
               void handleSaveSettings();
             }}
           >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="grid gap-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">
                 {saveCopy.price}
                 <Input
                   type="number"
@@ -180,7 +180,7 @@ export default function SettingsRoutePage({
                   aria-label={saveCopy.price}
                 />
               </label>
-              <label className="grid gap-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">
+              <label className="grid min-w-0 gap-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">
                 {saveCopy.cost}
                 <Input
                   type="number"
