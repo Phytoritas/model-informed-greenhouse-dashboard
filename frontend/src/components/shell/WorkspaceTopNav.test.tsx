@@ -2,8 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Leaf } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 import { LocaleProvider } from '../../i18n/LocaleProvider';
-import type { WorkspaceNavItem } from './WorkspaceNav';
-import WorkspaceTopNav from './WorkspaceTopNav';
+import WorkspaceTopNav, { type WorkspaceNavItem } from './WorkspaceTopNav';
 
 const ITEMS: WorkspaceNavItem[] = [
   {

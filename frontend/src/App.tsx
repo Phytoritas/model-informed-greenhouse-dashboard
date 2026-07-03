@@ -15,7 +15,7 @@ import type {
 } from './components/RTROptimizerPanel';
 import TopBar from './components/shell/TopBar';
 import WorkspaceTopNav from './components/shell/WorkspaceTopNav';
-import type { WorkspaceNavItem } from './components/shell/WorkspaceNav';
+import type { WorkspaceNavItem } from './components/shell/WorkspaceTopNav';
 import type { PromptAdvisorTabKey } from './components/advisor/advisorTabRegistry';
 import type { RagAssistantOpenRequest } from './components/chat/ragAssistantTypes';
 import AssistantDrawer from './features/assistant/AssistantDrawer';
