@@ -1,6 +1,31 @@
+import type { LucideIcon } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { cn } from '../../utils/cn';
-import type { WorkspaceNavItem } from './WorkspaceNav';
+
+export type DashboardWorkspaceKey =
+  | 'command'
+  | 'advisor'
+  | 'rtr'
+  | 'trend'
+  | 'crop'
+  | 'resources'
+  | 'alerts'
+  | 'knowledge'
+  | 'settings';
+
+export interface WorkspaceNavAction {
+  id: string;
+  label: string;
+}
+
+export interface WorkspaceNavItem {
+  key: string;
+  label: string;
+  shortLabel: string;
+  description: string;
+  icon: LucideIcon;
+  actions?: WorkspaceNavAction[];
+}
 
 interface WorkspaceTopNavProps {
   items: WorkspaceNavItem[];
