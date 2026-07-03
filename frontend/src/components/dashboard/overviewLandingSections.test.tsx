@@ -14,6 +14,7 @@ import {
   HeroDecisionBrief,
   LandingFooter,
   LiveMetricStrip,
+  OverviewMetricDeck,
   ScenarioOptimizerPreview,
   TodayActionBoard,
   TopNavigation,
@@ -121,6 +122,20 @@ const KPI_TILE: KpiTileData = {
   fractionDigits: 2,
 };
 
+const STRING_KPI_TILE: KpiTileData = {
+  ...KPI_TILE,
+  key: 'co2',
+  label: 'CO₂',
+  value: 'Receiving data',
+  unit: 'ppm',
+  availabilityState: 'delayed',
+  availabilityLabel: 'Receiving',
+  healthStatus: 'warning',
+  trend: 'stable',
+  trendDetail: 'Waiting for sensor',
+  lastReceived: null,
+};
+
 function renderWithProviders(ui: ReactNode, locale: 'en' | 'ko' = 'en') {
   window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
 
@@ -209,6 +224,15 @@ describe('overview landing sections', () => {
     expect(screen.getAllByText('weekly forecast')).toHaveLength(2);
     expect(container.querySelector('table')).toBeNull();
     expect(container.querySelector('dl')).toBeNull();
+  });
+
+  it('preserves unresolved sensor string values in the shared overview metric deck', () => {
+    renderWithProviders(<OverviewMetricDeck tiles={[STRING_KPI_TILE]} />);
+
+    expect(screen.getByText('Receiving data')).toBeTruthy();
+    expect(screen.getByText('Receiving')).toBeTruthy();
+    expect(screen.queryByText('-')).toBeNull();
+    expect(screen.queryByText('ppm')).toBeNull();
   });
 
   it('verify_src001_s0002_r005_a01 keeps status and severity chips on the shared tone vocabulary', () => {

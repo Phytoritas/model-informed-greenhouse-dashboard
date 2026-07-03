@@ -18,6 +18,7 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
     const copy = useMemo(() => (
         locale === 'ko'
             ? {
+                eyebrow: 'Dashboard trends',
                 title: '실시간 환경 분석',
                 lastUpdate: '마지막 갱신',
                 airCanopyTemperature: '기온과 군락 온도',
@@ -36,6 +37,7 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
                 electricalDemandLine: '전력 수요 (kW)',
             }
             : {
+                eyebrow: 'Dashboard trends',
                 title: 'Real-time Environmental Analysis',
                 lastUpdate: 'Last update',
                 airCanopyTemperature: 'Air and canopy temperature',
@@ -108,17 +110,18 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
     const visibleChartCards = chartCards;
     const chartHeight = variant === 'overview' ? 176 : 200;
     const gridClassName = variant === 'overview'
-        ? 'grid grid-cols-1 gap-5 md:grid-cols-2'
-        : 'grid grid-cols-1 gap-6 md:grid-cols-2';
+        ? 'grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2'
+        : 'grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2';
 
     return (
         <Profiler id="chart-section" onRender={onRender}>
-            <div className="space-y-6">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
+            <section className="min-w-0 space-y-3" aria-labelledby="overview-dashboard-charts-title" data-testid="overview-dashboard-charts">
+                <div className="sg-panel flex min-w-0 flex-col gap-2 bg-[color:var(--sg-surface-raised)] p-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                        <p className="sg-eyebrow">{copy.eyebrow}</p>
+                        <h3 id="overview-dashboard-charts-title" className="mt-1 text-base font-bold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
                     </div>
-                    <div className="text-xs text-[color:var(--sg-text-faint)]">
+                    <div className="shrink-0 text-xs font-semibold text-[color:var(--sg-text-faint)]">
                         {copy.lastUpdate}: {lastUpdate}
                     </div>
                 </div>
@@ -132,11 +135,12 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
                             dataKeys={card.dataKeys}
                             icon={card.icon}
                             height={chartHeight}
+                            eyebrow={copy.eyebrow}
                         />
                     ))}
                     {extraChartSlot}
                 </div>
-            </div>
+            </section>
         </Profiler>
     );
 };

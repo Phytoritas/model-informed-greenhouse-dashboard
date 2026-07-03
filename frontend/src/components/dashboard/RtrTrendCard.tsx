@@ -12,6 +12,13 @@ import { formatLocaleTime } from '../../i18n/locale';
 import type { CropType, RtrProfile, SensorData } from '../../types';
 import { buildRTRLiveSnapshot } from '../../utils/rtr';
 import ChartFrame from '../charts/ChartFrame';
+import {
+  DASHBOARD_CHART_AXIS_STROKE,
+  DASHBOARD_CHART_GRID_STROKE,
+  DASHBOARD_CHART_LEGEND_CLASSNAME,
+  DASHBOARD_CHART_TICK,
+  DASHBOARD_CHART_TOOLTIP_STYLE,
+} from '../charts/chartStyles';
 import DashboardCard from '../common/DashboardCard';
 
 interface RtrTrendCardProps {
@@ -30,7 +37,7 @@ interface RtrTrendPoint {
 
 const THREE_DAYS_MS = 72 * 60 * 60 * 1000;
 const MAX_POINTS = 72;
-const RTR_TREND_CARD_HEIGHT_CLASS = 'h-[312px] overflow-hidden !p-4';
+const RTR_TREND_CARD_HEIGHT_CLASS = 'sg-panel h-[312px] min-w-0 overflow-hidden bg-white !p-4';
 
 function downsampleSeries<T>(series: T[], maxPoints: number): T[] {
   if (series.length <= maxPoints) {
@@ -77,7 +84,7 @@ export default function RtrTrendCard({
 }: RtrTrendCardProps) {
   const { locale } = useLocale();
   const cardClassName = variant === 'chart-slot'
-    ? 'h-full min-h-[268px] overflow-hidden !p-4'
+    ? 'sg-panel h-full min-h-[268px] min-w-0 overflow-hidden bg-white !p-4'
     : RTR_TREND_CARD_HEIGHT_CLASS;
   const chartHeight = variant === 'chart-slot' ? 176 : 176;
   const trendSeries = useMemo(
@@ -109,7 +116,7 @@ export default function RtrTrendCard({
         title={copy.title}
         description=""
       >
-        <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        <div className="sg-panel bg-white px-4 py-5 text-sm text-[color:var(--sg-text-muted)]">
           {copy.waiting}
         </div>
       </DashboardCard>
@@ -124,7 +131,7 @@ export default function RtrTrendCard({
       description=""
       contentClassName="flex flex-col gap-2"
     >
-      <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.06em] text-[color:var(--sg-text-faint)]">
+      <div className={DASHBOARD_CHART_LEGEND_CLASSNAME}>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-olive)]" />
           {copy.actual}
@@ -143,17 +150,19 @@ export default function RtrTrendCard({
             data={trendSeries}
             margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(123, 93, 78, 0.16)" />
+            <CartesianGrid strokeDasharray="3 3" stroke={DASHBOARD_CHART_GRID_STROKE} />
             <XAxis
               dataKey="timestamp"
               tickFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit' })}
-              tick={{ fontSize: 10 }}
+              stroke={DASHBOARD_CHART_AXIS_STROKE}
+              tick={DASHBOARD_CHART_TICK}
               tickLine={false}
               axisLine={false}
               minTickGap={26}
             />
             <YAxis
-              tick={{ fontSize: 10 }}
+              stroke={DASHBOARD_CHART_AXIS_STROKE}
+              tick={DASHBOARD_CHART_TICK}
               tickLine={false}
               axisLine={false}
               domain={['auto', 'auto']}
@@ -161,13 +170,7 @@ export default function RtrTrendCard({
             <Tooltip
               labelFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
               formatter={(value: number) => `${value.toFixed(2)}°C`}
-              contentStyle={{
-                backgroundColor: 'rgba(255, 251, 246, 0.98)',
-                border: '1px solid rgba(123, 93, 78, 0.12)',
-                borderRadius: '12px',
-                boxShadow: '0 12px 28px rgba(90, 64, 63, 0.10)',
-                fontSize: '12px',
-              }}
+              contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
             />
             <Line
               type="monotone"

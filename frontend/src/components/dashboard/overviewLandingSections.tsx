@@ -297,37 +297,68 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
         description={copy.description}
         actions={<StatusChip tone="stable">{freshnessLabel}</StatusChip>}
       />
-      <div className="overview-metric-row">
-        {compactTiles.map((tile) => {
-          const isNumeric = typeof tile.value === 'number';
-          const value = isNumeric ? formatMetricValue(Number(tile.value), tile.fractionDigits) : '-';
-          const tone = metricToneForTile(tile);
-          return (
-            <MetricCard
-              key={tile.key}
-              label={tile.label}
-              value={value}
-              unit={isNumeric && tile.availabilityState !== 'missing' ? compactMetricUnit(tile.unit) : undefined}
-              detail={tile.availabilityLabel}
-              trend={tile.trend}
-              trendLabel={compactTrendLabel(tile.trendDetail) || tile.availabilityLabel}
-              icon={tile.icon}
-              tone={tone}
-            />
-          );
-        })}
-        <MetricCard
-          label={copy.yield}
-          value={yieldValue}
-          unit={yieldValue === '-' ? undefined : copy.yieldUnit}
-          detail={copy.yieldDetail}
-          trend="stable"
-          trendLabel={copy.yieldDetail}
-          icon={TrendingUp}
-          tone={yieldValue === '-' ? 'muted' : 'stable'}
-        />
-      </div>
+      <OverviewMetricDeck
+        tiles={compactTiles}
+        yieldOutlook={{
+          label: copy.yield,
+          value: yieldValue,
+          unit: yieldValue === '-' ? undefined : copy.yieldUnit,
+          detail: copy.yieldDetail,
+        }}
+      />
     </section>
+  );
+}
+
+export function OverviewMetricDeck({
+  tiles,
+  yieldOutlook,
+  className,
+}: {
+  tiles: KpiTileData[];
+  yieldOutlook?: {
+    label: string;
+    value: string;
+    unit?: string;
+    detail: string;
+  };
+  className?: string;
+}) {
+  return (
+    <div className={cn('overview-metric-row', className)} data-testid="overview-metric-deck">
+      {tiles.map((tile) => {
+        const isNumeric = typeof tile.value === 'number';
+        const value = typeof tile.value === 'number'
+          ? formatMetricValue(tile.value, tile.fractionDigits)
+          : tile.value;
+        const tone = metricToneForTile(tile);
+        return (
+          <MetricCard
+            key={tile.key}
+            label={tile.label}
+            value={value}
+            unit={isNumeric && tile.availabilityState !== 'missing' ? compactMetricUnit(tile.unit) : undefined}
+            detail={tile.lastReceived ?? tile.availabilityLabel}
+            trend={tile.trend}
+            trendLabel={compactTrendLabel(tile.trendDetail) || tile.availabilityLabel}
+            icon={tile.icon}
+            tone={tone}
+          />
+        );
+      })}
+      {yieldOutlook ? (
+        <MetricCard
+          label={yieldOutlook.label}
+          value={yieldOutlook.value}
+          unit={yieldOutlook.unit}
+          detail={yieldOutlook.detail}
+          trend="stable"
+          trendLabel={yieldOutlook.detail}
+          icon={TrendingUp}
+          tone={yieldOutlook.value === '-' ? 'muted' : 'stable'}
+        />
+      ) : null}
+    </div>
   );
 }
 

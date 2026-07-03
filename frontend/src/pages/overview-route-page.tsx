@@ -24,36 +24,18 @@ import {
   HeroDecisionBrief,
   LandingFooter,
   LiveMetricStrip,
+  OverviewMetricDeck,
   ScenarioOptimizerPreview,
   TodayActionBoard,
   TopNavigation,
   WeatherMarketKnowledgeBridge,
 } from '../components/dashboard/overviewLandingSections';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
-import { MetricCard, type MetricTone } from '../components/ui/metric-card';
 import { SectionHeader } from '../components/ui/section-header';
-import { formatMetricValue } from '../utils/formatValue';
 import OverviewPage from './overview-page';
 
 const Charts = lazy(() => import('../components/Charts'));
 const RtrTrendCard = lazy(() => import('../components/dashboard/RtrTrendCard'));
-
-function getMetricCardTone(tile: KpiTileData): MetricTone {
-  if (tile.availabilityState === 'missing') {
-    return 'muted';
-  }
-  if (tile.availabilityState === 'offline') {
-    return 'critical';
-  }
-  if (tile.availabilityState === 'delayed' || tile.availabilityState === 'stale') {
-    return 'warning';
-  }
-  return tile.healthStatus === 'critical'
-    ? 'critical'
-    : tile.healthStatus === 'warning'
-      ? 'warning'
-      : 'growth';
-}
 
 interface OverviewRoutePageProps {
   locale: AppLocale;
@@ -218,8 +200,8 @@ export default function OverviewRoutePage({
         />
       )}
       dashboardTab={(
-        <div className="space-y-4">
-          <section className="space-y-4" aria-labelledby="overview-dashboard-metrics-title">
+        <div className="min-w-0 space-y-4">
+          <section className="min-w-0 space-y-4" aria-labelledby="overview-dashboard-metrics-title">
             <SectionHeader
               density="compact"
               eyebrow="Dashboard"
@@ -231,28 +213,10 @@ export default function OverviewRoutePage({
                   : 'Command stays summary-first; detailed metrics and environmental charts remain connected here.'
               }
             />
-            <div className="overview-card-row-4">
-              {allMetricTiles.map((tile) => {
-                const isNumeric = typeof tile.value === 'number';
-                const tone = getMetricCardTone(tile);
-                return (
-                  <MetricCard
-                    key={tile.key}
-                    label={tile.label}
-                    value={isNumeric ? formatMetricValue(Number(tile.value), tile.fractionDigits) : String(tile.value)}
-                    unit={isNumeric && tile.availabilityState !== 'missing' ? tile.unit : undefined}
-                    detail={tile.lastReceived ?? tile.availabilityLabel}
-                    trend={tile.trend}
-                    trendLabel={tile.trendDetail || tile.availabilityLabel}
-                    icon={tile.icon}
-                    tone={tone}
-                  />
-                );
-              })}
-            </div>
+            <OverviewMetricDeck tiles={allMetricTiles} />
           </section>
-          <div className="grid gap-4 xl:grid-cols-12">
-            <div className="xl:col-span-7">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-12">
+            <div className="min-w-0 xl:col-span-7">
               <Suspense
                 fallback={(
                   <LoadingSkeleton
@@ -287,7 +251,7 @@ export default function OverviewRoutePage({
                 />
               </Suspense>
             </div>
-            <div className="space-y-4 xl:col-span-5">
+            <div className="min-w-0 space-y-4 xl:col-span-5">
               <OverviewSignalTrendCard
                 signals={overviewSignals}
                 loading={overviewSignalsLoading}
@@ -306,8 +270,8 @@ export default function OverviewRoutePage({
               />
             </div>
           </div>
-          <div className="grid gap-4 xl:grid-cols-12">
-            <div className="xl:col-span-12">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-12">
+            <div className="min-w-0 xl:col-span-12">
               <ModelRuntimeBridge crop={crop} onOpenAssistant={onOpenAssistant} />
             </div>
           </div>
