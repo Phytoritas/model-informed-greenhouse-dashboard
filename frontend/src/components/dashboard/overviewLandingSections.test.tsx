@@ -1,18 +1,28 @@
 import { render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { CloudSun } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 import type { AdvancedModelMetrics, RtrProfile, SensorData } from '../../types';
+import type { KpiTileData } from '../KpiStrip';
 import { LocaleProvider } from '../../i18n/LocaleProvider';
 import { LOCALE_STORAGE_KEY } from '../../i18n/locale';
 import {
   FinalCTA,
   HeroDecisionBrief,
   LandingFooter,
+  LiveMetricStrip,
   ScenarioOptimizerPreview,
+  TodayActionBoard,
   TopNavigation,
   WeatherMarketKnowledgeBridge,
 } from './overviewLandingSections';
+
+function readSource(relativePath: string): string {
+  return readFileSync(resolve(process.cwd(), 'src', relativePath), 'utf8');
+}
 
 const SENSOR: SensorData = {
   timestamp: Date.UTC(2026, 3, 26, 9, 0, 0),
@@ -95,6 +105,22 @@ const RTR_PROFILE: RtrProfile = {
   },
 };
 
+const KPI_TILE: KpiTileData = {
+  key: 'vpd',
+  label: 'VPD',
+  value: 0.92,
+  unit: 'kPa',
+  availabilityState: 'live',
+  availabilityLabel: 'Live',
+  healthStatus: 'normal',
+  trend: 'up',
+  trendDetail: '1h change +0.1 kPa',
+  icon: CloudSun,
+  color: 'bg-emerald-500',
+  lastReceived: '1 min ago',
+  fractionDigits: 2,
+};
+
 function renderWithProviders(ui: ReactNode, locale: 'en' | 'ko' = 'en') {
   window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
 
@@ -108,6 +134,95 @@ function renderWithProviders(ui: ReactNode, locale: 'en' | 'ko' = 'en') {
 }
 
 describe('overview landing sections', () => {
+  it('verify_src001_s0002_r002_a01 reuses the shared Command UI kit', () => {
+    const overviewSections = readSource('components/dashboard/overviewLandingSections.tsx');
+    const metricCard = readSource('components/ui/metric-card.tsx');
+    const alertCard = readSource('components/ui/alert-card.tsx');
+    const overviewPage = readSource('pages/overview-page.tsx');
+
+    expect(overviewSections).toContain("from '../ui/section-header'");
+    expect(overviewSections).toContain("from '../ui/button'");
+    expect(overviewSections).toContain("from '../ui/status-chip'");
+    expect(metricCard).toContain("from '../common/DashboardCard'");
+    expect(alertCard).toContain("from '../common/DashboardCard'");
+    expect(overviewPage).toContain("from '../components/ui/toggle-group'");
+  });
+
+  it('verify_src001_s0002_r003_a01 gives Command sections an eyebrow title and one-line description', () => {
+    const { container } = renderWithProviders(
+      <>
+        <HeroDecisionBrief heroCard={<div>hero card</div>} />
+        <LiveMetricStrip tiles={[KPI_TILE]} yieldOutlookKg={27.6} />
+        <TodayActionBoard
+          crop="Tomato"
+          currentData={SENSOR}
+          modelMetrics={MODEL_METRICS}
+          actionsNow={[]}
+          actionsToday={[]}
+          monitor={[]}
+          onOpenRtr={() => undefined}
+          onOpenAdvisor={() => undefined}
+        />
+        <ScenarioOptimizerPreview
+          crop="Tomato"
+          currentData={SENSOR}
+          history={[SENSOR]}
+          modelMetrics={MODEL_METRICS}
+          rtrProfile={RTR_PROFILE}
+        />
+        <WeatherMarketKnowledgeBridge
+          crop="Tomato"
+          weather={null}
+          weatherLoading={false}
+          weatherError={null}
+          producePrices={null}
+          produceLoading={false}
+          produceError={null}
+          knowledgeSummary={null}
+          knowledgeLoading={false}
+          knowledgeError={null}
+          history={[SENSOR]}
+          onOpenAssistant={() => undefined}
+        />
+        <FinalCTA />
+      </>,
+    );
+
+    expect(container.querySelectorAll('.sg-eyebrow').length).toBeGreaterThanOrEqual(6);
+    expect(screen.getByText('Unify climate, crop, market, and knowledge insight in one practical greenhouse command center.')).toBeTruthy();
+    expect(screen.getByText('Sensor freshness')).toBeTruthy();
+    expect(screen.getByText('Ventilation, irrigation, disease risk, and RTR scenario signals are grouped into action cards.')).toBeTruthy();
+    expect(screen.getByText('Compare observed conditions with RTR profile targets. Actual recommended control values come from the optimizer surface in Control.')).toBeTruthy();
+    expect(screen.getByText('Weather, market, and knowledge surfaces remain linked to the existing live data flow.')).toBeTruthy();
+    expect(screen.getByText('Join growers who rely on PhytoSync every day.')).toBeTruthy();
+  });
+
+  it('verify_src001_s0002_r004_a01 renders numeric indicators as metric tiles with value unit and delta chips', () => {
+    const { container } = renderWithProviders(
+      <LiveMetricStrip tiles={[KPI_TILE]} yieldOutlookKg={27.6} />,
+    );
+
+    expect(container.querySelectorAll('.sg-data-number').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('kPa')).toBeTruthy();
+    expect(screen.getByText('+0.1 kPa')).toBeTruthy();
+    expect(screen.getByText('kg/wk')).toBeTruthy();
+    expect(screen.getAllByText('weekly forecast')).toHaveLength(2);
+    expect(container.querySelector('table')).toBeNull();
+    expect(container.querySelector('dl')).toBeNull();
+  });
+
+  it('verify_src001_s0002_r005_a01 keeps status and severity chips on the shared tone vocabulary', () => {
+    const overviewSections = readSource('components/dashboard/overviewLandingSections.tsx');
+    const metricCard = readSource('components/ui/metric-card.tsx');
+    const alertCard = readSource('components/ui/alert-card.tsx');
+
+    expect(metricCard).toContain("export type MetricTone = 'growth' | 'stable' | 'warning' | 'critical' | 'muted'");
+    expect(alertCard).toContain("type AlertTone = 'growth' | 'stable' | 'warning' | 'critical' | 'muted'");
+    expect(overviewSections).not.toContain('tone="normal"');
+    expect(metricCard).not.toContain("'normal'");
+    expect(alertCard).not.toContain("'normal'");
+  });
+
   it('does not present fabricated setpoints as optimizer output', () => {
     renderWithProviders(
       <ScenarioOptimizerPreview

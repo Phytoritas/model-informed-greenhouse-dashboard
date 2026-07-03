@@ -138,7 +138,7 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
               unit="%"
               detail={copy.rainRisk}
               icon={CloudRain}
-              tone={maxRainRisk !== null && maxRainRisk >= 60 ? 'warning' : 'normal'}
+              tone={maxRainRisk !== null && maxRainRisk >= 60 ? 'warning' : 'stable'}
               trend={maxRainRisk !== null && maxRainRisk >= 60 ? 'up' : 'stable'}
               trendLabel={maxWind === null ? copy.wind : `${copy.wind} ${maxWind.toFixed(1)} km/h`}
             />
