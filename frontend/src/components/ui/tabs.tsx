@@ -21,7 +21,7 @@ export function TabsTrigger({
             className={cn(
                 'rounded-[16px] px-4 py-2.5 text-sm font-semibold transition-colors',
                 active
-                    ? 'bg-[linear-gradient(135deg,var(--sg-accent-violet),#d14a4c)] text-white shadow-[var(--sg-shadow-card)]'
+                    ? 'bg-[color:var(--sg-color-primary)] text-white shadow-[var(--sg-shadow-card)]'
                     : 'text-[color:var(--sg-text-muted)] hover:bg-white/78 hover:text-[color:var(--sg-text-strong)]',
                 className,
             )}

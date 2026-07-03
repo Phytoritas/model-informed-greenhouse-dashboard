@@ -231,11 +231,11 @@ export default function OverviewSignalTrendCard({
           <div className="flex flex-wrap items-center gap-2">
             <span>{copy.mergedTitle}</span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-4 rounded-full bg-[#d26a2e]" />
+              <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-terracotta)]" />
               {copy.irradiance}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-4 rounded-full bg-[#8a3d4a]" />
+              <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-primary)]" />
               {copy.balance}
             </span>
           </div>
@@ -310,7 +310,7 @@ export default function OverviewSignalTrendCard({
                   dataKey="irradiance"
                   name="irradiance"
                   connectNulls
-                  stroke="#d26a2e"
+                  stroke="var(--sg-color-terracotta)"
                   strokeWidth={2.2}
                   dot={false}
                   isAnimationActive={false}
@@ -321,7 +321,7 @@ export default function OverviewSignalTrendCard({
                   dataKey="sourceSinkBalance"
                   name="sourceSinkBalance"
                   connectNulls
-                  stroke="#8a3d4a"
+                  stroke="var(--sg-color-primary)"
                   strokeWidth={2.2}
                   dot={false}
                   isAnimationActive={false}
