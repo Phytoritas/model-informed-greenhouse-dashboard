@@ -24,7 +24,9 @@ describe('PRD-003 HOME Dashboard tab contracts', () => {
     expect(landingSections).toContain('tone={tone}');
 
     expect(metricCard).toContain("export type MetricTone = 'growth' | 'stable' | 'warning' | 'critical' | 'muted'");
-    expect(metricCard).toContain('const toneClass');
+    // Tone → surface-tint map moved to the shared utils/metricTone helper so the
+    // Command MetricCard and the alerts LiveMetricStrip converge on one mapping.
+    expect(metricCard).toContain('metricToneSurfaceClass');
     expect(metricCard).toContain('<StatusChip');
     expect(metricCard).toContain('sg-data-number');
   });

@@ -2,8 +2,9 @@ import type { KpiTileData } from '../KpiStrip';
 import { formatMetricValue } from '../../utils/formatValue';
 import { useLocale } from '../../i18n/LocaleProvider';
 import DashboardCard from '../common/DashboardCard';
-import DataStateBadge from '../status/DataStateBadge';
 import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
+import { StatusChip } from '../ui/status-chip';
+import { metricToneForTile, metricToneSurfaceClass } from '../../utils/metricTone';
 import type { TelemetryStatus } from '../../types';
 
 interface LiveMetricStripProps {
@@ -25,31 +26,23 @@ function MetricTile({
         ? formatMetricValue(tile.value, tile.fractionDigits)
         : tile.value;
     const isMissing = tile.availabilityState === 'missing';
-    const toneClass = tile.color.includes('sky') || tile.color.includes('blue') || tile.color.includes('cyan')
-        ? 'sg-tint-blue'
-        : tile.color.includes('amber') || tile.color.includes('orange')
-            ? 'sg-tint-amber'
-            : tile.color.includes('violet') || tile.color.includes('purple')
-                ? 'sg-tint-violet'
-                : 'sg-tint-green';
+    const tone = metricToneForTile(tile);
+    const toneClass = metricToneSurfaceClass[tone];
 
     if (featured) {
         return (
-            <div
-                className={`rounded-[34px] px-5 py-5 ${toneClass}`}
-                style={{ boxShadow: 'var(--sg-shadow-soft)' }}
-            >
+            <div className={`sg-panel rounded-[var(--sg-radius-lg)] px-5 py-5 ${toneClass}`}>
                 <div className="flex items-start justify-between gap-3">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-[18px] bg-white/82 ${tile.color} bg-opacity-10`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <Icon className={`h-5 w-5 ${tile.color.replace('bg-', 'text-')}`} />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-[var(--sg-radius-md)] bg-[color:var(--sg-color-sage-soft)] text-[color:var(--sg-color-olive)]">
+                        <Icon className="h-5 w-5" aria-hidden="true" />
                     </div>
-                    <DataStateBadge state={tile.availabilityState} />
+                    <StatusChip tone={tone}>{tile.availabilityLabel}</StatusChip>
                 </div>
                 <div className="mt-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
                     {tile.label}
                 </div>
                 <div className="mt-3 flex items-end gap-3">
-                    <div className="text-[clamp(2.2rem,1.6rem+1.9vw,3.9rem)] font-semibold tracking-[-0.06em] text-[color:var(--sg-text-strong)]">
+                    <div className="sg-data-number text-[clamp(2.2rem,1.6rem+1.9vw,3.9rem)] font-semibold tracking-[-0.06em] text-[color:var(--sg-text-strong)]">
                         {value}
                     </div>
                     {!isMissing && typeof tile.value === 'number' ? (
@@ -57,11 +50,11 @@ function MetricTile({
                     ) : null}
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                    <div className="rounded-[22px] bg-white/76 px-4 py-3 text-sm leading-6 text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                    <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-surface-warm)] px-4 py-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
                         {tile.trendDetail || tile.availabilityLabel}
                     </div>
                     {tile.lastReceived ? (
-                        <div className="rounded-[22px] bg-white/62 px-4 py-3 text-right text-[11px] leading-5 text-[color:var(--sg-text-faint)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                        <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-surface-muted)] px-4 py-3 text-right text-[11px] leading-5 text-[color:var(--sg-text-faint)]">
                             {tile.lastReceived}
                         </div>
                     ) : null}
@@ -71,18 +64,18 @@ function MetricTile({
     }
 
     return (
-        <div className={`rounded-[28px] px-4 py-4 ${toneClass}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        <div className={`sg-panel rounded-[var(--sg-radius-md)] px-4 py-4 ${toneClass}`}>
             <div className="flex items-start justify-between gap-3">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-[18px] bg-white/72 ${tile.color} bg-opacity-10`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                    <Icon className={`h-5 w-5 ${tile.color.replace('bg-', 'text-')}`} />
+                <div className="flex h-11 w-11 items-center justify-center rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-sage-soft)] text-[color:var(--sg-color-olive)]">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
                 </div>
-                <DataStateBadge state={tile.availabilityState} />
+                <StatusChip tone={tone}>{tile.availabilityLabel}</StatusChip>
             </div>
             <div className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
                 {tile.label}
             </div>
             <div className="mt-2 flex items-end gap-2">
-                <div className="text-[clamp(1.5rem,1rem+1vw,2.25rem)] font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+                <div className="sg-data-number text-[clamp(1.5rem,1rem+1vw,2.25rem)] font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
                     {value}
                 </div>
                 {!isMissing && typeof tile.value === 'number' ? (
@@ -148,12 +141,7 @@ export default function LiveMetricStrip({
                         </div>
                         <div className="grid gap-3">
                             {supportingLeadTile ? (
-                                <div
-                                    className="rounded-[30px] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(239,244,255,0.92))] p-4"
-                                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                >
-                                    <MetricTile tile={supportingLeadTile} />
-                                </div>
+                                <MetricTile tile={supportingLeadTile} />
                             ) : null}
                             <div className="grid gap-3 md:grid-cols-2">
                                 {supportingTailTiles.map((tile) => (

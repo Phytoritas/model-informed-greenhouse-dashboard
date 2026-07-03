@@ -2,19 +2,12 @@ import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { metricToneSurfaceClass } from '../../utils/metricTone';
 import DashboardCard from '../common/DashboardCard';
 import { StatusChip } from './status-chip';
 
 export type MetricTone = 'growth' | 'stable' | 'warning' | 'critical' | 'muted';
 type MetricTrend = 'up' | 'down' | 'stable';
-
-const toneClass: Record<MetricTone, string> = {
-  growth: 'bg-white',
-  stable: 'bg-[color:var(--sg-color-sage-soft)]',
-  warning: 'bg-[color:var(--sg-surface-warm)]',
-  critical: 'bg-[color:var(--sg-color-primary-soft)]',
-  muted: 'bg-[color:var(--sg-surface-muted)]',
-};
 
 const trendIcon: Record<MetricTrend, ReactNode> = {
   up: <ArrowUp className="h-3 w-3" aria-hidden="true" />,
@@ -48,7 +41,7 @@ export function MetricCard({
   return (
     <DashboardCard
       variant="metric"
-      className={cn('sg-panel flex h-full min-h-[48px] flex-col p-1.5', toneClass[tone], className)}
+      className={cn('sg-panel flex h-full min-h-[48px] flex-col p-1.5', metricToneSurfaceClass[tone], className)}
       contentClassName="flex h-full flex-col"
     >
       <div className="flex items-start justify-between gap-2">
