@@ -90,7 +90,7 @@ const AdvisorLandedTabStatePanel = ({
             <div className="sg-advisor-shell sg-advisor-shell-neutral">
                 {status === 'error' ? (
                     <div
-                        className="rounded-[24px] bg-rose-50 px-4 py-6 text-sm text-rose-700"
+                        className="rounded-[24px] bg-[color:var(--sg-status-offline-bg)] px-4 py-6 text-sm text-[color:var(--sg-status-offline-text)]"
                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                     >
                         {copy.executionFailed}: {error}
