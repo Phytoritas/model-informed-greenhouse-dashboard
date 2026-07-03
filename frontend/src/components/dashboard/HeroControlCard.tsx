@@ -11,7 +11,6 @@ import type { CropType, SensorData } from '../../types';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { formatLocaleDateTime } from '../../i18n/locale';
 import { getCropLabel } from '../../utils/displayCopy';
-import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
 import { StatusChip } from '../ui/status-chip';
 
 interface HeroControlCardProps {
@@ -156,7 +155,6 @@ export default function HeroControlCard({
                 </div>
                 <div className="flex flex-nowrap items-center justify-end gap-1.5">
                     <StatusChip tone={telemetrySignal.tone} className="px-2 py-0.5 text-[10px]">{telemetrySignal[locale]}</StatusChip>
-                    <TelemetryFreshnessChip status={telemetryStatus} className="gap-1.5 px-2 py-1 text-[10px]" />
                 </div>
             </div>
 
@@ -176,8 +174,8 @@ export default function HeroControlCard({
 
             <div className="overview-preview-chart mt-1.5 p-1" aria-hidden="true">
                 <svg viewBox="0 0 260 74" className="h-full w-full overflow-visible" aria-hidden="true" focusable="false">
-                    <line x1="0" y1="18" x2="260" y2="18" stroke="rgba(31,41,51,0.08)" strokeWidth="1" />
-                    <line x1="0" y1="42" x2="260" y2="42" stroke="rgba(31,41,51,0.08)" strokeWidth="1" />
+                    <line x1="0" y1="18" x2="260" y2="18" stroke="var(--sg-outline-soft)" strokeWidth="1" />
+                    <line x1="0" y1="42" x2="260" y2="42" stroke="var(--sg-outline-soft)" strokeWidth="1" />
                     <path d="M4 48 C34 43 54 49 78 37 S122 24 148 38 190 54 224 35 248 30 258 34" fill="none" stroke="var(--sg-color-tomato)" strokeWidth="3" strokeLinecap="round" />
                     <path d="M4 58 C32 56 60 50 82 52 S124 62 152 51 196 38 226 43 250 49 258 44" fill="none" stroke="var(--sg-color-success)" strokeWidth="3" strokeLinecap="round" />
                     <circle cx="78" cy="37" r="3" fill="var(--sg-color-tomato)" />
