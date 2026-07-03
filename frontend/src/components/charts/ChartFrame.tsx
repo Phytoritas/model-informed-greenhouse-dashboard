@@ -50,7 +50,10 @@ export default function ChartFrame({
     return (
         <div
             ref={containerRef}
-            className={cn('w-full', className)}
+            // min-w-0 lets the frame shrink below the chart's intrinsic width when it
+            // is a flex/grid item, so the measured width tracks the container on narrow
+            // viewports instead of forcing horizontal page overflow.
+            className={cn('w-full min-w-0', className)}
             style={{ minHeight, ...style }}
         >
             {isReady ? (
