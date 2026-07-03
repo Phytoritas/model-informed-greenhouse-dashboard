@@ -221,7 +221,7 @@ const ComparisonChip = ({
     price: number;
     locale: AppLocale;
 }) => (
-    <div className="rounded-[18px] bg-white/82 px-3 py-3 shadow-[var(--sg-shadow-card)]">
+    <div className="rounded-[var(--sg-radius-md)] bg-white/82 px-3 py-3 shadow-[var(--sg-shadow-card)]">
         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{label}</div>
         <div className="sg-data-number mt-2 font-semibold text-[color:var(--sg-text-strong)]">{formatKrw(locale, price)}</div>
     </div>
@@ -272,7 +272,7 @@ function MarketMetaTile({
 }) {
     return (
         <div
-            className="rounded-[24px] bg-white/84 px-4 py-4"
+            className="rounded-[var(--sg-radius-lg)] bg-white/84 px-4 py-4"
             style={{ boxShadow: 'var(--sg-shadow-card)' }}
         >
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-text-faint)]">
@@ -423,14 +423,14 @@ const TrendChart = ({
 
     if (!selectedSeries) {
         return (
-            <div className="rounded-[24px] bg-[color:var(--sg-tint-amber)] p-4 text-sm text-[color:var(--sg-accent-amber)]">
+            <div className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-tint-amber)] p-4 text-sm text-[color:var(--sg-accent-amber)]">
                 {copy.unavailable}
             </div>
         );
     }
 
     return (
-        <div className="flex h-full flex-col rounded-[30px] bg-[color:var(--sg-tint-neutral)] p-5 shadow-[var(--sg-shadow-card)]">
+        <div className="flex h-full flex-col rounded-[var(--sg-radius-xl)] bg-[color:var(--sg-tint-neutral)] p-5 shadow-[var(--sg-shadow-card)]">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
@@ -441,7 +441,7 @@ const TrendChart = ({
                         {copy.description}
                     </p>
                 </div>
-                <div className="rounded-[22px] bg-white/88 px-3 py-2 text-right text-[11px] text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
+                <div className="rounded-[var(--sg-radius-lg)] bg-white/88 px-3 py-2 text-right text-[11px] text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
                     <div>{copy.reference}</div>
                     <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                         {formatSurveyDay(locale, prices.trend.reference_date)}
@@ -469,26 +469,26 @@ const TrendChart = ({
             <ChartFrame className="mt-4 h-72 lg:h-[22rem]" minHeight={256}>
                 {({ width, height }) => (
                     <LineChart width={Math.max(width, 1)} height={Math.max(height, 256)} data={selectedSeries.points} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#eadccd" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--sg-outline-soft)" />
                         <XAxis
                             dataKey="date"
                             tickFormatter={(value) => formatShortDate(locale, String(value))}
-                            stroke="#b38b6d"
+                            stroke="var(--sg-text-faint)"
                             tick={{ fontSize: 11 }}
                             minTickGap={16}
                         />
                         <YAxis
-                            stroke="#b38b6d"
+                            stroke="var(--sg-text-faint)"
                             tick={{ fontSize: 11 }}
                             tickFormatter={(value: number) => formatCompactKrw(locale, value)}
                             width={72}
                         />
                         <Tooltip
                             contentStyle={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.96)',
-                                border: '1px solid #e4d2bf',
-                                borderRadius: '10px',
-                                boxShadow: '0 18px 40px -28px rgba(103, 71, 54, 0.45)',
+                                backgroundColor: 'var(--sg-surface-raised)',
+                                border: '1px solid var(--sg-outline-soft)',
+                                borderRadius: 'var(--sg-radius-md)',
+                                boxShadow: 'var(--sg-shadow-card)',
                             }}
                             labelFormatter={(value) => formatSurveyDay(locale, String(value))}
                             formatter={(value, name, item) => {
@@ -513,15 +513,15 @@ const TrendChart = ({
                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
                         <ReferenceLine
                             x={prices.trend.reference_date}
-                            stroke="#b38b6d"
+                            stroke="var(--sg-text-faint)"
                             strokeDasharray="4 4"
-                            label={{ value: copy.ref, position: 'top', fill: '#475569', fontSize: 11 }}
+                            label={{ value: copy.ref, position: 'top', fill: 'var(--sg-text-faint)', fontSize: 11 }}
                         />
                         <Line
                             type="monotone"
                             dataKey="actual_price_krw"
                             name={copy.actual}
-                            stroke="#a14a35"
+                            stroke="var(--sg-color-primary)"
                             strokeWidth={3}
                             dot={false}
                             activeDot={{ r: 4 }}
@@ -531,7 +531,7 @@ const TrendChart = ({
                             type="monotone"
                             dataKey="normal_3y_price_krw"
                             name={copy.normal3}
-                            stroke="#7a8f58"
+                            stroke="var(--sg-accent-forest)"
                             strokeWidth={2}
                             strokeDasharray="4 4"
                             dot={false}
@@ -542,7 +542,7 @@ const TrendChart = ({
                             type="monotone"
                             dataKey="normal_5y_price_krw"
                             name={copy.normal5}
-                            stroke="#c98549"
+                            stroke="var(--sg-accent-amber)"
                             strokeWidth={2}
                             strokeDasharray="6 4"
                             dot={false}
@@ -553,7 +553,7 @@ const TrendChart = ({
                             type="monotone"
                             dataKey="normal_10y_price_krw"
                             name={copy.normal10}
-                            stroke="#8b6b59"
+                            stroke="var(--sg-accent-earth)"
                             strokeWidth={2}
                             strokeDasharray="8 4"
                             dot={false}
@@ -565,13 +565,13 @@ const TrendChart = ({
             </ChartFrame>
 
             <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-[color:var(--sg-text-muted)] sm:grid-cols-2">
-                <div className="rounded-[18px] bg-white/88 px-3 py-3 shadow-[var(--sg-shadow-card)]">
+                <div className="rounded-[var(--sg-radius-md)] bg-white/88 px-3 py-3 shadow-[var(--sg-shadow-card)]">
                     <div className="font-medium text-[color:var(--sg-text-strong)]">{copy.seriesWindow}</div>
                     <div className="mt-1">
                         {copy.windowLabel(selectedSeries.history_days, selectedSeries.forecast_days)}
                     </div>
                 </div>
-                <div className="rounded-[18px] bg-white/88 px-3 py-3 shadow-[var(--sg-shadow-card)]">
+                <div className="rounded-[var(--sg-radius-md)] bg-white/88 px-3 py-3 shadow-[var(--sg-shadow-card)]">
                     <div className="font-medium text-[color:var(--sg-text-strong)]">{copy.futureCoverage}</div>
                     <div className="mt-1">
                         3y {coverageRangeLabel(selectedSeries.points, 'normal_3y_sample_count', 3)} / 5y {coverageRangeLabel(selectedSeries.points, 'normal_5y_sample_count', 5)} / 10y {coverageRangeLabel(selectedSeries.points, 'normal_10y_sample_count', 10)}
@@ -580,7 +580,7 @@ const TrendChart = ({
             </div>
 
             {unavailableSeries.length > 0 ? (
-                <div className="mt-3 rounded-[18px] bg-[color:var(--sg-tint-amber)] px-3 py-3 text-[11px] text-[color:var(--sg-accent-amber)]">
+                <div className="mt-3 rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-amber)] px-3 py-3 text-[11px] text-[color:var(--sg-accent-amber)]">
                     {copy.unavailablePrefix} {unavailableSeries.map((series) => getProduceDisplayName(series.display_name, locale)).join(', ')}. {copy.unavailableSuffix}
                 </div>
             ) : null}
@@ -682,16 +682,16 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
             )}
         >
             {loading ? (
-                <div className="rounded-[26px] bg-white/82 p-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">{copy.loading}</div>
+                <div className="rounded-[var(--sg-radius-lg)] bg-white/82 p-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">{copy.loading}</div>
             ) : error ? (
-                <div className="rounded-[26px] bg-[color:var(--sg-tint-amber)] p-5 text-sm text-[color:var(--sg-accent-amber)]">
+                <div className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-tint-amber)] p-5 text-sm text-[color:var(--sg-accent-amber)]">
                     {copy.unavailable}: {error}
                 </div>
             ) : prices && activeMarket ? (
                 <div className="flex h-full flex-col space-y-4">
                     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.22fr)_minmax(0,0.78fr)]">
                         <article
-                            className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(225,245,203,0.96),rgba(255,255,255,0.9))] px-6 py-6"
+                            className="relative overflow-hidden rounded-[var(--sg-radius-xl)] bg-[linear-gradient(135deg,rgba(225,245,203,0.96),rgba(255,255,255,0.9))] px-6 py-6"
                             style={{ boxShadow: 'var(--sg-shadow-soft)' }}
                         >
                             <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/22 blur-3xl" />
@@ -699,7 +699,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                 <div className="flex flex-wrap items-start justify-between gap-4">
                                     <div className="flex items-start gap-3">
                                         <div
-                                            className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
+                                            className="flex h-14 w-14 items-center justify-center rounded-[var(--sg-radius-lg)] bg-white/84"
                                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                         >
                                             <Sprout className="h-6 w-6 text-[color:var(--sg-accent-forest)]" />
@@ -759,7 +759,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                     />
                                 </div>
                                 {sourceHealth?.degraded ? (
-                                    <div className="rounded-[22px] bg-[color:var(--sg-tint-amber)] px-4 py-3 text-xs leading-relaxed text-[color:var(--sg-accent-amber)] shadow-[var(--sg-shadow-card)]">
+                                    <div className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-tint-amber)] px-4 py-3 text-xs leading-relaxed text-[color:var(--sg-accent-amber)] shadow-[var(--sg-shadow-card)]">
                                         {sourceHealth.detail}
                                     </div>
                                 ) : null}
@@ -796,14 +796,14 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                     />
                                 ))
                             ) : (
-                                <div className="rounded-[24px] bg-white/82 px-4 py-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
+                                <div className="rounded-[var(--sg-radius-lg)] bg-white/82 px-4 py-5 text-sm text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
                                     {copy.noItems}
                                 </div>
                             )}
                         </div>
 
                         {activeMarketKey !== prices.trend.market_key ? (
-                            <div className="rounded-[22px] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-[11px] text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
+                            <div className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-[11px] text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
                                 <div className="font-semibold">{copy.trendNoteTitle}</div>
                                 <div className="mt-1 leading-relaxed">{copy.trendNote}</div>
                             </div>

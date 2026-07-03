@@ -22,9 +22,9 @@ interface WeatherTrendPanelProps {
 }
 
 const TOOLTIP_STYLE = {
-  backgroundColor: 'rgba(255, 253, 249, 0.98)',
+  backgroundColor: 'var(--sg-surface-raised)',
   border: '1px solid var(--sg-outline-soft)',
-  borderRadius: '12px',
+  borderRadius: 'var(--sg-radius-lg)',
   boxShadow: 'var(--sg-shadow-card)',
 } as const;
 
@@ -163,7 +163,7 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
             <ChartFrame className="h-[22rem]" minHeight={300}>
               {({ width, height }) => (
                 <LineChart width={Math.max(width, 1)} height={Math.max(height, 300)} data={trendRows} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(89,107,74,0.14)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--sg-outline-strong)" />
                   <XAxis dataKey="label" stroke="var(--sg-text-faint)" tick={{ fontSize: 11 }} />
                   <YAxis yAxisId="temp" stroke="var(--sg-text-faint)" tick={{ fontSize: 11 }} />
                   <YAxis yAxisId="percent" orientation="right" stroke="var(--sg-text-faint)" tick={{ fontSize: 11 }} />
