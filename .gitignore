@@ -17,6 +17,15 @@ logs/
 Phytoritas.md
 docs/
 .github/
+
+# AI agent instruction/output documents stay local-only
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+llm-data-validation-sections.md
+playwright-command-center-afterwait.md
 scripts/GitHubProject.Common.ps1
 scripts/Link-GitHubProjectRepository.ps1
 scripts/New-GitHubIssueBranch.ps1
