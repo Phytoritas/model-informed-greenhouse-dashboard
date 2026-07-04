@@ -1660,8 +1660,6 @@ function App() {
                 controls={controls}
                 onToggle={toggleControl}
                 onSettingsChange={setTempSettings}
-                alertItems={alertItems}
-                fallbackAlertBody={heroCopy.telemetryLive}
                 history={deferredHistory}
                 currentData={currentData}
                 weather={weather}
