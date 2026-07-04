@@ -130,15 +130,27 @@ interface TopNavigationProps {
   onOpenAssistant: () => void;
 }
 
+type LandingNavItem = { label: string; to?: string; onClick?: () => void };
+
+function scrollToLandingFooter() {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  document.getElementById('overview-footer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
   const { locale } = useLocale();
-  const nav = [
-    ['HOME', '/overview'],
-    ['DASHBOARD', '/overview#overview-dashboard'],
-    ['INSIGHTS', '/trend'],
-    ['SCENARIOS', '/scenarios'],
-    ['KNOWLEDGE', '/assistant#assistant-search'],
-    ['CONTACT', '/settings'],
+  // Every item resolves to a live destination: hash anchors that only existed on the
+  // retired tabbed overview page were dead, so DASHBOARD/KNOWLEDGE now use real routes
+  // and CONTACT scrolls to the footer contact block.
+  const nav: LandingNavItem[] = [
+    { label: 'HOME', to: '/overview' },
+    { label: 'DASHBOARD', to: '/control' },
+    { label: 'INSIGHTS', to: '/trend' },
+    { label: 'SCENARIOS', to: '/scenarios' },
+    { label: 'KNOWLEDGE', to: '/assistant' },
+    { label: 'CONTACT', onClick: scrollToLandingFooter },
   ];
   const assistantLabel = locale === 'ko' ? '질문하기' : 'Ask Assistant';
   const dashboardLabel = locale === 'ko' ? '대시보드 열기' : 'Open Dashboard';
@@ -151,14 +163,25 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
           PhytoSync
         </Link>
         <div className="overview-nav-links">
-          {nav.map(([label, to]) => (
-            <Link
-              key={label}
-              to={to}
-              className="overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
-            >
-              {label}
-            </Link>
+          {nav.map((item) => (
+            item.to ? (
+              <Link
+                key={item.label}
+                to={item.to}
+                className="overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <button
+                key={item.label}
+                type="button"
+                onClick={item.onClick}
+                className="overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
+              >
+                {item.label}
+              </button>
+            )
           ))}
         </div>
         <div className="flex items-center justify-end gap-2">
@@ -171,7 +194,7 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
             <MessageCircle className="h-4 w-4" aria-hidden="true" />
           </button>
           <Link
-            to="/overview#overview-dashboard"
+            to="/control"
             className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary)] px-3.5 text-xs font-bold text-white shadow-[var(--sg-shadow-card)] transition hover:bg-[color:var(--sg-color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2"
           >
             {dashboardLabel} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -211,7 +234,7 @@ export function HeroDecisionBrief({ heroCard }: { heroCard: ReactNode }) {
           {copy.support}
         </p>
         <div className="mt-2.5 flex flex-wrap gap-2.5">
-          <Link className="inline-flex h-8 items-center justify-center rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary)] px-3.5 text-xs font-bold text-white shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2" to="/overview#overview-dashboard">
+          <Link className="inline-flex h-8 items-center justify-center rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary)] px-3.5 text-xs font-bold text-white shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2" to="/control">
             {copy.primary}
           </Link>
           <Link className="inline-flex h-8 items-center justify-center rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-color-primary)] bg-white px-3.5 text-xs font-bold text-[color:var(--sg-color-primary)] shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2" to="/scenarios">
@@ -948,7 +971,7 @@ export function LandingFooter({ onOpenAssistant }: { onOpenAssistant: () => void
       };
 
   return (
-    <footer className="flex flex-col gap-2 border-t border-[color:var(--sg-outline-soft)] py-2 text-xs text-[color:var(--sg-text-muted)] md:flex-row md:items-center md:justify-between">
+    <footer id="overview-footer" className="flex flex-col gap-2 border-t border-[color:var(--sg-outline-soft)] py-2 text-xs text-[color:var(--sg-text-muted)] md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-2 font-semibold text-[color:var(--sg-text-strong)]">
         <Leaf className="h-4 w-4 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
         PhytoSync
