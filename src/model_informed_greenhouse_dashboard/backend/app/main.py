@@ -1702,7 +1702,6 @@ async def start_simulation(req: StartRequest):
 
     # Stop any running simulation for THIS crop first
     if crop_state["simulator"] is not None:
-        import asyncio
 
         logger.info(f"Stopping previous {crop} simulation...")
         crop_state["simulator"].stop()
@@ -1991,7 +1990,6 @@ async def run_all():
             simulator = app_state[crop]["simulator"]
             if not simulator.running:
                 simulator.start()
-                import asyncio
                 # Cancel existing task if any
                 if app_state[crop].get("sim_task") and not app_state[crop]["sim_task"].done():
                      app_state[crop]["sim_task"].cancel()
@@ -2007,7 +2005,6 @@ async def run_all():
 
 async def _run_simulation_task(crop: str):
     """Background task to run simulation for specific crop."""
-    import asyncio
 
     crop_state = app_state[crop]
     simulator = crop_state["simulator"]
@@ -2731,7 +2728,6 @@ async def compute_model_sensitivity(req: ModelSensitivityRequest):
 async def advisor_summary(req: AdvisorSummaryRequest):
     """Return a thin SmartGrow advisor summary over live context plus local knowledge."""
     crop = _validate_crop(req.crop)
-    import asyncio
 
     dashboard_payload = _augment_dashboard_with_knowledge_context(crop, req.dashboard)
     try:
@@ -2798,7 +2794,6 @@ async def advisor_chat(req: AdvisorChatRequest):
     """Return a SmartGrow chat reply with orchestration metadata."""
     crop = _validate_crop(req.crop)
     try:
-        import asyncio
 
         return await asyncio.to_thread(
             build_advisor_chat_response,
@@ -2984,7 +2979,6 @@ async def ai_consult(req: AiConsultRequest):
     """Generate consulting content using OpenAI."""
     crop = _validate_crop(req.crop)
     try:
-        import asyncio
 
         text = await asyncio.to_thread(
             generate_consulting,
@@ -3011,7 +3005,6 @@ async def ai_chat(req: AiChatRequest):
     """Chat endpoint using OpenAI."""
     crop = _validate_crop(req.crop)
     try:
-        import asyncio
 
         text = await asyncio.to_thread(
             generate_chat_reply,
@@ -3146,7 +3139,6 @@ async def get_overview_signal_trends(
     window_hours: int = 72,
 ):
     """Return greenhouse irradiance and model source-sink trend points."""
-    import asyncio
 
     from .services.model_runtime.model_state_store import ModelStateStore
     from .services.model_runtime.scenario_runner import extract_runtime_inputs

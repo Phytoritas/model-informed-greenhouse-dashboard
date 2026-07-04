@@ -9,6 +9,7 @@ export interface AlertRailItem {
     severity: 'critical' | 'warning' | 'info' | 'resolved';
     title: string;
     body: string;
+    auxiliaryText?: string;
 }
 
 interface AlertRailProps {
@@ -180,6 +181,11 @@ export default function AlertRail({ items, compact = false }: AlertRailProps) {
                                         <p className="mt-1 text-xs leading-5 opacity-90" style={clampTwoStyle}>
                                             {item.body}
                                         </p>
+                                        {item.auxiliaryText ? (
+                                            <div className="mt-1 text-[10px] font-medium leading-4 text-[color:var(--sg-text-faint)]" style={clampOneStyle}>
+                                                {item.auxiliaryText}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
                             </article>
@@ -225,6 +231,11 @@ export default function AlertRail({ items, compact = false }: AlertRailProps) {
                                 <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
                                     {leadItem ? leadItem.body : copy.empty}
                                 </p>
+                                {leadItem?.auxiliaryText ? (
+                                    <div className="mt-2 inline-flex max-w-full rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-text-faint)]">
+                                        <span className="truncate">{leadItem.auxiliaryText}</span>
+                                    </div>
+                                ) : null}
                                 {leadItem ? (
                                     <div className="mt-3 flex flex-wrap gap-2">
                                         <StatusChip tone="warning">{copy.checkNow}</StatusChip>
@@ -278,6 +289,11 @@ export default function AlertRail({ items, compact = false }: AlertRailProps) {
                                             <StatusChip tone={meta.chipTone} className="px-2 py-0.5 text-[10px]">{copy.severity[item.severity]}</StatusChip>
                                             <div className="mt-1.5 text-sm font-bold text-[color:var(--sg-text-strong)]">{item.title}</div>
                                             <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]" style={clampTwoStyle}>{item.body}</p>
+                                            {item.auxiliaryText ? (
+                                                <div className="mt-1 text-[10px] font-medium leading-4 text-[color:var(--sg-text-faint)]" style={clampOneStyle}>
+                                                    {item.auxiliaryText}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </div>

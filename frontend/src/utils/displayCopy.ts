@@ -313,8 +313,271 @@ const COMMON_TOKEN_LABELS: Record<string, { en: string; ko: string }> = {
     score: { en: 'Score', ko: '점수' },
 };
 
+type LocalizedDisplayText = Record<AppLocale, string>;
+
+type ControlDisplayCopyEntry = {
+    label: LocalizedDisplayText;
+    compactLabel?: LocalizedDisplayText;
+    unit: string;
+};
+
+export const CONTROL_DISPLAY_COPY = {
+    temperature_day: {
+        label: { ko: '주간 온도', en: 'Day temperature' },
+        compactLabel: { ko: '주간 온도', en: 'Day temp' },
+        unit: '°C',
+    },
+    temperature_night: {
+        label: { ko: '야간 온도', en: 'Night temperature' },
+        compactLabel: { ko: '야간 온도', en: 'Night temp' },
+        unit: '°C',
+    },
+    co2_target: {
+        label: { ko: '이산화탄소 목표', en: 'CO₂ target' },
+        compactLabel: { ko: 'CO₂ 목표', en: 'CO₂' },
+        unit: 'ppm',
+    },
+    co2_target_ppm: {
+        label: { ko: '이산화탄소 목표', en: 'CO₂ target' },
+        compactLabel: { ko: 'CO₂ 목표', en: 'CO₂' },
+        unit: 'ppm',
+    },
+    co2_setpoint_day: {
+        label: { ko: '주간 이산화탄소 목표', en: 'Day CO₂ target' },
+        compactLabel: { ko: '주간 CO₂', en: 'Day CO₂' },
+        unit: 'ppm',
+    },
+    heating_set_C: {
+        label: { ko: '난방 설정 온도', en: 'Heating set temperature' },
+        compactLabel: { ko: '난방 온도', en: 'Heating set' },
+        unit: '°C',
+    },
+    heating_set_c: {
+        label: { ko: '난방 설정 온도', en: 'Heating set temperature' },
+        compactLabel: { ko: '난방 온도', en: 'Heating set' },
+        unit: '°C',
+    },
+    rh_target: {
+        label: { ko: '상대습도 목표', en: 'Relative humidity target' },
+        compactLabel: { ko: '습도 목표', en: 'RH target' },
+        unit: '%p',
+    },
+    screen_close: {
+        label: { ko: '스크린 폐쇄율', en: 'Screen closure' },
+        compactLabel: { ko: '스크린', en: 'Screen' },
+        unit: '%p',
+    },
+} as const satisfies Record<string, ControlDisplayCopyEntry>;
+
+type RuntimeConstraintDisplayCopyEntry = {
+    title: LocalizedDisplayText;
+    body: LocalizedDisplayText;
+};
+
+export const RUNTIME_CONSTRAINT_DISPLAY_COPY = {
+    'rh_target:humidity_floor_risk': {
+        title: {
+            ko: '습도 회복 하한 위험',
+            en: 'Humidity recovery floor risk',
+        },
+        body: {
+            ko: '습도 목표를 낮추면 상대습도가 회복 하한 아래로 떨어질 수 있어요. 현재 설정을 확인해 주세요.',
+            en: 'Lowering the humidity target can push relative humidity below the recovery floor. Please review the current setting.',
+        },
+    },
+    humidity_floor_risk: {
+        title: {
+            ko: '습도 회복 하한 위험',
+            en: 'Humidity recovery floor risk',
+        },
+        body: {
+            ko: '상대습도가 회복 하한 아래로 떨어질 수 있어요. 현재 설정을 확인해 주세요.',
+            en: 'Relative humidity may fall below the recovery floor. Please review the current setting.',
+        },
+    },
+    trust_region_exceeded: {
+        title: {
+            ko: '안전 조정 범위 초과',
+            en: 'Safe adjustment range exceeded',
+        },
+        body: {
+            ko: '권장 변경량이 모델이 신뢰하는 조정 범위를 벗어났어요. 변경 폭을 줄여 다시 확인해 주세요.',
+            en: 'The requested change is outside the model trust range. Reduce the adjustment and review again.',
+        },
+    },
+    disease_risk_high: {
+        title: {
+            ko: '습도 병해 위험',
+            en: 'Humidity disease-risk warning',
+        },
+        body: {
+            ko: '상대습도가 병해 위험이 커지는 상한에 가까워졌어요. 제습과 환기 상태를 함께 확인해 주세요.',
+            en: 'Relative humidity is near the disease-risk ceiling. Review dehumidification and ventilation together.',
+        },
+    },
+    screen_humidity_coupling: {
+        title: {
+            ko: '스크린-습도 동시 상승 주의',
+            en: 'Screen and humidity coupling warning',
+        },
+        body: {
+            ko: '스크린을 더 닫으면 하부 습도가 함께 높아질 수 있어요. 스크린과 습도 설정을 같이 점검해 주세요.',
+            en: 'Closing the screen further can lift lower-canopy humidity. Review screen and humidity settings together.',
+        },
+    },
+    heat_stress_risk: {
+        title: {
+            ko: '고온 스트레스 위험',
+            en: 'Heat-stress risk',
+        },
+        body: {
+            ko: '주간 온도가 작물 스트레스 기준을 넘을 수 있어요. 냉방, 환기, 차광 여유를 확인해 주세요.',
+            en: 'Day temperature may cross the crop stress threshold. Review cooling, ventilation, and shading margin.',
+        },
+    },
+    cold_stress_risk: {
+        title: {
+            ko: '주간 저온 회복 지연 위험',
+            en: 'Daytime cold recovery risk',
+        },
+        body: {
+            ko: '주간 온도가 회복에 필요한 범위보다 낮아질 수 있어요. 난방 기준과 환기 편차를 확인해 주세요.',
+            en: 'Day temperature may fall below the recovery band. Review heating setpoints and ventilation bias.',
+        },
+    },
+    night_cold_risk: {
+        title: {
+            ko: '야간 저온 위험',
+            en: 'Night cold-risk warning',
+        },
+        body: {
+            ko: '야간 온도가 하한 아래로 내려갈 수 있어요. 야간 난방 기준을 다시 확인해 주세요.',
+            en: 'Night temperature may drop below the floor. Review the night heating setpoint.',
+        },
+    },
+    co2_overdose_risk: {
+        title: {
+            ko: 'CO₂ 과다 보강 위험',
+            en: 'CO₂ over-supply risk',
+        },
+        body: {
+            ko: 'CO₂ 목표가 반응 상한을 넘을 수 있어요. 보강량과 환기 상태를 함께 확인해 주세요.',
+            en: 'The CO₂ target may exceed the high-response band. Review enrichment and ventilation together.',
+        },
+    },
+    source_loss_risk: {
+        title: {
+            ko: '광합성 공급 저하 위험',
+            en: 'Source limitation risk',
+        },
+        body: {
+            ko: '스크린 폐쇄가 현재 소스 부족을 더 키울 수 있어요. 광량 확보와 스크린 설정을 같이 확인해 주세요.',
+            en: 'Additional screen closure may amplify the current source limitation. Review light capture and screen settings.',
+        },
+    },
+} as const satisfies Record<string, RuntimeConstraintDisplayCopyEntry>;
+
+export type ControlDisplayCopy = {
+    code: string;
+    label: string;
+    compactLabel: string;
+    unit: string;
+    fallback: boolean;
+    auxiliaryText?: string;
+};
+
+export type RuntimeConstraintDisplayCopy = {
+    title: string;
+    body: string;
+    auxiliaryText?: string;
+    fallback: boolean;
+};
+
 function normalizeLookupKey(value: string): string {
     return value.trim().toLowerCase().replace(/[_-]+/g, ' ');
+}
+
+function normalizeControlCode(value: string): string {
+    return value.trim().replace(/-/g, '_');
+}
+
+function getSourceCodeText(rawTokens: string[], locale: AppLocale): string | undefined {
+    const compactTokens = rawTokens
+        .map((token) => token.trim())
+        .filter(Boolean);
+
+    if (compactTokens.length === 0) {
+        return undefined;
+    }
+
+    return locale === 'ko'
+        ? `원문 코드: ${compactTokens.join(' · ')}`
+        : `Source code: ${compactTokens.join(' · ')}`;
+}
+
+export function getControlDisplayCopy(
+    controlCode: string | null | undefined,
+    locale: AppLocale,
+): ControlDisplayCopy {
+    const rawCode = String(controlCode ?? '').trim();
+    const normalizedCode = normalizeControlCode(rawCode);
+    const entry = CONTROL_DISPLAY_COPY[normalizedCode as keyof typeof CONTROL_DISPLAY_COPY];
+
+    if (entry) {
+        return {
+            code: rawCode,
+            label: entry.label[locale],
+            compactLabel: (entry.compactLabel ?? entry.label)[locale],
+            unit: entry.unit,
+            fallback: false,
+        };
+    }
+
+    return {
+        code: rawCode,
+        label: locale === 'ko' ? '운영 제어값' : 'Operating control',
+        compactLabel: locale === 'ko' ? '제어값' : 'Control',
+        unit: '',
+        fallback: true,
+        auxiliaryText: getSourceCodeText([rawCode], locale),
+    };
+}
+
+export function getRuntimeConstraintDisplayCopy(
+    violation: {
+        code?: string | null;
+        control?: string | null;
+    },
+    locale: AppLocale,
+): RuntimeConstraintDisplayCopy {
+    const rawCode = String(violation.code ?? '').trim();
+    const rawControl = String(violation.control ?? '').trim();
+    const normalizedCode = normalizeControlCode(rawCode);
+    const normalizedControl = normalizeControlCode(rawControl);
+    const keyedEntry = normalizedControl
+        ? RUNTIME_CONSTRAINT_DISPLAY_COPY[
+            `${normalizedControl}:${normalizedCode}` as keyof typeof RUNTIME_CONSTRAINT_DISPLAY_COPY
+        ]
+        : undefined;
+    const entry = keyedEntry
+        ?? RUNTIME_CONSTRAINT_DISPLAY_COPY[normalizedCode as keyof typeof RUNTIME_CONSTRAINT_DISPLAY_COPY];
+
+    if (entry) {
+        return {
+            title: entry.title[locale],
+            body: entry.body[locale],
+            fallback: false,
+        };
+    }
+
+    return {
+        title: locale === 'ko' ? '운영 제약 확인 필요' : 'Operating constraint needs review',
+        body: locale === 'ko'
+            ? '사전에 없는 운영 제약이 감지되었습니다. 현재 설정을 확인해 주세요.'
+            : 'An unmapped operating constraint was detected. Please review the current setting.',
+        auxiliaryText: getSourceCodeText([rawControl, rawCode], locale),
+        fallback: true,
+    };
 }
 
 export function getDashboardSensorCopy(locale: AppLocale) {

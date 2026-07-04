@@ -3,6 +3,7 @@ import { Activity, Calculator, FlaskConical, Gauge, Sigma } from 'lucide-react';
 import { useModelRuntimeWorkbench, type ModelScenarioControls } from '../../hooks/useModelRuntimeWorkbench';
 import { useLocale } from '../../i18n/LocaleProvider';
 import type { CropType } from '../../types';
+import { getControlDisplayCopy } from '../../utils/displayCopy';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
@@ -13,13 +14,13 @@ interface ModelScenarioWorkbenchProps {
   crop: CropType;
 }
 
-const CONTROL_LABELS: Record<string, { ko: string; en: string; unit: string }> = {
-  temperature_day: { ko: '주간 온도', en: 'Day temp', unit: 'C' },
-  temperature_night: { ko: '야간 온도', en: 'Night temp', unit: 'C' },
-  co2_setpoint_day: { ko: 'CO2', en: 'CO2', unit: 'ppm' },
-  rh_target: { ko: '상대습도', en: 'RH', unit: '%p' },
-  screen_close: { ko: '스크린', en: 'Screen', unit: '%p' },
-};
+const MODEL_SCENARIO_CONTROL_KEYS = [
+  'temperature_day',
+  'temperature_night',
+  'co2_setpoint_day',
+  'rh_target',
+  'screen_close',
+] as const;
 
 const SENSITIVITY_TARGETS = [
   'predicted_yield_24h',
@@ -175,19 +176,22 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
               {copy.inputs}
             </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
-              {Object.entries(CONTROL_LABELS).map(([key, meta]) => (
-                <label key={key} className="text-xs font-semibold text-[color:var(--sg-text-muted)]">
-                  <span>{locale === 'ko' ? meta.ko : meta.en} ({meta.unit})</span>
-                  <Input
-                    className="mt-1"
-                    type="number"
-                    step={key === 'co2_setpoint_day' ? 10 : 0.1}
-                    value={controls[key as keyof typeof controls]}
-                    onChange={(event) => setControls((current) => ({ ...current, [key]: event.target.value }))}
-                    aria-label={`${locale === 'ko' ? meta.ko : meta.en} delta`}
-                  />
-                </label>
-              ))}
+              {MODEL_SCENARIO_CONTROL_KEYS.map((key) => {
+                const controlCopy = getControlDisplayCopy(key, locale);
+                return (
+                  <label key={key} className="text-xs font-semibold text-[color:var(--sg-text-muted)]">
+                    <span>{controlCopy.compactLabel} ({controlCopy.unit})</span>
+                    <Input
+                      className="mt-1"
+                      type="number"
+                      step={key === 'co2_setpoint_day' ? 10 : 0.1}
+                      value={controls[key as keyof typeof controls]}
+                      onChange={(event) => setControls((current) => ({ ...current, [key]: event.target.value }))}
+                      aria-label={`${controlCopy.compactLabel} delta`}
+                    />
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -236,7 +240,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
                 void runSensitivityWithOptions({
                   target,
                   horizonHours: Number(horizon),
-                  controls: Object.keys(CONTROL_LABELS),
+                  controls: [...MODEL_SCENARIO_CONTROL_KEYS],
                 });
               }}
               disabled={isBusy}
@@ -307,11 +311,11 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
               <div className="mt-3 grid gap-2 md:grid-cols-2">
                 {sensitivityRows.map((row) => {
                   const control = String(row.control ?? '');
-                  const meta = CONTROL_LABELS[control];
+                  const controlCopy = getControlDisplayCopy(control, locale);
                   return (
                     <div key={control || JSON.stringify(row)} className="rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-[color:var(--sg-text-strong)]">{meta ? (locale === 'ko' ? meta.ko : meta.en) : control}</p>
+                        <p className="text-sm font-bold text-[color:var(--sg-text-strong)]">{controlCopy.compactLabel}</p>
                         <StatusChip tone={row.direction === 'increase' ? 'growth' : row.direction === 'decrease' ? 'warning' : 'muted'}>{String(row.direction ?? '-')}</StatusChip>
                       </div>
                       <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">

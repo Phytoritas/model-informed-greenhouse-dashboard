@@ -1,19 +1,15 @@
 import type { ModelRuntimePayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
-import { getLocalizedTokenLabel } from '../../utils/displayCopy';
+import {
+    getControlDisplayCopy,
+    getLocalizedTokenLabel,
+    getRuntimeConstraintDisplayCopy,
+} from '../../utils/displayCopy';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
 
 interface AdvisorModelRuntimePanelProps {
     runtime?: ModelRuntimePayload | null;
 }
-
-const CONTROL_LABELS = {
-    co2_setpoint_day: { ko: '주간 CO2', en: 'Day CO2' },
-    temperature_day: { ko: '주간 온도', en: 'Day temperature' },
-    temperature_night: { ko: '야간 온도', en: 'Night temperature' },
-    rh_target: { ko: '상대습도 목표', en: 'RH target' },
-    screen_close: { ko: '스크린 폐쇄', en: 'Screen close' },
-} as const;
 
 const TIME_WINDOW_LABELS = {
     now: { ko: '지금', en: 'Now' },
@@ -286,7 +282,7 @@ const AdvisorModelRuntimePanel = ({
                                     </div>
                                 ) : topLevers.map((lever) => {
                                     const controlKey = String(lever.control ?? '');
-                                    const localizedControl = CONTROL_LABELS[controlKey as keyof typeof CONTROL_LABELS];
+                                    const localizedControl = getControlDisplayCopy(controlKey, locale);
                                     const width = clampPercent((Math.abs(Number(lever.elasticity ?? 0)) / maxElasticity) * 100);
                                     return (
                                         <div
@@ -296,9 +292,7 @@ const AdvisorModelRuntimePanel = ({
                                             <div className="flex items-center justify-between gap-3">
                                                 <div>
                                                     <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
-                                                        {localizedControl
-                                                            ? localizedControl[locale]
-                                                            : controlKey}
+                                                        {localizedControl.label}
                                                     </div>
                                                     <div className="mt-1 text-xs uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                                         {copy.elasticity}
@@ -387,22 +381,26 @@ const AdvisorModelRuntimePanel = ({
                                                 <div>{copy.balanceDelta}: <span className="sg-data-number">{formatNumber(option.expected_source_sink_balance_delta, 2)}</span></div>
                                             </div>
                                             <div className="mt-3 flex flex-wrap gap-2">
-                                                {(optionViolations.length
-                                                    ? optionViolations
-                                                    : [{ code: copy.noViolations, severity: 'success', message: copy.noViolations }]
-                                                ).map((violation, index) => (
-                                                    <AdvisorConfidenceBadge
-                                                        key={`${option.action}-${violation.code}-${index}`}
-                                                        label={getLocalizedTokenLabel(violation.code, locale)}
-                                                        tone={
-                                                            violation.severity === 'high'
-                                                                ? 'danger'
-                                                                : violation.severity === 'medium'
-                                                                    ? 'warning'
-                                                                    : 'success'
-                                                        }
-                                                    />
-                                                ))}
+                                                {optionViolations.length
+                                                    ? optionViolations.map((violation, index) => (
+                                                        <AdvisorConfidenceBadge
+                                                            key={`${option.action}-${violation.code}-${index}`}
+                                                            label={getRuntimeConstraintDisplayCopy(violation, locale).title}
+                                                            tone={
+                                                                violation.severity === 'high'
+                                                                    ? 'danger'
+                                                                    : violation.severity === 'medium'
+                                                                        ? 'warning'
+                                                                        : 'success'
+                                                            }
+                                                        />
+                                                    ))
+                                                    : (
+                                                        <AdvisorConfidenceBadge
+                                                            label={copy.noViolations}
+                                                            tone="success"
+                                                        />
+                                                    )}
                                             </div>
                                         </div>
                                     );
@@ -417,13 +415,16 @@ const AdvisorModelRuntimePanel = ({
                                 {copy.constraintsTitle}
                             </div>
                             <div className="mt-3 flex flex-wrap gap-2">
-                                {violations.map((violation, index) => (
-                                    <AdvisorConfidenceBadge
-                                        key={`${violation.code}-${index}`}
-                                        label={`${getLocalizedTokenLabel(violation.code, locale)}${violation.control ? `:${getLocalizedTokenLabel(violation.control, locale)}` : ''}`}
-                                        tone={violation.severity === 'high' ? 'danger' : 'warning'}
-                                    />
-                                ))}
+                                {violations.map((violation, index) => {
+                                    const constraintCopy = getRuntimeConstraintDisplayCopy(violation, locale);
+                                    return (
+                                        <AdvisorConfidenceBadge
+                                            key={`${violation.code}-${index}`}
+                                            label={constraintCopy.title}
+                                            tone={violation.severity === 'high' ? 'danger' : 'warning'}
+                                        />
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : null}

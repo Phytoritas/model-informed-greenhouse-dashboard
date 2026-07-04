@@ -1,7 +1,5 @@
 import { Suspense, lazy } from 'react';
 import CropDetails from '../components/CropDetails';
-import TodayBoard from '../components/dashboard/TodayBoard';
-import ModelRuntimeBridge from '../components/dashboard/ModelRuntimeBridge';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { AppLocale } from '../i18n/locale';
 import type { AdvancedModelMetrics, CropType, ForecastData, SensorData } from '../types';
@@ -17,12 +15,7 @@ interface CropWorkRoutePageProps {
   modelMetrics: AdvancedModelMetrics;
   forecast: ForecastData | null;
   aiAnalysis: string | null;
-  actionsNow: string[];
-  actionsToday: string[];
-  actionsWeek: string[];
-  monitor: string[];
   activePanel?: 'crop-work-growth' | 'crop-work-work' | 'crop-work-harvest';
-  onOpenAssistant: () => void;
 }
 
 export default function CropWorkRoutePage({
@@ -32,27 +25,13 @@ export default function CropWorkRoutePage({
   modelMetrics,
   forecast,
   aiAnalysis,
-  actionsNow,
-  actionsToday,
-  actionsWeek,
-  monitor,
   activePanel = 'crop-work-growth',
-  onOpenAssistant,
 }: CropWorkRoutePageProps) {
   return (
     <CropWorkPage
       locale={locale}
       activeTabId={activePanel}
       cropSummary={<CropDetails crop={crop} currentData={currentData} metrics={modelMetrics} />}
-      workBoard={(
-        <TodayBoard
-          actionsNow={actionsNow}
-          actionsToday={actionsToday}
-          actionsWeek={actionsWeek}
-          monitor={monitor}
-          compact
-        />
-      )}
       forecastSurface={(
         <Suspense
           fallback={(
@@ -84,10 +63,6 @@ export default function CropWorkRoutePage({
               crop={crop}
             />
           </Suspense>
-          <ModelRuntimeBridge
-            crop={crop}
-            onOpenAssistant={onOpenAssistant}
-          />
         </div>
       )}
     />
