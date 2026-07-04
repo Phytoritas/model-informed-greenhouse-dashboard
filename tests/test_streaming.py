@@ -429,3 +429,20 @@ def test_verify_src001_s0002_r007_a01_status_includes_current_sim_seconds_per_re
     cucumber = response.json()["greenhouses"]["cucumber"]
     assert cucumber["sim_seconds_per_real_second"] == 4321.0
     assert cucumber["step_sim_duration_seconds"] == 600.0
+
+
+def test_main_has_no_function_local_asyncio_import() -> None:
+    """Regression guard for the /api/start UnboundLocalError.
+
+    A function-local `import asyncio` anywhere inside a function makes
+    `asyncio` a local variable for the WHOLE function body, so any use above
+    that line (e.g. the pace_changed_event setup in start_simulation on the
+    fresh-start path) crashes with UnboundLocalError before the import runs.
+    main.py imports asyncio at module scope; no function may shadow it.
+    """
+    import re
+    from pathlib import Path
+
+    source = Path(backend_main.__file__).read_text(encoding="utf-8")
+    shadowing_imports = re.findall(r"^[ \t]+import asyncio\b.*$", source, re.MULTILINE)
+    assert shadowing_imports == []
