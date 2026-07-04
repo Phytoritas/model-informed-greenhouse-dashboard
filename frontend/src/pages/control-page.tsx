@@ -7,7 +7,6 @@ interface ControlPageProps {
   locale: 'ko' | 'en';
   activePanel: ControlPagePanelId;
   strategySurface: ReactNode;
-  controlActions: ReactNode;
   controlSummary: ReactNode;
 }
 
@@ -15,7 +14,6 @@ export default function ControlPage({
   locale,
   activePanel,
   strategySurface,
-  controlActions,
   controlSummary,
 }: ControlPageProps) {
   const copy = locale === 'ko'
@@ -41,13 +39,11 @@ export default function ControlPage({
         <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-12">
           <div className="min-h-0 min-w-0 xl:col-span-8 [&>*]:h-full">{strategySurface}</div>
           <div className="min-h-0 min-w-0 xl:col-span-4 [&>*]:h-full">{controlSummary}</div>
-          <div className="min-h-0 min-w-0 xl:col-span-12 [&>*]:h-full">{controlActions}</div>
         </div>
       ) : null}
       {activePanel === 'control-devices' ? (
         <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-12">
           <div className="min-h-0 min-w-0 xl:col-span-12 [&>*]:h-full">{controlSummary}</div>
-          <div className="min-h-0 min-w-0 xl:col-span-12 [&>*]:h-full">{controlActions}</div>
         </div>
       ) : null}
     </PageCanvas>

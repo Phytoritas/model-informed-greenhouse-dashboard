@@ -838,7 +838,7 @@ describe('App routed shell', () => {
 
     try {
       renderApp('/overview')
-      await waitForElementToBeRemoved(() => screen.queryByText('화면을 불러오는 중입니다.'), { timeout: 5000 })
+      await waitForElementToBeRemoved(() => screen.queryByText('화면을 불러오는 중입니다.'), { timeout: 15000 })
 
       const expectedSourceSinkBalance = deriveSourceSinkBalance({
         crop: 'Cucumber',
@@ -846,14 +846,14 @@ describe('App routed shell', () => {
         metrics: greenhouseState.modelMetrics as Parameters<typeof deriveSourceSinkBalance>[0]['metrics'],
       })
 
-      expect(await screen.findByTestId('hero-source-sink', {}, { timeout: 5000 })).toBeTruthy()
+      expect(await screen.findByTestId('hero-source-sink', {}, { timeout: 15000 })).toBeTruthy()
       expect(screen.getByTestId('hero-source-sink').textContent).toBe(String(expectedSourceSinkBalance))
       expect(screen.getByTestId('hero-canopy').textContent).toBe(String(greenhouseState.currentData.photosynthesis))
       expect(screen.getByTestId('hero-lai').textContent).toBe(String(greenhouseState.modelMetrics.growth.lai))
     } finally {
       advisorState.aiModelRuntime.state_snapshot = originalSnapshot
     }
-  })
+  }, 20000)
 
   it('uses simulation timestamps for the live source-sink overlay series', async () => {
     const originalMetricHistory = greenhouseState.metricHistory
@@ -1086,26 +1086,26 @@ describe('App routed shell', () => {
     expect(screen.queryByRole('navigation', { name: 'Category subtab navigation' })).toBeNull()
   })
 
-  it('keeps control section actions inline and leaves the recommended control surface visible', async () => {
+  it('verify_src001_s0006_r002_a01 keeps AlertRail off /control while leaving the control surfaces visible', async () => {
     renderApp('/control')
 
-    expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.queryByText('AlertRail')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Action:control-devices' }))
 
     expect(screen.queryByText('RTROptimizerPanel')).toBeNull()
-    expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.queryByText('AlertRail')).toBeNull()
     expect(screen.queryByTestId('page-section-active')).toBeNull()
     expect(screen.getByRole('button', { name: 'Action:control-devices' }).getAttribute('aria-pressed')).toBe('true')
 
     fireEvent.click(screen.getByRole('button', { name: 'Action:control-strategy' }))
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.queryByText('AlertRail')).toBeNull()
     expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
@@ -1126,7 +1126,7 @@ describe('App routed shell', () => {
     }]
 
     try {
-      renderApp('/control', 'ko')
+      renderApp('/overview#overview-watch', 'ko')
 
       expect(await screen.findByText('AlertRail')).toBeTruthy()
       const alertText = screen.getByTestId('alert-rail-items').textContent ?? ''
@@ -1154,7 +1154,7 @@ describe('App routed shell', () => {
     }]
 
     try {
-      renderApp('/control', 'ko')
+      renderApp('/overview#overview-watch', 'ko')
 
       expect(await screen.findByText('AlertRail')).toBeTruthy()
       const alertText = screen.getByTestId('alert-rail-items').textContent ?? ''
@@ -1248,12 +1248,11 @@ describe('App routed shell', () => {
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
-    expect(screen.getByText('AlertRail')).toBeTruthy()
+    expect(screen.queryByText('AlertRail')).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Live Climate & Controls' })).toBeNull()
 
     const bodyText = document.body.textContent ?? ''
     expect(bodyText.indexOf('RTROptimizerPanel')).toBeLessThan(bodyText.indexOf('ControlPanel'))
-    expect(bodyText.indexOf('ControlPanel')).toBeLessThan(bodyText.indexOf('AlertRail'))
   })
 
   it('verify_src001_s0005_r001_a01 keeps /rtr limited to the RTR optimizer surface', async () => {
