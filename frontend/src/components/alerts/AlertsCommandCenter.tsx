@@ -160,6 +160,11 @@ export default function AlertsCommandCenter({
                                 </StatusChip>
                                 <div className="mt-2 text-base font-semibold tracking-[-0.03em]">{item.title}</div>
                                 <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">{item.body}</p>
+                                {item.auxiliaryText ? (
+                                    <p className="mt-1 text-xs font-medium leading-5 text-[color:var(--sg-text-faint)]">
+                                        {item.auxiliaryText}
+                                    </p>
+                                ) : null}
                             </article>
                         ))}
                     </div>

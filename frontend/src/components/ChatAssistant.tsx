@@ -15,7 +15,10 @@ import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
 import { getReadinessDescriptor } from '../lib/design/readiness';
 import { buildAiDashboardContext } from '../utils/aiDashboardContext';
-import { getCropLabel } from '../utils/displayCopy';
+import {
+    getControlDisplayCopy,
+    getCropLabel,
+} from '../utils/displayCopy';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type {
     AdvisorDisplayPayload,
@@ -60,14 +63,6 @@ type ChatMessage = {
     display?: AdvisorDisplayPayload | null;
     modelRuntime?: ModelRuntimePayload | null;
 };
-
-const CONTROL_LABELS = {
-    co2_setpoint_day: { ko: '주간 CO2', en: 'Day CO2' },
-    temperature_day: { ko: '주간 온도', en: 'Day temperature' },
-    temperature_night: { ko: '야간 온도', en: 'Night temperature' },
-    rh_target: { ko: '습도 목표', en: 'RH target' },
-    screen_close: { ko: '스크린 개폐', en: 'Screen close' },
-} as const;
 
 function formatRuntimeValue(
     value: number | null | undefined,
@@ -588,7 +583,7 @@ const ChatAssistant = ({
                     ) : null}
                     {topLevers.map((lever) => {
                         const controlKey = String(lever.control ?? '');
-                        const label = CONTROL_LABELS[controlKey as keyof typeof CONTROL_LABELS]?.[locale] ?? controlKey;
+                        const label = getControlDisplayCopy(controlKey, locale).compactLabel;
                         return (
                             <span
                                 key={`${controlKey}-${lever.direction}`}
