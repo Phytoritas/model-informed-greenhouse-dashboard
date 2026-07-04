@@ -163,16 +163,18 @@
     padding: 0.26rem 0;
     font-size: 0.65rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0;
     text-transform: uppercase;
     color: var(--sg-text-muted);
   }
 
-  .overview-nav-link:first-child {
+  .overview-nav-link-active,
+  .overview-nav-link[aria-current="page"] {
     color: var(--sg-text-strong);
   }
 
-  .overview-nav-link:first-child::after {
+  .overview-nav-link-active::after,
+  .overview-nav-link[aria-current="page"]::after {
     content: "";
     position: absolute;
     right: 0;
