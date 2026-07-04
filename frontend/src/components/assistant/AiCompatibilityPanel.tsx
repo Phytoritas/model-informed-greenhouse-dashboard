@@ -88,27 +88,27 @@ export default function AiCompatibilityPanel({
   const cropKey = crop.toLowerCase();
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'AI Assistant 호환 연결',
-        title: 'AI 상담 · 채팅 endpoint',
-        description: '기존 /api/ai 상담 surface를 Assistant 안에 보존합니다. 기본 채팅은 /api/advisor/chat을 계속 사용합니다.',
-        consult: 'AI 상담 실행',
+        eyebrow: 'AI 연결 상태',
+        title: 'AI 상담 연결 점검',
+        description: '이전 세대 AI 상담 연결이 살아 있는지 버튼 한 번으로 확인합니다. 평소 질문은 위 질문 도우미를 사용하세요.',
+        consult: 'AI 상담 확인',
         chat: 'AI 채팅 확인',
         prompt: '현재 온실 상태와 오늘 가장 먼저 볼 의사결정을 간단히 요약해 주세요.',
-        idle: '아직 실행하지 않음',
-        loading: '요청 중',
+        idle: '아직 확인 전',
+        loading: '확인 중',
         success: '연결됨',
         degraded: '대체 응답',
         error: '실패',
       }
     : {
-        eyebrow: 'AI Assistant compatibility',
-        title: 'AI consult and chat endpoints',
-        description: 'Keeps the legacy /api/ai assistant surfaces visible while the main chat continues to use /api/advisor/chat.',
-        consult: 'Run AI consult',
+        eyebrow: 'AI connectivity',
+        title: 'Legacy AI consult check',
+        description: 'One-tap check that the legacy AI consult connection is still alive. Use the question helper above for everyday questions.',
+        consult: 'Check AI consult',
         chat: 'Check AI chat',
         prompt: 'Summarize the current greenhouse state and the first operating decision to review today.',
-        idle: 'Not run yet',
-        loading: 'Requesting',
+        idle: 'Not checked yet',
+        loading: 'Checking',
         success: 'Connected',
         degraded: 'Fallback reply',
         error: 'Failed',
@@ -194,10 +194,9 @@ export default function AiCompatibilityPanel({
     key: LegacyAiAction;
     label: string;
     icon: typeof Sparkles;
-    variant: 'secondary' | 'ghost';
   }> = [
-    { key: 'consult', label: copy.consult, icon: Sparkles, variant: 'secondary' },
-    { key: 'chat', label: copy.chat, icon: MessageCircle, variant: 'ghost' },
+    { key: 'consult', label: copy.consult, icon: Sparkles },
+    { key: 'chat', label: copy.chat, icon: MessageCircle },
   ];
 
   return (
@@ -207,7 +206,7 @@ export default function AiCompatibilityPanel({
       description={copy.description}
       className="sg-tint-neutral"
     >
-      <div className="grid gap-3">
+      <div className="grid gap-2">
         {actions.map((action) => {
           const requestState = stateByAction[action.key];
           const Icon = action.icon;
@@ -225,24 +224,20 @@ export default function AiCompatibilityPanel({
           return (
             <article
               key={action.key}
-              className="rounded-[var(--sg-radius-md)] border border-[color:var(--sg-outline-soft)] bg-white/82 p-3"
+              className="rounded-[var(--sg-radius-md)] border border-[color:var(--sg-outline-soft)] bg-white/82 px-3 py-2.5"
               style={{ boxShadow: 'var(--sg-shadow-card)' }}
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--sg-color-blush)] text-[color:var(--sg-color-primary)]">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-[color:var(--sg-text-strong)]">{action.label}</div>
-                    <div className="mt-1 text-[11px] font-semibold uppercase text-[color:var(--sg-text-faint)]">
-                      {requestState.endpoint}
-                    </div>
-                  </div>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Icon className="h-4 w-4 shrink-0 text-[color:var(--sg-color-primary)]" aria-hidden="true" />
+                  <span className="truncate text-sm font-bold text-[color:var(--sg-text-strong)]">{action.label}</span>
+                  <StatusChip tone={toneForStatus(requestState.status)}>{statusLabel}</StatusChip>
                 </div>
                 <Button
                   type="button"
-                  variant={action.variant}
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full"
                   disabled={loading}
                   onClick={() => { void execute(action.key); }}
                 >
@@ -250,10 +245,11 @@ export default function AiCompatibilityPanel({
                   {action.label}
                 </Button>
               </div>
-              <div className="mt-3 flex flex-col gap-2 text-xs leading-6 text-[color:var(--sg-text-muted)]" aria-live="polite">
-                <StatusChip tone={toneForStatus(requestState.status)}>{statusLabel}</StatusChip>
-                {requestState.message ? <p>{requestState.message}</p> : null}
-              </div>
+              {requestState.message ? (
+                <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]" aria-live="polite">
+                  {requestState.message}
+                </p>
+              ) : null}
             </article>
           );
         })}
