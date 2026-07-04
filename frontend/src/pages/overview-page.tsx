@@ -12,7 +12,6 @@ interface OverviewPageProps {
   liveMetricStrip: ReactNode;
   todayActionBoard: ReactNode;
   scenarioOptimizerPreview: ReactNode;
-  modelRuntimeBridge?: ReactNode;
   weatherMarketKnowledgeBridge: ReactNode;
   finalCta: ReactNode;
   footer: ReactNode;
@@ -26,7 +25,6 @@ const OVERVIEW_SECTION_BY_ACTION: Record<string, string> = {
   'overview-dashboard': 'overview-dashboard',
   'overview-watch': 'overview-watch',
   'scenario-optimizer': 'scenario-optimizer',
-  'backend-runtime-bridge': 'backend-runtime-bridge',
   'live-overview': 'live-overview',
   'today-action-board': 'today-action-board',
   contact: 'overview-footer',
@@ -48,7 +46,6 @@ export default function OverviewPage({
   liveMetricStrip,
   todayActionBoard,
   scenarioOptimizerPreview,
-  modelRuntimeBridge,
   weatherMarketKnowledgeBridge,
   finalCta,
   footer,
@@ -136,17 +133,12 @@ export default function OverviewPage({
             ) : null}
             {activeTab === 'overview-dashboard' ? (
               <section id="overview-dashboard" tabIndex={-1} role="tabpanel" className="overview-tab-panel scroll-mt-24" aria-labelledby="overview-dashboard-tab">
-                {dashboardTab ?? (
-                  <>
-                    {liveMetricStrip}
-                    {modelRuntimeBridge}
-                  </>
-                )}
+                {dashboardTab ?? liveMetricStrip}
               </section>
             ) : null}
             {activeTab === 'overview-watch' ? (
               <section id="overview-watch" tabIndex={-1} role="tabpanel" className="overview-tab-panel scroll-mt-24" aria-labelledby="overview-watch-tab">
-                {watchTab ?? modelRuntimeBridge}
+                {watchTab}
               </section>
             ) : null}
           </div>
