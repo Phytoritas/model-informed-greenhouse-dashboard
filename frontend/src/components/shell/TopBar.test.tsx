@@ -47,9 +47,10 @@ describe('TopBar', () => {
         const { onAssistantToggle, onOpenAlerts, onLocaleChange, onCropChange, onSearchSubmit } = renderTopBar('ko');
 
         // Regression guard: the Korean header must show the current page title,
-        // not a fixed platform name, so the header follows route changes.
+        // not a fixed platform name, so the header follows route changes. The
+        // PhytoSync brand mark lives in GlobalTopNav, not in this utility row.
         expect(screen.getByRole('heading', { name: '오늘 한눈에' })).toBeTruthy();
-        expect(screen.getByText('PhytoSync')).toBeTruthy();
+        expect(screen.queryByText('PhytoSync')).toBeNull();
         expect(screen.getByLabelText('온실, 시세, 생육 등 현황 확인하기')).toBeTruthy();
         expect(screen.getByPlaceholderText('온실, 시세, 생육 등 현황 확인하기')).toBeTruthy();
 

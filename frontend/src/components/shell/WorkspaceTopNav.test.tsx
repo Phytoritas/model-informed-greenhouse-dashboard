@@ -3,7 +3,6 @@ import { Leaf } from 'lucide-react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { LocaleProvider } from '../../i18n/LocaleProvider';
-import { GLOBAL_NAVIGATION_ITEMS } from '../../routes/globalNavigation';
 import WorkspaceTopNav, { type WorkspaceNavItem } from './WorkspaceTopNav';
 
 const ITEMS: WorkspaceNavItem[] = [
@@ -28,14 +27,12 @@ const ITEMS: WorkspaceNavItem[] = [
 ];
 
 describe('WorkspaceTopNav', () => {
-  it('renders the shared global navigation with the active top-level page', () => {
+  it('renders no global navigation row — that lives in the shared GlobalTopNav header', () => {
     render(
       <LocaleProvider>
         <MemoryRouter>
           <WorkspaceTopNav
-            globalItems={GLOBAL_NAVIGATION_ITEMS}
             items={ITEMS}
-            activeGlobalKey="dashboard"
             activeWorkspace="control"
             onSelect={() => undefined}
           />
@@ -43,15 +40,9 @@ describe('WorkspaceTopNav', () => {
       </LocaleProvider>,
     );
 
-    expect(screen.getByRole('navigation', { name: 'Global navigation' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'HOME' }).getAttribute('href')).toBe('/overview');
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control');
-    expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend');
-    expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios');
-    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant');
-    expect(screen.getByRole('button', { name: 'CONTACT' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page');
-    expect(screen.getByRole('link', { name: 'HOME' }).getAttribute('aria-current')).toBeNull();
+    expect(screen.queryByTestId('workspace-global-nav')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'HOME' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'CONTACT' })).toBeNull();
   });
 
   it('renders category subtabs with aria-current step on the active subtab', () => {
@@ -59,9 +50,7 @@ describe('WorkspaceTopNav', () => {
       <LocaleProvider>
         <MemoryRouter>
           <WorkspaceTopNav
-            globalItems={GLOBAL_NAVIGATION_ITEMS}
             items={ITEMS}
-            activeGlobalKey="dashboard"
             activeWorkspace="control"
             onSelect={() => undefined}
           />
@@ -79,9 +68,7 @@ describe('WorkspaceTopNav', () => {
       <LocaleProvider>
         <MemoryRouter>
           <WorkspaceTopNav
-            globalItems={GLOBAL_NAVIGATION_ITEMS}
             items={ITEMS}
-            activeGlobalKey="dashboard"
             activeWorkspace="control"
             activeActionId="control-strategy"
             onSelect={() => undefined}
@@ -102,9 +89,7 @@ describe('WorkspaceTopNav', () => {
       <LocaleProvider>
         <MemoryRouter>
           <WorkspaceTopNav
-            globalItems={GLOBAL_NAVIGATION_ITEMS}
             items={ITEMS}
-            activeGlobalKey="home"
             activeWorkspace="command"
             onSelect={() => undefined}
             onSelectAction={() => undefined}
@@ -114,5 +99,21 @@ describe('WorkspaceTopNav', () => {
     );
 
     expect(screen.queryByTestId('workspace-top-nav-actions')).toBeNull();
+  });
+
+  it('renders nothing when the active category has no subtabs', () => {
+    render(
+      <LocaleProvider>
+        <MemoryRouter>
+          <WorkspaceTopNav
+            items={[]}
+            activeWorkspace="contact"
+            onSelect={() => undefined}
+          />
+        </MemoryRouter>
+      </LocaleProvider>,
+    );
+
+    expect(screen.queryByTestId('workspace-top-nav')).toBeNull();
   });
 });
