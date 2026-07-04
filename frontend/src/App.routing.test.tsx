@@ -1362,12 +1362,14 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('decision-snapshot-props').textContent).toContain('overview:null')
   })
 
-  it('keeps crop-work as a dedicated page instead of assembling it inline in App', async () => {
+  it('keeps crop-work as a dedicated page and dedups TodayBoard to its canonical HOME Watch tab', async () => {
     renderApp('/crop-work')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
     expect(await screen.findByText('CropDetails')).toBeTruthy()
-    expect(await screen.findByText('TodayBoard')).toBeTruthy()
+    // R19 dedup: TodayBoard's canonical home is the HOME Watch tab only, so it no longer
+    // renders on /crop-work (its data survives on HOME Watch — WatchTab.prd004.test.tsx).
+    expect(screen.queryByText('TodayBoard')).toBeNull()
     expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('step')
   })
