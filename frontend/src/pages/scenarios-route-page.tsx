@@ -94,12 +94,12 @@ export default function ScenariosRoutePage({
   }, [location.hash]);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-col gap-6">
       <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
-      <section id="scenario-model" tabIndex={-1} className="scroll-mt-24 focus:outline-none">
+      <section id="scenario-model" tabIndex={-1} className="min-w-0 scroll-mt-24 focus:outline-none">
         <ModelScenarioWorkbench crop={crop} />
       </section>
-      <section id="scenario-rtr" tabIndex={-1} className="scroll-mt-24 focus:outline-none">
+      <section id="scenario-rtr" tabIndex={-1} className="min-w-0 scroll-mt-24 focus:outline-none">
         <Suspense
           fallback={(
             <LoadingSkeleton

@@ -811,7 +811,7 @@ const AdvisorTabs = ({
         const state = executionState.pesticide;
         if (state.status === 'error') {
             return (
-                <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-6 text-sm text-rose-700">
+                <div className="rounded-2xl border border-[color:var(--sg-status-offline-text)]/25 bg-[color:var(--sg-status-offline-bg)] px-4 py-6 text-sm text-[color:var(--sg-status-offline-text)]">
                     {copy.error}: {state.error}
                 </div>
             );
@@ -945,7 +945,7 @@ const AdvisorTabs = ({
                                 return (
                                     <div
                                         key={`alt-${row.rotation_step_index ?? index + 1}-${row.product_name}`}
-                                        className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3"
+                                        className="rounded-2xl border border-[color:var(--sg-status-delayed-text)]/25 bg-[color:var(--sg-status-delayed-bg)] px-4 py-3"
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
                                             <span className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
@@ -983,7 +983,7 @@ const AdvisorTabs = ({
         const state = executionState.nutrient;
         if (state.status === 'error') {
             return (
-                <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-6 text-sm text-rose-700">
+                <div className="rounded-2xl border border-[color:var(--sg-status-offline-text)]/25 bg-[color:var(--sg-status-offline-bg)] px-4 py-6 text-sm text-[color:var(--sg-status-offline-text)]">
                     {copy.error}: {state.error}
                 </div>
             );
@@ -1049,7 +1049,7 @@ const AdvisorTabs = ({
         const state = executionState.correction;
         if (state.status === 'error') {
             return (
-                <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-6 text-sm text-rose-700">
+                <div className="rounded-2xl border border-[color:var(--sg-status-offline-text)]/25 bg-[color:var(--sg-status-offline-bg)] px-4 py-6 text-sm text-[color:var(--sg-status-offline-text)]">
                     {copy.error}: {state.error}
                 </div>
             );
@@ -1080,7 +1080,7 @@ const AdvisorTabs = ({
                         {copy.calculationAvailable}
                     </span>
                     {missingData.length > 0 ? (
-                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+                        <span className="rounded-full bg-[color:var(--sg-status-delayed-bg)] px-3 py-1 text-xs font-medium text-[color:var(--sg-status-delayed-text)]">
                             {copy.missingData}
                         </span>
                     ) : null}
@@ -1773,7 +1773,7 @@ const AdvisorTabs = ({
                                                 type="button"
                                                 onClick={() => void handleCorrectionRun()}
                                                 disabled={executionState.correction.status === 'loading'}
-                                                className="w-full rounded-2xl bg-[linear-gradient(135deg,var(--sg-accent-earth),#c45d47)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--sg-shadow-card)] transition-[filter] hover:brightness-[1.04] disabled:opacity-60"
+                                                className="w-full rounded-2xl bg-[linear-gradient(135deg,var(--sg-accent-earth),var(--sg-color-terracotta))] px-4 py-3 text-sm font-semibold text-white shadow-[var(--sg-shadow-card)] transition-[filter] hover:brightness-[1.04] disabled:opacity-60"
                                             >
                                                 {executionState.correction.status === 'loading' ? copy.running : copy.run}
                                             </button>

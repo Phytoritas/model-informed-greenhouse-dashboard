@@ -67,7 +67,7 @@ export default function CropWorkRoutePage({
         </Suspense>
       )}
       recentWorkSurface={(
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <Suspense
             fallback={(
               <LoadingSkeleton

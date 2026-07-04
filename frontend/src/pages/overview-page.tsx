@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import PageCanvas from '../components/layout/PageCanvas';
+import { ToggleGroup } from '../components/ui/toggle-group';
 import { useLocale } from '../i18n/LocaleProvider';
 import { cn } from '../utils/cn';
 
@@ -104,7 +105,7 @@ export default function OverviewPage({
         <div className="overview-browser-frame">
           <div className="overview-frame-body">
             {topNavigation}
-            <nav className="overview-tab-strip" aria-label={locale === 'ko' ? 'Overview 탭' : 'Overview tabs'}>
+            <ToggleGroup className="overview-tab-strip" role="tablist" aria-label={locale === 'ko' ? 'Overview 탭' : 'Overview tabs'}>
               {tabs.map((tab) => (
                 <a
                   key={tab.id}
@@ -119,7 +120,7 @@ export default function OverviewPage({
                   <small>{tab.description}</small>
                 </a>
               ))}
-            </nav>
+            </ToggleGroup>
             {activeTab === 'overview-core' ? (
               <div id="overview-core-panel" role="tabpanel" aria-labelledby="overview-core-tab" className="overview-tab-panel">
                 {heroDecisionBrief}

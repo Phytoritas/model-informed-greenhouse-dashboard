@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Globe2, MessageCircle, Search, Settings } from 'lucide-react';
+import { Bell, Globe2, Leaf, MessageCircle, Settings } from 'lucide-react';
 import type { AppLocale } from '../../i18n/locale';
 import type { CropType } from '../../types';
 import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
@@ -23,13 +23,17 @@ interface TopBarProps {
   getCropLabel: (crop: CropType, locale: AppLocale) => string;
 }
 
+/**
+ * Slim one-row workspace header matching the Command landing navigation look:
+ * Leaf + PhytoSync brand, the current page title, a compact search pill, and
+ * the control cluster (telemetry, locale, crop, alerts, assistant, settings).
+ */
 export default function TopBar({
   locale,
   selectedCrop,
   telemetryStatus,
   telemetryDetail,
   pageTitle,
-  pageDescription,
   onLocaleChange,
   onCropChange,
   onAssistantToggle,
@@ -43,30 +47,24 @@ export default function TopBar({
   const copy = locale === 'ko'
     ? {
         brand: 'PhytoSync',
-        platformTitle: '스마트 온실 인공지능 의사결정 플랫폼',
-        tagline: '',
         language: '언어',
         assistant: '질문 도우미',
         search: '온실, 시세, 생육 등 현황 확인하기',
         alerts: '긴급 알림',
-        pageTitle: '스마트 온실 인공지능 의사결정 플랫폼',
+        fallbackTitle: '스마트 온실 인공지능 의사결정 플랫폼',
         settings: '설정',
       }
     : {
         brand: 'PhytoSync',
-        tagline: 'Keep today’s operations and control flow in a compact working shell.',
         language: 'Language',
         assistant: 'Assistant',
         search: 'Search work, materials, or houses',
         alerts: 'Alerts',
-        pageTitle: 'Today operations',
+        fallbackTitle: 'Today operations',
         settings: 'Settings',
       };
 
-  const resolvedPageTitle = locale === 'ko' ? copy.pageTitle : pageTitle ?? copy.pageTitle;
-  const resolvedPageDescription = locale === 'ko'
-    ? ''
-    : pageDescription ?? copy.tagline;
+  const resolvedPageTitle = pageTitle ?? copy.fallbackTitle;
 
   const handleSearchSubmit = () => {
     const normalizedQuery = searchQuery.trim();
@@ -80,114 +78,98 @@ export default function TopBar({
   return (
     <header className="pt-4">
       <div className="mx-auto w-full max-w-[1640px] px-4 sm:px-6 xl:px-8">
-        <div className="sg-glass w-full rounded-[28px] px-5 py-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <div
-                  aria-label={copy.brand}
-                  className="inline-flex h-12 w-[62px] shrink-0 flex-col items-center justify-center rounded-[14px] border border-[color:var(--sg-outline-soft)] bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,231,223,0.94))] px-1.5"
-                  style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                >
-                  <span className="w-full text-center text-[0.84rem] font-black leading-[0.95] tracking-[0.06em] text-[color:var(--sg-accent-violet)]">
-                    Phyto
-                  </span>
-                  <span className="w-full text-center text-[0.84rem] font-black leading-[0.95] tracking-[0.06em] text-[color:var(--sg-text-strong)]">
-                    Sync
-                  </span>
-                </div>
-                <h1 className="truncate whitespace-nowrap text-[clamp(1.08rem,0.86rem+0.52vw,1.5rem)] font-bold tracking-[-0.02em] text-[color:var(--sg-text-strong)]">
-                  {resolvedPageTitle}
-                </h1>
-              </div>
-              {resolvedPageDescription ? (
-                <p className="mt-2 max-w-[860px] truncate text-sm text-[color:var(--sg-text-muted)]">{resolvedPageDescription}</p>
-              ) : null}
-              <div className="mt-3 max-w-[860px]">
-                <Input
-                  aria-label={copy.search}
-                  placeholder={copy.search}
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      handleSearchSubmit();
-                    }
-                  }}
-                  className="h-11 rounded-[18px] !border !border-[color:var(--sg-outline-strong)] !bg-white text-[color:var(--sg-text-strong)] placeholder:text-[color:var(--sg-text-faint)] shadow-[var(--sg-shadow-card)]"
-                />
-              </div>
-            </div>
+        <div className="sg-panel flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[22px] px-4 py-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="inline-flex shrink-0 items-center gap-2 text-base font-bold text-[color:var(--sg-text-strong)]">
+              <Leaf className="h-5 w-5 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
+              {copy.brand}
+            </span>
+            <span aria-hidden="true" className="hidden h-4 w-px bg-[color:var(--sg-outline-soft)] sm:block" />
+            <h1 className="truncate text-sm font-bold text-[color:var(--sg-text-strong)]">
+              {resolvedPageTitle}
+            </h1>
+          </div>
 
-            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-              <TelemetryFreshnessChip status={telemetryStatus} detail={telemetryDetail} />
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-2 py-1.5 text-xs font-medium text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                <Globe2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{copy.language}</span>
-                {(['ko', 'en'] as AppLocale[]).map((candidate) => (
-                  <button
-                    key={candidate}
-                    type="button"
-                    onClick={() => onLocaleChange(candidate)}
-                    className={`rounded-full px-3 py-1 ${
-                      locale === candidate
-                        ? 'bg-[color:var(--sg-text-strong)] text-white'
-                        : 'text-[color:var(--sg-text-muted)]'
-                    }`}
-                  >
-                    {candidate === 'ko' ? '한국어' : 'EN'}
-                  </button>
-                ))}
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-2 py-1.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                <Search className="h-4 w-4 text-[color:var(--sg-text-faint)] lg:hidden" />
-                {(['Cucumber', 'Tomato'] as CropType[]).map((crop) => (
-                  <button
-                    key={crop}
-                    type="button"
-                    onClick={() => onCropChange(crop)}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                      selectedCrop === crop
-                        ? 'bg-[color:var(--sg-accent-violet)] text-white'
-                        : 'text-[color:var(--sg-text-muted)]'
-                    }`}
-                    style={selectedCrop === crop ? { boxShadow: 'var(--sg-shadow-soft)' } : undefined}
-                  >
-                    {getCropLabel(crop, locale)}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={onOpenAlerts}
-                className="relative inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/75 text-[color:var(--sg-text-strong)] transition hover:bg-white"
-                style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                aria-label={copy.alerts}
-              >
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[color:var(--sg-accent-danger)]" />
-              </button>
-              <Button
-                onClick={onAssistantToggle}
-                variant={assistantOpen ? 'tonal' : 'default'}
-                className={assistantOpen ? 'rounded-full bg-[color:var(--sg-accent-violet)] text-white hover:bg-[#98242f]' : 'rounded-full'}
-              >
-                <MessageCircle className="h-4 w-4" />
-                {copy.assistant}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={copy.settings}
-                onClick={onOpenSettings}
-                className="h-11 w-11 rounded-full bg-white/75 text-[color:var(--sg-text-strong)] hover:bg-white"
-                style={{ boxShadow: 'var(--sg-shadow-card)' }}
-              >
-                <Settings className="h-5 w-5" />
-              </Button>
+          <div className="order-last w-full basis-full xl:order-none xl:ml-2 xl:w-auto xl:max-w-[400px] xl:flex-1 xl:basis-auto">
+            <Input
+              aria-label={copy.search}
+              placeholder={copy.search}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handleSearchSubmit();
+                }
+              }}
+              className="h-9 rounded-full !border !border-[color:var(--sg-outline-soft)] !bg-[color:var(--sg-surface-muted)] px-4 text-sm text-[color:var(--sg-text-strong)] placeholder:text-[color:var(--sg-text-faint)]"
+            />
+          </div>
+
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+            <TelemetryFreshnessChip status={telemetryStatus} detail={telemetryDetail} />
+            <div className="inline-flex items-center gap-1 rounded-full border border-[color:var(--sg-outline-soft)] bg-white px-1.5 py-1 text-xs font-medium text-[color:var(--sg-text-muted)]">
+              <Globe2 className="h-3.5 w-3.5" aria-hidden="true" />
+              <span className="sr-only">{copy.language}</span>
+              {(['ko', 'en'] as AppLocale[]).map((candidate) => (
+                <button
+                  key={candidate}
+                  type="button"
+                  onClick={() => onLocaleChange(candidate)}
+                  className={`rounded-full px-2.5 py-0.5 transition ${
+                    locale === candidate
+                      ? 'bg-[color:var(--sg-text-strong)] text-white'
+                      : 'text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
+                  }`}
+                >
+                  {candidate === 'ko' ? '한국어' : 'EN'}
+                </button>
+              ))}
             </div>
+            <div className="inline-flex items-center gap-1 rounded-full border border-[color:var(--sg-outline-soft)] bg-white px-1.5 py-1">
+              {(['Cucumber', 'Tomato'] as CropType[]).map((crop) => (
+                <button
+                  key={crop}
+                  type="button"
+                  onClick={() => onCropChange(crop)}
+                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                    selectedCrop === crop
+                      ? 'bg-[color:var(--sg-color-primary)] text-white'
+                      : 'text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
+                  }`}
+                >
+                  {getCropLabel(crop, locale)}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={onOpenAlerts}
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-text-strong)] transition hover:bg-[color:var(--sg-color-primary-soft)]"
+              aria-label={copy.alerts}
+            >
+              <Bell className="h-4 w-4" aria-hidden="true" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[color:var(--sg-accent-danger)]" />
+            </button>
+            <Button
+              onClick={onAssistantToggle}
+              variant={assistantOpen ? 'primary' : 'secondary'}
+              size="sm"
+              className="rounded-full"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              {copy.assistant}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={copy.settings}
+              onClick={onOpenSettings}
+              className="h-9 w-9 rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-text-strong)] hover:bg-[color:var(--sg-color-primary-soft)]"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </div>
         </div>
       </div>

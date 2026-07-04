@@ -12,6 +12,13 @@ import {
 import { ClipboardCheck } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import ChartFrame from '../charts/ChartFrame';
+import {
+  DASHBOARD_CHART_AXIS_STROKE,
+  DASHBOARD_CHART_GRID_STROKE,
+  DASHBOARD_CHART_LEGEND_CLASSNAME,
+  DASHBOARD_CHART_TICK,
+  DASHBOARD_CHART_TOOLTIP_STYLE,
+} from '../charts/chartStyles';
 import DashboardCard from '../common/DashboardCard';
 import { StatusChip } from '../ui/status-chip';
 import { buildConsultingPoints, type ConsultingPoint } from './consultingTrendData';
@@ -103,7 +110,7 @@ export default function ConsultingTrendCard({
       eyebrow={copy.eyebrow}
       title={copy.title}
       description={copy.description}
-      className="h-full !p-4"
+      className="sg-panel h-full min-w-0 bg-white !p-4"
       contentClassName="flex flex-col gap-3"
       actions={(
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-sage-soft)] text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)]">
@@ -127,6 +134,22 @@ export default function ConsultingTrendCard({
         role="img"
         aria-label={`${copy.actions}: ${formatCount(totalActions, locale)}. ${confidencePercent !== null ? `${copy.confidenceReference}: ${Math.round(confidencePercent)}%. ` : ''}${copy.priority}.`}
       >
+        <div className={`mb-2 ${DASHBOARD_CHART_LEGEND_CLASSNAME}`}>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-terracotta)]" />
+            {copy.actions}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-primary)]" />
+            {copy.priority}
+          </span>
+          {confidencePercent !== null ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-olive)]" />
+              {copy.confidenceReference}
+            </span>
+          ) : null}
+        </div>
         <ChartFrame minHeight={170} style={{ height: 170 }}>
           {({ width, height }) => (
             <ComposedChart
@@ -135,10 +158,10 @@ export default function ConsultingTrendCard({
               data={chartData}
               margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(123, 93, 78, 0.14)" />
-              <XAxis dataKey="horizon" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} width={34} />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={38} />
+              <CartesianGrid strokeDasharray="3 3" stroke={DASHBOARD_CHART_GRID_STROKE} />
+              <XAxis dataKey="horizon" stroke={DASHBOARD_CHART_AXIS_STROKE} tick={DASHBOARD_CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="left" stroke={DASHBOARD_CHART_AXIS_STROKE} tick={DASHBOARD_CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} width={34} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke={DASHBOARD_CHART_AXIS_STROKE} tick={DASHBOARD_CHART_TICK} tickLine={false} axisLine={false} width={38} />
               <Tooltip
                 formatter={(value: number, name: string) => {
                   if (name === 'priorityScore') {
@@ -146,13 +169,7 @@ export default function ConsultingTrendCard({
                   }
                   return [formatCount(value, locale), copy.actions];
                 }}
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 251, 246, 0.98)',
-                  border: '1px solid rgba(123, 93, 78, 0.12)',
-                  borderRadius: '12px',
-                  boxShadow: '0 12px 28px rgba(90, 64, 63, 0.10)',
-                  fontSize: '12px',
-                }}
+                contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
               />
               <Bar yAxisId="left" dataKey="actionCount" name="actionCount" fill="var(--sg-color-terracotta)" radius={[8, 8, 2, 2]} maxBarSize={32} />
               <Line yAxisId="left" type="monotone" dataKey="priorityScore" name="priorityScore" stroke="var(--sg-color-primary)" strokeWidth={2.2} dot={false} isAnimationActive={false} />

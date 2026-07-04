@@ -214,66 +214,72 @@ vi.mock('./hooks/useAiAssistant', () => ({
   useAiAssistant: () => advisorState,
 }))
 
-vi.mock('./hooks/useWeatherOutlook', () => ({
-  useWeatherOutlook: () => ({
-    weather: {
-      current: {
-        temperature_c: 17.8,
-        weather_label: 'Clear',
-      },
+const weatherOutlookState = {
+  weather: {
+    current: {
+      temperature_c: 17.8,
+      weather_label: 'Clear',
     },
-    loading: false,
-    error: null,
-  }),
+  } as unknown,
+  loading: false,
+  error: null as string | null,
+}
+
+const producePricesState = {
+  prices: {
+    source: {
+      fetched_at: '2026-04-09T09:00:00Z',
+    },
+    items: [
+      {
+        display_name: 'Cucumber',
+        current_price_krw: 12400,
+      },
+    ],
+  } as unknown,
+  loading: false,
+  error: null as string | null,
+}
+
+const overviewSignalsState = {
+  signals: {
+    status: 'success',
+    crop: 'cucumber',
+    greenhouse_id: 'cucumber',
+    window_hours: 72,
+    irradiance: {
+      source: { provider: 'Open-Meteo' },
+      unit: 'W/m²',
+      points: [
+        { time: '2026-04-09T08:00:00+09:00', shortwave_radiation_w_m2: 280 },
+        { time: '2026-04-09T09:00:00+09:00', shortwave_radiation_w_m2: 410 },
+      ],
+    },
+    source_sink: {
+      source: { provider: 'Model runtime snapshots' },
+      unit: 'index',
+      status: 'ready',
+      points: [
+        { time: '2026-04-09T08:00:00+09:00', source_sink_balance: 0.21, source_capacity: 12.4, sink_demand: 8.2 },
+        { time: '2026-04-09T09:00:00+09:00', source_sink_balance: 0.26, source_capacity: 12.9, sink_demand: 7.6 },
+      ],
+    },
+  } as unknown,
+  loading: false,
+  error: null as string | null,
+  refresh: vi.fn(),
+}
+
+vi.mock('./hooks/useWeatherOutlook', () => ({
+  useWeatherOutlook: () => weatherOutlookState,
 }))
 
 vi.mock('./hooks/useProducePrices', () => ({
-  useProducePrices: () => ({
-    prices: {
-      source: {
-        fetched_at: '2026-04-09T09:00:00Z',
-      },
-      items: [
-        {
-          display_name: 'Cucumber',
-          current_price_krw: 12400,
-        },
-      ],
-    },
-    loading: false,
-    error: null,
-  }),
+  useProducePrices: () => producePricesState,
 }))
 
 vi.mock('./hooks/useOverviewSignalTrends', () => ({
-  useOverviewSignalTrends: () => ({
-    signals: {
-      status: 'success',
-      crop: 'cucumber',
-      greenhouse_id: 'cucumber',
-      window_hours: 72,
-      irradiance: {
-        source: { provider: 'Open-Meteo' },
-        unit: 'W/m²',
-        points: [
-          { time: '2026-04-09T08:00:00+09:00', shortwave_radiation_w_m2: 280 },
-          { time: '2026-04-09T09:00:00+09:00', shortwave_radiation_w_m2: 410 },
-        ],
-      },
-      source_sink: {
-        source: { provider: 'Model runtime snapshots' },
-        unit: 'index',
-        status: 'ready',
-        points: [
-          { time: '2026-04-09T08:00:00+09:00', source_sink_balance: 0.21, source_capacity: 12.4, sink_demand: 8.2 },
-          { time: '2026-04-09T09:00:00+09:00', source_sink_balance: 0.26, source_capacity: 12.9, sink_demand: 7.6 },
-        ],
-      },
-    },
-    loading: false,
-    error: null,
-    refresh: vi.fn(),
-  }),
+  useOverviewSignalTrends: () => overviewSignalsState,
 }))
 
 vi.mock('./hooks/useRtrProfiles', () => ({
@@ -357,7 +363,7 @@ vi.mock('./components/shell/TopBar', () => ({
   ),
 }))
 
-vi.mock('./components/shell/WorkspaceNav', () => ({
+vi.mock('./components/shell/WorkspaceTopNav', () => ({
   default: ({
     items,
     activeWorkspace,
@@ -422,7 +428,28 @@ vi.mock('./components/dashboard/HeroControlCard', () => ({
 }))
 vi.mock('./components/dashboard/LiveMetricStrip', () => ({ default: () => <div>LiveMetricStrip</div> }))
 vi.mock('./components/dashboard/AlertRail', () => ({ default: () => <div>AlertRail</div> }))
-vi.mock('./components/dashboard/DecisionSnapshotGrid', () => ({ default: () => <div>DecisionSnapshotGrid</div> }))
+vi.mock('./components/dashboard/DecisionSnapshotGrid', () => ({
+  default: ({
+    weather,
+    weatherLoading,
+    producePrices,
+    produceLoading,
+    overviewSignals,
+  }: {
+    weather?: unknown
+    weatherLoading?: boolean
+    producePrices?: unknown
+    produceLoading?: boolean
+    overviewSignals?: unknown
+  }) => (
+    <div>
+      <div>DecisionSnapshotGrid</div>
+      <div data-testid="decision-snapshot-props">
+        {`weather:${weather ? 'present' : 'null'} weatherLoading:${String(Boolean(weatherLoading))} produce:${producePrices ? 'present' : 'null'} produceLoading:${String(Boolean(produceLoading))} overview:${overviewSignals ? 'present' : 'null'}`}
+      </div>
+    </div>
+  ),
+}))
 vi.mock('./components/dashboard/TodayBoard', () => ({ default: () => <div>TodayBoard</div> }))
 vi.mock('./components/ControlPanel', () => ({ default: () => <div>ControlPanel</div> }))
 vi.mock('./components/CropDetails', () => ({ default: () => <div>CropDetails</div> }))
@@ -476,7 +503,6 @@ vi.mock('./components/phyto/PageSectionTabs', () => ({
   ),
 }))
 vi.mock('./components/status/ConfidenceBadge', () => ({ default: () => <div>ConfidenceBadge</div> }))
-vi.mock('./features/advisor/AdvisorPanelFallback', () => ({ default: () => <div>AdvisorPanelFallback</div> }))
 vi.mock('./features/common/LoadingSkeleton', () => ({ default: ({ title }: { title?: string }) => <div>{title ?? 'LoadingSkeleton'}</div> }))
 vi.mock('./components/Charts', () => ({ default: () => <div>Charts</div> }))
 vi.mock('./components/ForecastPanel', () => ({ default: () => <div>ForecastPanel</div> }))
@@ -493,9 +519,60 @@ vi.mock('./components/SmartGrowSurfacePanel', () => ({
     </div>
   ),
 }))
-vi.mock('./components/WeatherOutlookPanel', () => ({ default: () => <div>WeatherOutlookPanel</div> }))
-vi.mock('./components/ProducePricesPanel', () => ({ default: () => <div>ProducePricesPanel</div> }))
-vi.mock('./components/dashboard/WeatherTrendPanel', () => ({ default: () => <div>WeatherTrendPanel</div> }))
+vi.mock('./components/WeatherOutlookPanel', () => ({
+  default: ({
+    weather,
+    loading,
+    error,
+  }: {
+    weather?: unknown
+    loading?: boolean
+    error?: string | null
+  }) => (
+    <div>
+      <div>WeatherOutlookPanel</div>
+      <div data-testid="weather-outlook-props">
+        {`weather:${weather ? 'present' : 'null'} loading:${String(Boolean(loading))} error:${error ?? 'none'}`}
+      </div>
+    </div>
+  ),
+}))
+vi.mock('./components/ProducePricesPanel', () => ({
+  default: ({
+    prices,
+    loading,
+    error,
+  }: {
+    prices?: unknown
+    loading?: boolean
+    error?: string | null
+  }) => (
+    <div>
+      <div>ProducePricesPanel</div>
+      <div data-testid="produce-prices-props">
+        {`prices:${prices ? 'present' : 'null'} loading:${String(Boolean(loading))} error:${error ?? 'none'}`}
+      </div>
+    </div>
+  ),
+}))
+vi.mock('./components/dashboard/WeatherTrendPanel', () => ({
+  default: ({
+    weather,
+    loading,
+    error,
+  }: {
+    weather?: unknown
+    loading?: boolean
+    error?: string | null
+  }) => (
+    <div>
+      <div>WeatherTrendPanel</div>
+      <div data-testid="weather-trend-props">
+        {`weather:${weather ? 'present' : 'null'} loading:${String(Boolean(loading))} error:${error ?? 'none'}`}
+      </div>
+    </div>
+  ),
+}))
 vi.mock('./components/dashboard/ModelScenarioWorkbench', () => ({ default: () => <div>ModelScenarioWorkbench</div> }))
 vi.mock('./components/dashboard/OverviewSignalTrendCard', () => ({
   default: ({
@@ -585,6 +662,52 @@ function renderApp(initialPath = '/overview') {
 describe('App routed shell', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    weatherOutlookState.weather = {
+      current: {
+        temperature_c: 17.8,
+        weather_label: 'Clear',
+      },
+    }
+    weatherOutlookState.loading = false
+    weatherOutlookState.error = null
+    producePricesState.prices = {
+      source: {
+        fetched_at: '2026-04-09T09:00:00Z',
+      },
+      items: [
+        {
+          display_name: 'Cucumber',
+          current_price_krw: 12400,
+        },
+      ],
+    }
+    producePricesState.loading = false
+    producePricesState.error = null
+    overviewSignalsState.signals = {
+      status: 'success',
+      crop: 'cucumber',
+      greenhouse_id: 'cucumber',
+      window_hours: 72,
+      irradiance: {
+        source: { provider: 'Open-Meteo' },
+        unit: 'W/m²',
+        points: [
+          { time: '2026-04-09T08:00:00+09:00', shortwave_radiation_w_m2: 280 },
+          { time: '2026-04-09T09:00:00+09:00', shortwave_radiation_w_m2: 410 },
+        ],
+      },
+      source_sink: {
+        source: { provider: 'Model runtime snapshots' },
+        unit: 'index',
+        status: 'ready',
+        points: [
+          { time: '2026-04-09T08:00:00+09:00', source_sink_balance: 0.21, source_capacity: 12.4, sink_demand: 8.2 },
+          { time: '2026-04-09T09:00:00+09:00', source_sink_balance: 0.26, source_capacity: 12.9, sink_demand: 7.6 },
+        ],
+      },
+    }
+    overviewSignalsState.loading = false
+    overviewSignalsState.error = null
   })
 
   it('renders the direct route entry without falling back to the giant overview stack', async () => {
@@ -683,7 +806,7 @@ describe('App routed shell', () => {
     expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
 
-  it('navigates between routed shell pages from the sidebar', async () => {
+  it('navigates between routed shell pages from the workspace top nav', async () => {
     renderApp('/trend')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
@@ -867,6 +990,28 @@ describe('App routed shell', () => {
     expect(await screen.findByText('WeatherOutlookPanel')).toBeTruthy()
     expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('preserves /trend hook loading and error state plumbing when weather, produce, and overview signals are unavailable', async () => {
+    weatherOutlookState.weather = null
+    weatherOutlookState.loading = true
+    weatherOutlookState.error = 'weather backend delayed'
+    producePricesState.prices = null
+    producePricesState.loading = false
+    producePricesState.error = 'KAMIS unavailable'
+    overviewSignalsState.signals = null
+    overviewSignalsState.loading = true
+    overviewSignalsState.error = 'overview signals unavailable'
+
+    renderApp('/trend')
+
+    expect(await screen.findByText('WeatherTrendPanel')).toBeTruthy()
+    expect(screen.getByTestId('weather-trend-props').textContent).toContain('weather:null loading:true error:weather backend delayed')
+    expect(screen.getByTestId('weather-outlook-props').textContent).toContain('weather:null loading:true error:weather backend delayed')
+    expect(screen.getByTestId('produce-prices-props').textContent).toContain('prices:null loading:false error:KAMIS unavailable')
+    expect(screen.getByTestId('decision-snapshot-props').textContent).toContain('weather:null weatherLoading:true')
+    expect(screen.getByTestId('decision-snapshot-props').textContent).toContain('produce:null produceLoading:false')
+    expect(screen.getByTestId('decision-snapshot-props').textContent).toContain('overview:null')
   })
 
   it('keeps crop-work as a dedicated page instead of assembling it inline in App', async () => {

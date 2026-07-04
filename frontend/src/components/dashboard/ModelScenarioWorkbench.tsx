@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
 import { StatusChip } from '../ui/status-chip';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
 interface ModelScenarioWorkbenchProps {
   crop: CropType;
@@ -261,30 +262,30 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
               <p className="mt-4 text-sm text-[color:var(--sg-text-muted)]">{copy.waiting}</p>
             ) : (
               <div className="mt-3 overflow-x-auto">
-                <table className="min-w-full text-left text-xs">
-                  <thead className="text-[color:var(--sg-text-muted)]">
-                    <tr className="border-b border-[color:var(--sg-outline-soft)]">
-                      <th className="px-2 py-2">Horizon</th>
-                      <th className="px-2 py-2">{copy.yield}</th>
-                      <th className="px-2 py-2">{copy.yieldDelta}</th>
-                      <th className="px-2 py-2">{copy.energyDelta}</th>
-                      <th className="px-2 py-2">{copy.balanceDelta}</th>
-                      <th className="px-2 py-2">{copy.confidence}</th>
+                <Table className="min-w-full text-xs">
+                  <TableHeader>
+                    <tr>
+                      <TableHead className="px-3 py-2">Horizon</TableHead>
+                      <TableHead className="px-3 py-2">{copy.yield}</TableHead>
+                      <TableHead className="px-3 py-2">{copy.yieldDelta}</TableHead>
+                      <TableHead className="px-3 py-2">{copy.energyDelta}</TableHead>
+                      <TableHead className="px-3 py-2">{copy.balanceDelta}</TableHead>
+                      <TableHead className="px-3 py-2">{copy.confidence}</TableHead>
                     </tr>
-                  </thead>
-                  <tbody>
+                  </TableHeader>
+                  <TableBody>
                     {scenarioRows.map(({ row, baseline }, index) => (
-                      <tr key={`${String(readNumber(row, 'horizon_hours') ?? 'horizon')}-${index}`} className="border-b border-[color:var(--sg-outline-soft)] last:border-b-0">
-                        <td className="px-2 py-2 font-semibold">{formatNumber(readNumber(row, 'horizon_hours'), 0)}h</td>
-                        <td className="sg-data-number px-2 py-2">{formatNumber(readNumber(row, 'yield_pred'), 3)}</td>
-                        <td className="sg-data-number px-2 py-2 font-bold text-[color:var(--sg-color-success)]">{formatDeltaPct(row, baseline)}</td>
-                        <td className="sg-data-number px-2 py-2">{formatNumber(readNumber(row, 'energy_delta_vs_baseline'), 3)}</td>
-                        <td className="sg-data-number px-2 py-2">{formatNumber(readNumber(row, 'source_sink_balance_delta'), 3)}</td>
-                        <td className="sg-data-number px-2 py-2">{formatNumber(readNumber(row, 'confidence_score'), 2)}</td>
-                      </tr>
+                      <TableRow key={`${String(readNumber(row, 'horizon_hours') ?? 'horizon')}-${index}`}>
+                        <TableCell className="px-3 py-2 font-semibold">{formatNumber(readNumber(row, 'horizon_hours'), 0)}h</TableCell>
+                        <TableCell className="sg-data-number px-3 py-2">{formatNumber(readNumber(row, 'yield_pred'), 3)}</TableCell>
+                        <TableCell className="sg-data-number px-3 py-2 font-bold text-[color:var(--sg-color-success)]">{formatDeltaPct(row, baseline)}</TableCell>
+                        <TableCell className="sg-data-number px-3 py-2">{formatNumber(readNumber(row, 'energy_delta_vs_baseline'), 3)}</TableCell>
+                        <TableCell className="sg-data-number px-3 py-2">{formatNumber(readNumber(row, 'source_sink_balance_delta'), 3)}</TableCell>
+                        <TableCell className="sg-data-number px-3 py-2">{formatNumber(readNumber(row, 'confidence_score'), 2)}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             )}
           </article>

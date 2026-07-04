@@ -13,6 +13,13 @@ import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDateTime, formatLocaleTime } from '../i18n/locale';
 import { useStableChartData } from '../hooks/useStableChartData';
 import ChartFrame from './charts/ChartFrame';
+import {
+    DASHBOARD_CHART_AXIS_STROKE,
+    DASHBOARD_CHART_GRID_STROKE,
+    DASHBOARD_CHART_LEGEND_STYLE,
+    DASHBOARD_CHART_TICK,
+    DASHBOARD_CHART_TOOLTIP_STYLE,
+} from './charts/chartStyles';
 
 interface DataKey {
     key: string;
@@ -26,16 +33,8 @@ interface TimeSeriesChartProps<T extends { timestamp?: number }> {
     dataKeys: DataKey[];
     icon?: ReactNode;
     height?: number;
+    eyebrow?: string;
 }
-
-const TOOLTIP_STYLE = {
-    backgroundColor: 'rgba(255, 251, 246, 0.98)',
-    border: '1px solid rgba(123, 93, 78, 0.12)',
-    borderRadius: '12px',
-    boxShadow: '0 12px 28px rgba(90, 64, 63, 0.10)',
-} as const;
-
-const LEGEND_STYLE = { fontSize: '12px', paddingTop: '10px' } as const;
 
 function TimeSeriesChartInner<T extends { timestamp?: number }>({
     title,
@@ -43,9 +42,11 @@ function TimeSeriesChartInner<T extends { timestamp?: number }>({
     dataKeys,
     icon,
     height = 240,
+    eyebrow,
 }: TimeSeriesChartProps<T>) {
     const { locale } = useLocale();
     const chartData = useStableChartData(data, dataKeys);
+    const chartEyebrow = eyebrow ?? (locale === 'ko' ? 'Dashboard trend' : 'Dashboard trend');
 
     const tickFormatter = useCallback(
         (timestamp: number | string | null | undefined) =>
@@ -60,7 +61,8 @@ function TimeSeriesChartInner<T extends { timestamp?: number }>({
 
     if (!data || data.length === 0) {
         return (
-            <div className="sg-warm-panel flex h-full flex-col items-center justify-center p-6 text-[color:var(--sg-text-faint)]">
+            <div className="sg-panel flex h-full min-w-0 flex-col items-center justify-center bg-white p-4 text-center text-[color:var(--sg-text-faint)]">
+                <p className="sg-eyebrow mb-2">{chartEyebrow}</p>
                 <div className="mb-2 flex items-center gap-2 opacity-50">
                     {icon}
                     <span className="font-medium">{title}</span>
@@ -71,25 +73,34 @@ function TimeSeriesChartInner<T extends { timestamp?: number }>({
     }
 
     return (
-        <div className="sg-warm-panel p-4">
-            <div className="mb-4 flex items-center gap-2 text-[color:var(--sg-text)]">
-                {icon}
-                <h3 className="font-semibold">{title}</h3>
+        <div className="sg-panel min-w-0 bg-white p-3">
+            <div className="mb-3 flex min-w-0 items-start justify-between gap-3 text-[color:var(--sg-text)]">
+                <div className="min-w-0">
+                    <p className="sg-eyebrow">{chartEyebrow}</p>
+                    <h3 className="mt-1 truncate text-sm font-bold text-[color:var(--sg-text-strong)]">{title}</h3>
+                </div>
+                {icon ? (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--sg-radius-xs)] bg-[color:var(--sg-color-sage-soft)] text-[color:var(--sg-color-olive)]">
+                        {icon}
+                    </span>
+                ) : null}
             </div>
             <ChartFrame style={{ height }} minHeight={height}>
                 {({ width, height: containerHeight }) => (
                     <LineChart width={Math.max(width, 1)} height={Math.max(containerHeight, height)} data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(123, 93, 78, 0.12)" />
+                        <CartesianGrid strokeDasharray="3 3" stroke={DASHBOARD_CHART_GRID_STROKE} />
                         <XAxis
                             dataKey="timestamp"
                             tickFormatter={tickFormatter}
-                            stroke="#927d72"
-                            tick={{ fontSize: 11 }}
+                            stroke={DASHBOARD_CHART_AXIS_STROKE}
+                            tick={DASHBOARD_CHART_TICK}
+                            tickLine={false}
+                            axisLine={false}
                             minTickGap={24}
                         />
-                        <YAxis stroke="#927d72" tick={{ fontSize: 11 }} />
-                        <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={labelFormatter} />
-                        <Legend wrapperStyle={LEGEND_STYLE} />
+                        <YAxis stroke={DASHBOARD_CHART_AXIS_STROKE} tick={DASHBOARD_CHART_TICK} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE} labelFormatter={labelFormatter} />
+                        <Legend wrapperStyle={DASHBOARD_CHART_LEGEND_STYLE} />
                         {dataKeys.map(({ key, name, color }) => (
                             <Line
                                 key={key}

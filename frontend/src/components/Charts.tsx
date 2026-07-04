@@ -18,7 +18,9 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
     const copy = useMemo(() => (
         locale === 'ko'
             ? {
+                eyebrow: 'Dashboard trends',
                 title: '실시간 환경 분석',
+                description: '온실 환경, 생리 반응, 에너지 흐름을 실시간 추세로 확인합니다.',
                 lastUpdate: '마지막 갱신',
                 airCanopyTemperature: '기온과 군락 온도',
                 airTemperature: '기온 (°C)',
@@ -36,7 +38,9 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
                 electricalDemandLine: '전력 수요 (kW)',
             }
             : {
+                eyebrow: 'Dashboard trends',
                 title: 'Real-time Environmental Analysis',
+                description: 'Greenhouse climate, physiology, and energy flows as live trends.',
                 lastUpdate: 'Last update',
                 airCanopyTemperature: 'Air and canopy temperature',
                 airTemperature: 'Air temperature (°C)',
@@ -64,17 +68,17 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
             key: 'air-canopy',
             title: copy.airCanopyTemperature,
             dataKeys: [
-                { key: 'temperature', name: copy.airTemperature, color: '#ef4444' },
-                { key: 'canopyTemp', name: copy.canopyTemperature, color: '#f59e0b' },
+                { key: 'temperature', name: copy.airTemperature, color: 'var(--sg-color-terracotta)' },
+                { key: 'canopyTemp', name: copy.canopyTemperature, color: 'var(--sg-accent-amber)' },
             ],
-            icon: <Thermometer className="h-4 w-4 text-red-500" />,
+            icon: <Thermometer className="h-4 w-4 text-[color:var(--sg-color-terracotta)]" />,
         },
         {
             key: 'vpd-transpiration',
             title: copy.vpdTranspiration,
             dataKeys: [
-                { key: 'vpd', name: copy.vpd, color: '#b52330' },
-                { key: 'transpiration', name: copy.transpiration, color: '#8a5c4d' },
+                { key: 'vpd', name: copy.vpd, color: 'var(--sg-color-primary)' },
+                { key: 'transpiration', name: copy.transpiration, color: 'var(--sg-accent-earth)' },
             ],
             icon: <Droplets className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />,
         },
@@ -82,25 +86,25 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
             key: 'photosynthesis',
             title: copy.photosynthesisResponse,
             dataKeys: [
-                { key: 'stomatalConductance', name: copy.stomatalConductance, color: '#10b981' },
-                { key: 'photosynthesis', name: copy.grossPhotosynthesis, color: '#22c55e' },
+                { key: 'stomatalConductance', name: copy.stomatalConductance, color: 'var(--sg-color-olive)' },
+                { key: 'photosynthesis', name: copy.grossPhotosynthesis, color: 'var(--sg-accent-forest)' },
             ],
-            icon: <Wind className="h-4 w-4 text-green-500" />,
+            icon: <Wind className="h-4 w-4 text-[color:var(--sg-color-olive)]" />,
         },
         {
             key: 'energy-balance',
             title: copy.energyBalance,
             dataKeys: [
-                { key: 'hFlux', name: copy.sensibleHeat, color: '#fb7185' },
-                { key: 'leFlux', name: copy.latentHeat, color: '#0ea5e9' },
+                { key: 'hFlux', name: copy.sensibleHeat, color: 'var(--sg-accent-rose)' },
+                { key: 'leFlux', name: copy.latentHeat, color: 'var(--sg-accent-blue)' },
             ],
-            icon: <Sun className="h-4 w-4 text-amber-500" />,
+            icon: <Sun className="h-4 w-4 text-[color:var(--sg-accent-amber)]" />,
         },
         {
             key: 'electrical-demand',
             title: copy.electricalDemand,
             dataKeys: [
-                { key: 'energyUsage', name: copy.electricalDemandLine, color: '#f59e0b' },
+                { key: 'energyUsage', name: copy.electricalDemandLine, color: 'var(--sg-accent-amber)' },
             ],
             icon: <Zap className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />,
         },
@@ -108,17 +112,19 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
     const visibleChartCards = chartCards;
     const chartHeight = variant === 'overview' ? 176 : 200;
     const gridClassName = variant === 'overview'
-        ? 'grid grid-cols-1 gap-5 md:grid-cols-2'
-        : 'grid grid-cols-1 gap-6 md:grid-cols-2';
+        ? 'grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2'
+        : 'grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2';
 
     return (
         <Profiler id="chart-section" onRender={onRender}>
-            <div className="space-y-6">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
+            <section className="min-w-0 space-y-3" aria-labelledby="overview-dashboard-charts-title" data-testid="overview-dashboard-charts">
+                <div className="sg-panel flex min-w-0 flex-col gap-2 bg-[color:var(--sg-surface-raised)] p-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                        <p className="sg-eyebrow">{copy.eyebrow}</p>
+                        <h3 id="overview-dashboard-charts-title" className="mt-1 text-base font-bold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
+                        <p className="mt-0.5 max-w-2xl text-[0.7rem] leading-4 text-[color:var(--sg-text-muted)]">{copy.description}</p>
                     </div>
-                    <div className="text-xs text-[color:var(--sg-text-faint)]">
+                    <div className="shrink-0 text-xs font-semibold text-[color:var(--sg-text-faint)]">
                         {copy.lastUpdate}: {lastUpdate}
                     </div>
                 </div>
@@ -132,11 +138,12 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
                             dataKeys={card.dataKeys}
                             icon={card.icon}
                             height={chartHeight}
+                            eyebrow={copy.eyebrow}
                         />
                     ))}
                     {extraChartSlot}
                 </div>
-            </div>
+            </section>
         </Profiler>
     );
 };

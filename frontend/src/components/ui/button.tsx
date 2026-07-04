@@ -11,7 +11,7 @@ const buttonStyles = cva(
                 primary: 'bg-[color:var(--sg-color-primary)] text-white shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-strong)]',
                 secondary: 'border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-color-primary)] shadow-[var(--sg-shadow-card)] hover:bg-[color:var(--sg-color-primary-soft)]',
                 ghost: 'bg-transparent text-[color:var(--sg-text-muted)] hover:bg-white/70 hover:text-[color:var(--sg-text-strong)]',
-                tonal: 'bg-[color:var(--sg-color-olive-soft)] text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)] hover:bg-[#e2ecd8]',
+                tonal: 'bg-[color:var(--sg-color-olive-soft)] text-[color:var(--sg-color-olive)] shadow-[var(--sg-shadow-card)] hover:bg-[color:color-mix(in_srgb,var(--sg-color-olive-soft)_88%,var(--sg-color-olive))]',
                 danger: 'bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary-strong)] shadow-[var(--sg-shadow-card)] hover:bg-[#facfcc]',
                 disabled: 'bg-[#e5e7eb] text-[#98a2b3] shadow-none',
             },

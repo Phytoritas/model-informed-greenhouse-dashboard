@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { AppLocale } from '../i18n/locale';
-import type { DashboardWorkspaceKey } from '../components/shell/WorkspaceNav';
+import type { DashboardWorkspaceKey } from '../components/shell/WorkspaceTopNav';
 import type { PromptAdvisorTabKey } from '../components/advisor/advisorTabRegistry';
 
 export type PhytoSectionKey =

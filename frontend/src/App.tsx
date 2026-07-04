@@ -14,7 +14,8 @@ import type {
   RTROptimizerUiStateLike,
 } from './components/RTROptimizerPanel';
 import TopBar from './components/shell/TopBar';
-import WorkspaceNav, { type WorkspaceNavItem } from './components/shell/WorkspaceNav';
+import WorkspaceTopNav from './components/shell/WorkspaceTopNav';
+import type { WorkspaceNavItem } from './components/shell/WorkspaceTopNav';
 import type { PromptAdvisorTabKey } from './components/advisor/advisorTabRegistry';
 import type { RagAssistantOpenRequest } from './components/chat/ragAssistantTypes';
 import AssistantDrawer from './features/assistant/AssistantDrawer';
@@ -1258,26 +1259,6 @@ function App() {
       body: risk,
     })),
   ];
-  const navStatusLabel = locale === 'ko'
-    ? ({
-        live: '센서 정상',
-        delayed: '갱신 지연',
-        stale: '오래된 값',
-        offline: '수동 확인 필요',
-        blocked: '수동 확인 필요',
-        provisional: '임시 계산',
-        loading: '값 들어오는 중',
-      } as const)[telemetry.status]
-    : ({
-        live: 'Sensors live',
-        delayed: 'Update delayed',
-        stale: 'Stale values',
-        offline: 'Manual check needed',
-        blocked: 'Manual check needed',
-        provisional: 'Provisional',
-        loading: 'Loading',
-      } as const)[telemetry.status];
-
   const cropWorkPage = (
     <CropWorkRoutePage
       locale={locale}
@@ -1615,17 +1596,14 @@ function App() {
           getCropLabel={getCropLabel}
         />
       )}
-      sidebar={(
-        <WorkspaceNav
-          items={workspaceItems}
-          activeWorkspace={activePrimaryRouteKey}
-          activeActionId={activePanelId}
-          statusLabel={navStatusLabel}
-          onSelect={handleWorkspaceSelect}
-          onSelectAction={handleWorkspaceActionSelect}
-        />
-      )}
     >
+      <WorkspaceTopNav
+        items={workspaceItems}
+        activeWorkspace={activePrimaryRouteKey}
+        activeActionId={activePanelId}
+        onSelect={handleWorkspaceSelect}
+        onSelectAction={handleWorkspaceActionSelect}
+      />
       <Routes>
         <Route path="/" element={<Navigate to="/overview" replace />} />
         <Route

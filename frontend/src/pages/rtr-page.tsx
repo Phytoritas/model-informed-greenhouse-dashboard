@@ -25,7 +25,7 @@ export default function RtrPage({
       };
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-col gap-8">
       <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
       <div className="min-w-0">{recommendationSurface}</div>
       {supportSurface ? <div className="min-w-0">{supportSurface}</div> : null}

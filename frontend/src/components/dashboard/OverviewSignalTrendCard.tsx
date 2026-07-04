@@ -13,6 +13,13 @@ import { formatLocaleDateTime, formatLocaleTime } from '../../i18n/locale';
 import type { OverviewSignalsPayload } from '../../types';
 import { normalizeOverviewSourceSinkBalance } from '../../utils/sourceSinkBalance';
 import ChartFrame from '../charts/ChartFrame';
+import {
+  DASHBOARD_CHART_AXIS_STROKE,
+  DASHBOARD_CHART_GRID_STROKE,
+  DASHBOARD_CHART_LEGEND_CLASSNAME,
+  DASHBOARD_CHART_TICK,
+  DASHBOARD_CHART_TOOLTIP_STYLE,
+} from '../charts/chartStyles';
 import DashboardCard from '../common/DashboardCard';
 
 interface OverviewSignalTrendCardProps {
@@ -163,8 +170,8 @@ export default function OverviewSignalTrendCard({
 
   const hasIrradiance = irradianceSeries.length >= 2;
   const hasSourceSink = sourceSinkSeries.length >= 2;
-  const cardClassName = fillHeight ? 'h-full' : undefined;
-  const chartCardClassName = fillHeight ? 'h-full !p-4' : '!p-4';
+  const cardClassName = fillHeight ? 'sg-panel h-full min-w-0 bg-white' : 'sg-panel min-w-0 bg-white';
+  const chartCardClassName = fillHeight ? 'sg-panel h-full min-w-0 bg-white !p-4' : 'sg-panel min-w-0 bg-white !p-4';
 
   if (loading && !signals) {
     return (
@@ -174,7 +181,7 @@ export default function OverviewSignalTrendCard({
         description={copy.description}
         className={cardClassName}
       >
-        <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        <div className="sg-panel bg-white px-4 py-5 text-sm text-[color:var(--sg-text-muted)]">
           {copy.loading}
         </div>
       </DashboardCard>
@@ -189,7 +196,7 @@ export default function OverviewSignalTrendCard({
         description={copy.description}
         className={cardClassName}
       >
-        <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        <div className="sg-panel bg-white px-4 py-5 text-sm text-[color:var(--sg-text-muted)]">
           {copy.error}
         </div>
       </DashboardCard>
@@ -204,7 +211,7 @@ export default function OverviewSignalTrendCard({
         description={copy.description}
         className={cardClassName}
       >
-        <div className="rounded-[18px] bg-white/76 px-4 py-5 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+        <div className="sg-panel bg-white px-4 py-5 text-sm text-[color:var(--sg-text-muted)]">
           {copy.empty}
         </div>
       </DashboardCard>
@@ -219,21 +226,21 @@ export default function OverviewSignalTrendCard({
       contentClassName="flex flex-col gap-2"
       className={chartCardClassName}
     >
-      <div className="rounded-[16px] bg-[color:var(--sg-surface-soft)] px-2.5 py-2.5" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[10px] font-semibold tracking-[0.06em] text-[color:var(--sg-text-faint)]">
+      <div className="sg-panel min-w-0 bg-[color:var(--sg-surface-soft)] px-2.5 py-2.5">
+        <div className={`mb-2 flex flex-wrap items-center justify-between gap-2 ${DASHBOARD_CHART_LEGEND_CLASSNAME}`}>
           <div className="flex flex-wrap items-center gap-2">
             <span>{copy.mergedTitle}</span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-4 rounded-full bg-[#d26a2e]" />
+              <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-terracotta)]" />
               {copy.irradiance}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-4 rounded-full bg-[#8a3d4a]" />
+              <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-primary)]" />
               {copy.balance}
             </span>
           </div>
           {irradianceUpdatedAt ? (
-            <span className="rounded-full bg-white/82 px-2 py-1 text-[10px] font-semibold text-[color:var(--sg-text-faint)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+            <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[color:var(--sg-text-faint)] shadow-[var(--sg-shadow-card)]">
               {copy.updated} {formatLocaleDateTime(locale, irradianceUpdatedAt, {
                 month: '2-digit',
                 day: '2-digit',
@@ -244,7 +251,7 @@ export default function OverviewSignalTrendCard({
           ) : null}
         </div>
         {error && signals ? (
-          <div className="mb-2 rounded-[12px] bg-white/78 px-2.5 py-2 text-[11px] font-medium leading-4 text-[color:var(--sg-text-muted)]">
+          <div className="mb-2 rounded-[var(--sg-radius-xs)] bg-white px-2.5 py-2 text-[11px] font-medium leading-4 text-[color:var(--sg-text-muted)]">
             {copy.staleWarning}
           </div>
         ) : null}
@@ -257,18 +264,20 @@ export default function OverviewSignalTrendCard({
                 data={combinedSeries}
                 margin={{ top: 8, right: 16, left: -12, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(123, 93, 78, 0.14)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={DASHBOARD_CHART_GRID_STROKE} />
                 <XAxis
                   dataKey="timestamp"
                   tickFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit' })}
-                  tick={{ fontSize: 10 }}
+                  stroke={DASHBOARD_CHART_AXIS_STROKE}
+                  tick={DASHBOARD_CHART_TICK}
                   tickLine={false}
                   axisLine={false}
                   minTickGap={24}
                 />
                 <YAxis
                   yAxisId="left"
-                  tick={{ fontSize: 10 }}
+                  stroke={DASHBOARD_CHART_AXIS_STROKE}
+                  tick={DASHBOARD_CHART_TICK}
                   tickLine={false}
                   axisLine={false}
                   width={46}
@@ -276,14 +285,15 @@ export default function OverviewSignalTrendCard({
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tick={{ fontSize: 10 }}
+                  stroke={DASHBOARD_CHART_AXIS_STROKE}
+                  tick={DASHBOARD_CHART_TICK}
                   tickLine={false}
                   axisLine={false}
                   width={46}
                   domain={[-1, 1]}
                   ticks={[-1, -0.5, 0, 0.5, 1]}
                 />
-                <ReferenceLine yAxisId="right" y={0} stroke="rgba(123, 93, 78, 0.4)" strokeDasharray="4 4" />
+                <ReferenceLine yAxisId="right" y={0} stroke={DASHBOARD_CHART_AXIS_STROKE} strokeDasharray="4 4" />
                 <Tooltip
                   labelFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   formatter={(value: number, name: string) => {
@@ -292,13 +302,7 @@ export default function OverviewSignalTrendCard({
                     }
                     return [`${value.toFixed(3)} ${copy.balanceUnit}`, copy.balance];
                   }}
-                  contentStyle={{
-                    backgroundColor: 'rgba(255, 251, 246, 0.98)',
-                    border: '1px solid rgba(123, 93, 78, 0.12)',
-                    borderRadius: '12px',
-                    boxShadow: '0 12px 28px rgba(90, 64, 63, 0.10)',
-                    fontSize: '12px',
-                  }}
+                  contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
                 />
                 <Line
                   yAxisId="left"
@@ -306,7 +310,7 @@ export default function OverviewSignalTrendCard({
                   dataKey="irradiance"
                   name="irradiance"
                   connectNulls
-                  stroke="#d26a2e"
+                  stroke="var(--sg-color-terracotta)"
                   strokeWidth={2.2}
                   dot={false}
                   isAnimationActive={false}
@@ -317,7 +321,7 @@ export default function OverviewSignalTrendCard({
                   dataKey="sourceSinkBalance"
                   name="sourceSinkBalance"
                   connectNulls
-                  stroke="#8a3d4a"
+                  stroke="var(--sg-color-primary)"
                   strokeWidth={2.2}
                   dot={false}
                   isAnimationActive={false}
@@ -326,12 +330,12 @@ export default function OverviewSignalTrendCard({
             )}
           </ChartFrame>
         ) : (
-          <div className="rounded-[14px] bg-white/78 px-2.5 py-3 text-[13px] text-[color:var(--sg-text-muted)]">
+          <div className="rounded-[var(--sg-radius-xs)] bg-white px-2.5 py-3 text-[13px] text-[color:var(--sg-text-muted)]">
             {copy.empty}
           </div>
         )}
         {!hasSourceSink ? (
-          <div className="mt-2 rounded-[14px] bg-white/78 px-2.5 py-2.5 text-[12px] leading-4 text-[color:var(--sg-text-muted)]">
+          <div className="mt-2 rounded-[var(--sg-radius-xs)] bg-white px-2.5 py-2.5 text-[12px] leading-4 text-[color:var(--sg-text-muted)]">
             {copy.modelMissing}
           </div>
         ) : null}

@@ -24,35 +24,18 @@ import {
   HeroDecisionBrief,
   LandingFooter,
   LiveMetricStrip,
+  OverviewMetricDeck,
   ScenarioOptimizerPreview,
   TodayActionBoard,
   TopNavigation,
   WeatherMarketKnowledgeBridge,
 } from '../components/dashboard/overviewLandingSections';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
-import { MetricCard } from '../components/ui/metric-card';
-import { formatMetricValue } from '../utils/formatValue';
+import { SectionHeader } from '../components/ui/section-header';
 import OverviewPage from './overview-page';
 
 const Charts = lazy(() => import('../components/Charts'));
 const RtrTrendCard = lazy(() => import('../components/dashboard/RtrTrendCard'));
-
-function getMetricCardTone(tile: KpiTileData): 'normal' | 'warning' | 'critical' | 'muted' {
-  if (tile.availabilityState === 'missing') {
-    return 'muted';
-  }
-  if (tile.availabilityState === 'offline') {
-    return 'critical';
-  }
-  if (tile.availabilityState === 'delayed' || tile.availabilityState === 'stale') {
-    return 'warning';
-  }
-  return tile.healthStatus === 'critical'
-    ? 'critical'
-    : tile.healthStatus === 'warning'
-      ? 'warning'
-      : 'normal';
-}
 
 interface OverviewRoutePageProps {
   locale: AppLocale;
@@ -217,43 +200,23 @@ export default function OverviewRoutePage({
         />
       )}
       dashboardTab={(
-        <div className="space-y-4">
-          <section className="space-y-4" aria-labelledby="overview-dashboard-metrics-title">
-            <div className="overview-section-heading">
-              <div>
-                <p className="sg-eyebrow">Dashboard</p>
-                <h2 id="overview-dashboard-metrics-title">
-                  {locale === 'ko' ? '전체 지표와 센서 추세' : 'Full metric deck and sensor trends'}
-                </h2>
-                <p className="mt-1 max-w-2xl text-[0.8rem] leading-5 text-[color:var(--sg-text-muted)]">
-                  {locale === 'ko'
-                    ? 'Command 화면에서는 요약만 보이고, 상세 지표와 환경 차트는 이 탭에서 같은 데이터 흐름으로 확인합니다.'
-                    : 'Command stays summary-first; detailed metrics and environmental charts remain connected here.'}
-                </p>
-              </div>
-            </div>
-            <div className="overview-card-row-4">
-              {allMetricTiles.map((tile) => {
-                const isNumeric = typeof tile.value === 'number';
-                const tone = getMetricCardTone(tile);
-                return (
-                  <MetricCard
-                    key={tile.key}
-                    label={tile.label}
-                    value={isNumeric ? formatMetricValue(Number(tile.value), tile.fractionDigits) : String(tile.value)}
-                    unit={isNumeric && tile.availabilityState !== 'missing' ? tile.unit : undefined}
-                    detail={tile.lastReceived ?? tile.availabilityLabel}
-                    trend={tile.trend}
-                    trendLabel={tile.trendDetail || tile.availabilityLabel}
-                    icon={tile.icon}
-                    tone={tone}
-                  />
-                );
-              })}
-            </div>
+        <div className="min-w-0 space-y-4" data-command-surface="overview-dashboard">
+          <section className="min-w-0 space-y-4" aria-labelledby="overview-dashboard-metrics-title">
+            <SectionHeader
+              density="compact"
+              eyebrow="Dashboard"
+              title={locale === 'ko' ? '전체 지표와 센서 추세' : 'Full metric deck and sensor trends'}
+              titleId="overview-dashboard-metrics-title"
+              description={
+                locale === 'ko'
+                  ? 'Command 화면에서는 요약만 보이고, 상세 지표와 환경 차트는 이 탭에서 같은 데이터 흐름으로 확인합니다.'
+                  : 'Command stays summary-first; detailed metrics and environmental charts remain connected here.'
+              }
+            />
+            <OverviewMetricDeck tiles={allMetricTiles} />
           </section>
-          <div className="grid gap-4 xl:grid-cols-12">
-            <div className="xl:col-span-7">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-12">
+            <div className="min-w-0 xl:col-span-7">
               <Suspense
                 fallback={(
                   <LoadingSkeleton
@@ -288,7 +251,7 @@ export default function OverviewRoutePage({
                 />
               </Suspense>
             </div>
-            <div className="space-y-4 xl:col-span-5">
+            <div className="min-w-0 space-y-4 xl:col-span-5">
               <OverviewSignalTrendCard
                 signals={overviewSignals}
                 loading={overviewSignalsLoading}
@@ -307,15 +270,15 @@ export default function OverviewRoutePage({
               />
             </div>
           </div>
-          <div className="grid gap-4 xl:grid-cols-12">
-            <div className="xl:col-span-12">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-12">
+            <div className="min-w-0 xl:col-span-12">
               <ModelRuntimeBridge crop={crop} onOpenAssistant={onOpenAssistant} />
             </div>
           </div>
         </div>
       )}
       watchTab={(
-        <div className="space-y-4">
+        <div className="space-y-4" data-command-surface="overview-watch">
           <AlertRail items={fallbackAlerts} />
           <TodayBoard
             actionsNow={actionsNow}
@@ -324,6 +287,8 @@ export default function OverviewRoutePage({
             monitor={monitor}
             advisorUpdatedAt={advisorUpdatedAt}
             advisorRefreshing={advisorRefreshing}
+            onOpenAdvisor={onOpenAdvisor}
+            onOpenRtr={onOpenRtr}
           />
         </div>
       )}

@@ -174,11 +174,11 @@ export default function AskKnowledgeBoard({
                 </div>
 
                 {loading ? (
-                    <div className="rounded-[22px] bg-white/82 px-4 py-4 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                    <div className="sg-panel px-4 py-4 text-sm text-[color:var(--sg-text-muted)]">
                         {copy.loading}
                     </div>
                 ) : error ? (
-                    <div className="rounded-[22px] bg-[#fff1ec] px-4 py-4 text-sm text-[#9d4125]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                    <div className="sg-panel border-[color:var(--sg-status-offline-text)]/25 bg-[color:var(--sg-status-offline-bg)] px-4 py-4 text-sm text-[color:var(--sg-status-offline-text)]">
                         {error}
                     </div>
                 ) : results.length > 0 && activeResult ? (
@@ -195,8 +195,7 @@ export default function AskKnowledgeBoard({
                         <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
                             <nav
                                 aria-label={copy.toc}
-                                className="rounded-[26px] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-color-ivory)] p-3"
-                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                className="sg-panel bg-[color:var(--sg-color-ivory)] p-3"
                             >
                                 <div className="flex items-center gap-2 px-2 pb-3 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
                                     <BookOpen className="h-4 w-4" />
@@ -210,7 +209,7 @@ export default function AskKnowledgeBoard({
                                                 key={entry.key}
                                                 type="button"
                                                 onClick={() => setActiveIndex(index)}
-                                                className={`w-full rounded-[18px] px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)] ${selected ? 'bg-white text-[color:var(--sg-text-strong)]' : 'bg-white/54 text-[color:var(--sg-text-muted)] hover:bg-white/88'}`}
+                                                className={`w-full rounded-[var(--sg-radius-md)] px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)] ${selected ? 'bg-[color:var(--sg-surface-strong)] text-[color:var(--sg-text-strong)]' : 'bg-[color:var(--sg-surface-warm)] text-[color:var(--sg-text-muted)] hover:bg-[color:var(--sg-surface-strong)]'}`}
                                                 aria-current={selected ? 'page' : undefined}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
@@ -222,13 +221,9 @@ export default function AskKnowledgeBoard({
                                                 <div className="mt-1 line-clamp-2 text-sm font-semibold leading-5">
                                                     {entry.title}
                                                 </div>
-                                                <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
-                                                    <span className="rounded-full bg-[color:var(--sg-color-sage-soft)] px-2 py-0.5 text-[color:var(--sg-color-olive)]">
-                                                        {entry.topic}
-                                                    </span>
-                                                    <span className="rounded-full bg-white/86 px-2 py-0.5 text-[color:var(--sg-text-faint)]">
-                                                        {entry.score}
-                                                    </span>
+                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    <Badge variant="forest">{entry.topic}</Badge>
+                                                    <Badge variant="muted">{entry.score}</Badge>
                                                 </div>
                                             </button>
                                         );
@@ -236,8 +231,7 @@ export default function AskKnowledgeBoard({
                                 </div>
                             </nav>
                             <article
-                                className="rounded-[28px] border border-[color:var(--sg-outline-soft)] bg-white/90 px-4 py-4 sm:px-5 sm:py-5"
-                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                className="sg-panel px-4 py-4 sm:px-5 sm:py-5"
                             >
                                 <div className="flex flex-wrap gap-2">
                                     <Badge variant="default">{activeResult.document.source_type}</Badge>
@@ -245,7 +239,7 @@ export default function AskKnowledgeBoard({
                                     {activeResult.chunk_type ? <Badge variant="forest">{activeResult.chunk_type}</Badge> : null}
                                 </div>
                                 <div className="mt-4 flex items-start gap-3">
-                                    <div className="rounded-[18px] bg-[color:var(--sg-color-sage-soft)] p-2 text-[color:var(--sg-color-olive)]">
+                                    <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-color-sage-soft)] p-2 text-[color:var(--sg-color-olive)]">
                                         <FileText className="h-5 w-5" />
                                     </div>
                                     <div>
@@ -260,7 +254,7 @@ export default function AskKnowledgeBoard({
                                 <p className="mt-4 whitespace-pre-line text-sm leading-7 text-[color:var(--sg-text-muted)]">
                                     {activeResult.text}
                                 </p>
-                                <div className="mt-4 grid gap-2 rounded-[20px] bg-[color:var(--sg-color-ivory)] px-3 py-3 text-xs text-[color:var(--sg-text-muted)] sm:grid-cols-2">
+                                <div className="mt-4 grid gap-2 rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-color-ivory)] px-3 py-3 text-xs text-[color:var(--sg-text-muted)] sm:grid-cols-2">
                                     <div>{copy.openFrom}: {activeResult.document.relative_path}</div>
                                     <div>{copy.score}: {Math.round(activeResult.score * 100)}%</div>
                                 </div>
@@ -284,7 +278,7 @@ export default function AskKnowledgeBoard({
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-[22px] bg-white/82 px-4 py-4 text-sm text-[color:var(--sg-text-muted)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
+                    <div className="sg-panel px-4 py-4 text-sm text-[color:var(--sg-text-muted)]">
                         {lastQuery ? copy.noResults : copy.idle}
                     </div>
                 )}

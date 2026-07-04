@@ -1,13 +1,4 @@
 import { CloudSun, Coins, Gauge, Zap } from 'lucide-react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { useMemo } from 'react';
 import { useLocale } from '../../i18n/LocaleProvider';
 import type {
@@ -22,6 +13,7 @@ import type {
 import { getWeatherLabel } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import DashboardCard from '../common/DashboardCard';
+import { StatusChip, type StatusChipTone } from '../ui/status-chip';
 
 interface DecisionSnapshotGridProps {
   crop: CropType;
@@ -116,93 +108,96 @@ function buildHistoryWindow(history: SensorData[], hours: number): SensorData[] 
   return history.filter((point) => point.timestamp >= cutoff);
 }
 
-function TrendTile({
+function latestValue(data: TrendDatum[]): number | null {
+  return data.length > 0 ? data[data.length - 1].value : null;
+}
+
+function formatNumeric(value: number | null, fractionDigits = 1): string {
+  return value === null || !Number.isFinite(value) ? '-' : value.toFixed(fractionDigits);
+}
+
+function formatRange(data: TrendDatum[], unit: string, fractionDigits = 1): string {
+  if (data.length === 0) {
+    return '-';
+  }
+
+  const values = data.map((point) => point.value);
+  return `${Math.min(...values).toFixed(fractionDigits)}-${Math.max(...values).toFixed(fractionDigits)} ${unit}`;
+}
+
+function formatDelta(data: TrendDatum[], unit: string, fractionDigits = 1): string {
+  if (data.length < 2) {
+    return '-';
+  }
+
+  const delta = data[data.length - 1].value - data[0].value;
+  return `${delta > 0 ? '+' : ''}${delta.toFixed(fractionDigits)} ${unit}`;
+}
+
+function BridgeDecisionCard({
   icon: Icon,
+  testId,
   title,
-  headline,
-  supporting,
-  seriesLabel,
-  unitLabel,
+  value,
+  unit,
+  body,
+  actionLabel,
+  contextLabel,
   toneClassName,
-  stroke,
-  data,
-  emptyLabel,
+  detailRows,
+  actionTone = 'growth',
+  contextTone = 'stable',
 }: {
   icon: typeof CloudSun;
+  testId: string;
   title: string;
-  headline: string;
-  supporting: string;
-  seriesLabel: string;
-  unitLabel: string;
+  value: string;
+  unit: string;
+  body: string;
+  actionLabel: string;
+  contextLabel: string;
   toneClassName: string;
-  stroke: string;
-  data: TrendDatum[];
-  emptyLabel: string;
+  detailRows: Array<[string, string]>;
+  actionTone?: StatusChipTone;
+  contextTone?: StatusChipTone;
 }) {
   return (
     <article
-      className={`flex min-h-[260px] flex-col rounded-[24px] px-4 py-4 ${toneClassName}`}
+      className={`sg-panel flex h-full min-h-[190px] flex-col gap-2 p-3 ${toneClassName}`}
       style={{ boxShadow: 'var(--sg-shadow-card)' }}
+      data-testid={`decision-bridge-card-${testId}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-bold text-[color:var(--sg-text-strong)]">{title}</div>
+          <div className="mt-2 flex items-end gap-2">
+            <span className="sg-data-number text-2xl font-bold leading-none text-[color:var(--sg-text-strong)]">
+              {value}
+            </span>
+            <span className="pb-0.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">{unit}</span>
+          </div>
+        </div>
         <div
-          className="flex h-10 w-10 items-center justify-center rounded-[16px] bg-white/84 text-[color:var(--sg-text-strong)]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--sg-radius-sm)] bg-white/84 text-[color:var(--sg-text-strong)]"
           style={{ boxShadow: 'var(--sg-shadow-card)' }}
         >
           <Icon className="h-4 w-4" />
         </div>
-        <div className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{title}</div>
       </div>
-      <div className="mt-3 text-lg font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
-        {headline}
-      </div>
-      <div className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{supporting}</div>
-      <div className="mt-4 flex items-center justify-between text-[11px] font-semibold tracking-[0.08em] text-[color:var(--sg-text-faint)]">
-        <span>{seriesLabel}</span>
-        <span>{unitLabel}</span>
-      </div>
-      <div className="relative mt-2 min-h-0 flex-1 rounded-[18px] bg-white/82 px-2 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -12 }}>
-            <CartesianGrid stroke="rgba(122,67,52,0.12)" vertical={false} />
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              minTickGap={20}
-              tick={{ fill: 'var(--sg-text-faint)', fontSize: 11 }}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              width={42}
-              tick={{ fill: 'var(--sg-text-faint)', fontSize: 11 }}
-            />
-            <Tooltip
-              formatter={(value: number) => [`${Number(value).toFixed(1)} ${unitLabel}`, title]}
-              labelFormatter={(label: string) => label}
-              contentStyle={{
-                borderRadius: '14px',
-                border: '1px solid rgba(122,67,52,0.12)',
-                boxShadow: 'var(--sg-shadow-card)',
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke={stroke}
-              strokeWidth={2.5}
-              isAnimationActive={false}
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-        {data.length < 2 ? (
-          <div className="absolute inset-0 flex items-center justify-center rounded-[18px] bg-white/72 text-sm font-medium text-[color:var(--sg-text-muted)]">
-            {emptyLabel}
+      <p className="text-xs leading-5 text-[color:var(--sg-text-muted)]">{body}</p>
+      <dl className="grid grid-cols-2 gap-2 border-t border-[color:var(--sg-outline-soft)] pt-2">
+        {detailRows.map(([label, rowValue]) => (
+          <div key={label} className="min-w-0 rounded-[var(--sg-radius-xs)] bg-white/72 px-2 py-1.5">
+            <dt className="truncate text-[10px] font-semibold text-[color:var(--sg-text-faint)]">{label}</dt>
+            <dd className="sg-data-number mt-1 truncate text-xs font-bold text-[color:var(--sg-text-strong)]">
+              {rowValue}
+            </dd>
           </div>
-        ) : null}
+        ))}
+      </dl>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
+        <StatusChip tone={actionTone}>{actionLabel}</StatusChip>
+        <StatusChip tone={contextTone}>{contextLabel}</StatusChip>
       </div>
     </article>
   );
@@ -247,6 +242,18 @@ export default function DecisionSnapshotGrid({
         marketUnit: '원',
         energyUnit: 'kW',
         cropUnit: 'µmol/m²/s',
+        latest: '최신',
+        points: '포인트',
+        range: '범위',
+        delta: '변화',
+        weatherAction: '환기 확인',
+        marketAction: '출하 판단',
+        energyAction: '부하 점검',
+        cropAction: '생육 점검',
+        weatherContext: '외기 일사',
+        marketContext: '도매 기준',
+        energyContext: '24h 에너지',
+        cropContext: '광합성',
       }
     : {
         eyebrow: 'Support signals',
@@ -274,6 +281,18 @@ export default function DecisionSnapshotGrid({
         marketUnit: 'KRW',
         energyUnit: 'kW',
         cropUnit: 'µmol/m²/s',
+        latest: 'Latest',
+        points: 'Points',
+        range: 'Range',
+        delta: 'Delta',
+        weatherAction: 'Check vents',
+        marketAction: 'Plan shipment',
+        energyAction: 'Check load',
+        cropAction: 'Check growth',
+        weatherContext: 'Outside irradiance',
+        marketContext: 'Wholesale basis',
+        energyContext: '24h energy',
+        cropContext: 'Photosynthesis',
       };
 
   const selectedMarket = selectProduceItemForCrop(producePrices, crop, {
@@ -339,14 +358,41 @@ export default function DecisionSnapshotGrid({
     ? (crop === 'Cucumber' ? '오이(백다다기)' : '토마토(완숙)')
     : (crop === 'Cucumber' ? 'Cucumber (Baekdadagi)' : 'Tomato (Ripe)');
 
-  const weatherHeadline = weatherLoading || !weather
+  const weatherValue = weatherLoading || !weather
+    ? '-'
+    : weather.current.temperature_c.toFixed(1);
+  const weatherBody = weatherLoading
     ? copy.weatherLoading
-    : `${weather.current.temperature_c.toFixed(1)}°C · ${getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)}`;
-  const marketHeadline = produceLoading || !selectedMarket?.item
+    : weather
+      ? getWeatherLabel(weather.current.weather_code, weather.current.weather_label, locale)
+      : copy.outsideEmpty;
+  const marketValue = produceLoading || !selectedMarket?.item
+    ? '-'
+    : selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US');
+  const marketBody = produceLoading
     ? copy.marketLoading
-    : `${preferredProduceName} ${selectedMarket.item.current_price_krw.toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-US')}${copy.marketUnit}`;
-  const energyHeadline = `${modelMetrics.energy.consumption.toFixed(1)} kW · COP ${modelMetrics.energy.efficiency.toFixed(2)}`;
-  const cropHeadline = `광합성 ${currentData.photosynthesis.toFixed(1)} · LAI ${modelMetrics.growth.lai.toFixed(2)}`;
+    : selectedMarket?.item
+      ? preferredProduceName
+      : copy.marketEmpty;
+  const weatherActionTone = weatherLoading ? 'warning' : weather ? 'growth' : 'muted';
+  const marketActionTone = produceLoading ? 'warning' : selectedMarket?.item ? 'growth' : 'muted';
+
+  const weatherDetails: Array<[string, string]> = [
+    [copy.latest, `${formatNumeric(latestValue(outsideData))} ${copy.radiationUnit}`],
+    [copy.range, formatRange(outsideData, copy.radiationUnit)],
+  ];
+  const marketDetails: Array<[string, string]> = [
+    [copy.delta, formatDelta(marketData, copy.marketUnit, 0)],
+    [copy.points, String(marketData.length)],
+  ];
+  const energyDetails: Array<[string, string]> = [
+    [copy.delta, formatDelta(energyData, copy.energyUnit)],
+    [copy.range, formatRange(energyData, copy.energyUnit)],
+  ];
+  const cropDetails: Array<[string, string]> = [
+    ['LAI', modelMetrics.growth.lai.toFixed(2)],
+    [copy.range, formatRange(cropData, copy.cropUnit)],
+  ];
 
   return (
     <DashboardCard
@@ -356,53 +402,57 @@ export default function DecisionSnapshotGrid({
       contentClassName="overflow-hidden"
     >
       <div className="grid gap-3 xl:grid-cols-2">
-        <TrendTile
+        <BridgeDecisionCard
           icon={CloudSun}
+          testId="weather"
           title={copy.weatherTitle}
-          headline={weatherHeadline}
-          supporting={copy.weatherSupport}
-          seriesLabel={copy.outsideSeries}
-          unitLabel={copy.radiationUnit}
+          value={weatherValue}
+          unit="°C"
+          body={`${weatherBody} · ${copy.weatherSupport}`}
+          actionLabel={copy.weatherAction}
+          contextLabel={copy.weatherContext}
           toneClassName="sg-tint-amber"
-          stroke="#2d5d77"
-          data={outsideData}
-          emptyLabel={copy.outsideEmpty}
+          detailRows={weatherDetails}
+          actionTone={weatherActionTone}
+          contextTone={weather ? 'stable' : 'muted'}
         />
-        <TrendTile
+        <BridgeDecisionCard
           icon={Coins}
+          testId="market"
           title={copy.marketTitle}
-          headline={marketHeadline}
-          supporting={copy.marketSupport}
-          seriesLabel={copy.marketSeries}
-          unitLabel={copy.marketUnit}
+          value={marketValue}
+          unit={copy.marketUnit}
+          body={`${marketBody} · ${copy.marketSupport}`}
+          actionLabel={copy.marketAction}
+          contextLabel={copy.marketContext}
           toneClassName="sg-tint-amber"
-          stroke="#9d4125"
-          data={marketData}
-          emptyLabel={copy.marketEmpty}
+          detailRows={marketDetails}
+          actionTone={marketActionTone}
+          contextTone={selectedMarket?.item ? 'stable' : 'muted'}
         />
-        <TrendTile
+        <BridgeDecisionCard
           icon={Zap}
+          testId="energy"
           title={copy.energyTitle}
-          headline={energyHeadline}
-          supporting={copy.energySupport}
-          seriesLabel={copy.energySeries}
-          unitLabel={copy.energyUnit}
+          value={modelMetrics.energy.consumption.toFixed(1)}
+          unit={copy.energyUnit}
+          body={`COP ${modelMetrics.energy.efficiency.toFixed(2)} · ${copy.energySupport}`}
+          actionLabel={copy.energyAction}
+          contextLabel={copy.energyContext}
           toneClassName="sg-tint-green"
-          stroke="#9e4f21"
-          data={energyData}
-          emptyLabel={copy.energyEmpty}
+          detailRows={energyDetails}
         />
-        <TrendTile
+        <BridgeDecisionCard
           icon={Gauge}
+          testId="crop"
           title={copy.cropTitle}
-          headline={cropHeadline}
-          supporting={copy.cropSupport}
-          seriesLabel={copy.cropSeries}
-          unitLabel={copy.cropUnit}
+          value={currentData.photosynthesis.toFixed(1)}
+          unit={copy.cropUnit}
+          body={copy.cropSupport}
+          actionLabel={copy.cropAction}
+          contextLabel={copy.cropContext}
           toneClassName="sg-tint-violet"
-          stroke="#7e2c2d"
-          data={cropData}
-          emptyLabel={copy.cropEmpty}
+          detailRows={cropDetails}
         />
       </div>
     </DashboardCard>
