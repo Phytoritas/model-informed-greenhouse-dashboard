@@ -1309,12 +1309,7 @@ function App() {
       modelMetrics={deferredModelMetrics}
       forecast={deferredForecast}
       aiAnalysis={aiAnalysis}
-      actionsNow={aiDisplay?.actions_now ?? []}
-      actionsToday={aiDisplay?.actions_today ?? []}
-      actionsWeek={aiDisplay?.actions_week ?? []}
-      monitor={aiDisplay?.monitor ?? []}
       activePanel={activePanelId === 'crop-work-harvest' ? 'crop-work-harvest' : activePanelId === 'crop-work-work' ? 'crop-work-work' : 'crop-work-growth'}
-      onOpenAssistant={() => openAssistantDrawer('assistant-chat')}
     />
   );
 
