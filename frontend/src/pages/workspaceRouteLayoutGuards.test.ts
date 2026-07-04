@@ -40,8 +40,14 @@ describe('workspace route layout guards', () => {
 
   it('uses minmax(0, ...) tracks for fixed workspace column layouts', () => {
     expect(assistantPageSource).toContain('grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,392px)]');
-    expect(rtrRouteSource).toContain('grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]');
     expect(settingsPageSource).toContain('grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]');
+  });
+
+  it('keeps the RTR route as a single optimizer surface without borrowed tab panels', () => {
+    expect(rtrRouteSource).toContain('recommendationSurface');
+    expect(rtrRouteSource).not.toContain('supportSurface');
+    expect(rtrRouteSource).not.toContain('ControlPanel');
+    expect(rtrRouteSource).not.toContain('DecisionSnapshotGrid');
   });
 
   it('guards all xl column-span route grid items against intrinsic-width overflow', () => {
@@ -54,6 +60,5 @@ describe('workspace route layout guards', () => {
     expect(cropWorkRouteSource).toContain('min-w-0 space-y-5');
     expect(countOccurrences(scenariosRouteSource, 'className="min-w-0 scroll-mt-24 focus:outline-none"')).toBe(2);
     expect(settingsRouteSource).toContain('grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]');
-    expect(countOccurrences(rtrRouteSource, 'className="min-h-0 min-w-0 [&>*]:h-full"')).toBe(2);
   });
 });

@@ -23,7 +23,7 @@ import type {
 } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
 import { getReadinessDescriptor } from '../lib/design/readiness';
-import { getCropLabel } from '../utils/displayCopy';
+import { getControlDisplayCopy, getCropLabel } from '../utils/displayCopy';
 import { getRequestErrorCopy } from '../utils/requestErrorCopy';
 import { useAreaUnit } from '../context/AreaUnitContext';
 import { useRtrOptimizer } from '../hooks/useRtrOptimizer';
@@ -313,6 +313,11 @@ function getReasonTagLabel(code: string, locale: 'en' | 'ko'): string {
 }
 
 function getSensitivityControlLabel(code: string, locale: 'en' | 'ko', crop?: CropType): string {
+    const sharedControlCopy = getControlDisplayCopy(code, locale);
+    if (!sharedControlCopy.fallback) {
+        return sharedControlCopy.compactLabel;
+    }
+
     const koMap: Record<string, string> = {
         day_heating_min_temp_C: '주간 난방 기준',
         night_heating_min_temp_C: '야간 난방 기준',
@@ -321,10 +326,7 @@ function getSensitivityControlLabel(code: string, locale: 'en' | 'ko', crop?: Cr
         vent_bias_C: '환기 편차',
         screen_bias_pct: '스크린 편차',
         circulation_fan_pct: '순환팬 강도',
-        co2_target_ppm: 'CO₂ 목표',
         target_node_rate_day: '목표 마디 전개',
-        temperature_day: '주간 온도',
-        temperature_night: '야간 온도',
         temperature_mean: '평균 온도',
         screen_bias: '스크린 편차',
     };
@@ -336,10 +338,7 @@ function getSensitivityControlLabel(code: string, locale: 'en' | 'ko', crop?: Cr
         vent_bias_C: 'Vent bias',
         screen_bias_pct: 'Screen bias',
         circulation_fan_pct: 'Circulation fan',
-        co2_target_ppm: 'CO2 target',
         target_node_rate_day: 'Target node rate',
-        temperature_day: 'Day temperature',
-        temperature_night: 'Night temperature',
         temperature_mean: 'Mean temperature',
         screen_bias: 'Screen bias',
     };

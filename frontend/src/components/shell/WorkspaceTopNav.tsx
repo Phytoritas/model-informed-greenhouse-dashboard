@@ -1,5 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useLocale } from '../../i18n/LocaleProvider';
+import type { GlobalNavigationItem, GlobalNavigationKey } from '../../routes/globalNavigation';
 import { cn } from '../../utils/cn';
 
 export type DashboardWorkspaceKey =
@@ -28,23 +30,31 @@ export interface WorkspaceNavItem {
 }
 
 interface WorkspaceTopNavProps {
+  globalItems: readonly GlobalNavigationItem[];
   items: WorkspaceNavItem[];
+  activeGlobalKey?: GlobalNavigationKey | null;
   activeWorkspace: string;
   activeActionId?: string;
+  onSelectGlobal?: (key: GlobalNavigationKey) => void;
+  onSelectContact?: () => void;
   onSelect: (workspace: string) => void;
   onSelectAction?: (workspace: string, actionId: string) => void;
 }
 
 /**
- * Horizontal workspace navigation strip rendered above route content, replacing
- * the former left WorkspaceNav sidebar. Reuses the Command landing tab-strip
- * classes so workspace routes share the landing's navigation look. The active
- * workspace's sub-actions render as a second chip row (aria-current="step").
+ * Horizontal workspace navigation rendered above route content. The first row
+ * is the global navigation shared with the landing page; the second row only
+ * shows subtabs that belong to the active global category. Route-local panel
+ * actions stay below the subtab row.
  */
 export default function WorkspaceTopNav({
+  globalItems,
   items,
+  activeGlobalKey,
   activeWorkspace,
   activeActionId,
+  onSelectGlobal,
+  onSelectContact,
   onSelect,
   onSelectAction,
 }: WorkspaceTopNavProps) {
@@ -55,29 +65,66 @@ export default function WorkspaceTopNav({
   return (
     <div className="mb-5 grid gap-2">
       <nav
-        aria-label={locale === 'ko' ? '워크스페이스 내비게이션' : 'Workspace navigation'}
-        data-testid="workspace-top-nav"
-        className="overview-tab-strip"
+        aria-label={locale === 'ko' ? '전역 내비게이션' : 'Global navigation'}
+        data-testid="workspace-global-nav"
+        className="overview-nav-links justify-start"
       >
-        {items.map((item) => {
-          const active = item.key === activeWorkspace;
-          return (
+        {globalItems.map((item) => {
+          const active = item.key === activeGlobalKey;
+          const className = cn(
+            'overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]',
+            active && 'overview-nav-link-active',
+          );
+
+          return item.path ? (
+            <Link
+              key={item.key}
+              to={item.path}
+              onClick={() => onSelectGlobal?.(item.key)}
+              aria-current={active ? 'page' : undefined}
+              className={className}
+            >
+              {item.label}
+            </Link>
+          ) : (
             <button
               key={item.key}
               type="button"
-              onClick={() => onSelect(item.key)}
+              onClick={onSelectContact}
               aria-current={active ? 'page' : undefined}
-              title={item.description}
-              className={cn('overview-tab-link', active && 'overview-tab-link-active')}
+              className={className}
             >
-              <span>{item.label}</span>
+              {item.label}
             </button>
           );
         })}
       </nav>
+      {items.length > 0 ? (
+        <nav
+          aria-label={locale === 'ko' ? '카테고리 서브탭 내비게이션' : 'Category subtab navigation'}
+          data-testid="workspace-top-nav"
+          className="overview-tab-strip"
+        >
+          {items.map((item) => {
+            const active = item.key === activeWorkspace;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => onSelect(item.key)}
+                aria-current={active ? 'step' : undefined}
+                title={item.description}
+                className={cn('overview-tab-link', active && 'overview-tab-link-active')}
+              >
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      ) : null}
       {actions.length > 0 && onSelectAction ? (
         <nav
-          aria-label={locale === 'ko' ? '섹션 내비게이션' : 'Section navigation'}
+          aria-label={locale === 'ko' ? '패널 액션 내비게이션' : 'Panel action navigation'}
           data-testid="workspace-top-nav-actions"
           className="flex flex-wrap items-center gap-1.5"
         >
@@ -88,7 +135,8 @@ export default function WorkspaceTopNav({
                 key={action.id}
                 type="button"
                 onClick={() => onSelectAction(activeWorkspace, action.id)}
-                aria-current={active ? 'step' : undefined}
+                aria-pressed={active}
+                data-active={active}
                 className={cn(
                   'rounded-full border px-3 py-1 text-[0.68rem] font-bold transition',
                   active

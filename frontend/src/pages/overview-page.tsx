@@ -29,6 +29,8 @@ const OVERVIEW_SECTION_BY_ACTION: Record<string, string> = {
   'backend-runtime-bridge': 'backend-runtime-bridge',
   'live-overview': 'live-overview',
   'today-action-board': 'today-action-board',
+  contact: 'overview-footer',
+  'overview-footer': 'overview-footer',
 };
 
 const OVERVIEW_TAB_IDS = ['overview-core', 'overview-dashboard', 'overview-watch'] as const;

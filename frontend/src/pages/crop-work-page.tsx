@@ -4,7 +4,6 @@ import PageCanvas from '../components/layout/PageCanvas';
 interface CropWorkPageProps {
   locale: 'ko' | 'en';
   cropSummary: ReactNode;
-  workBoard: ReactNode;
   forecastSurface: ReactNode;
   recentWorkSurface: ReactNode;
   activeTabId?: string;
@@ -13,7 +12,6 @@ interface CropWorkPageProps {
 export default function CropWorkPage({
   locale,
   cropSummary,
-  workBoard,
   forecastSurface,
   recentWorkSurface,
   activeTabId,
@@ -45,31 +43,27 @@ export default function CropWorkPage({
       <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-12">
         {showGrowth ? (
           <>
-            <div className="min-h-0 min-w-0 xl:col-span-8 [&>*]:h-full">{cropSummary}</div>
-            <div className="min-h-0 min-w-0 xl:col-span-4 [&>*]:h-full">{workBoard}</div>
-            <div className="min-h-0 min-w-0 xl:col-span-12 [&>*]:h-full">{forecastSurface}</div>
+            <div className="min-h-0 min-w-0 xl:col-span-6 [&>*]:h-full">{cropSummary}</div>
+            <div className="min-h-0 min-w-0 xl:col-span-6 [&>*]:h-full">{forecastSurface}</div>
           </>
         ) : null}
         {showWork ? (
           <>
-            <div className="min-h-0 min-w-0 xl:col-span-4 [&>*]:h-full">{workBoard}</div>
             <div className="min-h-0 min-w-0 xl:col-span-8 [&>*]:h-full">{recentWorkSurface}</div>
-            <div className="min-h-0 min-w-0 xl:col-span-12 [&>*]:h-full">{cropSummary}</div>
+            <div className="min-h-0 min-w-0 xl:col-span-4 [&>*]:h-full">{cropSummary}</div>
           </>
         ) : null}
         {showHarvest ? (
           <>
             <div className="min-h-0 min-w-0 xl:col-span-8 [&>*]:h-full">{recentWorkSurface}</div>
-            <div className="min-h-0 min-w-0 xl:col-span-4 [&>*]:h-full">{workBoard}</div>
-            <div className="min-h-0 min-w-0 xl:col-span-12 [&>*]:h-full">{forecastSurface}</div>
+            <div className="min-h-0 min-w-0 xl:col-span-4 [&>*]:h-full">{forecastSurface}</div>
           </>
         ) : null}
         {!showGrowth && !showWork && !showHarvest ? (
           <>
-            <div className="min-h-0 min-w-0 xl:col-span-8 [&>*]:h-full">{cropSummary}</div>
-            <div className="min-h-0 min-w-0 xl:col-span-4 [&>*]:h-full">{workBoard}</div>
-            <div className="min-h-0 min-w-0 xl:col-span-6 [&>*]:h-full">{forecastSurface}</div>
-            <div className="min-h-0 min-w-0 xl:col-span-6 [&>*]:h-full">{recentWorkSurface}</div>
+            <div className="min-h-0 min-w-0 xl:col-span-4 [&>*]:h-full">{cropSummary}</div>
+            <div className="min-h-0 min-w-0 xl:col-span-8 [&>*]:h-full">{forecastSurface}</div>
+            <div className="min-h-0 min-w-0 xl:col-span-12 [&>*]:h-full">{recentWorkSurface}</div>
           </>
         ) : null}
       </div>

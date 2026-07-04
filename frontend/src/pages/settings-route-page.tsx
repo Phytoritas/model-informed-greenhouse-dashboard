@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import DashboardCard from '../components/common/DashboardCard';
+import SimulationRuntimePanel from '../components/dashboard/SimulationRuntimePanel';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { API_URL } from '../config';
 import type { AppLocale } from '../i18n/locale';
-import type { CropType } from '../types';
+import type { CropType, TelemetryStatus } from '../types';
 import SettingsPage from './settings-page';
 
 interface SettingsRoutePageProps {
@@ -13,6 +14,8 @@ interface SettingsRoutePageProps {
   selectedCropLabel: string;
   assistantOpen: boolean;
   telemetrySummary: string;
+  telemetryStatus: TelemetryStatus;
+  telemetryDetail?: string | null;
   weatherConnected: boolean;
   marketConnected: boolean;
 }
@@ -35,6 +38,8 @@ export default function SettingsRoutePage({
   selectedCropLabel,
   assistantOpen,
   telemetrySummary,
+  telemetryStatus,
+  telemetryDetail = null,
   weatherConnected,
   marketConnected,
 }: SettingsRoutePageProps) {
@@ -138,6 +143,14 @@ export default function SettingsRoutePage({
   return (
     <SettingsPage
       locale={locale}
+      runtimeSurface={(
+        <SimulationRuntimePanel
+          locale={locale}
+          crop={crop}
+          telemetryStatus={telemetryStatus}
+          telemetryDetail={telemetryDetail}
+        />
+      )}
       shellCard={(
         <DashboardCard
           eyebrow={locale === 'ko' ? '표시 기준' : 'Display'}

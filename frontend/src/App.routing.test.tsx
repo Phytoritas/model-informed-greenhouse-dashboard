@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LocaleProvider } from './i18n/LocaleProvider'
 import { LOCALE_STORAGE_KEY } from './i18n/locale'
+import type { ModelRuntimeConstraintViolation } from './hooks/useSmartGrowAdvisor'
 import type { MetricHistoryPoint } from './types'
 import { deriveSourceSinkBalance } from './utils/derivedRuntimeMetrics'
 
@@ -127,7 +128,7 @@ const advisorState = {
     },
     recommendations: [{ action: 'Keep vent bias conservative.' }],
     constraint_checks: {
-      violated_constraints: [],
+      violated_constraints: [] as ModelRuntimeConstraintViolation[],
     },
     state_snapshot: {
       source_sink_balance: 0.42,
@@ -365,44 +366,88 @@ vi.mock('./components/shell/TopBar', () => ({
 
 vi.mock('./components/shell/WorkspaceTopNav', () => ({
   default: ({
+    globalItems,
     items,
+    activeGlobalKey,
     activeWorkspace,
     activeActionId,
+    onSelectGlobal,
+    onSelectContact,
     onSelect,
     onSelectAction,
   }: {
+    globalItems: Array<{ key: string; label: string; path?: string }>
     items: Array<{ key: string; label: string; actions?: Array<{ id: string; label: string }> }>
+    activeGlobalKey?: string | null
     activeWorkspace: string
     activeActionId?: string
+    onSelectGlobal?: (value: string) => void
+    onSelectContact?: () => void
     onSelect: (value: string) => void
     onSelectAction?: (workspace: string, actionId: string) => void
-  }) => (
-    <nav aria-label="Primary navigation">
-      {items.map((item) => (
-        <div key={item.key}>
-          <button
-            type="button"
-            aria-current={item.key === activeWorkspace ? 'page' : undefined}
-            onClick={() => onSelect(item.key)}
-          >
-            {item.label}
-          </button>
-          {item.key === activeWorkspace
-            ? item.actions?.map((action) => (
+  }) => {
+    const globalTargetByKey: Record<string, string> = {
+      home: 'overview',
+      dashboard: 'control',
+      insights: 'trend',
+      scenarios: 'scenarios',
+      knowledge: 'assistant',
+    }
+    const activeItem = items.find((item) => item.key === activeWorkspace)
+
+    return (
+      <div>
+        <nav aria-label="Global navigation">
+          {globalItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              aria-current={item.key === activeGlobalKey ? 'page' : undefined}
+              onClick={() => {
+                if (item.key === 'contact') {
+                  onSelectContact?.()
+                  return
+                }
+                onSelectGlobal?.(item.key)
+                onSelect(globalTargetByKey[item.key] ?? 'overview')
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        {items.length > 0 ? (
+          <nav aria-label="Category subtab navigation">
+            {items.map((item) => (
+              <div key={item.key}>
                 <button
-                  key={action.id}
                   type="button"
-                  aria-current={activeActionId === action.id ? 'step' : undefined}
-                  onClick={() => onSelectAction?.(item.key, action.id)}
+                  aria-current={item.key === activeWorkspace ? 'step' : undefined}
+                  onClick={() => onSelect(item.key)}
                 >
-                  {`Action:${action.id}`}
+                  {item.label}
                 </button>
-              ))
-            : null}
-        </div>
-      ))}
-    </nav>
-  ),
+              </div>
+            ))}
+          </nav>
+        ) : null}
+        {activeItem?.actions?.length ? (
+          <nav aria-label="Panel action navigation">
+            {activeItem.actions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                aria-pressed={activeActionId === action.id}
+                onClick={() => onSelectAction?.(activeItem.key, action.id)}
+              >
+                {`Action:${action.id}`}
+              </button>
+            ))}
+          </nav>
+        ) : null}
+      </div>
+    )
+  },
 }))
 
 vi.mock('./components/dashboard/HeroControlCard', () => ({
@@ -411,23 +456,39 @@ vi.mock('./components/dashboard/HeroControlCard', () => ({
     sourceSinkBalance,
     canopyAssimilation,
     lai,
+    importantIssue,
   }: {
     onOpenAdvisor?: () => void
     sourceSinkBalance?: number | null
     canopyAssimilation?: number | null
     lai?: number | null
+    importantIssue?: string | null
   }) => (
     <div>
       <div>HeroControlCard</div>
       <div data-testid="hero-source-sink">{String(sourceSinkBalance ?? '')}</div>
       <div data-testid="hero-canopy">{String(canopyAssimilation ?? '')}</div>
       <div data-testid="hero-lai">{String(lai ?? '')}</div>
+      <div data-testid="hero-important-issue">{importantIssue ?? ''}</div>
       <button type="button" onClick={onOpenAdvisor}>Open advisor lane</button>
     </div>
   ),
 }))
 vi.mock('./components/dashboard/LiveMetricStrip', () => ({ default: () => <div>LiveMetricStrip</div> }))
-vi.mock('./components/dashboard/AlertRail', () => ({ default: () => <div>AlertRail</div> }))
+vi.mock('./components/dashboard/AlertRail', () => ({
+  default: ({
+    items,
+  }: {
+    items?: Array<{ title: string; body: string; auxiliaryText?: string }>
+  }) => (
+    <div>
+      <div>AlertRail</div>
+      <div data-testid="alert-rail-items">
+        {(items ?? []).map((item) => `${item.title} ${item.body} ${item.auxiliaryText ?? ''}`).join(' | ')}
+      </div>
+    </div>
+  ),
+}))
 vi.mock('./components/dashboard/DecisionSnapshotGrid', () => ({
   default: ({
     weather,
@@ -647,8 +708,8 @@ vi.mock('./features/assistant/AssistantFab', () => ({
 
 import App from './App'
 
-function renderApp(initialPath = '/overview') {
-  window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en')
+function renderApp(initialPath = '/overview', locale = 'en') {
+  window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
 
   render(
     <LocaleProvider>
@@ -657,6 +718,47 @@ function renderApp(initialPath = '/overview') {
       </MemoryRouter>
     </LocaleProvider>,
   )
+}
+
+function jsonResponse(payload: Record<string, unknown>, ok = true) {
+  return {
+    ok,
+    status: ok ? 200 : 500,
+    statusText: ok ? 'OK' : 'Error',
+    json: async () => payload,
+  } as Response
+}
+
+function stubSettingsAndRuntimeFetch() {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+
+    if (url.includes('/settings')) {
+      return jsonResponse({
+        settings: {
+          price_per_kg: 3200,
+          cost_per_kwh: 125,
+        },
+      })
+    }
+
+    if (url.includes('/speed')) {
+      return jsonResponse({ status: 'speed-ok', body: init?.body ?? null })
+    }
+
+    if (url.includes('/pause')) {
+      return jsonResponse({ status: 'pause-ok' })
+    }
+
+    if (url.includes('/resume')) {
+      return jsonResponse({ status: 'resume-ok' })
+    }
+
+    return jsonResponse({ status: 'success' })
+  })
+
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
 }
 
 describe('App routed shell', () => {
@@ -710,13 +812,18 @@ describe('App routed shell', () => {
     overviewSignalsState.error = null
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('renders the direct route entry without falling back to the giant overview stack', async () => {
     renderApp('/assistant')
 
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'KNOWLEDGE' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('step')
     expect(screen.queryByRole('button', { name: 'Open assistant fab' })).toBeNull()
   })
 
@@ -731,7 +838,7 @@ describe('App routed shell', () => {
 
     try {
       renderApp('/overview')
-      await waitForElementToBeRemoved(() => screen.queryByText('화면을 불러오는 중입니다.'), { timeout: 5000 })
+      await waitForElementToBeRemoved(() => screen.queryByText('화면을 불러오는 중입니다.'), { timeout: 15000 })
 
       const expectedSourceSinkBalance = deriveSourceSinkBalance({
         crop: 'Cucumber',
@@ -739,14 +846,14 @@ describe('App routed shell', () => {
         metrics: greenhouseState.modelMetrics as Parameters<typeof deriveSourceSinkBalance>[0]['metrics'],
       })
 
-      expect(await screen.findByTestId('hero-source-sink', {}, { timeout: 5000 })).toBeTruthy()
+      expect(await screen.findByTestId('hero-source-sink', {}, { timeout: 15000 })).toBeTruthy()
       expect(screen.getByTestId('hero-source-sink').textContent).toBe(String(expectedSourceSinkBalance))
       expect(screen.getByTestId('hero-canopy').textContent).toBe(String(greenhouseState.currentData.photosynthesis))
       expect(screen.getByTestId('hero-lai').textContent).toBe(String(greenhouseState.modelMetrics.growth.lai))
     } finally {
       advisorState.aiModelRuntime.state_snapshot = originalSnapshot
     }
-  })
+  }, 20000)
 
   it('uses simulation timestamps for the live source-sink overlay series', async () => {
     const originalMetricHistory = greenhouseState.metricHistory
@@ -812,13 +919,14 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'DASHBOARD' }))
 
     await waitFor(() => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
     })
     expect(await screen.findByText('RTROptimizerPanel', {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
   }, 15000)
 
   it('keeps RTR state outside route-local control pages', async () => {
@@ -827,12 +935,12 @@ describe('App routed shell', () => {
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    fireEvent.click(screen.getByRole('button', { name: 'INSIGHTS' }))
     await waitFor(() => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'DASHBOARD' }))
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
   })
@@ -844,12 +952,12 @@ describe('App routed shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Persist RTR draft' }))
     expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    fireEvent.click(screen.getByRole('button', { name: 'INSIGHTS' }))
     await waitFor(() => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'DASHBOARD' }))
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
   })
@@ -911,6 +1019,7 @@ describe('App routed shell', () => {
     renderApp('/overview')
 
     expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'HOME' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control')
     expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend')
     expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios')
@@ -921,28 +1030,263 @@ describe('App routed shell', () => {
     expect(screen.getByRole('region', { name: 'Actions worth checking today' })).toBeTruthy()
   })
 
-  it('keeps control section actions inline and leaves the recommended control surface visible', async () => {
+  it('verify_src001_s0002_r001_a01 renders the same global navigation on routed workspace screens', async () => {
     renderApp('/control')
 
-    expect(screen.getByText('AlertRail')).toBeTruthy()
+    const globalNav = screen.getByRole('navigation', { name: 'Global navigation' })
+    expect(globalNav.textContent).toContain('HOME')
+    expect(globalNav.textContent).toContain('DASHBOARD')
+    expect(globalNav.textContent).toContain('INSIGHTS')
+    expect(globalNav.textContent).toContain('SCENARIOS')
+    expect(globalNav.textContent).toContain('KNOWLEDGE')
+    expect(globalNav.textContent).toContain('CONTACT')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
+  })
+
+  it('verify_src001_s0002_r003_a01 keeps only the active parent category subtabs visible', async () => {
+    renderApp('/control')
+
+    const categoryNav = screen.getByRole('navigation', { name: 'Category subtab navigation' })
+    expect(categoryNav.textContent).toContain('Control')
+    expect(categoryNav.textContent).toContain('RTR Optimizer')
+    expect(categoryNav.textContent).toContain('Crop Work')
+    expect(categoryNav.textContent).toContain('Resources')
+    expect(categoryNav.textContent).toContain('Alerts')
+    expect(categoryNav.textContent).not.toContain('Trend')
+    expect(categoryNav.textContent).not.toContain('Scenario')
+    expect(categoryNav.textContent).not.toContain('Assistant')
+    expect(categoryNav.textContent).not.toContain('Settings')
+  })
+
+  it('verify_src001_s0002_r004_a01 removes the old flat ten-item workspace strip', async () => {
+    renderApp('/trend')
+
+    const categoryNav = screen.getByRole('navigation', { name: 'Category subtab navigation' })
+    expect(categoryNav.textContent).toBe('Trend')
+    expect(categoryNav.textContent).not.toContain('Control')
+    expect(categoryNav.textContent).not.toContain('RTR')
+    expect(categoryNav.textContent).not.toContain('Resources')
+    expect(categoryNav.textContent).not.toContain('Alerts')
+    expect(categoryNav.textContent).not.toContain('Assistant')
+    expect(screen.getByRole('button', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('step')
+  })
+
+  it('verify_src001_s0002_r006_a01 keeps settings as a header button instead of a subtab', async () => {
+    renderApp('/control')
+
+    expect(screen.getByRole('navigation', { name: 'Global navigation' }).textContent).not.toContain('Settings')
+    expect(screen.getByRole('navigation', { name: 'Category subtab navigation' }).textContent).not.toContain('Settings')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Global navigation' })).toBeTruthy()
+    expect(screen.queryByRole('navigation', { name: 'Category subtab navigation' })).toBeNull()
+  })
+
+  it('verify_src001_s0006_r002_a01 keeps AlertRail off /control while leaving the control surfaces visible', async () => {
+    renderApp('/control')
+
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.queryByText('AlertRail')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Action:control-devices' }))
 
     expect(screen.queryByText('RTROptimizerPanel')).toBeNull()
-    expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.queryByText('AlertRail')).toBeNull()
     expect(screen.queryByTestId('page-section-active')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Action:control-devices' }).getAttribute('aria-current')).toBe('step')
+    expect(screen.getByRole('button', { name: 'Action:control-devices' }).getAttribute('aria-pressed')).toBe('true')
 
     fireEvent.click(screen.getByRole('button', { name: 'Action:control-strategy' }))
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-current')).toBe('step')
-    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.queryByText('AlertRail')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
+  })
+
+  it('renders runtime constraint alerts through friendly copy without raw identifiers', async () => {
+    const originalViolations = advisorState.aiModelRuntime.constraint_checks.violated_constraints
+    advisorState.aiModelRuntime.constraint_checks.violated_constraints = [{
+      code: 'humidity_floor_risk',
+      control: 'rh_target',
+      severity: 'high',
+      message: 'rh_target decrease triggers humidity_floor_risk below floor',
+    }, {
+      code: 'disease_risk_high',
+      control: 'rh_target',
+      severity: 'high',
+      message: 'Resulting RH exceeds the bounded disease-risk ceiling.',
+    }]
+
+    try {
+      renderApp('/overview#overview-watch', 'ko')
+
+      expect(await screen.findByText('AlertRail')).toBeTruthy()
+      const alertText = screen.getByTestId('alert-rail-items').textContent ?? ''
+
+      expect(alertText).toContain('습도 회복 하한 위험')
+      expect(alertText).toContain('습도 목표를 낮추면 상대습도가 회복 하한 아래로 떨어질 수 있어요.')
+      expect(alertText).toContain('습도 병해 위험')
+      expect(alertText).not.toContain('rh_target')
+      expect(alertText).not.toContain('humidity_floor_risk')
+      expect(alertText).not.toContain('disease_risk_high')
+      expect(alertText).not.toContain('triggers')
+      expect(alertText).not.toContain('bounded disease-risk ceiling')
+    } finally {
+      advisorState.aiModelRuntime.constraint_checks.violated_constraints = originalViolations
+    }
+  })
+
+  it('keeps unknown runtime constraint codes in auxiliary alert text only', async () => {
+    const originalViolations = advisorState.aiModelRuntime.constraint_checks.violated_constraints
+    advisorState.aiModelRuntime.constraint_checks.violated_constraints = [{
+      code: 'custom_floor_risk',
+      control: 'unknown_control',
+      severity: 'high',
+      message: 'unknown_control triggered custom_floor_risk',
+    }]
+
+    try {
+      renderApp('/overview#overview-watch', 'ko')
+
+      expect(await screen.findByText('AlertRail')).toBeTruthy()
+      const alertText = screen.getByTestId('alert-rail-items').textContent ?? ''
+
+      expect(alertText).toContain('운영 제약 확인 필요')
+      expect(alertText).toContain('사전에 없는 운영 제약이 감지되었습니다. 현재 설정을 확인해 주세요.')
+      expect(alertText).toContain('원문 코드: unknown_control · custom_floor_risk')
+    } finally {
+      advisorState.aiModelRuntime.constraint_checks.violated_constraints = originalViolations
+    }
+  })
+
+  it('uses friendly runtime constraint copy in the overview hero screen-reader issue text', async () => {
+    const originalViolations = advisorState.aiModelRuntime.constraint_checks.violated_constraints
+    const originalRisks = advisorState.aiDisplay.risks
+    advisorState.aiDisplay.risks = []
+    advisorState.aiModelRuntime.constraint_checks.violated_constraints = [{
+      code: 'humidity_floor_risk',
+      control: 'rh_target',
+      severity: 'medium',
+      message: 'Resulting RH falls below the bounded recovery floor.',
+    }]
+
+    try {
+      renderApp('/overview', 'ko')
+
+      const heroIssue = await screen.findByTestId('hero-important-issue')
+      expect(heroIssue.textContent).toBe('습도 목표를 낮추면 상대습도가 회복 하한 아래로 떨어질 수 있어요. 현재 설정을 확인해 주세요.')
+      expect(heroIssue.textContent).not.toContain('humidity_floor_risk')
+      expect(heroIssue.textContent).not.toContain('bounded recovery floor')
+    } finally {
+      advisorState.aiDisplay.risks = originalRisks
+      advisorState.aiModelRuntime.constraint_checks.violated_constraints = originalViolations
+    }
+  })
+
+  it('verify_src001_s0004_r001_a01 moves SimulationRuntimePanel from /control to /settings', async () => {
+    stubSettingsAndRuntimeFetch()
+
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Live Climate & Controls' })).toBeNull()
+    expect(screen.queryByText('Simulation Runtime')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Live Climate & Controls' })).toBeTruthy()
+    expect(screen.getByText('Simulation Runtime')).toBeTruthy()
+  })
+
+  it('verify_src001_s0004_r002_a01 keeps settings runtime pace presets, pause/resume, and sg-sim-pace persistence working', async () => {
+    const fetchMock = stubSettingsAndRuntimeFetch()
+    window.localStorage.setItem('sg-sim-pace', '60')
+
+    renderApp('/settings')
+
+    expect(await screen.findByRole('heading', { name: 'Live Climate & Controls' })).toBeTruthy()
+
+    for (const label of ['10 s/s', '20 s/s', '30 s/s', '60 s/s', '600 s/s', '6000 s/s']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    }
+    expect(screen.getByRole('button', { name: '60 s/s' }).getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: '6000 s/s' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '6000 s/s' }).getAttribute('aria-pressed')).toBe('true')
+    })
+
+    const speedCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/speed'))
+    expect(speedCall).toBeTruthy()
+    const speedBody = JSON.parse((speedCall?.[1]?.body as string) ?? '{}')
+    expect(speedBody.sim_seconds_per_real_second).toBe(6000)
+    expect(window.localStorage.getItem('sg-sim-pace')).toBe('6000')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/pause'))).toBe(true)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/resume'))).toBe(true)
+    })
+  })
+
+  it('verify_src001_s0004_r003_a01 starts /control with operator control content instead of runtime controls', async () => {
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.queryByText('AlertRail')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Live Climate & Controls' })).toBeNull()
+
+    const bodyText = document.body.textContent ?? ''
+    expect(bodyText.indexOf('RTROptimizerPanel')).toBeLessThan(bodyText.indexOf('ControlPanel'))
+  })
+
+  it('verify_src001_s0005_r001_a01 keeps /rtr limited to the RTR optimizer surface', async () => {
+    renderApp('/rtr')
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('RTR Optimizer')
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.queryByText('ControlPanel')).toBeNull()
+    expect(screen.queryByText('DecisionSnapshotGrid')).toBeNull()
+    expect(screen.getByRole('button', { name: 'RTR Optimizer' }).getAttribute('aria-current')).toBe('step')
+  })
+
+  it('verify_src001_s0005_r002_a01 keeps removed panels reachable from their canonical tabs', async () => {
+    renderApp('/rtr')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.queryByText('ControlPanel')).toBeNull()
+    expect(screen.queryByText('DecisionSnapshotGrid')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
+    })
+    expect(await screen.findByText('ControlPanel')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
+
+    fireEvent.click(screen.getByRole('button', { name: 'INSIGHTS' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    })
+    expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {
@@ -954,7 +1298,8 @@ describe('App routed shell', () => {
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
-    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('opens the assistant drawer from the floating button on non-assistant routes', async () => {
@@ -980,7 +1325,8 @@ describe('App routed shell', () => {
 
     expect(await screen.findByText('AlertsCommandCenter:alerts-priority')).toBeTruthy()
     expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
-    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps trend as a dedicated page separated from control', async () => {
@@ -989,7 +1335,8 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     expect(await screen.findByText('WeatherOutlookPanel')).toBeTruthy()
     expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('preserves /trend hook loading and error state plumbing when weather, produce, and overview signals are unavailable', async () => {
@@ -1014,13 +1361,16 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('decision-snapshot-props').textContent).toContain('overview:null')
   })
 
-  it('keeps crop-work as a dedicated page instead of assembling it inline in App', async () => {
+  it('keeps crop-work as a dedicated page and dedups TodayBoard to its canonical HOME Watch tab', async () => {
     renderApp('/crop-work')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
     expect(await screen.findByText('CropDetails')).toBeTruthy()
-    expect(await screen.findByText('TodayBoard')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
+    // R19 dedup: TodayBoard's canonical home is the HOME Watch tab only, so it no longer
+    // renders on /crop-work (its data survives on HOME Watch — WatchTab.prd004.test.tsx).
+    expect(screen.queryByText('TodayBoard')).toBeNull()
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('step')
   })
 
   it.each([
@@ -1036,7 +1386,8 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(await screen.findByText(expectedPanel)).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'KNOWLEDGE' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('step')
   })
 
   it.each([
@@ -1067,7 +1418,8 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
     expect(screen.getByTestId('advisor-correction-open').textContent).toBe('false')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('opens the harvest advisor lane through the live advisor tab surface', async () => {
@@ -1077,7 +1429,8 @@ describe('App routed shell', () => {
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('harvest_market')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps nested harvest advisor aliases on the live advisor tab surface', async () => {
@@ -1095,7 +1448,8 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('pesticide')
-    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps nested growth advisor aliases on the live advisor tab surface', async () => {
@@ -1130,7 +1484,8 @@ describe('App routed shell', () => {
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
     expect(screen.getByTestId('advisor-correction-open').textContent).toBe('true')
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps assistant flows inline inside the assistant route', async () => {

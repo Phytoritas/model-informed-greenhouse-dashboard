@@ -49,6 +49,29 @@ describe('OverviewPage', () => {
     expect(document.activeElement?.id).toBe('overview-watch');
   });
 
+  it('verify_src001_s0002_r002_a01 resolves contact hash navigation to the landing footer', async () => {
+    render(
+      <LocaleProvider>
+        <MemoryRouter initialEntries={['/overview#contact']}>
+          <OverviewPage
+            topNavigation={<div>nav</div>}
+            heroDecisionBrief={<section id="overview-core" tabIndex={-1}>core</section>}
+            liveMetricStrip={<section id="overview-dashboard" tabIndex={-1}>dashboard</section>}
+            todayActionBoard={<section id="overview-watch" tabIndex={-1}>watch</section>}
+            scenarioOptimizerPreview={<section id="scenario-optimizer">scenario</section>}
+            weatherMarketKnowledgeBridge={<section id="overview-bridge">bridge</section>}
+            finalCta={<section id="contact">contact</section>}
+            footer={<footer id="overview-footer" tabIndex={-1}>footer</footer>}
+            activeTabId="overview-core"
+          />
+        </MemoryRouter>
+      </LocaleProvider>,
+    );
+
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(document.activeElement?.id).toBe('overview-footer');
+  });
+
   it('verify_src001_s0002_r002_a01 renders overview tabs through the shared toggle group contract', () => {
     render(
       <LocaleProvider>

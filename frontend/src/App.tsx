@@ -41,8 +41,14 @@ import {
   getSectionPathForAdvisorTab,
 } from './routes/phytosyncSections';
 import {
+  GLOBAL_NAVIGATION_ITEMS,
+  getGlobalNavigationKeyForPathname,
+  getSubNavigationSectionKeys,
+} from './routes/globalNavigation';
+import {
   getCropLabel,
   getDashboardSensorCopy,
+  getRuntimeConstraintDisplayCopy,
   NUMERIC_IDEAL_RANGES,
 } from './utils/displayCopy';
 import {
@@ -382,6 +388,10 @@ function App() {
   const deferredModelMetrics = useDeferredValue(modelMetrics);
   const primaryRoutes = useMemo(() => buildPrimaryRoutes(locale), [locale]);
   const activePrimaryRouteKey = useMemo(() => getPrimaryRouteKey(location.pathname), [location.pathname]);
+  const activeGlobalNavigationKey = useMemo(
+    () => getGlobalNavigationKeyForPathname(location.pathname),
+    [location.pathname],
+  );
   const activePrimaryRoute = useMemo(
     () => getPrimaryRouteMeta(location.pathname, locale),
     [location.pathname, locale],
@@ -844,6 +854,19 @@ function App() {
     navigate('/settings');
   }, [navigate, setAssistantDrawerOpen]);
 
+  const handleGlobalNavigationSelect = useCallback(() => {
+    setAssistantDrawerOpen(false);
+  }, [setAssistantDrawerOpen]);
+
+  const handleGlobalContactSelect = useCallback(() => {
+    setAssistantDrawerOpen(false);
+    if (location.pathname === '/overview') {
+      document.getElementById('overview-footer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    navigate({ pathname: '/overview', hash: '#contact' });
+  }, [location.pathname, navigate, setAssistantDrawerOpen]);
+
   const handleOpenAlerts = useCallback(() => {
     setAssistantDrawerOpen(false);
     navigate({ pathname: '/alerts', hash: '#alerts-priority' });
@@ -1066,16 +1089,28 @@ function App() {
     weather,
   ]);
 
-  const workspaceItems = useMemo<WorkspaceNavItem[]>(() => (
-    primaryRoutes.map((route) => ({
-      key: route.key,
-      label: route.label,
-      shortLabel: route.shortLabel,
-      description: route.description,
-      icon: route.icon,
-      actions: sections.find((section) => section.key === route.key)?.tabs ?? [],
-    }))
-  ), [primaryRoutes, sections]);
+  const workspaceItems = useMemo<WorkspaceNavItem[]>(() => {
+    const visibleSectionKeys = getSubNavigationSectionKeys(activeGlobalNavigationKey);
+    const nextItems: WorkspaceNavItem[] = [];
+
+    for (const sectionKey of visibleSectionKeys) {
+      const section = sections.find((candidate) => candidate.key === sectionKey);
+      if (!section) {
+        continue;
+      }
+
+      nextItems.push({
+        key: section.key,
+        label: section.label,
+        shortLabel: section.shortLabel,
+        description: section.description,
+        icon: section.icon,
+        actions: section.tabs,
+      });
+    }
+
+    return nextItems;
+  }, [activeGlobalNavigationKey, sections]);
 
   const heroPrimaryNarrative = runtimeRecommendedAction
     ? (locale === 'ko' ? `지금: ${runtimeRecommendedAction}` : `Now: ${runtimeRecommendedAction}`)
@@ -1112,8 +1147,11 @@ function App() {
     ?? smartGrowHeroSummary
     ?? heroCopy.fallbackSummary;
 
+  const runtimeImportantIssue = runtimeViolations[0]
+    ? getRuntimeConstraintDisplayCopy(runtimeViolations[0], locale).body
+    : null;
   const heroImportantIssue = aiDisplay?.risks?.[0]
-    ?? runtimeViolations[0]?.message
+    ?? runtimeImportantIssue
     ?? (telemetry.status === 'offline' ? heroCopy.telemetryOffline : null)
     ?? ((telemetry.status === 'stale' || telemetry.status === 'delayed') ? heroCopy.telemetryStale : null);
 
@@ -1246,12 +1284,16 @@ function App() {
             body: heroCopy.telemetryStale,
           }]
         : []),
-    ...runtimeViolations.slice(0, 2).map((violation, index) => ({
-      id: `runtime-${violation.code ?? index}`,
-      severity: violation.severity === 'critical' ? 'critical' as const : 'warning' as const,
-      title: violation.control ? `${violation.control} · ${violation.code}` : violation.code,
-      body: violation.message,
-    })),
+    ...runtimeViolations.slice(0, 2).map((violation, index) => {
+      const constraintCopy = getRuntimeConstraintDisplayCopy(violation, locale);
+      return {
+        id: `runtime-${violation.code ?? index}`,
+        severity: violation.severity === 'critical' ? 'critical' as const : 'warning' as const,
+        title: constraintCopy.title,
+        body: constraintCopy.body,
+        auxiliaryText: constraintCopy.auxiliaryText,
+      };
+    }),
     ...(aiDisplay?.risks ?? []).slice(0, 2).map((risk, index) => ({
       id: `risk-${index}`,
       severity: 'warning' as const,
@@ -1267,12 +1309,7 @@ function App() {
       modelMetrics={deferredModelMetrics}
       forecast={deferredForecast}
       aiAnalysis={aiAnalysis}
-      actionsNow={aiDisplay?.actions_now ?? []}
-      actionsToday={aiDisplay?.actions_today ?? []}
-      actionsWeek={aiDisplay?.actions_week ?? []}
-      monitor={aiDisplay?.monitor ?? []}
       activePanel={activePanelId === 'crop-work-harvest' ? 'crop-work-harvest' : activePanelId === 'crop-work-work' ? 'crop-work-work' : 'crop-work-growth'}
-      onOpenAssistant={() => openAssistantDrawer('assistant-chat')}
     />
   );
 
@@ -1413,12 +1450,6 @@ function App() {
       optimizerEnabled={optimizerEnabled}
       defaultMode={selectedRtrProfile?.optimizer?.default_mode}
       onRefreshProfiles={refreshRtrProfiles}
-      controls={controls}
-      onToggle={toggleControl}
-      onSettingsChange={setTempSettings}
-      modelMetrics={deferredModelMetrics}
-      producePrices={producePrices}
-      produceLoading={isProducePricesLoading}
       optimizerState={rtrOptimizerState}
       uiState={rtrOptimizerUiState}
     />
@@ -1478,6 +1509,8 @@ function App() {
       selectedCropLabel={selectedCropLabel}
       assistantOpen={assistantDrawerOpen}
       telemetrySummary={kpiStatusSummary}
+      telemetryStatus={telemetry.status}
+      telemetryDetail={telemetryDetail}
       weatherConnected={Boolean(weather)}
       marketConnected={Boolean(producePrices)}
     />
@@ -1598,9 +1631,13 @@ function App() {
       )}
     >
       <WorkspaceTopNav
+        globalItems={GLOBAL_NAVIGATION_ITEMS}
         items={workspaceItems}
+        activeGlobalKey={activeGlobalNavigationKey}
         activeWorkspace={activePrimaryRouteKey}
         activeActionId={activePanelId}
+        onSelectGlobal={handleGlobalNavigationSelect}
+        onSelectContact={handleGlobalContactSelect}
         onSelect={handleWorkspaceSelect}
         onSelectAction={handleWorkspaceActionSelect}
       />
@@ -1620,13 +1657,9 @@ function App() {
                   ? 'control-devices'
                   : 'control-strategy'}
                 crop={selectedCrop}
-                telemetryStatus={telemetry.status}
-                telemetryDetail={telemetryDetail}
                 controls={controls}
                 onToggle={toggleControl}
                 onSettingsChange={setTempSettings}
-                alertItems={alertItems}
-                fallbackAlertBody={heroCopy.telemetryLive}
                 history={deferredHistory}
                 currentData={currentData}
                 weather={weather}
