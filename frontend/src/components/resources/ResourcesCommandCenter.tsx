@@ -143,22 +143,11 @@ export default function ResourcesCommandCenter({
             </DashboardCard>
 
             {activePanel === 'resources-energy' ? (
-                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-                    <WeatherOutlookPanel
-                        weather={weather}
-                        loading={weatherLoading}
-                        error={weatherError}
-                    />
-                    <DecisionSnapshotGrid
-                        crop={crop}
-                        currentData={currentData}
-                        modelMetrics={modelMetrics}
-                        weather={weather}
-                        weatherLoading={weatherLoading}
-                        producePrices={producePrices}
-                        produceLoading={produceLoading}
-                    />
-                </div>
+                <WeatherOutlookPanel
+                    weather={weather}
+                    loading={weatherLoading}
+                    error={weatherError}
+                />
             ) : null}
 
             {activePanel === 'resources-market' ? (
