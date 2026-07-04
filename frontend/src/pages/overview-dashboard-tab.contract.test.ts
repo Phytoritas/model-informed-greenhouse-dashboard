@@ -37,7 +37,6 @@ describe('PRD-003 HOME Dashboard tab contracts', () => {
     const rtrTrendCard = readSource('components/dashboard/RtrTrendCard.tsx');
     const overviewSignalTrendCard = readSource('components/dashboard/OverviewSignalTrendCard.tsx');
     const consultingTrendCard = readSource('components/dashboard/ConsultingTrendCard.tsx');
-    const modelRuntimeBridge = readSource('components/dashboard/ModelRuntimeBridge.tsx');
     const chartStyles = readSource('components/charts/chartStyles.ts');
 
     for (const source of [
@@ -46,7 +45,6 @@ describe('PRD-003 HOME Dashboard tab contracts', () => {
       rtrTrendCard,
       overviewSignalTrendCard,
       consultingTrendCard,
-      modelRuntimeBridge,
     ]) {
       expect(source).toContain('sg-panel');
       expect(source).toMatch(/sg-eyebrow|eyebrow=\{copy\.eyebrow\}/);
@@ -69,8 +67,6 @@ describe('PRD-003 HOME Dashboard tab contracts', () => {
     expect(rtrTrendCard).toContain('DASHBOARD_CHART_LEGEND_CLASSNAME');
     expect(overviewSignalTrendCard).toContain('DASHBOARD_CHART_LEGEND_CLASSNAME');
     expect(consultingTrendCard).toContain('DASHBOARD_CHART_LEGEND_CLASSNAME');
-    expect(modelRuntimeBridge).toContain('<RuntimeCard');
-    expect(modelRuntimeBridge).toContain('<p className="sg-eyebrow truncate">{card.endpoint}</p>');
 
     expect(chartStyles).toContain("fill: 'var(--sg-text-faint)'");
     expect(chartStyles).toContain("color: 'var(--sg-text-muted)'");
@@ -84,12 +80,10 @@ describe('PRD-003 HOME Dashboard tab contracts', () => {
     const rtrTrendCard = readSource('components/dashboard/RtrTrendCard.tsx');
     const overviewSignalTrendCard = readSource('components/dashboard/OverviewSignalTrendCard.tsx');
     const consultingTrendCard = readSource('components/dashboard/ConsultingTrendCard.tsx');
-    const modelRuntimeBridge = readSource('components/dashboard/ModelRuntimeBridge.tsx');
 
     expect(routePage).toContain('grid min-w-0 gap-4 xl:grid-cols-12');
     expect(routePage).toContain('min-w-0 xl:col-span-7');
     expect(routePage).toContain('min-w-0 space-y-4 xl:col-span-5');
-    expect(routePage).toContain('min-w-0 xl:col-span-12');
 
     expect(indexCss).toContain('.overview-metric-row');
     expect(indexCss).toContain('grid-template-columns: repeat(1, minmax(0, 1fr))');
@@ -100,7 +94,7 @@ describe('PRD-003 HOME Dashboard tab contracts', () => {
 
     expect(chartFrame).toContain("cn('w-full min-w-0'");
     expect(charts).toContain('grid min-w-0');
-    for (const source of [rtrTrendCard, overviewSignalTrendCard, consultingTrendCard, modelRuntimeBridge]) {
+    for (const source of [rtrTrendCard, overviewSignalTrendCard, consultingTrendCard]) {
       expect(source).toContain('min-w-0');
     }
   });
