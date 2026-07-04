@@ -24,7 +24,7 @@ describe('globalNavigation', () => {
       ['INSIGHTS', '/trend'],
       ['SCENARIOS', '/scenarios'],
       ['KNOWLEDGE', '/assistant'],
-      ['CONTACT', null],
+      ['CONTACT', '/contact'],
     ]);
   });
 
@@ -37,6 +37,7 @@ describe('globalNavigation', () => {
     expect(getGlobalNavigationKeyForPathname('/trend')).toBe('insights');
     expect(getGlobalNavigationKeyForPathname('/scenarios')).toBe('scenarios');
     expect(getGlobalNavigationKeyForPathname('/assistant')).toBe('knowledge');
+    expect(getGlobalNavigationKeyForPathname('/contact')).toBe('contact');
     expect(getGlobalNavigationKeyForPathname('/settings')).toBeNull();
 
     expect(getSubNavigationSectionKeys('dashboard')).toEqual([
@@ -49,6 +50,7 @@ describe('globalNavigation', () => {
     expect(getSubNavigationSectionKeys('insights')).toEqual(['trend']);
     expect(getSubNavigationSectionKeys('scenarios')).toEqual(['scenarios']);
     expect(getSubNavigationSectionKeys('knowledge')).toEqual(['assistant']);
+    expect(getSubNavigationSectionKeys('contact')).toEqual([]);
     expect(getSubNavigationSectionKeys(null)).toEqual([]);
   });
 });
