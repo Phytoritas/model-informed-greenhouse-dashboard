@@ -1624,13 +1624,11 @@ function App() {
     <AppShell
       header={(
         <>
-          <div className="mx-auto w-full max-w-[1640px] px-4 pt-4 sm:px-6 xl:px-8">
-            <GlobalTopNav
-              activeKey={activeGlobalNavigationKey}
-              onOpenAssistant={handleChatToggle}
-              onNavigate={handleGlobalNavigationSelect}
-            />
-          </div>
+          <GlobalTopNav
+            activeKey={activeGlobalNavigationKey}
+            onOpenAssistant={handleChatToggle}
+            onNavigate={handleGlobalNavigationSelect}
+          />
           <TopBar
             locale={locale}
             selectedCrop={selectedCrop}

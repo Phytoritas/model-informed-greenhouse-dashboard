@@ -57,7 +57,7 @@ export default function WorkspaceTopNav({
   }
 
   return (
-    <div className="mb-5 grid gap-2">
+    <div className="mb-2 mt-1 grid gap-2">
       <nav
         aria-label={locale === 'ko' ? '카테고리 서브탭 내비게이션' : 'Category subtab navigation'}
         data-testid="workspace-top-nav"

@@ -75,8 +75,8 @@ export default function TopBar({
   };
 
   return (
-    <header className="pt-3">
-      <div className="mx-auto w-full max-w-[1640px] px-4 sm:px-6 xl:px-8">
+    <header>
+      <div className="w-full min-w-0">
         <div className="sg-panel flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[22px] px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-2.5">
             <h1 className="truncate text-sm font-bold text-[color:var(--sg-text-strong)]">
