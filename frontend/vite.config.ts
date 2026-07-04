@@ -28,6 +28,11 @@ const reactChunkMarkers = [
   'node_modules/react/',
   'node_modules/react-dom/',
   'node_modules/scheduler/',
+  // Shared React helper used by both app-level vendors and recharts; leaving it
+  // outside react-vendor lets Rollup route it through the entry chunk and form
+  // an entry <-> chart-vendor cycle that evaluates recharts before React is
+  // initialized (the production forwardRef white-screen).
+  'node_modules/react-is/',
 ]
 
 const routerChunkMarkers = [
@@ -40,13 +45,12 @@ const iconChunkMarkers = [
   'node_modules/lucide-react/',
 ]
 
-const chartChunkMarkers = [
-  'node_modules/recharts/',
-  'node_modules/victory-vendor/',
-  'node_modules/d3-',
-  'node_modules/internmap/',
-  'node_modules/clsx/',
-]
+// NOTE: recharts/d3 must NOT be forced into their own chunk. Their satellite
+// dependencies (react-smooth, lodash, victory-vendor helpers, ...) are shared
+// with entry-side modules, so a pinned chart chunk ends up in a mutual import
+// cycle with react-vendor/entry and evaluates before React is initialized —
+// the production "reading 'forwardRef'" white-screen. Rollup's default
+// chunking already keeps chart code inside the lazy route chunks.
 
 // https://vite.dev/config/
 //
@@ -79,10 +83,6 @@ export default defineConfig({
 
           if (iconChunkMarkers.some((marker) => id.includes(marker))) {
             return 'icon-vendor'
-          }
-
-          if (chartChunkMarkers.some((marker) => id.includes(marker))) {
-            return 'chart-vendor'
           }
 
           if (markdownChunkMarkers.some((marker) => id.includes(`node_modules${marker}`))) {
