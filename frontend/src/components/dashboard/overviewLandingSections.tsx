@@ -35,10 +35,12 @@ import { getCropLabel } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import { buildRTRLiveSnapshot, getRtrProfile } from '../../utils/rtr';
 import { cn } from '../../utils/cn';
+import { metricToneForTile } from '../../utils/metricTone';
 import { AlertCard } from '../ui/alert-card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { MetricCard } from '../ui/metric-card';
+import { SectionHeader } from '../ui/section-header';
 import { StatusChip } from '../ui/status-chip';
 
 function formatNumber(value: number | null | undefined, digits = 1): string {
@@ -77,23 +79,6 @@ function compactMetricUnit(unit: string | undefined): string | undefined {
   return unit;
 }
 
-function metricToneForTile(tile: KpiTileData): 'normal' | 'warning' | 'critical' | 'muted' {
-  if (tile.availabilityState === 'missing') {
-    return 'muted';
-  }
-  if (tile.availabilityState === 'offline') {
-    return 'critical';
-  }
-  if (tile.availabilityState === 'delayed' || tile.availabilityState === 'stale') {
-    return 'warning';
-  }
-  return tile.healthStatus === 'critical'
-    ? 'critical'
-    : tile.healthStatus === 'warning'
-      ? 'warning'
-      : 'normal';
-}
-
 const bridgeBodyClampStyle: CSSProperties = {
   display: '-webkit-box',
   overflow: 'hidden',
@@ -115,14 +100,14 @@ function LandingSectionHeading({
   actions?: ReactNode;
 }) {
   return (
-    <div className="overview-section-heading">
-      <div className="min-w-0">
-        <p className="sg-eyebrow">{eyebrow}</p>
-        <h2 id={titleId}>{title}</h2>
-        {description ? <p className="mt-0.5 max-w-2xl text-[0.7rem] leading-4 text-[color:var(--sg-text-muted)]">{description}</p> : null}
-      </div>
-      {actions ? <div className="shrink-0">{actions}</div> : null}
-    </div>
+    <SectionHeader
+      density="compact"
+      eyebrow={eyebrow}
+      title={title}
+      description={description}
+      titleId={titleId}
+      actions={actions}
+    />
   );
 }
 
@@ -209,6 +194,7 @@ export function HeroDecisionBrief({ heroCard }: { heroCard: ReactNode }) {
   const { locale } = useLocale();
   const copy = locale === 'ko'
     ? {
+        eyebrow: 'Command',
         badge: '실시간 온실 의사결정',
         title: '스마트온실 인공지능 의사결정 플랫폼',
         support: '기후, 작물, 시세, 지식 신호를 한 화면에서 묶어 오늘의 의사결정을 더 빠르게 정리합니다.',
@@ -216,6 +202,7 @@ export function HeroDecisionBrief({ heroCard }: { heroCard: ReactNode }) {
         secondary: '시나리오 검토',
       }
     : {
+        eyebrow: 'Command',
         badge: 'Live Greenhouse Intelligence',
         title: 'AI decision platform for smart greenhouses.',
         support: 'Unify climate, crop, market, and knowledge insight in one practical greenhouse command center.',
@@ -226,6 +213,7 @@ export function HeroDecisionBrief({ heroCard }: { heroCard: ReactNode }) {
   return (
     <section id="overview-core" tabIndex={-1} className="overview-hero scroll-mt-24" aria-labelledby="landing-hero-title">
       <div className="overview-hero-copy">
+        <p className="sg-eyebrow">{copy.eyebrow}</p>
         <StatusChip tone="growth" className="w-fit">{copy.badge}</StatusChip>
         <h1 id="landing-hero-title" className="mt-1.5 max-w-[12ch] text-[clamp(1.42rem,2vw,1.88rem)] font-bold leading-[1.04] text-[color:var(--sg-text-strong)]">
           {copy.title}
@@ -286,41 +274,75 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
 
   return (
     <section id="live-overview" tabIndex={-1} className="scroll-mt-24 space-y-1.5" aria-label={copy.title}>
-      <div className="flex flex-wrap items-baseline gap-3">
-        <h2 id="live-metric-strip-title" className="sg-eyebrow">{copy.eyebrow}</h2>
-        <span className="text-xs font-semibold text-[color:var(--sg-text-muted)]">{freshnessLabel}</span>
-      </div>
-      <div className="overview-metric-row">
-        {compactTiles.map((tile) => {
-          const isNumeric = typeof tile.value === 'number';
-          const value = isNumeric ? formatMetricValue(Number(tile.value), tile.fractionDigits) : '-';
-          const tone = metricToneForTile(tile);
-          return (
-            <MetricCard
-              key={tile.key}
-              label={tile.label}
-              value={value}
-              unit={isNumeric && tile.availabilityState !== 'missing' ? compactMetricUnit(tile.unit) : undefined}
-              detail={tile.availabilityLabel}
-              trend={tile.trend}
-              trendLabel={compactTrendLabel(tile.trendDetail) || tile.availabilityLabel}
-              icon={tile.icon}
-              tone={tone}
-            />
-          );
-        })}
-        <MetricCard
-          label={copy.yield}
-          value={yieldValue}
-          unit={yieldValue === '-' ? undefined : copy.yieldUnit}
-          detail={copy.yieldDetail}
-          trend="stable"
-          trendLabel={copy.yieldDetail}
-          icon={TrendingUp}
-          tone={yieldValue === '-' ? 'muted' : 'normal'}
-        />
-      </div>
+      <LandingSectionHeading
+        titleId="live-metric-strip-title"
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        actions={<StatusChip tone="stable">{freshnessLabel}</StatusChip>}
+      />
+      <OverviewMetricDeck
+        tiles={compactTiles}
+        yieldOutlook={{
+          label: copy.yield,
+          value: yieldValue,
+          unit: yieldValue === '-' ? undefined : copy.yieldUnit,
+          detail: copy.yieldDetail,
+        }}
+      />
     </section>
+  );
+}
+
+export function OverviewMetricDeck({
+  tiles,
+  yieldOutlook,
+  className,
+}: {
+  tiles: KpiTileData[];
+  yieldOutlook?: {
+    label: string;
+    value: string;
+    unit?: string;
+    detail: string;
+  };
+  className?: string;
+}) {
+  return (
+    <div className={cn('overview-metric-row', className)} data-testid="overview-metric-deck">
+      {tiles.map((tile) => {
+        const isNumeric = typeof tile.value === 'number';
+        const value = typeof tile.value === 'number'
+          ? formatMetricValue(tile.value, tile.fractionDigits)
+          : tile.value;
+        const tone = metricToneForTile(tile);
+        return (
+          <MetricCard
+            key={tile.key}
+            label={tile.label}
+            value={value}
+            unit={isNumeric && tile.availabilityState !== 'missing' ? compactMetricUnit(tile.unit) : undefined}
+            detail={tile.lastReceived ?? tile.availabilityLabel}
+            trend={tile.trend}
+            trendLabel={compactTrendLabel(tile.trendDetail) || tile.availabilityLabel}
+            icon={tile.icon}
+            tone={tone}
+          />
+        );
+      })}
+      {yieldOutlook ? (
+        <MetricCard
+          label={yieldOutlook.label}
+          value={yieldOutlook.value}
+          unit={yieldOutlook.unit}
+          detail={yieldOutlook.detail}
+          trend="stable"
+          trendLabel={yieldOutlook.detail}
+          icon={TrendingUp}
+          tone={yieldOutlook.value === '-' ? 'muted' : 'stable'}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -350,8 +372,8 @@ export function TodayActionBoard({
     ? 'critical'
     : currentData.humidity >= 80 || currentData.vpd < 0.75
       ? 'warning'
-      : 'normal';
-  const vpdTone = currentData.vpd < 0.75 || currentData.vpd > 1.25 ? 'warning' : 'normal';
+      : 'growth';
+  const vpdTone = currentData.vpd < 0.75 || currentData.vpd > 1.25 ? 'warning' : 'growth';
   const copy = locale === 'ko'
     ? {
         eyebrow: 'Today Action Board',
@@ -394,7 +416,7 @@ export function TodayActionBoard({
 
   return (
     <section id="today-action-board" tabIndex={-1} className="scroll-mt-24 space-y-1.5" aria-labelledby="today-action-board-title">
-      <LandingSectionHeading titleId="today-action-board-title" eyebrow={copy.eyebrow} title={copy.title} />
+      <LandingSectionHeading titleId="today-action-board-title" eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
       <div className="overview-card-row-4">
         <AlertCard
           icon={Fan}
@@ -430,7 +452,7 @@ export function TodayActionBoard({
           icon={TrendingUp}
           title={copy.rtr}
           chip={copy.recommended}
-          tone="normal"
+          tone="stable"
           body={copy.rtrFallback}
           meta={<FeedbackControls crop={crop} recommendationId="overview-rtr-scenario" />}
           actionLabel={copy.compare}
@@ -600,6 +622,7 @@ export function ScenarioOptimizerPreview({
         titleId="scenario-optimizer-title"
         eyebrow={copy.eyebrow}
         title={copy.title}
+        description={copy.description}
         actions={(
           <div className="flex items-center gap-2">
             <StatusChip tone={optimizerEnabled ? 'growth' : 'stable'}>{copy.targetReady}</StatusChip>
@@ -648,17 +671,17 @@ function ScenarioCard({
         </div>
         <div className="text-right">
           {badgeCaption ? <div className="text-[10px] font-semibold uppercase text-[color:var(--sg-text-faint)]">{badgeCaption}</div> : null}
-          <div className="text-[0.72rem] font-bold text-[color:var(--sg-color-success)]">{badgeLabel}</div>
+          <StatusChip tone={emphasized ? 'stable' : 'growth'} className="mt-0.5 px-2 py-0.5 text-[10px]">{badgeLabel}</StatusChip>
         </div>
       </div>
-      <dl className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-0.5 md:grid-cols-4">
+      <div className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-0.5 md:grid-cols-4" role="list">
         {rows.map(([label, value]) => (
-          <div key={label}>
-            <dt className="text-[10px] font-semibold text-[color:var(--sg-text-faint)]">{label}</dt>
-            <dd className="mt-0.5 text-[0.66rem] font-bold text-[color:var(--sg-text-strong)]">{value}</dd>
+          <div key={label} role="listitem">
+            <div className="text-[10px] font-semibold text-[color:var(--sg-text-faint)]">{label}</div>
+            <div className="sg-data-number mt-0.5 text-[0.66rem] font-bold text-[color:var(--sg-text-strong)]">{value}</div>
           </div>
         ))}
-      </dl>
+      </div>
     </article>
   );
 }
@@ -797,7 +820,7 @@ export function WeatherMarketKnowledgeBridge({
   const marketChip = selectedMarket?.item?.direction === 'up' ? copy.priceTrendUp : copy.marketContext;
   const knowledgeChipTone = knowledgeError ? 'warning' : 'growth';
   const marketChipTone = produceError ? 'warning' : 'growth';
-  const weatherTone = weatherError ? 'warning' : 'normal';
+  const weatherTone = weatherError ? 'warning' : 'stable';
   const todayWeather = weather?.daily?.[0] ?? null;
   const tomorrowWeather = weather?.daily?.[1] ?? null;
   const weatherRows = [
@@ -830,7 +853,7 @@ export function WeatherMarketKnowledgeBridge({
 
   return (
     <section id="overview-bridge" tabIndex={-1} className="scroll-mt-24 space-y-1" aria-labelledby="weather-market-knowledge-title">
-      <LandingSectionHeading titleId="weather-market-knowledge-title" eyebrow={copy.eyebrow} title={copy.title} />
+      <LandingSectionHeading titleId="weather-market-knowledge-title" eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
       <div className="overview-card-row-3">
         <BridgeCard
           icon={CloudSun}
@@ -882,7 +905,7 @@ function BridgeCard({
   chip: string;
   icon: LucideIcon;
   action?: ReactNode;
-  chipTone?: 'normal' | 'growth' | 'stable' | 'warning' | 'critical' | 'muted';
+  chipTone?: 'growth' | 'stable' | 'warning' | 'critical' | 'muted';
   detailRows?: Array<[string, string]>;
   className?: string;
 }) {
@@ -899,14 +922,14 @@ function BridgeCard({
       </div>
       <p className="text-[0.64rem] leading-[0.9rem] text-[color:var(--sg-text-muted)]" style={bridgeBodyClampStyle}>{body}</p>
       {detailRows.length ? (
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 border-t border-[color:var(--sg-outline-soft)] pt-1">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 border-t border-[color:var(--sg-outline-soft)] pt-1" role="list">
           {detailRows.map(([label, rowValue]) => (
-            <div key={label}>
-              <dt className="text-[10px] font-semibold text-[color:var(--sg-text-faint)]">{label}</dt>
-              <dd className="mt-0.5 text-[0.66rem] font-bold text-[color:var(--sg-text-strong)]">{rowValue}</dd>
+            <div key={label} role="listitem">
+              <div className="text-[10px] font-semibold text-[color:var(--sg-text-faint)]">{label}</div>
+              <div className="sg-data-number mt-0.5 text-[0.66rem] font-bold text-[color:var(--sg-text-strong)]">{rowValue}</div>
             </div>
           ))}
-        </dl>
+        </div>
       ) : null}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
         <StatusChip tone={chipTone}>{chip}</StatusChip>
@@ -920,6 +943,7 @@ export function FinalCTA() {
   const { locale } = useLocale();
   const copy = locale === 'ko'
     ? {
+        eyebrow: '다음 단계',
         title: '한 플랫폼에서 더 나은 판단과 안정적인 수확을 만드세요.',
         support: '매일 온실 의사결정을 정리하는 PhytoSync 워크플로우를 시작하세요.',
         email: '업무 이메일',
@@ -927,6 +951,7 @@ export function FinalCTA() {
         submit: '무료로 시작',
       }
     : {
+        eyebrow: 'Next Step',
         title: 'One platform. Better decisions. Stronger harvests.',
         support: 'Join growers who rely on PhytoSync every day.',
         email: 'Email',
@@ -941,6 +966,7 @@ export function FinalCTA() {
           <Wind className="h-5 w-5" aria-hidden="true" />
         </span>
         <div>
+          <p className="sg-eyebrow">{copy.eyebrow}</p>
           <h2 className="text-base font-bold text-[color:var(--sg-text-strong)]">{copy.title}</h2>
           <p className="mt-0.5 text-xs text-[color:var(--sg-text-muted)]">{copy.support}</p>
         </div>

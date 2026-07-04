@@ -246,7 +246,7 @@ export default function ModelRuntimeBridge({ crop, onOpenAssistant }: ModelRunti
 
   return (
     <section id="backend-runtime-bridge" tabIndex={-1} className="scroll-mt-24 space-y-4" aria-labelledby="backend-runtime-bridge-title">
-      <div className="sg-panel p-3.5">
+      <div className="sg-panel min-w-0 bg-[color:var(--sg-surface-raised)] p-3.5">
         <div className="mb-3 flex flex-col gap-2 border-b border-[color:var(--sg-outline-soft)] pb-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="sg-eyebrow">{copy.eyebrow}</p>
@@ -274,7 +274,7 @@ export default function ModelRuntimeBridge({ crop, onOpenAssistant }: ModelRunti
         </div>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {auditItems.map((item) => (
-            <div key={item} className="rounded-[var(--sg-radius-xs)] border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-muted)] px-3 py-1.5 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">
+            <div key={item} className="sg-panel bg-[color:var(--sg-surface-muted)] px-3 py-1.5 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">
               {item}
             </div>
           ))}
@@ -297,11 +297,11 @@ function RuntimeCard({
   const isLoading = state.status === 'loading';
 
   return (
-    <article className="flex h-full flex-col gap-2 rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] bg-white p-2.5">
+    <article className="sg-panel flex h-full min-w-0 flex-col gap-2 bg-white p-2.5">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
+          <p className="sg-eyebrow truncate">{card.endpoint}</p>
           <h3 className="text-xs font-bold text-[color:var(--sg-text-strong)]">{card.title}</h3>
-          <p className="mt-1 font-mono text-[11px] text-[color:var(--sg-text-faint)]">{card.endpoint}</p>
         </div>
         <span className={cn(
           'flex h-7 w-7 items-center justify-center rounded-[var(--sg-radius-xs)]',
@@ -313,7 +313,7 @@ function RuntimeCard({
         </span>
       </div>
       <p className="sr-only">{card.description}</p>
-      <div className="rounded-[var(--sg-radius-xs)] bg-[color:var(--sg-surface-soft)] px-2.5 py-1.5 text-[11px] leading-4 text-[color:var(--sg-text-muted)]" aria-live="polite">
+      <div className="min-w-0 rounded-[var(--sg-radius-xs)] bg-[color:var(--sg-surface-soft)] px-2.5 py-1.5 text-[11px] leading-4 text-[color:var(--sg-text-muted)]" aria-live="polite">
         {summary}
       </div>
       <div className="mt-auto flex items-center justify-between gap-3">

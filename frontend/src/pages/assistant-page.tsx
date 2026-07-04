@@ -26,7 +26,7 @@ export default function AssistantPage({
 
   return (
     <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,392px)]">
+      <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,392px)]">
         <div className="min-w-0">{surface}</div>
         {summaryRail ? <div className="min-w-0">{summaryRail}</div> : null}
       </div>

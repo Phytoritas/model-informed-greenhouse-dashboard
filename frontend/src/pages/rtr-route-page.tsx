@@ -106,22 +106,26 @@ export default function RtrRoutePage({
         </Suspense>
       )}
       supportSurface={(
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
-          <ControlPanel
-            status={controls}
-            onToggle={onToggle}
-            onSettingsChange={onSettingsChange}
-          />
-          <DecisionSnapshotGrid
-            crop={crop}
-            currentData={currentData}
-            modelMetrics={modelMetrics}
-            weather={weather}
-            weatherLoading={weatherLoading}
-            producePrices={producePrices}
-            produceLoading={produceLoading}
-            history={history}
-          />
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+          <div className="min-h-0 min-w-0 [&>*]:h-full">
+            <ControlPanel
+              status={controls}
+              onToggle={onToggle}
+              onSettingsChange={onSettingsChange}
+            />
+          </div>
+          <div className="min-h-0 min-w-0 [&>*]:h-full">
+            <DecisionSnapshotGrid
+              crop={crop}
+              currentData={currentData}
+              modelMetrics={modelMetrics}
+              weather={weather}
+              weatherLoading={weatherLoading}
+              producePrices={producePrices}
+              produceLoading={produceLoading}
+              history={history}
+            />
+          </div>
         </div>
       )}
     />

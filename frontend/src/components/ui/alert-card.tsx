@@ -1,10 +1,11 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import DashboardCard from '../common/DashboardCard';
 import { Button } from './button';
 import { StatusChip } from './status-chip';
 
-type AlertTone = 'normal' | 'warning' | 'critical';
+type AlertTone = 'growth' | 'stable' | 'warning' | 'critical' | 'muted';
 
 interface AlertCardProps {
   title: string;
@@ -19,9 +20,11 @@ interface AlertCardProps {
 }
 
 const toneClass: Record<AlertTone, string> = {
-  normal: 'bg-white',
+  growth: 'bg-white',
+  stable: 'bg-[color:var(--sg-color-sage-soft)]',
   warning: 'bg-[color:var(--sg-surface-warm)]',
   critical: 'bg-[color:var(--sg-color-primary-soft)]',
+  muted: 'bg-[color:var(--sg-surface-muted)]',
 };
 
 const bodyClampStyle: CSSProperties = {
@@ -37,7 +40,7 @@ export function AlertCard({
   chip,
   actionLabel,
   icon: Icon,
-  tone = 'normal',
+  tone = 'stable',
   onAction,
   meta,
   className,
@@ -48,7 +51,11 @@ export function AlertCard({
     : 'h-6 border border-[color:var(--sg-color-sage)] bg-white px-2 text-[0.64rem] text-[color:var(--sg-color-olive)] hover:bg-[color:var(--sg-color-sage-soft)]';
 
   return (
-    <article className={cn('sg-panel flex h-full min-h-[76px] flex-col gap-0.5 p-1.5', toneClass[tone], className)}>
+    <DashboardCard
+      variant={tone === 'critical' ? 'alert' : 'scenario'}
+      className={cn('sg-panel flex h-full min-h-[76px] flex-col gap-0.5 p-1.5', toneClass[tone], className)}
+      contentClassName="flex h-full flex-col gap-0.5"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           {Icon ? (
@@ -71,6 +78,6 @@ export function AlertCard({
           </Button>
         ) : null}
       </div>
-    </article>
+    </DashboardCard>
   );
 }

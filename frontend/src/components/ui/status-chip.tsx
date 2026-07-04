@@ -21,6 +21,8 @@ const statusChipStyles = cva(
   },
 );
 
+export type StatusChipTone = NonNullable<VariantProps<typeof statusChipStyles>['tone']>;
+
 interface StatusChipProps
   extends HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof statusChipStyles> {
