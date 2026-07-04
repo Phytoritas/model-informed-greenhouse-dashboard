@@ -365,44 +365,88 @@ vi.mock('./components/shell/TopBar', () => ({
 
 vi.mock('./components/shell/WorkspaceTopNav', () => ({
   default: ({
+    globalItems,
     items,
+    activeGlobalKey,
     activeWorkspace,
     activeActionId,
+    onSelectGlobal,
+    onSelectContact,
     onSelect,
     onSelectAction,
   }: {
+    globalItems: Array<{ key: string; label: string; path?: string }>
     items: Array<{ key: string; label: string; actions?: Array<{ id: string; label: string }> }>
+    activeGlobalKey?: string | null
     activeWorkspace: string
     activeActionId?: string
+    onSelectGlobal?: (value: string) => void
+    onSelectContact?: () => void
     onSelect: (value: string) => void
     onSelectAction?: (workspace: string, actionId: string) => void
-  }) => (
-    <nav aria-label="Primary navigation">
-      {items.map((item) => (
-        <div key={item.key}>
-          <button
-            type="button"
-            aria-current={item.key === activeWorkspace ? 'page' : undefined}
-            onClick={() => onSelect(item.key)}
-          >
-            {item.label}
-          </button>
-          {item.key === activeWorkspace
-            ? item.actions?.map((action) => (
+  }) => {
+    const globalTargetByKey: Record<string, string> = {
+      home: 'overview',
+      dashboard: 'control',
+      insights: 'trend',
+      scenarios: 'scenarios',
+      knowledge: 'assistant',
+    }
+    const activeItem = items.find((item) => item.key === activeWorkspace)
+
+    return (
+      <div>
+        <nav aria-label="Global navigation">
+          {globalItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              aria-current={item.key === activeGlobalKey ? 'page' : undefined}
+              onClick={() => {
+                if (item.key === 'contact') {
+                  onSelectContact?.()
+                  return
+                }
+                onSelectGlobal?.(item.key)
+                onSelect(globalTargetByKey[item.key] ?? 'overview')
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        {items.length > 0 ? (
+          <nav aria-label="Category subtab navigation">
+            {items.map((item) => (
+              <div key={item.key}>
                 <button
-                  key={action.id}
                   type="button"
-                  aria-current={activeActionId === action.id ? 'step' : undefined}
-                  onClick={() => onSelectAction?.(item.key, action.id)}
+                  aria-current={item.key === activeWorkspace ? 'step' : undefined}
+                  onClick={() => onSelect(item.key)}
                 >
-                  {`Action:${action.id}`}
+                  {item.label}
                 </button>
-              ))
-            : null}
-        </div>
-      ))}
-    </nav>
-  ),
+              </div>
+            ))}
+          </nav>
+        ) : null}
+        {activeItem?.actions?.length ? (
+          <nav aria-label="Panel action navigation">
+            {activeItem.actions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                aria-pressed={activeActionId === action.id}
+                onClick={() => onSelectAction?.(activeItem.key, action.id)}
+              >
+                {`Action:${action.id}`}
+              </button>
+            ))}
+          </nav>
+        ) : null}
+      </div>
+    )
+  },
 }))
 
 vi.mock('./components/dashboard/HeroControlCard', () => ({
@@ -716,7 +760,8 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'KNOWLEDGE' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('step')
     expect(screen.queryByRole('button', { name: 'Open assistant fab' })).toBeNull()
   })
 
@@ -812,13 +857,14 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'DASHBOARD' }))
 
     await waitFor(() => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
     })
     expect(await screen.findByText('RTROptimizerPanel', {}, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
   }, 15000)
 
   it('keeps RTR state outside route-local control pages', async () => {
@@ -827,12 +873,12 @@ describe('App routed shell', () => {
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    fireEvent.click(screen.getByRole('button', { name: 'INSIGHTS' }))
     await waitFor(() => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'DASHBOARD' }))
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-optimizer-state').textContent).toBe('0.73|balanced')
   })
@@ -844,12 +890,12 @@ describe('App routed shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Persist RTR draft' }))
     expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Trend' }))
+    fireEvent.click(screen.getByRole('button', { name: 'INSIGHTS' }))
     await waitFor(() => {
       expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+    fireEvent.click(screen.getByRole('button', { name: 'DASHBOARD' }))
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByTestId('rtr-ui-state').textContent).toBe('0.81')
   })
@@ -911,6 +957,7 @@ describe('App routed shell', () => {
     renderApp('/overview')
 
     expect(screen.queryByRole('button', { name: 'Overview' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'HOME' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control')
     expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend')
     expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios')
@@ -919,6 +966,62 @@ describe('App routed shell', () => {
     expect(screen.getByRole('region', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Live decision metrics' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Actions worth checking today' })).toBeTruthy()
+  })
+
+  it('verify_src001_s0002_r001_a01 renders the same global navigation on routed workspace screens', async () => {
+    renderApp('/control')
+
+    const globalNav = screen.getByRole('navigation', { name: 'Global navigation' })
+    expect(globalNav.textContent).toContain('HOME')
+    expect(globalNav.textContent).toContain('DASHBOARD')
+    expect(globalNav.textContent).toContain('INSIGHTS')
+    expect(globalNav.textContent).toContain('SCENARIOS')
+    expect(globalNav.textContent).toContain('KNOWLEDGE')
+    expect(globalNav.textContent).toContain('CONTACT')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
+  })
+
+  it('verify_src001_s0002_r003_a01 keeps only the active parent category subtabs visible', async () => {
+    renderApp('/control')
+
+    const categoryNav = screen.getByRole('navigation', { name: 'Category subtab navigation' })
+    expect(categoryNav.textContent).toContain('Control')
+    expect(categoryNav.textContent).toContain('RTR Optimizer')
+    expect(categoryNav.textContent).toContain('Crop Work')
+    expect(categoryNav.textContent).toContain('Resources')
+    expect(categoryNav.textContent).toContain('Alerts')
+    expect(categoryNav.textContent).not.toContain('Trend')
+    expect(categoryNav.textContent).not.toContain('Scenario')
+    expect(categoryNav.textContent).not.toContain('Assistant')
+    expect(categoryNav.textContent).not.toContain('Settings')
+  })
+
+  it('verify_src001_s0002_r004_a01 removes the old flat ten-item workspace strip', async () => {
+    renderApp('/trend')
+
+    const categoryNav = screen.getByRole('navigation', { name: 'Category subtab navigation' })
+    expect(categoryNav.textContent).toBe('Trend')
+    expect(categoryNav.textContent).not.toContain('Control')
+    expect(categoryNav.textContent).not.toContain('RTR')
+    expect(categoryNav.textContent).not.toContain('Resources')
+    expect(categoryNav.textContent).not.toContain('Alerts')
+    expect(categoryNav.textContent).not.toContain('Assistant')
+    expect(screen.getByRole('button', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('step')
+  })
+
+  it('verify_src001_s0002_r006_a01 keeps settings as a header button instead of a subtab', async () => {
+    renderApp('/control')
+
+    expect(screen.getByRole('navigation', { name: 'Global navigation' }).textContent).not.toContain('Settings')
+    expect(screen.getByRole('navigation', { name: 'Category subtab navigation' }).textContent).not.toContain('Settings')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Global navigation' })).toBeTruthy()
+    expect(screen.queryByRole('navigation', { name: 'Category subtab navigation' })).toBeNull()
   })
 
   it('keeps control section actions inline and leaves the recommended control surface visible', async () => {
@@ -934,15 +1037,16 @@ describe('App routed shell', () => {
     expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
     expect(screen.queryByTestId('page-section-active')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Action:control-devices' }).getAttribute('aria-current')).toBe('step')
+    expect(screen.getByRole('button', { name: 'Action:control-devices' }).getAttribute('aria-pressed')).toBe('true')
 
     fireEvent.click(screen.getByRole('button', { name: 'Action:control-strategy' }))
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByText('AlertRail')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-current')).toBe('step')
-    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {
@@ -954,7 +1058,8 @@ describe('App routed shell', () => {
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
-    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('opens the assistant drawer from the floating button on non-assistant routes', async () => {
@@ -980,7 +1085,8 @@ describe('App routed shell', () => {
 
     expect(await screen.findByText('AlertsCommandCenter:alerts-priority')).toBeTruthy()
     expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
-    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps trend as a dedicated page separated from control', async () => {
@@ -989,7 +1095,8 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
     expect(await screen.findByText('WeatherOutlookPanel')).toBeTruthy()
     expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'INSIGHTS' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('preserves /trend hook loading and error state plumbing when weather, produce, and overview signals are unavailable', async () => {
@@ -1020,7 +1127,8 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
     expect(await screen.findByText('CropDetails')).toBeTruthy()
     expect(await screen.findByText('TodayBoard')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('step')
   })
 
   it.each([
@@ -1036,7 +1144,8 @@ describe('App routed shell', () => {
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(await screen.findByText(expectedPanel)).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'KNOWLEDGE' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Assistant' }).getAttribute('aria-current')).toBe('step')
   })
 
   it.each([
@@ -1067,7 +1176,8 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
     expect(screen.getByTestId('advisor-correction-open').textContent).toBe('false')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('opens the harvest advisor lane through the live advisor tab surface', async () => {
@@ -1077,7 +1187,8 @@ describe('App routed shell', () => {
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('harvest_market')
     expect(screen.queryByRole('heading', { name: 'Today operations' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps nested harvest advisor aliases on the live advisor tab surface', async () => {
@@ -1095,7 +1206,8 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe('Alerts')
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('pesticide')
-    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Alerts' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps nested growth advisor aliases on the live advisor tab surface', async () => {
@@ -1130,7 +1242,8 @@ describe('App routed shell', () => {
     expect(await screen.findByText('AdvisorTabs')).toBeTruthy()
     expect(screen.getByTestId('advisor-initial-tab').textContent).toBe('nutrient')
     expect(screen.getByTestId('advisor-correction-open').textContent).toBe('true')
-    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('button', { name: 'Resources' }).getAttribute('aria-current')).toBe('step')
   })
 
   it('keeps assistant flows inline inside the assistant route', async () => {

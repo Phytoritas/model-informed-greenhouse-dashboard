@@ -38,6 +38,7 @@ import { cn } from '../../utils/cn';
 import { metricToneForTile } from '../../utils/metricTone';
 import { AlertCard } from '../ui/alert-card';
 import { Button } from '../ui/button';
+import { GLOBAL_NAVIGATION_ITEMS } from '../../routes/globalNavigation';
 import { Input } from '../ui/input';
 import { MetricCard } from '../ui/metric-card';
 import { SectionHeader } from '../ui/section-header';
@@ -115,8 +116,6 @@ interface TopNavigationProps {
   onOpenAssistant: () => void;
 }
 
-type LandingNavItem = { label: string; to?: string; onClick?: () => void };
-
 function scrollToLandingFooter() {
   if (typeof document === 'undefined') {
     return;
@@ -126,17 +125,6 @@ function scrollToLandingFooter() {
 
 export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
   const { locale } = useLocale();
-  // Every item resolves to a live destination: hash anchors that only existed on the
-  // retired tabbed overview page were dead, so DASHBOARD/KNOWLEDGE now use real routes
-  // and CONTACT scrolls to the footer contact block.
-  const nav: LandingNavItem[] = [
-    { label: 'HOME', to: '/overview' },
-    { label: 'DASHBOARD', to: '/control' },
-    { label: 'INSIGHTS', to: '/trend' },
-    { label: 'SCENARIOS', to: '/scenarios' },
-    { label: 'KNOWLEDGE', to: '/assistant' },
-    { label: 'CONTACT', onClick: scrollToLandingFooter },
-  ];
   const assistantLabel = locale === 'ko' ? '질문하기' : 'Ask Assistant';
   const dashboardLabel = locale === 'ko' ? '대시보드 열기' : 'Open Dashboard';
 
@@ -148,26 +136,31 @@ export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
           PhytoSync
         </Link>
         <div className="overview-nav-links">
-          {nav.map((item) => (
-            item.to ? (
+          {GLOBAL_NAVIGATION_ITEMS.map((item) => {
+            const active = item.key === 'home';
+            return item.path ? (
               <Link
-                key={item.label}
-                to={item.to}
-                className="overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
+                key={item.key}
+                to={item.path}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]',
+                  active && 'overview-nav-link-active',
+                )}
               >
                 {item.label}
               </Link>
             ) : (
               <button
-                key={item.label}
+                key={item.key}
                 type="button"
-                onClick={item.onClick}
+                onClick={scrollToLandingFooter}
                 className="overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
               >
                 {item.label}
               </button>
-            )
-          ))}
+            );
+          })}
         </div>
         <div className="flex items-center justify-end gap-2">
           <button

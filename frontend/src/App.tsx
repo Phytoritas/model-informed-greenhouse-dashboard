@@ -41,6 +41,11 @@ import {
   getSectionPathForAdvisorTab,
 } from './routes/phytosyncSections';
 import {
+  GLOBAL_NAVIGATION_ITEMS,
+  getGlobalNavigationKeyForPathname,
+  getSubNavigationSectionKeys,
+} from './routes/globalNavigation';
+import {
   getCropLabel,
   getDashboardSensorCopy,
   NUMERIC_IDEAL_RANGES,
@@ -382,6 +387,10 @@ function App() {
   const deferredModelMetrics = useDeferredValue(modelMetrics);
   const primaryRoutes = useMemo(() => buildPrimaryRoutes(locale), [locale]);
   const activePrimaryRouteKey = useMemo(() => getPrimaryRouteKey(location.pathname), [location.pathname]);
+  const activeGlobalNavigationKey = useMemo(
+    () => getGlobalNavigationKeyForPathname(location.pathname),
+    [location.pathname],
+  );
   const activePrimaryRoute = useMemo(
     () => getPrimaryRouteMeta(location.pathname, locale),
     [location.pathname, locale],
@@ -844,6 +853,19 @@ function App() {
     navigate('/settings');
   }, [navigate, setAssistantDrawerOpen]);
 
+  const handleGlobalNavigationSelect = useCallback(() => {
+    setAssistantDrawerOpen(false);
+  }, [setAssistantDrawerOpen]);
+
+  const handleGlobalContactSelect = useCallback(() => {
+    setAssistantDrawerOpen(false);
+    if (location.pathname === '/overview') {
+      document.getElementById('overview-footer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    navigate({ pathname: '/overview', hash: '#contact' });
+  }, [location.pathname, navigate, setAssistantDrawerOpen]);
+
   const handleOpenAlerts = useCallback(() => {
     setAssistantDrawerOpen(false);
     navigate({ pathname: '/alerts', hash: '#alerts-priority' });
@@ -1066,16 +1088,28 @@ function App() {
     weather,
   ]);
 
-  const workspaceItems = useMemo<WorkspaceNavItem[]>(() => (
-    primaryRoutes.map((route) => ({
-      key: route.key,
-      label: route.label,
-      shortLabel: route.shortLabel,
-      description: route.description,
-      icon: route.icon,
-      actions: sections.find((section) => section.key === route.key)?.tabs ?? [],
-    }))
-  ), [primaryRoutes, sections]);
+  const workspaceItems = useMemo<WorkspaceNavItem[]>(() => {
+    const visibleSectionKeys = getSubNavigationSectionKeys(activeGlobalNavigationKey);
+    const nextItems: WorkspaceNavItem[] = [];
+
+    for (const sectionKey of visibleSectionKeys) {
+      const section = sections.find((candidate) => candidate.key === sectionKey);
+      if (!section) {
+        continue;
+      }
+
+      nextItems.push({
+        key: section.key,
+        label: section.label,
+        shortLabel: section.shortLabel,
+        description: section.description,
+        icon: section.icon,
+        actions: section.tabs,
+      });
+    }
+
+    return nextItems;
+  }, [activeGlobalNavigationKey, sections]);
 
   const heroPrimaryNarrative = runtimeRecommendedAction
     ? (locale === 'ko' ? `지금: ${runtimeRecommendedAction}` : `Now: ${runtimeRecommendedAction}`)
@@ -1598,9 +1632,13 @@ function App() {
       )}
     >
       <WorkspaceTopNav
+        globalItems={GLOBAL_NAVIGATION_ITEMS}
         items={workspaceItems}
+        activeGlobalKey={activeGlobalNavigationKey}
         activeWorkspace={activePrimaryRouteKey}
         activeActionId={activePanelId}
+        onSelectGlobal={handleGlobalNavigationSelect}
+        onSelectContact={handleGlobalContactSelect}
         onSelect={handleWorkspaceSelect}
         onSelectAction={handleWorkspaceActionSelect}
       />
