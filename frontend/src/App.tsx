@@ -937,12 +937,6 @@ function App() {
     navigate(nextRoute?.path ?? resolveRoutePath(workspace));
   }, [navigate, primaryRoutes, resolveRoutePath, setAssistantDrawerOpen]);
 
-  const handleSectionTabSelect = useCallback((tabId: string) => {
-    setSectionTabSelections((current) => ({ ...current, [activeSection.key]: tabId }));
-
-    navigate({ pathname: activeSection.path, hash: `#${tabId}` }, { replace: true });
-  }, [activeSection.key, activeSection.path, navigate, setSectionTabSelections]);
-
   const handleWorkspaceActionSelect = useCallback((workspace: string, tabId: string) => {
     const targetSection = sections.find((section) => section.key === workspace);
     if (!targetSection) {
@@ -1491,8 +1485,6 @@ function App() {
       locale={locale}
       crop={selectedCrop}
       cropLabel={selectedCropLabel}
-      panelTabs={assistantSection.tabs}
-      onSelectPanel={handleSectionTabSelect}
       summary={smartGrowSummary}
       activePanel={activePanelId as AssistantPanelId}
       searchRequest={assistantSearchRequest}

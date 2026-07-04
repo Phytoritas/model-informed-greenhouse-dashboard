@@ -1457,11 +1457,13 @@ describe('App routed shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Assistant' })).toBeTruthy()
     expect(screen.getByText('AskSearchPage:assistant-chat')).toBeTruthy()
-    expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-chat')
+    // The 질문/자료 찾기 switch lives only in the WorkspaceTopNav action row now.
+    expect(screen.queryByTestId('page-section-active')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Action:assistant-chat' }).getAttribute('aria-pressed')).toBe('true')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tab:assistant-search' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Action:assistant-search' }))
     expect(await screen.findByText('AskSearchPage:assistant-search')).toBeTruthy()
-    expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-search')
+    expect(screen.getByRole('button', { name: 'Action:assistant-search' }).getAttribute('aria-pressed')).toBe('true')
   })
 
   it('keeps assistant search inline even from the hidden assistant route', async () => {
@@ -1484,7 +1486,7 @@ describe('App routed shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Toggle assistant' }))
 
     expect(await screen.findByText('AskSearchPage:assistant-chat')).toBeTruthy()
-    expect(screen.getByTestId('page-section-active').textContent).toBe('assistant-chat')
+    expect(screen.getByRole('button', { name: 'Action:assistant-chat' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByText('AssistantDrawer:assistant-chat')).toBeNull()
   })
 
