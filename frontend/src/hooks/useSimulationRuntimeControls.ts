@@ -24,8 +24,88 @@ export type SimulationRuntimeTimeStep = typeof TIME_STEP_OPTIONS[number];
 
 export const simulationRuntimeTimeSteps = [...TIME_STEP_OPTIONS];
 
+const PACE_PRESETS = [10, 20, 30, 60, 600, 6000] as const;
+export type SimulationRuntimePacePreset = typeof PACE_PRESETS[number];
+
+export const simulationRuntimePacePresets = [...PACE_PRESETS];
+
+// Initial default pace: 1 real second maps to 600 simulated seconds (R28).
+export const DEFAULT_SIMULATION_PACE: SimulationRuntimePacePreset = 600;
+export const SIMULATION_PACE_STORAGE_KEY = 'sg-sim-pace';
+
+const LEGACY_DEFAULT_STEP_SIM_SECONDS = 600;
+const LEGACY_REAL_SECONDS_PER_STEP = 0.1;
+
+export function deriveLegacySpeedFromPace(simSecondsPerRealSecond: number): number {
+  return (
+    Number(simSecondsPerRealSecond)
+    * LEGACY_REAL_SECONDS_PER_STEP
+    / LEGACY_DEFAULT_STEP_SIM_SECONDS
+  );
+}
+
+export function isSimulationPacePreset(value: number): value is SimulationRuntimePacePreset {
+  return simulationRuntimePacePresets.some((preset) => preset === value);
+}
+
+/**
+ * Read the persisted pace (R11/R28). Returns null when no valid value is stored so
+ * callers can fall back to the backend's own default without forcing a request.
+ */
+export function readStoredSimulationPace(): SimulationRuntimePacePreset | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SIMULATION_PACE_STORAGE_KEY);
+    if (raw === null) {
+      return null;
+    }
+    const value = Number(raw);
+    return isSimulationPacePreset(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredSimulationPace(pace: SimulationRuntimePacePreset): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(SIMULATION_PACE_STORAGE_KEY, String(pace));
+  } catch {
+    // Keep runtime controls usable when storage is unavailable.
+  }
+}
+
 function cropToApiKey(crop: CropType): Lowercase<CropType> {
   return crop.toLowerCase() as Lowercase<CropType>;
+}
+
+/**
+ * Build the /api/speed request for a pace (R3/R11). Sends the new
+ * sim_seconds_per_real_second field plus a backward-compatible legacy speed
+ * multiplier so callers that reconnect can reapply the stored pace directly.
+ */
+export function buildSimulationPaceRequest(
+  crop: CropType,
+  simSecondsPerRealSecond: number,
+): { path: string; init: RequestInit } {
+  const cropKey = cropToApiKey(crop);
+  return {
+    path: `/speed?crop=${encodeURIComponent(cropKey)}`,
+    init: {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sim_seconds_per_real_second: simSecondsPerRealSecond,
+        speed: deriveLegacySpeedFromPace(simSecondsPerRealSecond),
+      }),
+    },
+  };
 }
 
 export function getDefaultSimulationCsv(crop: CropType): string {
@@ -153,9 +233,10 @@ export function useSimulationRuntimeControls(crop: CropType) {
   const pause = useCallback(() => execute('pause', `/pause?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
   const resume = useCallback(() => execute('resume', `/resume?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
   const stop = useCallback(() => execute('stop', `/stop?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
-  const setSpeed = useCallback((speed: number) => execute('speed', `/speed?crop=${encodeURIComponent(cropKey)}`, {
-    body: JSON.stringify({ speed }),
-  }), [cropKey, execute]);
+  const setSpeed = useCallback((simSecondsPerRealSecond: number) => {
+    const { path, init } = buildSimulationPaceRequest(crop, simSecondsPerRealSecond);
+    return execute('speed', path, init);
+  }, [crop, execute]);
 
   return {
     state,
