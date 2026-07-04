@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LocaleProvider } from './i18n/LocaleProvider'
 import { LOCALE_STORAGE_KEY } from './i18n/locale'
 import type { ModelRuntimeConstraintViolation } from './hooks/useSmartGrowAdvisor'
@@ -720,6 +720,47 @@ function renderApp(initialPath = '/overview', locale = 'en') {
   )
 }
 
+function jsonResponse(payload: Record<string, unknown>, ok = true) {
+  return {
+    ok,
+    status: ok ? 200 : 500,
+    statusText: ok ? 'OK' : 'Error',
+    json: async () => payload,
+  } as Response
+}
+
+function stubSettingsAndRuntimeFetch() {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+
+    if (url.includes('/settings')) {
+      return jsonResponse({
+        settings: {
+          price_per_kg: 3200,
+          cost_per_kwh: 125,
+        },
+      })
+    }
+
+    if (url.includes('/speed')) {
+      return jsonResponse({ status: 'speed-ok', body: init?.body ?? null })
+    }
+
+    if (url.includes('/pause')) {
+      return jsonResponse({ status: 'pause-ok' })
+    }
+
+    if (url.includes('/resume')) {
+      return jsonResponse({ status: 'resume-ok' })
+    }
+
+    return jsonResponse({ status: 'success' })
+  })
+
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
 describe('App routed shell', () => {
   beforeEach(() => {
     window.localStorage.clear()
@@ -769,6 +810,10 @@ describe('App routed shell', () => {
     }
     overviewSignalsState.loading = false
     overviewSignalsState.error = null
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('renders the direct route entry without falling back to the giant overview stack', async () => {
@@ -1144,6 +1189,71 @@ describe('App routed shell', () => {
       advisorState.aiDisplay.risks = originalRisks
       advisorState.aiModelRuntime.constraint_checks.violated_constraints = originalViolations
     }
+  })
+
+  it('verify_src001_s0004_r001_a01 moves SimulationRuntimePanel from /control to /settings', async () => {
+    stubSettingsAndRuntimeFetch()
+
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Live Climate & Controls' })).toBeNull()
+    expect(screen.queryByText('Simulation Runtime')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Live Climate & Controls' })).toBeTruthy()
+    expect(screen.getByText('Simulation Runtime')).toBeTruthy()
+  })
+
+  it('verify_src001_s0004_r002_a01 keeps settings runtime pace presets, pause/resume, and sg-sim-pace persistence working', async () => {
+    const fetchMock = stubSettingsAndRuntimeFetch()
+    window.localStorage.setItem('sg-sim-pace', '60')
+
+    renderApp('/settings')
+
+    expect(await screen.findByRole('heading', { name: 'Live Climate & Controls' })).toBeTruthy()
+
+    for (const label of ['10 s/s', '20 s/s', '30 s/s', '60 s/s', '600 s/s', '6000 s/s']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy()
+    }
+    expect(screen.getByRole('button', { name: '60 s/s' }).getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: '6000 s/s' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '6000 s/s' }).getAttribute('aria-pressed')).toBe('true')
+    })
+
+    const speedCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/speed'))
+    expect(speedCall).toBeTruthy()
+    const speedBody = JSON.parse((speedCall?.[1]?.body as string) ?? '{}')
+    expect(speedBody.sim_seconds_per_real_second).toBe(6000)
+    expect(window.localStorage.getItem('sg-sim-pace')).toBe('6000')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/pause'))).toBe(true)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/resume'))).toBe(true)
+    })
+  })
+
+  it('verify_src001_s0004_r003_a01 starts /control with operator control content instead of runtime controls', async () => {
+    renderApp('/control')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.getByText('ControlPanel')).toBeTruthy()
+    expect(screen.getByText('AlertRail')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Live Climate & Controls' })).toBeNull()
+
+    const bodyText = document.body.textContent ?? ''
+    expect(bodyText.indexOf('RTROptimizerPanel')).toBeLessThan(bodyText.indexOf('ControlPanel'))
+    expect(bodyText.indexOf('ControlPanel')).toBeLessThan(bodyText.indexOf('AlertRail'))
   })
 
   it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {
