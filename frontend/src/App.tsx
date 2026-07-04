@@ -1455,12 +1455,6 @@ function App() {
       optimizerEnabled={optimizerEnabled}
       defaultMode={selectedRtrProfile?.optimizer?.default_mode}
       onRefreshProfiles={refreshRtrProfiles}
-      controls={controls}
-      onToggle={toggleControl}
-      onSettingsChange={setTempSettings}
-      modelMetrics={deferredModelMetrics}
-      producePrices={producePrices}
-      produceLoading={isProducePricesLoading}
       optimizerState={rtrOptimizerState}
       uiState={rtrOptimizerUiState}
     />

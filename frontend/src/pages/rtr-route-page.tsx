@@ -1,10 +1,7 @@
 import { Suspense, lazy } from 'react';
 import type { AppLocale } from '../i18n/locale';
 import type {
-  AdvancedModelMetrics,
-  ControlStatus,
   CropType,
-  ProducePricesPayload,
   RtrOptimizationMode,
   RtrProfile,
   SensorData,
@@ -12,8 +9,6 @@ import type {
   TelemetryStatus,
   WeatherOutlook,
 } from '../types';
-import ControlPanel from '../components/ControlPanel';
-import DecisionSnapshotGrid from '../components/dashboard/DecisionSnapshotGrid';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
 import RtrPage from './rtr-page';
@@ -36,12 +31,6 @@ interface RtrRoutePageProps {
   optimizerEnabled?: boolean;
   defaultMode?: RtrOptimizationMode;
   onRefreshProfiles?: () => void | Promise<void>;
-  controls: ControlStatus;
-  onToggle: (key: keyof ControlStatus) => void;
-  onSettingsChange: (settings: TemperatureSettings) => void;
-  modelMetrics: AdvancedModelMetrics;
-  producePrices: ProducePricesPayload | null;
-  produceLoading: boolean;
   optimizerState?: RTROptimizerStateLike;
   uiState?: RTROptimizerUiStateLike;
 }
@@ -62,12 +51,6 @@ export default function RtrRoutePage({
   optimizerEnabled,
   defaultMode,
   onRefreshProfiles,
-  controls,
-  onToggle,
-  onSettingsChange,
-  modelMetrics,
-  producePrices,
-  produceLoading,
   optimizerState,
   uiState,
 }: RtrRoutePageProps) {
@@ -104,29 +87,6 @@ export default function RtrRoutePage({
             uiState={uiState}
           />
         </Suspense>
-      )}
-      supportSurface={(
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-          <div className="min-h-0 min-w-0 [&>*]:h-full">
-            <ControlPanel
-              status={controls}
-              onToggle={onToggle}
-              onSettingsChange={onSettingsChange}
-            />
-          </div>
-          <div className="min-h-0 min-w-0 [&>*]:h-full">
-            <DecisionSnapshotGrid
-              crop={crop}
-              currentData={currentData}
-              modelMetrics={modelMetrics}
-              weather={weather}
-              weatherLoading={weatherLoading}
-              producePrices={producePrices}
-              produceLoading={produceLoading}
-              history={history}
-            />
-          </div>
-        </div>
       )}
     />
   );

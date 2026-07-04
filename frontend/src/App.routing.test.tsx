@@ -1256,6 +1256,40 @@ describe('App routed shell', () => {
     expect(bodyText.indexOf('ControlPanel')).toBeLessThan(bodyText.indexOf('AlertRail'))
   })
 
+  it('verify_src001_s0005_r001_a01 keeps /rtr limited to the RTR optimizer surface', async () => {
+    renderApp('/rtr')
+
+    expect(screen.getByTestId('topbar-title').textContent).toBe('RTR Optimizer')
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.queryByText('ControlPanel')).toBeNull()
+    expect(screen.queryByText('DecisionSnapshotGrid')).toBeNull()
+    expect(screen.getByRole('button', { name: 'RTR Optimizer' }).getAttribute('aria-current')).toBe('step')
+  })
+
+  it('verify_src001_s0005_r002_a01 keeps removed panels reachable from their canonical tabs', async () => {
+    renderApp('/rtr')
+
+    expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
+    expect(screen.queryByText('ControlPanel')).toBeNull()
+    expect(screen.queryByText('DecisionSnapshotGrid')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Control' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Control Solutions')
+    })
+    expect(await screen.findByText('ControlPanel')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
+
+    fireEvent.click(screen.getByRole('button', { name: 'INSIGHTS' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('topbar-title').textContent).toBe('Trend')
+    })
+    expect(await screen.findByText('DecisionSnapshotGrid')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Trend' }).getAttribute('aria-current')).toBe('step')
+  })
+
   it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {
     renderApp('/trend')
 
