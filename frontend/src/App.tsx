@@ -1520,6 +1520,8 @@ function App() {
       selectedCropLabel={selectedCropLabel}
       assistantOpen={assistantDrawerOpen}
       telemetrySummary={kpiStatusSummary}
+      telemetryStatus={telemetry.status}
+      telemetryDetail={telemetryDetail}
       weatherConnected={Boolean(weather)}
       marketConnected={Boolean(producePrices)}
     />
@@ -1666,8 +1668,6 @@ function App() {
                   ? 'control-devices'
                   : 'control-strategy'}
                 crop={selectedCrop}
-                telemetryStatus={telemetry.status}
-                telemetryDetail={telemetryDetail}
                 controls={controls}
                 onToggle={toggleControl}
                 onSettingsChange={setTempSettings}

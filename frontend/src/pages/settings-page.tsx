@@ -5,12 +5,14 @@ interface SettingsPageProps {
   locale: 'ko' | 'en';
   shellCard: ReactNode;
   laneCard: ReactNode;
+  runtimeSurface: ReactNode;
 }
 
 export default function SettingsPage({
   locale,
   shellCard,
   laneCard,
+  runtimeSurface,
 }: SettingsPageProps) {
   const copy = locale === 'ko'
     ? {
@@ -26,6 +28,7 @@ export default function SettingsPage({
 
   return (
     <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
+      <div className="mb-6 min-w-0">{runtimeSurface}</div>
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="min-w-0">{shellCard}</div>
         <div className="min-w-0">{laneCard}</div>
