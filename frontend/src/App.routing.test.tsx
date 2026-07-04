@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LocaleProvider } from './i18n/LocaleProvider'
 import { LOCALE_STORAGE_KEY } from './i18n/locale'
+import type { ModelRuntimeConstraintViolation } from './hooks/useSmartGrowAdvisor'
 import type { MetricHistoryPoint } from './types'
 import { deriveSourceSinkBalance } from './utils/derivedRuntimeMetrics'
 
@@ -127,7 +128,7 @@ const advisorState = {
     },
     recommendations: [{ action: 'Keep vent bias conservative.' }],
     constraint_checks: {
-      violated_constraints: [],
+      violated_constraints: [] as ModelRuntimeConstraintViolation[],
     },
     state_snapshot: {
       source_sink_balance: 0.42,
@@ -455,23 +456,39 @@ vi.mock('./components/dashboard/HeroControlCard', () => ({
     sourceSinkBalance,
     canopyAssimilation,
     lai,
+    importantIssue,
   }: {
     onOpenAdvisor?: () => void
     sourceSinkBalance?: number | null
     canopyAssimilation?: number | null
     lai?: number | null
+    importantIssue?: string | null
   }) => (
     <div>
       <div>HeroControlCard</div>
       <div data-testid="hero-source-sink">{String(sourceSinkBalance ?? '')}</div>
       <div data-testid="hero-canopy">{String(canopyAssimilation ?? '')}</div>
       <div data-testid="hero-lai">{String(lai ?? '')}</div>
+      <div data-testid="hero-important-issue">{importantIssue ?? ''}</div>
       <button type="button" onClick={onOpenAdvisor}>Open advisor lane</button>
     </div>
   ),
 }))
 vi.mock('./components/dashboard/LiveMetricStrip', () => ({ default: () => <div>LiveMetricStrip</div> }))
-vi.mock('./components/dashboard/AlertRail', () => ({ default: () => <div>AlertRail</div> }))
+vi.mock('./components/dashboard/AlertRail', () => ({
+  default: ({
+    items,
+  }: {
+    items?: Array<{ title: string; body: string; auxiliaryText?: string }>
+  }) => (
+    <div>
+      <div>AlertRail</div>
+      <div data-testid="alert-rail-items">
+        {(items ?? []).map((item) => `${item.title} ${item.body} ${item.auxiliaryText ?? ''}`).join(' | ')}
+      </div>
+    </div>
+  ),
+}))
 vi.mock('./components/dashboard/DecisionSnapshotGrid', () => ({
   default: ({
     weather,
@@ -691,8 +708,8 @@ vi.mock('./features/assistant/AssistantFab', () => ({
 
 import App from './App'
 
-function renderApp(initialPath = '/overview') {
-  window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en')
+function renderApp(initialPath = '/overview', locale = 'en') {
+  window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
 
   render(
     <LocaleProvider>
@@ -1047,6 +1064,86 @@ describe('App routed shell', () => {
     expect(screen.getByRole('button', { name: 'Action:control-strategy' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('button', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
+  })
+
+  it('renders runtime constraint alerts through friendly copy without raw identifiers', async () => {
+    const originalViolations = advisorState.aiModelRuntime.constraint_checks.violated_constraints
+    advisorState.aiModelRuntime.constraint_checks.violated_constraints = [{
+      code: 'humidity_floor_risk',
+      control: 'rh_target',
+      severity: 'high',
+      message: 'rh_target decrease triggers humidity_floor_risk below floor',
+    }, {
+      code: 'disease_risk_high',
+      control: 'rh_target',
+      severity: 'high',
+      message: 'Resulting RH exceeds the bounded disease-risk ceiling.',
+    }]
+
+    try {
+      renderApp('/control', 'ko')
+
+      expect(await screen.findByText('AlertRail')).toBeTruthy()
+      const alertText = screen.getByTestId('alert-rail-items').textContent ?? ''
+
+      expect(alertText).toContain('습도 회복 하한 위험')
+      expect(alertText).toContain('습도 목표를 낮추면 상대습도가 회복 하한 아래로 떨어질 수 있어요.')
+      expect(alertText).toContain('습도 병해 위험')
+      expect(alertText).not.toContain('rh_target')
+      expect(alertText).not.toContain('humidity_floor_risk')
+      expect(alertText).not.toContain('disease_risk_high')
+      expect(alertText).not.toContain('triggers')
+      expect(alertText).not.toContain('bounded disease-risk ceiling')
+    } finally {
+      advisorState.aiModelRuntime.constraint_checks.violated_constraints = originalViolations
+    }
+  })
+
+  it('keeps unknown runtime constraint codes in auxiliary alert text only', async () => {
+    const originalViolations = advisorState.aiModelRuntime.constraint_checks.violated_constraints
+    advisorState.aiModelRuntime.constraint_checks.violated_constraints = [{
+      code: 'custom_floor_risk',
+      control: 'unknown_control',
+      severity: 'high',
+      message: 'unknown_control triggered custom_floor_risk',
+    }]
+
+    try {
+      renderApp('/control', 'ko')
+
+      expect(await screen.findByText('AlertRail')).toBeTruthy()
+      const alertText = screen.getByTestId('alert-rail-items').textContent ?? ''
+
+      expect(alertText).toContain('운영 제약 확인 필요')
+      expect(alertText).toContain('사전에 없는 운영 제약이 감지되었습니다. 현재 설정을 확인해 주세요.')
+      expect(alertText).toContain('원문 코드: unknown_control · custom_floor_risk')
+    } finally {
+      advisorState.aiModelRuntime.constraint_checks.violated_constraints = originalViolations
+    }
+  })
+
+  it('uses friendly runtime constraint copy in the overview hero screen-reader issue text', async () => {
+    const originalViolations = advisorState.aiModelRuntime.constraint_checks.violated_constraints
+    const originalRisks = advisorState.aiDisplay.risks
+    advisorState.aiDisplay.risks = []
+    advisorState.aiModelRuntime.constraint_checks.violated_constraints = [{
+      code: 'humidity_floor_risk',
+      control: 'rh_target',
+      severity: 'medium',
+      message: 'Resulting RH falls below the bounded recovery floor.',
+    }]
+
+    try {
+      renderApp('/overview', 'ko')
+
+      const heroIssue = await screen.findByTestId('hero-important-issue')
+      expect(heroIssue.textContent).toBe('습도 목표를 낮추면 상대습도가 회복 하한 아래로 떨어질 수 있어요. 현재 설정을 확인해 주세요.')
+      expect(heroIssue.textContent).not.toContain('humidity_floor_risk')
+      expect(heroIssue.textContent).not.toContain('bounded recovery floor')
+    } finally {
+      advisorState.aiDisplay.risks = originalRisks
+      advisorState.aiModelRuntime.constraint_checks.violated_constraints = originalViolations
+    }
   })
 
   it('opens the assistant drawer from the topbar without leaving the current shell page', async () => {

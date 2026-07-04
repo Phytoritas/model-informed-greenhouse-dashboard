@@ -48,6 +48,7 @@ import {
 import {
   getCropLabel,
   getDashboardSensorCopy,
+  getRuntimeConstraintDisplayCopy,
   NUMERIC_IDEAL_RANGES,
 } from './utils/displayCopy';
 import {
@@ -1146,8 +1147,11 @@ function App() {
     ?? smartGrowHeroSummary
     ?? heroCopy.fallbackSummary;
 
+  const runtimeImportantIssue = runtimeViolations[0]
+    ? getRuntimeConstraintDisplayCopy(runtimeViolations[0], locale).body
+    : null;
   const heroImportantIssue = aiDisplay?.risks?.[0]
-    ?? runtimeViolations[0]?.message
+    ?? runtimeImportantIssue
     ?? (telemetry.status === 'offline' ? heroCopy.telemetryOffline : null)
     ?? ((telemetry.status === 'stale' || telemetry.status === 'delayed') ? heroCopy.telemetryStale : null);
 
@@ -1280,12 +1284,16 @@ function App() {
             body: heroCopy.telemetryStale,
           }]
         : []),
-    ...runtimeViolations.slice(0, 2).map((violation, index) => ({
-      id: `runtime-${violation.code ?? index}`,
-      severity: violation.severity === 'critical' ? 'critical' as const : 'warning' as const,
-      title: violation.control ? `${violation.control} · ${violation.code}` : violation.code,
-      body: violation.message,
-    })),
+    ...runtimeViolations.slice(0, 2).map((violation, index) => {
+      const constraintCopy = getRuntimeConstraintDisplayCopy(violation, locale);
+      return {
+        id: `runtime-${violation.code ?? index}`,
+        severity: violation.severity === 'critical' ? 'critical' as const : 'warning' as const,
+        title: constraintCopy.title,
+        body: constraintCopy.body,
+        auxiliaryText: constraintCopy.auxiliaryText,
+      };
+    }),
     ...(aiDisplay?.risks ?? []).slice(0, 2).map((risk, index) => ({
       id: `risk-${index}`,
       severity: 'warning' as const,

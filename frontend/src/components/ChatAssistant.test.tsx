@@ -77,7 +77,13 @@ describe('ChatAssistant', () => {
                         },
                         sensitivity: {
                             confidence: 0.86,
-                            top_levers: [],
+                            top_levers: [
+                                {
+                                    control: 'rh_target',
+                                    direction: 'decrease',
+                                    elasticity: -0.22,
+                                },
+                            ],
                         },
                         constraint_checks: {
                             status: 'pass',
@@ -123,6 +129,8 @@ describe('ChatAssistant', () => {
 
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
         expect(await screen.findByText('Model-calculated effect')).toBeTruthy();
+        expect(screen.getByText(/Levers: RH target/)).toBeTruthy();
+        expect(screen.queryByText(/rh_target/)).toBeNull();
         expect(screen.getByText(/14d \+17\.493/)).toBeTruthy();
         expect(screen.getByText(/S\/S \+0\.092/)).toBeTruthy();
         expect(screen.getByText(/Confidence 86%/)).toBeTruthy();
