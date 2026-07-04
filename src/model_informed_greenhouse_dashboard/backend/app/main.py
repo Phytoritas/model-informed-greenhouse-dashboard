@@ -1,7 +1,9 @@
 """Main FastAPI application entry point."""
 
+import asyncio
 import copy
 import logging
+import math
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -9,7 +11,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Optional, Literal
 
 from .config import settings, greenhouse_config
@@ -55,6 +57,11 @@ from .services.rtr_profiles import (
     upsert_rtr_good_windows,
 )
 from .services.weather import fetch_daegu_weather_outlook
+from .services.simulator import (
+    LEGACY_REAL_SECONDS_PER_STEP,
+    MAX_SIM_SECONDS_PER_REAL_SECOND,
+    MIN_SIM_SECONDS_PER_REAL_SECOND,
+)
 from .schemas import OpsConfig, CropConfig
 
 class Settings(BaseModel):
@@ -348,6 +355,9 @@ app_state = {
         "sim_task": None,
         "dt_hours": None,
         "time_step": "auto",
+        "step_sim_duration_seconds": None,
+        "sim_seconds_per_real_second": None,
+        "pace_changed_event": None,
         "decision": None,
         "last_irrigation": None,
         "last_energy": None,
@@ -373,6 +383,9 @@ app_state = {
         "sim_task": None,
         "dt_hours": None,
         "time_step": "auto",
+        "step_sim_duration_seconds": None,
+        "sim_seconds_per_real_second": None,
+        "pace_changed_event": None,
         "decision": None,
         "last_irrigation": None,
         "last_energy": None,
@@ -397,6 +410,14 @@ STEP_FREQUENCIES: Dict[str, Optional[str]] = {
     "10min": "10min",
     "1h": "1H",
 }
+STEP_SIM_DURATION_SECONDS: Dict[str, float] = {
+    "1s": 1.0,
+    "1min": 60.0,
+    "10min": 600.0,
+    "1h": 3600.0,
+}
+DEFAULT_STEP_SIM_DURATION_SECONDS = 3600.0
+MAX_SIMULATION_SLEEP_CHUNK_SECONDS = 0.5
 
 CROPS = ("tomato", "cucumber")
 MODEL_RUNTIME_SNAPSHOT_INTERVAL = timedelta(hours=1)
@@ -450,6 +471,82 @@ def _target_crops(crop: Optional[str] = None) -> list[str]:
         return list(CROPS)
 
     return [_validate_crop(crop)]
+
+
+def _clamp_sim_seconds_per_real_second(value: float) -> float:
+    return max(
+        MIN_SIM_SECONDS_PER_REAL_SECOND,
+        min(MAX_SIM_SECONDS_PER_REAL_SECOND, float(value)),
+    )
+
+
+def _default_sim_seconds_per_real_second(step_sim_duration_seconds: float) -> float:
+    return _clamp_sim_seconds_per_real_second(
+        step_sim_duration_seconds / LEGACY_REAL_SECONDS_PER_STEP
+    )
+
+
+def _median_environment_interval_seconds(df_env) -> float:
+    if df_env is None or len(df_env) < 2 or "datetime" not in df_env:
+        return DEFAULT_STEP_SIM_DURATION_SECONDS
+
+    import pandas as pd
+
+    datetimes = pd.to_datetime(df_env["datetime"]).sort_values()
+    intervals_seconds = datetimes.diff().dt.total_seconds().dropna()
+    intervals_seconds = intervals_seconds[intervals_seconds > 0]
+    if intervals_seconds.empty:
+        return DEFAULT_STEP_SIM_DURATION_SECONDS
+
+    return max(1.0, float(intervals_seconds.median()))
+
+
+def _derive_step_sim_duration_seconds(time_step: str, df_env) -> float:
+    if time_step == "auto":
+        return _median_environment_interval_seconds(df_env)
+
+    try:
+        return STEP_SIM_DURATION_SECONDS[time_step]
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Unsupported time_step: {time_step}")
+
+
+def _simulation_step_delay_seconds(simulator) -> float:
+    step_sim_duration_seconds = float(
+        getattr(
+            simulator,
+            "step_sim_duration_seconds",
+            max(getattr(simulator, "dt_hours", 1.0), 1e-9) * 3600.0,
+        )
+    )
+    sim_seconds_per_real_second = float(
+        getattr(
+            simulator,
+            "sim_seconds_per_real_second",
+            _default_sim_seconds_per_real_second(step_sim_duration_seconds),
+        )
+    )
+    return step_sim_duration_seconds / max(sim_seconds_per_real_second, 1e-9)
+
+
+async def _sleep_simulation_delay(crop: str, simulator, delay: float) -> None:
+    remaining = max(0.0, float(delay))
+    while remaining > 0 and simulator.running:
+        sleep_for = min(remaining, MAX_SIMULATION_SLEEP_CHUNK_SECONDS)
+        pace_changed_event = app_state[crop].get("pace_changed_event")
+        if pace_changed_event is None:
+            await asyncio.sleep(sleep_for)
+            remaining -= sleep_for
+            continue
+
+        try:
+            await asyncio.wait_for(pace_changed_event.wait(), timeout=sleep_for)
+        except TimeoutError:
+            remaining -= sleep_for
+            continue
+
+        pace_changed_event.clear()
+        return
 
 
 def _normalize_catalog_crop(crop: Optional[str] = None) -> Optional[str]:
@@ -1592,6 +1689,14 @@ async def start_simulation(req: StartRequest):
                 "crop": crop,
                 "rows": total_rows,
                 "time_step": crop_state.get("time_step", req.time_step),
+                "step_sim_duration_seconds": crop_state.get(
+                    "step_sim_duration_seconds"
+                ),
+                "sim_seconds_per_real_second": getattr(
+                    existing_simulator,
+                    "sim_seconds_per_real_second",
+                    crop_state.get("sim_seconds_per_real_second"),
+                ),
                 "dt_minutes": round((crop_state.get("dt_hours") or 0.0) * 60, 3),
             }
 
@@ -1675,23 +1780,27 @@ async def start_simulation(req: StartRequest):
     crop_state["last_runtime_error"] = None
     crop_state["last_runtime_error_at"] = None
     crop_state["last_forecast_schedule_at"] = None
+    crop_state["pace_changed_event"] = None
 
-    # Calculate timestep duration from data
-    if len(df_env) > 1:
-        delta_seconds = max(
-            1.0,
-            (df_env.iloc[1]["datetime"] - df_env.iloc[0]["datetime"]).total_seconds(),
-        )
-        dt_hours = delta_seconds / 3600.0
-        logger.info(
-            f"Calculated timestep duration: {dt_hours:.4f} hours ({dt_hours*60:.1f} minutes)"
-        )
-    else:
-        delta_seconds = 3600.0
-        dt_hours = 1.0
-        logger.warning("Only one row in data, using default dt_hours=1.0")
+    # Calculate timestep duration from the active time-step contract.
+    step_sim_duration_seconds = _derive_step_sim_duration_seconds(req.time_step, df_env)
+    delta_seconds = step_sim_duration_seconds
+    dt_hours = step_sim_duration_seconds / 3600.0
+    logger.info(
+        "Calculated timestep duration: %.4f hours (%.1f minutes)",
+        dt_hours,
+        dt_hours * 60,
+    )
 
     crop_state["dt_hours"] = dt_hours
+    crop_state["step_sim_duration_seconds"] = step_sim_duration_seconds
+    sim_seconds_per_real_second = crop_state.get("sim_seconds_per_real_second")
+    if sim_seconds_per_real_second is None:
+        sim_seconds_per_real_second = _default_sim_seconds_per_real_second(
+            step_sim_duration_seconds
+        )
+        crop_state["sim_seconds_per_real_second"] = sim_seconds_per_real_second
+
     # Forecast sampling tuned to be FASTER than the simulation's 1-hour scale:
     # - base_interval: number of rows per hour (e.g., 10-min data => 6)
     # - Use half-hour equivalent by default (base_interval // 2, but at least 1)
@@ -1733,7 +1842,9 @@ async def start_simulation(req: StartRequest):
         energy_estimator=crop_state["energy"],
         greenhouse_config=greenhouse_config,
         operations_config=ops_config,
-        dt_hours=dt_hours
+        dt_hours=dt_hours,
+        step_sim_duration_seconds=step_sim_duration_seconds,
+        sim_seconds_per_real_second=sim_seconds_per_real_second,
     )
     crop_state["simulator"] = simulator
     if crop_state["irrigation"] is not None:
@@ -1764,8 +1875,8 @@ async def start_simulation(req: StartRequest):
 
     # Auto-start simulation for real-time streaming
     simulator.start()
-    import asyncio
 
+    crop_state["pace_changed_event"] = asyncio.Event()
     crop_state["sim_task"] = asyncio.create_task(_run_simulation_task(crop))
     logger.info(f"{crop} real-time simulation started")
     
@@ -1788,6 +1899,8 @@ async def start_simulation(req: StartRequest):
             "end": str(df_env["datetime"].max()),
         },
         "time_step": req.time_step,
+        "step_sim_duration_seconds": step_sim_duration_seconds,
+        "sim_seconds_per_real_second": sim_seconds_per_real_second,
         "dt_minutes": round(dt_hours * 60, 3),
     }
 
@@ -1973,10 +2086,9 @@ async def _run_simulation_task(crop: str):
                         _record_runtime_error(crop, exc)
                         logger.error("Failed to schedule %s forecast at step %s: %s", crop, i, exc, exc_info=True)
 
-                # Speed-controlled delay (adjustable via simulator.speed)
-                # Default: 0.1s per step (10 steps/sec) for smooth visualization
-                delay = 0.1 / simulator.speed
-                await asyncio.sleep(delay)
+                if i < len(simulator.df_env) - 1:
+                    delay = _simulation_step_delay_seconds(simulator)
+                    await _sleep_simulation_delay(crop, simulator, delay)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -2119,25 +2231,117 @@ async def stop_simulation(crop: Optional[str] = None):
 class SpeedRequest(BaseModel):
     """Request to change simulation speed."""
 
-    speed: float  # Speed multiplier (0.1 to 100)
+    speed: Optional[float] = None  # Legacy speed multiplier (0.1 to 100)
+    sim_seconds_per_real_second: Optional[float] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def prefer_sim_seconds_per_real_second(cls, data):
+        if (
+            isinstance(data, dict)
+            and data.get("sim_seconds_per_real_second") is not None
+        ):
+            try:
+                pace = float(data["sim_seconds_per_real_second"])
+            except (TypeError, ValueError):
+                return {
+                    "sim_seconds_per_real_second": data.get(
+                        "sim_seconds_per_real_second"
+                    )
+                }
+
+            if not math.isfinite(pace) or pace <= 0:
+                return {"sim_seconds_per_real_second": "invalid"}
+
+            return {
+                "sim_seconds_per_real_second": data.get(
+                    "sim_seconds_per_real_second"
+                )
+            }
+
+        if isinstance(data, dict) and data.get("speed") is not None:
+            try:
+                speed = float(data["speed"])
+            except (TypeError, ValueError):
+                return data
+
+            if not math.isfinite(speed):
+                return {"speed": "invalid"}
+
+        return data
+
+    @model_validator(mode="after")
+    def validate_requested_pace(self):
+        if self.speed is None and self.sim_seconds_per_real_second is None:
+            raise ValueError(
+                "Provide speed or sim_seconds_per_real_second"
+            )
+
+        if self.sim_seconds_per_real_second is not None:
+            pace = float(self.sim_seconds_per_real_second)
+            if not math.isfinite(pace) or pace <= 0:
+                raise ValueError(
+                    "sim_seconds_per_real_second must be finite and greater than 0"
+                )
+        elif self.speed is not None and not math.isfinite(float(self.speed)):
+            raise ValueError("speed must be finite")
+
+        return self
 
 
 @app.post("/api/speed")
 async def set_speed(req: SpeedRequest, crop: Optional[str] = None):
     """Set simulation speed."""
     updated_crops = []
+    greenhouse_updates = {}
     for crop_name in _target_crops(crop):
         simulator = app_state[crop_name]["simulator"]
         if simulator is None:
             continue
 
-        simulator.set_speed(req.speed)
+        if req.sim_seconds_per_real_second is not None:
+            sim_seconds_per_real_second = simulator.set_sim_seconds_per_real_second(
+                req.sim_seconds_per_real_second
+            )
+        else:
+            sim_seconds_per_real_second = simulator.set_speed(req.speed)
+
+        app_state[crop_name]["sim_seconds_per_real_second"] = (
+            sim_seconds_per_real_second
+        )
+        app_state[crop_name]["step_sim_duration_seconds"] = getattr(
+            simulator,
+            "step_sim_duration_seconds",
+            app_state[crop_name].get("step_sim_duration_seconds"),
+        )
+        pace_changed_event = app_state[crop_name].get("pace_changed_event")
+        if pace_changed_event is not None:
+            pace_changed_event.set()
+        _record_runtime_tick(crop_name)
         updated_crops.append(crop_name)
+        greenhouse_updates[crop_name] = {
+            "speed": simulator.speed,
+            "sim_seconds_per_real_second": sim_seconds_per_real_second,
+            "step_sim_duration_seconds": getattr(
+                simulator,
+                "step_sim_duration_seconds",
+                None,
+            ),
+        }
 
     if not updated_crops:
         raise HTTPException(status_code=400, detail="Simulation not started")
 
-    return {"status": "success", "crops": updated_crops, "speed": req.speed}
+    first_update = greenhouse_updates[updated_crops[0]]
+    return {
+        "status": "success",
+        "crops": updated_crops,
+        "speed": first_update["speed"],
+        "sim_seconds_per_real_second": first_update[
+            "sim_seconds_per_real_second"
+        ],
+        "greenhouses": greenhouse_updates,
+    }
 
 
 @app.post("/api/config/ops")
@@ -3666,7 +3870,12 @@ async def get_status():
         crop_state = app_state[crop_name]
         
         if crop_state["simulator"] is None:
-            status_result[crop_name] = {"status": "idle"}
+            status_result[crop_name] = {
+                "status": "idle",
+                "sim_seconds_per_real_second": crop_state.get(
+                    "sim_seconds_per_real_second"
+                ),
+            }
         else:
             simulator = crop_state["simulator"]
             sim_task = crop_state.get("sim_task")
@@ -3717,6 +3926,16 @@ async def get_status():
                 "total_rows": total_rows,
                 "progress": progress,
                 "time_step": crop_state.get("time_step", "auto"),
+                "step_sim_duration_seconds": getattr(
+                    simulator,
+                    "step_sim_duration_seconds",
+                    crop_state.get("step_sim_duration_seconds"),
+                ),
+                "sim_seconds_per_real_second": getattr(
+                    simulator,
+                    "sim_seconds_per_real_second",
+                    crop_state.get("sim_seconds_per_real_second"),
+                ),
                 "dt_minutes": round(crop_state.get("dt_hours", 0) * 60, 3)
                 if crop_state.get("dt_hours")
                 else None,

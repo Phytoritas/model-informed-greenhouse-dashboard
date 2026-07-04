@@ -50,6 +50,9 @@ def reset_runtime_state() -> None:
         crop_state["sim_task"] = None
         crop_state["dt_hours"] = None
         crop_state["time_step"] = "auto"
+        crop_state["step_sim_duration_seconds"] = None
+        crop_state["sim_seconds_per_real_second"] = None
+        crop_state["pace_changed_event"] = None
         crop_state["decision"] = None
         crop_state["last_irrigation"] = None
         crop_state["last_energy"] = None
