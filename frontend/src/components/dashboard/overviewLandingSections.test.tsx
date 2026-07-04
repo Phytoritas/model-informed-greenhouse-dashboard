@@ -169,14 +169,29 @@ describe('overview landing sections', () => {
     expect(screen.queryByText('AI decision platform for smart greenhouses.')).toBeNull();
   });
 
-  it('routes landing navigation to the full feature surfaces', () => {
+  it('routes landing navigation to live feature surfaces without dead hash anchors', () => {
     renderWithProviders(<TopNavigation onOpenAssistant={() => undefined} />);
 
-    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/overview#overview-dashboard');
+    // Regression guard for issue #132: these previously pointed at #overview-dashboard
+    // and #assistant-search anchors that do not exist on the standalone routes.
+    expect(screen.getByRole('link', { name: 'HOME' }).getAttribute('href')).toBe('/overview');
+    expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control');
     expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend');
     expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios');
-    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant#assistant-search');
+    expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant');
     expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Open Dashboard' }).getAttribute('href')).toBe('/overview#overview-dashboard');
+    // CONTACT is an in-page action (scrolls to the footer), not a route link.
+    expect(screen.getByRole('button', { name: 'CONTACT' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'CONTACT' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Open Dashboard' }).getAttribute('href')).toBe('/control');
+  });
+
+  it('does not reintroduce dead hash-anchor navigation targets', () => {
+    renderWithProviders(<TopNavigation onOpenAssistant={() => undefined} />);
+
+    for (const link of screen.getAllByRole('link')) {
+      expect(link.getAttribute('href') ?? '').not.toContain('#overview-dashboard');
+      expect(link.getAttribute('href') ?? '').not.toContain('#assistant-search');
+    }
   });
 });
