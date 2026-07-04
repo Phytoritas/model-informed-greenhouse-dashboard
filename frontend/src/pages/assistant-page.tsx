@@ -12,20 +12,14 @@ export default function AssistantPage({
   surface,
   summaryRail = null,
 }: AssistantPageProps) {
-  const copy = locale === 'ko'
-    ? {
-        eyebrow: 'PhytoSync',
-        title: '질문 도우미',
-        description: '질문과 자료 찾기를 한곳에서 봅니다.',
-      }
-    : {
-        eyebrow: 'PhytoSync',
-        title: 'Assistant',
-        description: 'Keep ask and search together.',
-      };
+  // The workspace TopBar already shows the page title and the panel actions
+  // live in WorkspaceTopNav, so the assistant canvas skips its own header to
+  // avoid repeating the same label three times.
+  const title = locale === 'ko' ? '질문 도우미' : 'Assistant';
 
   return (
-    <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
+    <PageCanvas title={title} description="" hideHeader>
+      <h2 className="sr-only">{title}</h2>
       <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,392px)]">
         <div className="min-w-0">{surface}</div>
         {summaryRail ? <div className="min-w-0">{summaryRail}</div> : null}

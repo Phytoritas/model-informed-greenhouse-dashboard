@@ -703,7 +703,7 @@ const ChatAssistant = ({
         <div
             className={
                 isInline
-                    ? 'flex min-h-[680px] w-full flex-col overflow-hidden rounded-[32px]'
+                    ? 'flex h-[560px] w-full flex-col overflow-hidden rounded-[24px]'
                     : 'fixed bottom-6 right-6 z-50 flex h-[560px] w-[28rem] flex-col overflow-hidden rounded-[32px]'
             }
             style={{
@@ -772,7 +772,7 @@ const ChatAssistant = ({
             <div
                 className={
                     isInline
-                        ? 'flex-1 space-y-4 bg-[color:var(--sg-surface)] p-4 sm:p-5'
+                        ? 'flex-1 space-y-4 overflow-y-auto bg-[color:var(--sg-surface)] p-4 sm:p-5'
                         : 'flex-1 space-y-4 overflow-y-auto bg-[color:var(--sg-surface)] p-4'
                 }
             >
