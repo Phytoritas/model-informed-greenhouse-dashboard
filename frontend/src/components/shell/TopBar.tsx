@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Globe2, Leaf, MessageCircle, Settings } from 'lucide-react';
+import { Bell, Globe2, MessageCircle, Settings } from 'lucide-react';
 import type { AppLocale } from '../../i18n/locale';
 import type { CropType } from '../../types';
 import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
@@ -24,9 +24,10 @@ interface TopBarProps {
 }
 
 /**
- * Slim one-row workspace header matching the Command landing navigation look:
- * Leaf + PhytoSync brand, the current page title, a compact search pill, and
- * the control cluster (telemetry, locale, crop, alerts, assistant, settings).
+ * Slim one-row workspace utility bar rendered below the shared GlobalTopNav
+ * header: the current page title, a compact search pill, and the control
+ * cluster (telemetry, locale, crop, alerts, assistant, settings). The brand
+ * mark lives in GlobalTopNav, so this row stays title-first.
  */
 export default function TopBar({
   locale,
@@ -46,7 +47,6 @@ export default function TopBar({
   const [searchQuery, setSearchQuery] = useState('');
   const copy = locale === 'ko'
     ? {
-        brand: 'PhytoSync',
         language: '언어',
         assistant: '질문 도우미',
         search: '온실, 시세, 생육 등 현황 확인하기',
@@ -55,7 +55,6 @@ export default function TopBar({
         settings: '설정',
       }
     : {
-        brand: 'PhytoSync',
         language: 'Language',
         assistant: 'Assistant',
         search: 'Search work, materials, or houses',
@@ -76,15 +75,10 @@ export default function TopBar({
   };
 
   return (
-    <header className="pt-4">
-      <div className="mx-auto w-full max-w-[1640px] px-4 sm:px-6 xl:px-8">
+    <header>
+      <div className="w-full min-w-0">
         <div className="sg-panel flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[22px] px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="inline-flex shrink-0 items-center gap-2 text-base font-bold text-[color:var(--sg-text-strong)]">
-              <Leaf className="h-5 w-5 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
-              {copy.brand}
-            </span>
-            <span aria-hidden="true" className="hidden h-4 w-px bg-[color:var(--sg-outline-soft)] sm:block" />
             <h1 className="truncate text-sm font-bold text-[color:var(--sg-text-strong)]">
               {resolvedPageTitle}
             </h1>

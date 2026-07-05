@@ -261,33 +261,6 @@ const PriceChangeChip = ({
     );
 };
 
-function MarketMetaTile({
-    label,
-    value,
-    detail,
-}: {
-    label: string;
-    value: string;
-    detail: string;
-}) {
-    return (
-        <div
-            className="rounded-[var(--sg-radius-lg)] bg-white/84 px-4 py-4"
-            style={{ boxShadow: 'var(--sg-shadow-card)' }}
-        >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-text-faint)]">
-                {label}
-            </div>
-            <div className="sg-data-number mt-3 text-lg font-semibold text-[color:var(--sg-text-strong)]">
-                {value}
-            </div>
-            <div className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
-                {detail}
-            </div>
-        </div>
-    );
-}
-
 const ProducePriceCard = ({
     item,
     locale,
@@ -688,97 +661,74 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                     {copy.unavailable}: {error}
                 </div>
             ) : prices && activeMarket ? (
-                <div className="flex h-full flex-col space-y-4">
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.22fr)_minmax(0,0.78fr)]">
-                        <article
-                            className="relative overflow-hidden rounded-[var(--sg-radius-xl)] bg-[linear-gradient(135deg,rgba(225,245,203,0.96),rgba(255,255,255,0.9))] px-6 py-6"
-                            style={{ boxShadow: 'var(--sg-shadow-soft)' }}
-                        >
-                            <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/22 blur-3xl" />
-                            <div className="relative flex flex-col gap-5">
-                                <div className="flex flex-wrap items-start justify-between gap-4">
-                                    <div className="flex items-start gap-3">
-                                        <div
-                                            className="flex h-14 w-14 items-center justify-center rounded-[var(--sg-radius-lg)] bg-white/84"
-                                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                        >
-                                            <Sprout className="h-6 w-6 text-[color:var(--sg-accent-forest)]" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="sg-eyebrow">{copy.livePulse}</div>
-                                            <div className="mt-3 text-[clamp(1.7rem,2.2vw,2.55rem)] font-semibold tracking-[-0.07em] text-[color:var(--sg-text-strong)]">
-                                                {localizeMarketLabel(activeMarket.market_label, locale)}
-                                            </div>
-                                            <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
-                                                {buildProduceSummary(prices, activeMarket, locale)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="rounded-full bg-white/84 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-forest)] shadow-[var(--sg-shadow-card)]">
-                                        {copy.leadMarket}
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-wrap gap-2">
+                <div className="flex h-full flex-col space-y-3">
+                    <section
+                        className="rounded-[var(--sg-radius-lg)] bg-white/78 px-4 py-3"
+                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                    >
+                        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                            <div className="flex min-w-0 items-center gap-2">
+                                <Sprout className="h-4 w-4 shrink-0 text-[color:var(--sg-accent-forest)]" aria-hidden="true" />
+                                <span className="sg-eyebrow">{copy.livePulse}</span>
+                                <div className="flex gap-1 rounded-full border border-[color:var(--sg-outline-soft)] bg-white p-0.5">
                                     {(['retail', 'wholesale'] as ProduceMarketKey[]).map((marketKey) => (
                                         <button
                                             key={marketKey}
                                             type="button"
                                             onClick={() => setSelectedMarket(marketKey)}
-                                            className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                                            className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
                                                 marketKey === activeMarketKey
-                                                    ? 'border-transparent bg-[color:var(--sg-accent-forest)] text-white shadow-[var(--sg-shadow-card)]'
-                                                    : 'border-white/70 bg-white/80 text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
+                                                    ? 'bg-[color:var(--sg-accent-forest)] text-white shadow-[var(--sg-shadow-card)]'
+                                                    : 'text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
                                             }`}
                                         >
                                             {marketKey === 'retail' ? copy.retail : copy.wholesale}
                                         </button>
                                     ))}
                                 </div>
-
-                                <div className="grid gap-3 md:grid-cols-4">
-                                    <MarketMetaTile
-                                        label={copy.currentSelection}
-                                        value={localizeMarketLabel(activeMarket.market_label, locale)}
-                                        detail={`${copy.sourceLabel} · ${prices.source.provider}`}
-                                    />
-                                    <MarketMetaTile
-                                        label={copy.surveyBasis}
-                                        value={formatSurveyDay(locale, prices.source.latest_day)}
-                                        detail={copy.leadItem}
-                                    />
-                                    <MarketMetaTile
-                                        label={copy.featuredCount}
-                                        value={String(activeMarket.items.length)}
-                                        detail={leadMarketItem ? getProduceDisplayName(leadMarketItem.display_name, locale) : copy.noItems}
-                                    />
-                                    <MarketMetaTile
-                                        label={copy.sourceStatus}
-                                        value={sourceHealth?.label ?? prices.source.provider}
-                                        detail={sourceHealth?.detail ?? prices.source.provider}
-                                    />
-                                </div>
-                                {sourceHealth?.degraded ? (
-                                    <div className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-tint-amber)] px-4 py-3 text-xs leading-relaxed text-[color:var(--sg-accent-amber)] shadow-[var(--sg-shadow-card)]">
-                                        {sourceHealth.detail}
-                                    </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[color:var(--sg-text-muted)]">
+                                <span>
+                                    {copy.surveyBasis}
+                                    {' '}
+                                    <strong className="sg-data-number font-bold text-[color:var(--sg-text-strong)]">
+                                        {formatSurveyDay(locale, prices.source.latest_day)}
+                                    </strong>
+                                </span>
+                                <span>
+                                    {copy.featuredCount}
+                                    {' '}
+                                    <strong className="sg-data-number font-bold text-[color:var(--sg-text-strong)]">
+                                        {activeMarket.items.length}
+                                    </strong>
+                                </span>
+                                <span>
+                                    {copy.trendBasis}
+                                    {' '}
+                                    <strong className="font-bold text-[color:var(--sg-text-strong)]">
+                                        {localizeMarketLabel(prices.trend.market_key, locale)}
+                                    </strong>
+                                </span>
+                                {leadMarketItem ? (
+                                    <span>
+                                        {copy.leadItem}
+                                        {' '}
+                                        <strong className="font-bold text-[color:var(--sg-text-strong)]">
+                                            {getProduceDisplayName(leadMarketItem.display_name, locale)}
+                                        </strong>
+                                    </span>
                                 ) : null}
                             </div>
-                        </article>
-
-                        <div className="grid gap-4">
-                            <MarketMetaTile
-                                label={copy.trendBasis}
-                                value={localizeMarketLabel(prices.trend.market_key, locale)}
-                                detail={copy.trendNote}
-                            />
-                            <MarketMetaTile
-                                label={copy.sourceStatus}
-                                value={sourceHealth?.label ?? prices.source.provider}
-                                detail={sourceHealth?.detail ?? prices.source.provider}
-                            />
                         </div>
-                    </div>
+                        <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
+                            {buildProduceSummary(prices, activeMarket, locale)}
+                        </p>
+                        {sourceHealth?.degraded ? (
+                            <div className="mt-2 rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-amber)] px-3 py-2 text-[11px] leading-relaxed text-[color:var(--sg-accent-amber)]">
+                                {sourceHealth.detail}
+                            </div>
+                        ) : null}
+                    </section>
 
                     <div className="grid gap-4">
                         <div

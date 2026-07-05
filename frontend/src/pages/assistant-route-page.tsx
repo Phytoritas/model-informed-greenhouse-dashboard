@@ -1,5 +1,4 @@
 import { Suspense, lazy } from 'react';
-import PageSectionTabs from '../components/phyto/PageSectionTabs';
 import AskSearchPage from '../components/phyto/AskSearchPage';
 import AiCompatibilityPanel from '../components/assistant/AiCompatibilityPanel';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
@@ -15,7 +14,6 @@ import type {
   WeatherOutlook,
 } from '../types';
 import type { RagAssistantOpenRequest } from '../components/chat/ragAssistantTypes';
-import type { PhytoSectionTab } from '../routes/phytosyncSections';
 import AssistantPage from './assistant-page';
 
 const SmartGrowSurfacePanel = lazy(() => import('../components/SmartGrowSurfacePanel'));
@@ -24,8 +22,6 @@ interface AssistantRoutePageProps {
   locale: AppLocale;
   crop: CropType;
   cropLabel: string;
-  panelTabs: PhytoSectionTab[];
-  onSelectPanel: (panelId: string) => void;
   summary: SmartGrowKnowledgeSummary | null;
   activePanel?: 'assistant-chat' | 'assistant-search' | 'assistant-history';
   searchRequest?: RagAssistantOpenRequest | null;
@@ -47,8 +43,6 @@ export default function AssistantRoutePage({
   locale,
   crop,
   cropLabel,
-  panelTabs,
-  onSelectPanel,
   summary,
   activePanel = 'assistant-chat',
   searchRequest = null,
@@ -70,11 +64,6 @@ export default function AssistantRoutePage({
       locale={locale}
       surface={(
         <div className="min-w-0 space-y-6">
-          <PageSectionTabs
-            tabs={panelTabs}
-            activeId={activePanel}
-            onSelect={onSelectPanel}
-          />
           <AskSearchPage
             locale={locale}
             crop={crop}

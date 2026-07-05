@@ -14,35 +14,26 @@ interface ConsultingReportProps {
     crop: CropType;
 }
 
-function ReportMetricTile({
+function ReportStatTile({
     label,
     value,
     detail,
-    tone,
 }: {
     label: string;
     value: string;
-    detail: string;
-    tone: 'neutral' | 'green' | 'amber' | 'blue';
+    detail?: string;
 }) {
-    const toneClass = {
-        neutral: 'bg-white/86',
-        green: 'bg-[color:var(--sg-tint-green)]',
-        amber: 'bg-[color:var(--sg-tint-amber)]',
-        blue: 'bg-[color:var(--sg-tint-blue)]',
-    }[tone];
-
     return (
-        <div className={`rounded-[24px] px-4 py-4 ${toneClass}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-text-faint)]">
+        <div className="min-w-0 rounded-[var(--sg-radius-md)] bg-white/84 px-3 py-2.5 shadow-[var(--sg-shadow-card)]">
+            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                 {label}
             </div>
-            <div className="mt-3 text-2xl font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+            <div className="sg-data-number mt-1 truncate text-sm font-bold text-[color:var(--sg-text-strong)]">
                 {value}
             </div>
-            <div className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
-                {detail}
-            </div>
+            {detail ? (
+                <div className="mt-0.5 truncate text-[11px] text-[color:var(--sg-text-muted)]">{detail}</div>
+            ) : null}
         </div>
     );
 }
@@ -57,12 +48,12 @@ function MemoSignal({
     body: string;
 }) {
     return (
-        <div className="rounded-[22px] bg-white/84 px-4 py-4" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-            <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--sg-text-strong)]">
-                <Icon className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
-                <span>{title}</span>
+        <div className="min-w-0 rounded-[var(--sg-radius-md)] bg-white/84 px-3 py-2.5 shadow-[var(--sg-shadow-card)]">
+            <div className="flex items-center gap-2 text-xs font-bold text-[color:var(--sg-text-strong)]">
+                <Icon className="h-3.5 w-3.5 shrink-0 text-[color:var(--sg-accent-violet)]" />
+                <span className="truncate">{title}</span>
             </div>
-            <p className="mt-2 text-sm leading-7 text-[color:var(--sg-text-muted)]">{body}</p>
+            <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{body}</p>
         </div>
     );
 }
@@ -148,102 +139,74 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
                 </div>
             )}
         >
-            <div className="space-y-4">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-                    <article
-                        className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,rgba(225,218,255,0.96),rgba(255,255,255,0.9))] px-6 py-6"
-                        style={{ boxShadow: 'var(--sg-shadow-soft)' }}
-                    >
-                        <div className="absolute -right-10 -top-8 h-36 w-36 rounded-full bg-white/18 blur-3xl" />
-                        <div className="relative flex flex-col gap-5">
-                            <div className="flex flex-wrap items-start justify-between gap-4">
-                                <div className="flex items-start gap-3">
-                                    <div
-                                        className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
-                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                    >
-                                        <FileText className="h-6 w-6 text-[color:var(--sg-accent-violet)]" />
-                                    </div>
-                                    <div>
-                                        <div className="sg-eyebrow">{copy.executiveSummary}</div>
-                                        <div className="mt-3 text-[clamp(1.7rem,2.2vw,2.55rem)] font-semibold tracking-[-0.07em] text-[color:var(--sg-text-strong)]">
-                                            {growthOutlook}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="rounded-full bg-white/84 px-4 py-2 text-xs font-semibold text-[color:var(--sg-accent-violet)] shadow-[var(--sg-shadow-card)]">
-                                    {copy.operatorLead}
-                                </div>
-                            </div>
-
-                            <p className="max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
-                                {executiveSummary}
-                            </p>
-
-                            <div className="grid gap-3 md:grid-cols-3">
-                                <ReportMetricTile
-                                    label={copy.confidence}
-                                    value={readiness.label}
-                                    detail={copy.weekly}
-                                    tone="neutral"
-                                />
-                                <ReportMetricTile
-                                    label={copy.yieldOutlook}
-                                    value={`${metrics.yield.predictedWeekly.toFixed(1)} kg/m²`}
-                                    detail={copy.weekly}
-                                    tone="green"
-                                />
-                                <ReportMetricTile
-                                    label={copy.cop}
-                                    value={`${metrics.energy.efficiency.toFixed(1)} COP`}
-                                    detail={`${copy.energyUsage} ${metrics.energy.consumption.toFixed(2)} kW`}
-                                    tone="amber"
-                                />
-                            </div>
-                        </div>
-                    </article>
-
-                    <div className="grid gap-4">
-                        <ReportMetricTile
+            <div className="space-y-3">
+                <section
+                    className="rounded-[var(--sg-radius-lg)] bg-white/78 px-4 py-3"
+                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                >
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <span className="flex items-center gap-1.5">
+                            <FileText className="h-4 w-4 shrink-0 text-[color:var(--sg-accent-violet)]" aria-hidden="true" />
+                            <span className="sg-eyebrow">{copy.executiveSummary}</span>
+                        </span>
+                        <span className="text-lg font-bold leading-none text-[color:var(--sg-text-strong)]">
+                            {growthOutlook}
+                        </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
+                        {executiveSummary}
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+                        <ReportStatTile label={copy.confidence} value={readiness.label} detail={copy.weekly} />
+                        <ReportStatTile
+                            label={copy.yieldOutlook}
+                            value={`${metrics.yield.predictedWeekly.toFixed(1)} kg/m²`}
+                            detail={copy.weekly}
+                        />
+                        <ReportStatTile
+                            label={copy.cop}
+                            value={`${metrics.energy.efficiency.toFixed(1)} COP`}
+                            detail={`${copy.energyUsage} ${metrics.energy.consumption.toFixed(2)} kW`}
+                        />
+                        <ReportStatTile
                             label={copy.biomass}
                             value={`${metrics.growth.biomass.toFixed(1)} g/m²`}
                             detail={`LAI ${metrics.growth.lai.toFixed(2)}`}
-                            tone="neutral"
                         />
-                        <ReportMetricTile
+                        <ReportStatTile
                             label={copy.photosynthesis}
                             value={currentData.photosynthesis.toFixed(1)}
                             detail={`${copy.vpd} ${currentData.vpd.toFixed(2)} kPa`}
-                            tone="blue"
                         />
-                        <ReportMetricTile
+                        <ReportStatTile
                             label={copy.hourlyCost}
                             value={metrics.energy.costPrediction.toFixed(2)}
                             detail={`${copy.energyUsage} ${metrics.energy.consumption.toFixed(2)} kW`}
-                            tone="amber"
                         />
                     </div>
-                </div>
+                </section>
 
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-                    <article className="rounded-[30px] bg-[color:var(--sg-tint-neutral)] px-5 py-5 shadow-[var(--sg-shadow-card)]">
-                        <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                            <Sparkles className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
-                            <h4 className="text-sm font-semibold uppercase tracking-[0.16em]">
-                                {copy.operatorMemo}
-                            </h4>
-                        </div>
-                        <div className="mt-4 grid gap-3">
-                            <MemoSignal icon={Leaf} title={copy.currentDirection} body={currentDirectionMemo} />
-                            <MemoSignal icon={Waves} title={copy.climateSignal} body={climateSignalMemo} />
-                            <MemoSignal icon={Zap} title={copy.energySignal} body={energySignalMemo} />
-                        </div>
-                    </article>
+                <section
+                    className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-tint-neutral)] px-4 py-3"
+                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                >
+                    <div className="flex items-center gap-2 text-[color:var(--sg-text-strong)]">
+                        <Sparkles className="h-3.5 w-3.5 text-[color:var(--sg-accent-violet)]" aria-hidden="true" />
+                        <h4 className="text-xs font-bold uppercase tracking-[0.14em]">
+                            {copy.operatorMemo}
+                        </h4>
+                    </div>
+                    <div className="mt-2 grid gap-2 md:grid-cols-3">
+                        <MemoSignal icon={Leaf} title={copy.currentDirection} body={currentDirectionMemo} />
+                        <MemoSignal icon={Waves} title={copy.climateSignal} body={climateSignalMemo} />
+                        <MemoSignal icon={Zap} title={copy.energySignal} body={energySignalMemo} />
+                    </div>
+                </section>
 
-                    <div className="rounded-[30px] bg-white/88 px-5 py-5 shadow-[var(--sg-shadow-card)]">
-                        <div className="mb-4 flex items-center gap-2 text-[color:var(--sg-text-strong)]">
-                            <Sparkles className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />
-                            <h4 className="text-sm font-semibold uppercase tracking-[0.16em]">
+                <div className="rounded-[var(--sg-radius-lg)] bg-white/88 px-4 py-3 shadow-[var(--sg-shadow-card)]">
+                        <div className="mb-2 flex items-center gap-2 text-[color:var(--sg-text-strong)]">
+                            <Sparkles className="h-3.5 w-3.5 text-[color:var(--sg-accent-violet)]" aria-hidden="true" />
+                            <h4 className="text-xs font-bold uppercase tracking-[0.14em]">
                                 {copy.aiNotes}
                             </h4>
                         </div>
@@ -264,7 +227,6 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
                                 {analysis || copy.waiting}
                             </ReactMarkdown>
                         </div>
-                    </div>
                 </div>
             </div>
         </DashboardCard>

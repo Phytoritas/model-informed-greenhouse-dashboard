@@ -11,7 +11,7 @@ export type GlobalNavigationKey =
 export interface GlobalNavigationItem {
   key: GlobalNavigationKey;
   label: string;
-  path?: string;
+  path: string;
 }
 
 export const GLOBAL_NAVIGATION_ITEMS: readonly GlobalNavigationItem[] = [
@@ -20,7 +20,7 @@ export const GLOBAL_NAVIGATION_ITEMS: readonly GlobalNavigationItem[] = [
   { key: 'insights', label: 'INSIGHTS', path: '/trend' },
   { key: 'scenarios', label: 'SCENARIOS', path: '/scenarios' },
   { key: 'knowledge', label: 'KNOWLEDGE', path: '/assistant' },
-  { key: 'contact', label: 'CONTACT' },
+  { key: 'contact', label: 'CONTACT', path: '/contact' },
 ] as const;
 
 const DASHBOARD_SUBNAV_SECTION_KEYS = [
@@ -45,6 +45,7 @@ export function getGlobalNavigationKeyForPathname(pathname: string): GlobalNavig
   if (pathname.startsWith('/trend')) return 'insights';
   if (pathname.startsWith('/scenarios')) return 'scenarios';
   if (pathname.startsWith('/assistant') || pathname.startsWith('/ask')) return 'knowledge';
+  if (pathname.startsWith('/contact')) return 'contact';
 
   if (
     pathname.startsWith('/control')
