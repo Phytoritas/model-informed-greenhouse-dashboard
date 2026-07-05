@@ -13,17 +13,9 @@ import type {
 } from '../types';
 import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
-import { getReadinessDescriptor } from '../lib/design/readiness';
 import { buildAiDashboardContext } from '../utils/aiDashboardContext';
-import {
-    getControlDisplayCopy,
-    getCropLabel,
-} from '../utils/displayCopy';
+import { getCropLabel } from '../utils/displayCopy';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
-import type {
-    AdvisorDisplayPayload,
-    ModelRuntimePayload,
-} from '../hooks/useSmartGrowAdvisor';
 import type { RagAssistantOpenRequest } from './chat/ragAssistantTypes';
 
 interface ChatAssistantProps {
@@ -51,194 +43,12 @@ type ChatResponse = {
     detail?: string;
     message?: string;
     text?: string;
-    machine_payload?: {
-        display?: AdvisorDisplayPayload | null;
-        model_runtime?: ModelRuntimePayload | null;
-    };
 };
 
 type ChatMessage = {
     role: 'user' | 'ai';
     text: string;
-    display?: AdvisorDisplayPayload | null;
-    modelRuntime?: ModelRuntimePayload | null;
 };
-
-function formatRuntimeValue(
-    value: number | null | undefined,
-    digits = 1,
-    unit = '',
-) {
-    if (value === null || value === undefined || Number.isNaN(value)) {
-        return '-';
-    }
-    return `${value.toFixed(digits)}${unit}`;
-}
-
-function formatSignedRuntimeValue(
-    value: number | null | undefined,
-    digits = 3,
-    unit = '',
-) {
-    if (value === null || value === undefined || Number.isNaN(value)) {
-        return '-';
-    }
-    return `${value >= 0 ? '+' : ''}${value.toFixed(digits)}${unit}`;
-}
-
-function localizeDirection(direction: string | null | undefined, locale: 'ko' | 'en'): string {
-    if (direction === 'increase') {
-        return locale === 'ko' ? '올리기' : 'Increase';
-    }
-    if (direction === 'decrease') {
-        return locale === 'ko' ? '내리기' : 'Decrease';
-    }
-    return locale === 'ko' ? '유지' : 'Hold';
-}
-
-function ActionTag({
-    title,
-    items,
-}: {
-    title: string;
-    items: string[];
-}) {
-    if (items.length === 0) {
-        return null;
-    }
-
-    return (
-        <div className="space-y-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                {title}
-            </div>
-            <div className="flex flex-wrap gap-2">
-                {items.map((item) => (
-                    <span
-                        key={`${title}-${item}`}
-                        className="rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-medium text-[color:var(--sg-text-strong)]"
-                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                    >
-                        {item}
-                    </span>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function StructuredReply({
-    display,
-    copy,
-    locale,
-}: {
-    display: AdvisorDisplayPayload;
-    copy: Record<string, string>;
-    locale: 'ko' | 'en';
-}) {
-    const readiness = getReadinessDescriptor(display.confidence, locale);
-
-    return (
-        <div
-            className="mt-3 space-y-3 rounded-[24px] bg-[color:var(--sg-surface-muted)] p-3"
-            style={{ boxShadow: 'var(--sg-shadow-card)' }}
-        >
-            {display.summary ? (
-                <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                        {copy.summaryTitle}
-                    </div>
-                    <p className="mt-1 text-sm leading-relaxed text-[color:var(--sg-text-strong)]">{display.summary}</p>
-                </div>
-            ) : null}
-            <ActionTag title={copy.nowTitle} items={display.actions_now ?? []} />
-            <ActionTag title={copy.todayTitle} items={display.actions_today ?? []} />
-            <ActionTag title={copy.weekTitle} items={display.actions_week ?? []} />
-            {(display.risks ?? []).length > 0 ? (
-                <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                        {copy.risksTitle}
-                    </div>
-                    <ul className="mt-2 space-y-2 text-sm text-[color:var(--sg-text-strong)]">
-                        {(display.risks ?? []).map((risk) => (
-                            <li key={risk} className="rounded-[18px] bg-white/86 px-3 py-2">
-                                {risk}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            ) : null}
-            {(display.monitor ?? []).length > 0 ? (
-                <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
-                        {copy.monitorTitle}
-                    </div>
-                    <ul className="mt-2 space-y-2 text-sm text-[color:var(--sg-text-strong)]">
-                        {(display.monitor ?? []).map((item) => (
-                            <li key={item} className="rounded-[18px] bg-white/86 px-3 py-2">
-                                {item}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            ) : null}
-            {typeof display.confidence === 'number' ? (
-                <div className="text-[11px] font-medium text-[color:var(--sg-text-faint)]">
-                    {readiness.lead}: {readiness.label}
-                </div>
-            ) : null}
-        </div>
-    );
-}
-
-function cleanAnswerLine(line: string): string {
-    return line
-        .replace(/^#{1,6}\s*/, '')
-        .replace(/^[-*+]\s*/, '')
-        .replace(/^\d+[.)]\s*/, '')
-        .replace(/\*\*/g, '')
-        .trim();
-}
-
-function buildFarmerAnswer(text: string) {
-    const lines = text
-        .split(/\r?\n+/)
-        .map(cleanAnswerLine)
-        .filter(Boolean);
-    const meaningfulLines = lines.length > 0
-        ? lines
-        : text
-            .split(/(?<=[.!?。！？])\s+/)
-            .map(cleanAnswerLine)
-            .filter(Boolean);
-    const summary = meaningfulLines.slice(0, 2).join(' ').slice(0, 260) || text.slice(0, 260);
-    const actionKeywords = [
-        '확인',
-        '유지',
-        '조정',
-        '올리',
-        '낮추',
-        '환기',
-        '관수',
-        '방제',
-        '살포',
-        '기록',
-        'check',
-        'hold',
-        'increase',
-        'reduce',
-        'monitor',
-        'spray',
-    ];
-    const actions = meaningfulLines
-        .filter((line) => actionKeywords.some((keyword) => line.toLowerCase().includes(keyword)))
-        .slice(0, 4);
-
-    return {
-        summary,
-        actions: actions.length > 0 ? actions : meaningfulLines.slice(1, 5),
-    };
-}
 
 function MarkdownAnswer({ text }: { text: string }) {
     return (
@@ -257,54 +67,6 @@ function MarkdownAnswer({ text }: { text: string }) {
         >
             {text}
         </ReactMarkdown>
-    );
-}
-
-function FarmerFriendlyAnswer({
-    text,
-    copy,
-}: {
-    text: string;
-    copy: Record<string, string>;
-}) {
-    const answer = buildFarmerAnswer(text);
-
-    return (
-        <div className="mt-3 space-y-3">
-            <div className="rounded-[22px] bg-[color:var(--sg-color-ivory)] px-3 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
-                    {copy.farmerSummaryTitle}
-                </div>
-                <p className="mt-1 text-sm leading-6 text-[color:var(--sg-text-strong)]">
-                    {answer.summary}
-                </p>
-            </div>
-            {answer.actions.length > 0 ? (
-                <div className="rounded-[22px] border border-[color:var(--sg-outline-soft)] bg-white/82 px-3 py-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-terracotta)]">
-                        {copy.farmerActionTitle}
-                    </div>
-                    <ol className="mt-2 space-y-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
-                        {answer.actions.map((action, index) => (
-                            <li key={`${action}-${index}`} className="flex gap-2">
-                                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color:var(--sg-color-sage-soft)] text-[11px] font-semibold text-[color:var(--sg-color-olive)]">
-                                    {index + 1}
-                                </span>
-                                <span>{action}</span>
-                            </li>
-                        ))}
-                    </ol>
-                </div>
-            ) : null}
-            <details className="rounded-[20px] border border-[color:var(--sg-outline-soft)] bg-white/72 px-3 py-2">
-                <summary className="cursor-pointer text-xs font-semibold text-[color:var(--sg-text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]">
-                    {copy.fullAnswerTitle}
-                </summary>
-                <div className="mt-3 text-sm leading-6 text-[color:var(--sg-text-muted)]">
-                    <MarkdownAnswer text={text} />
-                </div>
-            </details>
-        </div>
     );
 }
 
@@ -472,136 +234,6 @@ const ChatAssistant = ({
                         source: 'assistant',
                     };
 
-    const renderRuntimeStrip = (runtime: ModelRuntimePayload) => {
-        const state = runtime.state_snapshot ?? {};
-        const topLevers = (runtime.sensitivity?.top_levers ?? []).slice(0, 2);
-        const recommendedAction =
-            runtime.scenario?.recommended?.action
-            ?? runtime.recommendations?.[0]?.action
-            ?? null;
-        const violations = runtime.constraint_checks?.violated_constraints ?? [];
-        const answerFocus = runtime.answer_focus?.matched_user_request ? runtime.answer_focus : null;
-        const focusEffects = answerFocus?.effects ?? {};
-        const statusLabel = runtime.status === 'ready'
-            ? copy.runtimeReady
-            : runtime.status === 'unavailable'
-                ? copy.runtimeUnavailable
-                : copy.runtimeFallback;
-        const toneClasses = runtime.status === 'ready'
-            ? 'sg-tint-green'
-            : runtime.status === 'unavailable'
-                ? 'sg-tint-rose'
-                : 'sg-tint-amber';
-        const badgeClasses = runtime.status === 'ready'
-            ? 'bg-white/92 text-[color:var(--sg-accent-success)]'
-            : runtime.status === 'unavailable'
-                ? 'bg-white/92 text-[color:var(--sg-accent-danger)]'
-                : 'bg-white/92 text-[color:var(--sg-accent-amber)]';
-
-        return (
-            <div className={`mt-3 rounded-[24px] px-3 py-3 ${toneClasses}`} style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                <div className="flex items-start justify-between gap-3">
-                    <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-                            {copy.runtimeTitle}
-                        </div>
-                        <p className="mt-1 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
-                            {runtime.summary}
-                        </p>
-                    </div>
-                    <span className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${badgeClasses}`}>
-                        {statusLabel}
-                    </span>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-[color:var(--sg-text-muted)]">
-                    <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeLai}</div>
-                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">{formatRuntimeValue(state.lai, 2)}</div>
-                    </div>
-                    <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeBalance}</div>
-                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
-                            {formatRuntimeValue(state.source_sink_balance, 2)}
-                        </div>
-                    </div>
-                    <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeCanopyA}</div>
-                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
-                            {formatRuntimeValue(state.canopy_net_assimilation_umol_m2_s, 1, ' µmol')}
-                        </div>
-                    </div>
-                    <div className="rounded-[18px] bg-white/86 px-2.5 py-2" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeLimiting}</div>
-                        <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">{state.limiting_factor ?? '-'}</div>
-                    </div>
-                </div>
-                {answerFocus ? (
-                    <div className="mt-3 rounded-[20px] border border-[color:var(--sg-outline-soft)] bg-white/88 px-3 py-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-terracotta)]">
-                                {copy.runtimeEffectTitle}
-                            </div>
-                            <span className="rounded-full bg-[color:var(--sg-color-sage-soft)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--sg-color-olive)]">
-                                {answerFocus.step_label ?? answerFocus.action ?? copy.runtimeRecommended}
-                            </span>
-                        </div>
-                        {answerFocus.summary ? (
-                            <p className="mt-2 text-xs leading-relaxed text-[color:var(--sg-text-strong)]">
-                                {answerFocus.summary}
-                            </p>
-                        ) : null}
-                        <div className="mt-3 grid gap-2 text-[11px] text-[color:var(--sg-text-muted)] sm:grid-cols-3">
-                            <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
-                                <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeYieldEffect}</div>
-                                <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
-                                    14d {formatSignedRuntimeValue(focusEffects.yield_delta_14d)}
-                                </div>
-                                <div className="mt-0.5 tabular-nums">72h {formatSignedRuntimeValue(focusEffects.yield_delta_72h)}</div>
-                            </div>
-                            <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
-                                <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimePhysiologyEffect}</div>
-                                <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
-                                    A {formatSignedRuntimeValue(focusEffects.canopy_delta_72h)}
-                                </div>
-                                <div className="mt-0.5 tabular-nums">S/S {formatSignedRuntimeValue(focusEffects.source_sink_balance_delta)}</div>
-                            </div>
-                            <div className="rounded-[16px] bg-[color:var(--sg-color-ivory)] px-2.5 py-2">
-                                <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">{copy.runtimeCostRiskEffect}</div>
-                                <div className="mt-1 font-semibold tabular-nums text-[color:var(--sg-text-strong)]">
-                                    E {formatSignedRuntimeValue(focusEffects.energy_delta)}
-                                </div>
-                                <div className="mt-0.5 tabular-nums">{copy.runtimeConfidence} {answerFocus.confidence === null || answerFocus.confidence === undefined ? '-' : `${Math.round(answerFocus.confidence * 100)}%`}</div>
-                            </div>
-                        </div>
-                    </div>
-                ) : null}
-                <div className="mt-3 flex flex-wrap gap-2">
-                    {recommendedAction ? (
-                        <span className="rounded-full bg-[color:var(--sg-color-olive)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
-                            {copy.runtimeRecommended}: {recommendedAction}
-                        </span>
-                    ) : null}
-                    {topLevers.map((lever) => {
-                        const controlKey = String(lever.control ?? '');
-                        const label = getControlDisplayCopy(controlKey, locale).compactLabel;
-                        return (
-                            <span
-                                key={`${controlKey}-${lever.direction}`}
-                                className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-medium text-[color:var(--sg-text-strong)]"
-                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                            >
-                                {copy.runtimeLevers}: {label} · {localizeDirection(lever.direction, locale)}
-                            </span>
-                        );
-                    })}
-                    <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-medium text-[color:var(--sg-text-strong)]" style={{ boxShadow: 'var(--sg-shadow-card)' }}>
-                        {copy.runtimeConstraints}: {violations.length ? violations.length : copy.runtimeNoConstraints}
-                    </span>
-                </div>
-            </div>
-        );
-    };
-
     const sendMessage = async (rawMessage: string) => {
         const userMsg = rawMessage.trim();
         if (!userMsg) return;
@@ -655,8 +287,6 @@ const ChatAssistant = ({
                 {
                     role: 'ai',
                     text: json?.text || copy.noResponse,
-                    display: json?.machine_payload?.display ?? null,
-                    modelRuntime: json?.machine_payload?.model_runtime,
                 },
             ]);
         } catch (error) {
@@ -792,17 +422,7 @@ const ChatAssistant = ({
                             style={message.role === 'user' ? undefined : { boxShadow: 'var(--sg-shadow-card)' }}
                         >
                             {message.role === 'ai' ? (
-                                <>
-                                    {message.display ? (
-                                        <StructuredReply display={message.display} copy={copy} locale={locale} />
-                                    ) : null}
-                                    {message.modelRuntime ? renderRuntimeStrip(message.modelRuntime) : null}
-                                    {message.text.length > 220 || message.text.includes('\n') || message.display ? (
-                                        <FarmerFriendlyAnswer text={message.text} copy={copy} />
-                                    ) : (
-                                        <MarkdownAnswer text={message.text} />
-                                    )}
-                                </>
+                                <MarkdownAnswer text={message.text} />
                             ) : (
                                 message.text
                             )}
