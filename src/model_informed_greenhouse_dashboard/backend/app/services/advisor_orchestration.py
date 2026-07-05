@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from copy import deepcopy
 from datetime import datetime, timezone
+import hashlib
+import json
 import logging
 import re
 from typing import Any, Optional
@@ -75,7 +78,69 @@ _MODEL_RUNTIME_CONTROL_LABELS = {
     "screen_close": "스크린 닫힘",
 }
 _WORK_EVENT_COMPARE_HORIZONS_HOURS = (24, 72, 168, 336)
+
+# Full control set the emulation precomputes for every state, so any question
+# (or tab) reads an already-computed sensitivity instead of recomputing a
+# question-narrowed subset each time.
+_ALL_RUNTIME_CONTROLS = (
+    "co2_setpoint_day",
+    "temperature_day",
+    "temperature_night",
+    "rh_target",
+    "screen_close",
+)
+# State-fingerprinted LRU cache of the precomputed baseline scenario + full
+# sensitivity fan. Keyed by the crop/target and the live state values, so it is
+# reused across questions and tabs and only recomputed when the state changes.
+_RUNTIME_EMULATION_CACHE: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
+_RUNTIME_EMULATION_CACHE_MAX = 32
+
 logger = logging.getLogger(__name__)
+
+
+def _emulation_fingerprint(
+    *, crop: str, derivative_target: str, snapshot_record: dict[str, Any]
+) -> str:
+    normalized = _coerce_dict(snapshot_record.get("normalized_snapshot"))
+    material = {
+        "crop": crop,
+        "target": derivative_target,
+        "state": _coerce_dict(normalized.get("state")),
+        "live_observation": _coerce_dict(normalized.get("live_observation")),
+        "raw_adapter_state": _coerce_dict(snapshot_record.get("raw_adapter_state")),
+    }
+    blob = json.dumps(material, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def _runtime_emulation_snapshot(
+    *, crop: str, derivative_target: str, snapshot_record: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return (baseline_scenario, full_sensitivity) for this state, computing the
+    full-control fan once per state fingerprint and caching it for reuse."""
+    key = _emulation_fingerprint(
+        crop=crop, derivative_target=derivative_target, snapshot_record=snapshot_record
+    )
+    cached = _RUNTIME_EMULATION_CACHE.get(key)
+    if cached is not None:
+        _RUNTIME_EMULATION_CACHE.move_to_end(key)
+        return cached["baseline"], cached["sensitivity"]
+
+    baseline = run_bounded_scenario(
+        snapshot_record,
+        controls={},
+        horizons_hours=list(_MODEL_RUNTIME_HORIZONS_HOURS),
+    )
+    sensitivity = compute_local_sensitivities(
+        snapshot_record,
+        derivative_target=derivative_target,
+        controls=list(_ALL_RUNTIME_CONTROLS),
+    )
+    _RUNTIME_EMULATION_CACHE[key] = {"baseline": baseline, "sensitivity": sensitivity}
+    _RUNTIME_EMULATION_CACHE.move_to_end(key)
+    while len(_RUNTIME_EMULATION_CACHE) > _RUNTIME_EMULATION_CACHE_MAX:
+        _RUNTIME_EMULATION_CACHE.popitem(last=False)
+    return baseline, sensitivity
 
 
 def _normalize_tab_name(tab_name: str) -> str:
@@ -976,15 +1041,13 @@ def _build_model_runtime_payload(
     derivative_target = "canopy_A_72h" if tab_name == "physiology" else "predicted_yield_14d"
     selected_controls = _select_runtime_controls(tab_name=tab_name, messages=messages)
     try:
-        baseline_payload = run_bounded_scenario(
-            snapshot_record,
-            controls={},
-            horizons_hours=list(_MODEL_RUNTIME_HORIZONS_HOURS),
-        )
-        sensitivity_payload = compute_local_sensitivities(
-            snapshot_record,
+        # Read the precomputed full-control emulation for this state (computed
+        # once per state fingerprint, then cached and reused across questions and
+        # tabs) instead of recomputing a question-narrowed subset each time.
+        baseline_payload, sensitivity_payload = _runtime_emulation_snapshot(
+            crop=crop,
             derivative_target=derivative_target,
-            controls=selected_controls,
+            snapshot_record=snapshot_record,
         )
     except Exception:
         return _build_unavailable_model_runtime_payload(

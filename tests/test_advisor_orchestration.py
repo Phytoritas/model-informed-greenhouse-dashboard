@@ -2895,6 +2895,52 @@ def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
     assert payload["text"] == "## Summary\n- Model values are ready."
 
 
+def test_runtime_emulation_snapshot_precomputes_full_fan_and_caches_by_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    advisor_orchestration._RUNTIME_EMULATION_CACHE.clear()
+    calls = {"scenario": 0, "sensitivity": 0}
+
+    def _fake_scenario(*_args, **_kwargs):
+        calls["scenario"] += 1
+        return {"baseline_outputs": []}
+
+    def _fake_sensitivity(*_args, **kwargs):
+        calls["sensitivity"] += 1
+        return {"sensitivities": [], "controls": kwargs.get("controls")}
+
+    monkeypatch.setattr(advisor_orchestration, "run_bounded_scenario", _fake_scenario)
+    monkeypatch.setattr(advisor_orchestration, "compute_local_sensitivities", _fake_sensitivity)
+
+    snapshot = {"normalized_snapshot": {"state": {"lai": 1.0}}, "raw_adapter_state": {}}
+
+    _baseline, sensitivity = advisor_orchestration._runtime_emulation_snapshot(
+        crop="tomato",
+        derivative_target="predicted_yield_14d",
+        snapshot_record=snapshot,
+    )
+    # The whole control set is precomputed, not a question-narrowed subset.
+    assert sensitivity["controls"] == list(advisor_orchestration._ALL_RUNTIME_CONTROLS)
+
+    # Same state -> served from cache, no recomputation.
+    advisor_orchestration._runtime_emulation_snapshot(
+        crop="tomato",
+        derivative_target="predicted_yield_14d",
+        snapshot_record=snapshot,
+    )
+    assert calls == {"scenario": 1, "sensitivity": 1}
+
+    # Changed state -> recomputed under a new fingerprint.
+    changed = {"normalized_snapshot": {"state": {"lai": 2.0}}, "raw_adapter_state": {}}
+    advisor_orchestration._runtime_emulation_snapshot(
+        crop="tomato",
+        derivative_target="predicted_yield_14d",
+        snapshot_record=changed,
+    )
+    assert calls == {"scenario": 2, "sensitivity": 2}
+    advisor_orchestration._RUNTIME_EMULATION_CACHE.clear()
+
+
 def test_build_environment_recommendation_response_keeps_legacy_keys_and_carries_model_runtime(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
