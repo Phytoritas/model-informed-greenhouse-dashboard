@@ -35,32 +35,22 @@ function ForecastMetricTile({
 
     return (
         <article
-            className={`relative overflow-hidden rounded-[24px] px-4 py-4 ${toneClass}`}
+            className={`min-w-0 rounded-[var(--sg-radius-md)] px-3 py-2.5 ${toneClass}`}
             style={{ boxShadow: 'var(--sg-shadow-card)' }}
         >
-            <div className="absolute right-3 top-3 h-16 w-16 rounded-full bg-white/16 blur-2xl" />
-            <div className="relative flex items-start gap-3">
-                <div
-                    className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-white/84"
-                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                >
-                    <Icon className="h-4.5 w-4.5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="sg-eyebrow">{label}</div>
-                    <div className="mt-2 flex items-end gap-2 text-[color:var(--sg-text-strong)]">
-                        <span className="text-[clamp(1.35rem,1.15rem+0.7vw,2.1rem)] font-semibold tracking-[-0.06em]">
-                            {value}
-                        </span>
-                        <span className="pb-1 text-xs font-medium text-[color:var(--sg-text-muted)]">
-                            {unit}
-                        </span>
-                    </div>
-                    <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
-                        {body}
-                    </p>
-                </div>
+            <div className="flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                    {label}
+                </span>
             </div>
+            <div className="mt-1 flex items-baseline gap-1.5 text-[color:var(--sg-text-strong)]">
+                <span className="sg-data-number text-lg font-bold leading-none">{value}</span>
+                <span className="text-[11px] font-medium text-[color:var(--sg-text-muted)]">{unit}</span>
+            </div>
+            <p className="mt-1 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">
+                {body}
+            </p>
         </article>
     );
 }
@@ -152,46 +142,28 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                 </StatusChip>
             )}
         >
-            <div className="flex flex-col gap-4">
-                <article
-                    className="relative overflow-hidden rounded-[32px] px-5 py-5"
-                    style={{
-                        background: 'linear-gradient(135deg, rgba(212,239,199,0.92), rgba(255,255,255,0.88))',
-                        boxShadow: 'var(--sg-shadow-soft)',
-                    }}
+            <div className="flex flex-col gap-3">
+                <section
+                    className="rounded-[var(--sg-radius-lg)] bg-white/78 px-4 py-3"
+                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
-                    <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/24 blur-3xl" />
-                    <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                        <div>
-                            <div className="sg-eyebrow">{copy.leadTitle}</div>
-                            <div className="mt-3 flex flex-wrap items-end gap-3 text-[color:var(--sg-text-strong)]">
-                                <span className="text-[clamp(2rem,1.85rem+0.9vw,3.2rem)] font-semibold tracking-[-0.07em]">
-                                    {hasHarvest ? `${forecast.total_harvest_kg.toFixed(1)} kg` : copy.noHarvest}
-                                </span>
-                                {!hasHarvest ? (
-                                    <StatusChip tone="muted">{copy.noHarvest}</StatusChip>
-                                ) : null}
-                            </div>
-                            <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
-                                {hasHarvest ? leadNarrative : copy.noHarvestDescription}
-                            </p>
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <span className="sg-eyebrow">{copy.leadTitle}</span>
+                            <span className="sg-data-number text-lg font-bold leading-none text-[color:var(--sg-text-strong)]">
+                                {hasHarvest ? `${forecast.total_harvest_kg.toFixed(1)} kg` : copy.noHarvest}
+                            </span>
                         </div>
-                        <div
-                            className="rounded-[24px] bg-white/84 px-4 py-4"
-                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                        >
-                            <div className="sg-eyebrow">{getForecastTitle(crop, locale)}</div>
-                            <div className="mt-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">
-                                {forecast.total_ETc_mm.toFixed(1)} {UNIT_LABELS.transpirationDepth} · {forecast.total_energy_kWh.toFixed(1)} {UNIT_LABELS.energyUse}
-                            </div>
-                            <p className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
-                                {leadNarrative}
-                            </p>
+                        <div className="text-right text-[11px] text-[color:var(--sg-text-muted)]">
+                            {getForecastTitle(crop, locale)} · {forecast.total_ETc_mm.toFixed(1)} {UNIT_LABELS.transpirationDepth} · {forecast.total_energy_kWh.toFixed(1)} {UNIT_LABELS.energyUse}
                         </div>
                     </div>
-                </article>
+                    <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
+                        {hasHarvest ? leadNarrative : copy.noHarvestDescription}
+                    </p>
+                </section>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-2 md:grid-cols-3">
                     <ForecastMetricTile
                         icon={Leaf}
                         label={copy.yield}
@@ -219,13 +191,13 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                 </div>
 
                 <section
-                    className="rounded-[30px] bg-white/84 px-5 py-5"
+                    className="rounded-[var(--sg-radius-lg)] bg-white/84 px-4 py-3"
                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <div className="sg-eyebrow">{copy.chartTitle}</div>
-                            <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
+                            <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">
                                 {copy.chartBody}
                             </p>
                         </div>
@@ -234,7 +206,7 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                         </StatusChip>
                     </div>
 
-                    <div className="mt-5">
+                    <div className="mt-3">
                         <ChartFrame className="h-72 w-full" minHeight={288}>
                             {({ width, height }) => (
                                 <BarChart
