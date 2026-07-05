@@ -319,9 +319,9 @@ describe('overview landing sections', () => {
     expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios');
     expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant');
     expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy();
-    // CONTACT is an in-page action (scrolls to the footer), not a route link.
-    expect(screen.getByRole('button', { name: 'CONTACT' })).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'CONTACT' })).toBeNull();
+    // CONTACT is a standalone page now, so it navigates like every other tab.
+    expect(screen.getByRole('link', { name: 'CONTACT' }).getAttribute('href')).toBe('/contact');
+    expect(screen.queryByRole('button', { name: 'CONTACT' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Open Dashboard' }).getAttribute('href')).toBe('/control');
   });
 

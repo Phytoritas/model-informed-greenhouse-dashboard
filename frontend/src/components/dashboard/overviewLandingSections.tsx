@@ -9,7 +9,6 @@ import {
   Fan,
   Leaf,
   Mail,
-  MessageCircle,
   ShieldAlert,
   Sprout,
   ThumbsDown,
@@ -38,7 +37,7 @@ import { cn } from '../../utils/cn';
 import { metricToneForTile } from '../../utils/metricTone';
 import { AlertCard } from '../ui/alert-card';
 import { Button } from '../ui/button';
-import { GLOBAL_NAVIGATION_ITEMS } from '../../routes/globalNavigation';
+import GlobalTopNav from '../shell/GlobalTopNav';
 import { Input } from '../ui/input';
 import { MetricCard } from '../ui/metric-card';
 import { SectionHeader } from '../ui/section-header';
@@ -116,71 +115,8 @@ interface TopNavigationProps {
   onOpenAssistant: () => void;
 }
 
-function scrollToLandingFooter() {
-  if (typeof document === 'undefined') {
-    return;
-  }
-  document.getElementById('overview-footer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
 export function TopNavigation({ onOpenAssistant }: TopNavigationProps) {
-  const { locale } = useLocale();
-  const assistantLabel = locale === 'ko' ? '질문하기' : 'Ask Assistant';
-  const dashboardLabel = locale === 'ko' ? '대시보드 열기' : 'Open Dashboard';
-
-  return (
-    <header>
-      <nav aria-label={locale === 'ko' ? 'PhytoSync 랜딩 내비게이션' : 'PhytoSync landing navigation'} className="overview-nav">
-        <Link to="/overview" className="inline-flex items-center gap-2 text-base font-bold text-[color:var(--sg-text-strong)]">
-          <Leaf className="h-5 w-5 text-[color:var(--sg-color-olive)]" aria-hidden="true" />
-          PhytoSync
-        </Link>
-        <div className="overview-nav-links">
-          {GLOBAL_NAVIGATION_ITEMS.map((item) => {
-            const active = item.key === 'home';
-            return item.path ? (
-              <Link
-                key={item.key}
-                to={item.path}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]',
-                  active && 'overview-nav-link-active',
-                )}
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <button
-                key={item.key}
-                type="button"
-                onClick={scrollToLandingFooter}
-                className="overview-nav-link focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onOpenAssistant}
-            aria-label={assistantLabel}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-color-primary)] shadow-[var(--sg-shadow-card)] transition hover:bg-[color:var(--sg-color-primary-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)]"
-          >
-            <MessageCircle className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <Link
-            to="/control"
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary)] px-3.5 text-xs font-bold text-white shadow-[var(--sg-shadow-card)] transition hover:bg-[color:var(--sg-color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2"
-          >
-            {dashboardLabel} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
-        </div>
-      </nav>
-    </header>
-  );
+  return <GlobalTopNav onOpenAssistant={onOpenAssistant} activeKey="home" />;
 }
 
 export function HeroDecisionBrief({ heroCard }: { heroCard: ReactNode }) {

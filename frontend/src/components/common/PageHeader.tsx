@@ -17,13 +17,18 @@ export default function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <header className={cn('grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end', className)}>
+    <header
+      className={cn(
+        'grid gap-3 border-b border-[color:var(--sg-outline-soft)] pb-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end',
+        className,
+      )}
+    >
       <div className="min-w-0 max-w-[680px]">
         {eyebrow ? <p className="sg-eyebrow">{eyebrow}</p> : null}
-        <h2 className="mt-2 text-[clamp(2rem,1.4rem+1.6vw,2.8rem)] font-semibold tracking-[-0.06em] text-[color:var(--sg-text-strong)]">
+        <h2 className="mt-1 text-[clamp(1.1rem,1rem+0.4vw,1.45rem)] font-bold leading-tight tracking-[-0.02em] text-[color:var(--sg-text-strong)]">
           {title}
         </h2>
-        <p className="mt-2 text-[15px] leading-7 text-[color:var(--sg-text-muted)]">
+        <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">
           {description}
         </p>
       </div>

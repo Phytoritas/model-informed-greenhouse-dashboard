@@ -401,7 +401,7 @@ export default function DecisionSnapshotGrid({
       description={copy.description}
       contentClassName="overflow-hidden"
     >
-      <div className="grid gap-3 xl:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
         <BridgeDecisionCard
           icon={CloudSun}
           testId="weather"

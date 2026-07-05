@@ -1,4 +1,3 @@
-import { MapPinned, SunMedium, Thermometer, Wind } from 'lucide-react';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
 import { getCountryLabel, getWeatherLabel } from '../utils/displayCopy';
@@ -13,49 +12,22 @@ interface WeatherOutlookPanelProps {
     compact?: boolean;
 }
 
-function WeatherSignalTile({
-    icon: Icon,
+function WeatherStatTile({
     label,
     value,
-    detail,
-    tone,
 }: {
-    icon: typeof Thermometer;
     label: string;
     value: string;
-    detail: string;
-    tone: 'blue' | 'amber' | 'violet';
 }) {
-    const toneClass = {
-        blue: 'sg-tint-blue text-[color:var(--sg-accent-blue)]',
-        amber: 'sg-tint-amber text-[color:var(--sg-accent-amber)]',
-        violet: 'sg-tint-violet text-[color:var(--sg-accent-violet)]',
-    }[tone];
-
     return (
-        <article
-            className={`relative overflow-hidden rounded-[var(--sg-radius-lg)] px-4 py-4 ${toneClass}`}
-            style={{ boxShadow: 'var(--sg-shadow-card)' }}
-        >
-            <div className="absolute right-3 top-3 h-16 w-16 rounded-full bg-white/18 blur-2xl" />
-            <div className="relative flex items-start gap-3">
-                <div
-                    className="flex h-11 w-11 items-center justify-center rounded-[var(--sg-radius-md)] bg-white/84"
-                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                >
-                    <Icon className="h-4.5 w-4.5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="sg-eyebrow">{label}</div>
-                    <div className="sg-data-number mt-2 text-lg font-semibold text-[color:var(--sg-text-strong)]">
-                        {value}
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">
-                        {detail}
-                    </p>
-                </div>
+        <div className="min-w-0 rounded-[var(--sg-radius-md)] bg-white/84 px-3 py-2.5 shadow-[var(--sg-shadow-card)]">
+            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                {label}
             </div>
-        </article>
+            <div className="sg-data-number mt-1 truncate text-sm font-bold text-[color:var(--sg-text-strong)]">
+                {value}
+            </div>
+        </div>
     );
 }
 
@@ -178,93 +150,58 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                     {copy.unavailable}
                 </div>
             ) : (
-                <div className="flex h-full flex-col gap-4">
-                    <div className={`grid gap-4 ${compact ? 'xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]'}`}>
-                        <article
-                            className="relative overflow-hidden rounded-[var(--sg-radius-xl)] px-5 py-5"
-                            style={{
-                                background: 'var(--sg-tint-blue)',
-                                boxShadow: 'var(--sg-shadow-soft)',
-                            }}
-                        >
-                            <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/24 blur-3xl" />
-                            <div className="relative flex h-full flex-col gap-5">
-                                <div className="flex flex-wrap items-start justify-between gap-4">
-                                    <div className="flex items-start gap-3">
-                                        <div
-                                            className="flex h-14 w-14 items-center justify-center rounded-[var(--sg-radius-lg)] bg-white/84"
-                                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                        >
-                                            <MapPinned className="h-5.5 w-5.5 text-[color:var(--sg-accent-blue)]" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <div className="sg-eyebrow">{copy.currentLead}</div>
-                                            <div className="sg-data-number mt-3 text-[clamp(2.2rem,2rem+1vw,3.4rem)] font-semibold text-[color:var(--sg-text-strong)]">
-                                                {weather.current.temperature_c.toFixed(1)}°C
-                                            </div>
-                                            <div className="mt-2 text-base font-semibold text-[color:var(--sg-text-strong)]">
-                                                {currentWeatherLabel}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="rounded-[var(--sg-radius-lg)] bg-white/82 px-4 py-3 text-right text-xs text-[color:var(--sg-text-muted)]"
-                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                    >
-                                        <div>{formatLocaleDateTime(locale, weather.current.time)}</div>
-                                        <div className="mt-1 font-medium text-[color:var(--sg-text-strong)]">{weather.location.timezone}</div>
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-                                    <div>
-                                        <p className="max-w-3xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
-                                            {localizedSummary}
-                                        </p>
-                                        <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[color:var(--sg-accent-blue)]">
-                                            {copy.currentNarrative}
-                                        </p>
-                                    </div>
-                                    <div
-                                        className="rounded-[var(--sg-radius-lg)] bg-white/84 px-4 py-4"
-                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                    >
-                                        <div className="sg-eyebrow">{providerDisplayLabel}</div>
-                                        <div className="sg-data-number mt-3 text-sm font-semibold text-[color:var(--sg-text-strong)]">
-                                            {copy.feelsLike} {weather.current.apparent_temperature_c.toFixed(1)}°C
-                                        </div>
-                                        <p className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
-                                            {providerNarrative}
-                                        </p>
-                                    </div>
-                                </div>
+                <div className="flex h-full flex-col gap-3">
+                    <section
+                        className="rounded-[var(--sg-radius-lg)] bg-white/78 px-4 py-3"
+                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                    >
+                        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                            <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                                <span className="sg-eyebrow">{copy.currentLead}</span>
+                                <span className="sg-data-number text-2xl font-bold leading-none text-[color:var(--sg-text-strong)]">
+                                    {weather.current.temperature_c.toFixed(1)}°C
+                                </span>
+                                <span className="text-sm font-semibold text-[color:var(--sg-text-strong)]">
+                                    {currentWeatherLabel}
+                                </span>
+                                <span className="text-xs text-[color:var(--sg-text-muted)]">
+                                    {copy.feelsLike} {weather.current.apparent_temperature_c.toFixed(1)}°C
+                                </span>
                             </div>
-                        </article>
-
-                        <div className="grid gap-4">
-                            <WeatherSignalTile
-                                icon={Thermometer}
-                                label={copy.humidityClouds}
-                                value={`${copy.humidity} ${weather.current.relative_humidity_pct.toFixed(0)}% · ${copy.clouds} ${weather.current.cloud_cover_pct.toFixed(0)}%`}
-                                detail={copy.humidityCloudsDetail}
-                                tone="blue"
+                            <div className="text-right text-[11px] text-[color:var(--sg-text-muted)]">
+                                {formatLocaleDateTime(locale, weather.current.time)} · {weather.location.timezone}
+                            </div>
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
+                            {localizedSummary} {providerNarrative}
+                        </p>
+                        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+                            <WeatherStatTile
+                                label={copy.humidity}
+                                value={`${weather.current.relative_humidity_pct.toFixed(0)}%`}
                             />
-                            <WeatherSignalTile
-                                icon={Wind}
-                                label={copy.windRain}
-                                value={`${weather.current.wind_speed_kmh.toFixed(1)} km/h · ${copy.rainRisk} ${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}%`}
-                                detail={copy.windRainDetail}
-                                tone="amber"
+                            <WeatherStatTile
+                                label={copy.clouds}
+                                value={`${weather.current.cloud_cover_pct.toFixed(0)}%`}
                             />
-                            <WeatherSignalTile
-                                icon={SunMedium}
-                                label={copy.sunHours}
-                                value={`${(today?.shortwave_radiation_sum_mj_m2 ?? 0).toFixed(1)} MJ/m2 · ${copy.sunshine} ${(today?.sunshine_duration_h ?? 0).toFixed(1)}h`}
-                                detail={copy.sunHoursDetail}
-                                tone="violet"
+                            <WeatherStatTile
+                                label={copy.windMax}
+                                value={`${weather.current.wind_speed_kmh.toFixed(1)} km/h`}
+                            />
+                            <WeatherStatTile
+                                label={copy.rainRisk}
+                                value={`${(today?.precipitation_probability_max_pct ?? 0).toFixed(0)}%`}
+                            />
+                            <WeatherStatTile
+                                label={copy.shortwave}
+                                value={`${(today?.shortwave_radiation_sum_mj_m2 ?? 0).toFixed(1)} MJ/m2`}
+                            />
+                            <WeatherStatTile
+                                label={copy.sunshine}
+                                value={`${(today?.sunshine_duration_h ?? 0).toFixed(1)}h`}
                             />
                         </div>
-                    </div>
+                    </section>
 
                     {forecastCards.length > 0 ? (
                         <section

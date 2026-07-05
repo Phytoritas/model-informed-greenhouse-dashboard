@@ -13,6 +13,7 @@ import type {
   RTROptimizerCustomScenarioDraft,
   RTROptimizerUiStateLike,
 } from './components/RTROptimizerPanel';
+import GlobalTopNav from './components/shell/GlobalTopNav';
 import TopBar from './components/shell/TopBar';
 import WorkspaceTopNav from './components/shell/WorkspaceTopNav';
 import type { WorkspaceNavItem } from './components/shell/WorkspaceTopNav';
@@ -38,10 +39,8 @@ import { buildPrimaryRoutes, getPrimaryRouteMeta, getPrimaryRouteKey } from './a
 import {
   buildPhytoSections,
   findPhytoSection,
-  getSectionPathForAdvisorTab,
 } from './routes/phytosyncSections';
 import {
-  GLOBAL_NAVIGATION_ITEMS,
   getGlobalNavigationKeyForPathname,
   getSubNavigationSectionKeys,
 } from './routes/globalNavigation';
@@ -103,6 +102,7 @@ const RTR_UI_STATE_STORAGE_KEY = 'smartgrow-rtr-ui-state-v1';
 const AssistantRoutePage = lazy(() => import('./pages/assistant-route-page'));
 const AdvisorLaneRoutePage = lazy(() => import('./pages/advisor-lane-route-page'));
 const AlertsRoutePage = lazy(() => import('./pages/alerts-route-page'));
+const ContactRoutePage = lazy(() => import('./pages/contact-route-page'));
 const ControlRoutePage = lazy(() => import('./pages/control-route-page'));
 const CropWorkRoutePage = lazy(() => import('./pages/crop-work-route-page'));
 const OverviewRoutePage = lazy(() => import('./pages/overview-route-page'));
@@ -858,37 +858,46 @@ function App() {
     setAssistantDrawerOpen(false);
   }, [setAssistantDrawerOpen]);
 
-  const handleGlobalContactSelect = useCallback(() => {
-    setAssistantDrawerOpen(false);
-    if (location.pathname === '/overview') {
-      document.getElementById('overview-footer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-    navigate({ pathname: '/overview', hash: '#contact' });
-  }, [location.pathname, navigate, setAssistantDrawerOpen]);
-
   const handleOpenAlerts = useCallback(() => {
     setAssistantDrawerOpen(false);
     navigate({ pathname: '/alerts', hash: '#alerts-priority' });
   }, [navigate, setAssistantDrawerOpen]);
 
-  const handleOpenAdvisorTabs = useCallback((
-    tab: PromptAdvisorTabKey = 'environment',
-  ) => {
-    navigate(getSectionPathForAdvisorTab(tab));
-  }, [navigate]);
-
-  const handleOpenSmartGrowSurface = useCallback((surfaceKey: 'pesticide' | 'nutrient' | 'nutrient_correction') => {
+  // On the KNOWLEDGE route the quick tools stay inside the knowledge flow:
+  // they open the in-page material search with the matching preset instead of
+  // jumping back into the DASHBOARD advisor lanes.
+  const handleOpenKnowledgeSurface = useCallback((surfaceKey: 'pesticide' | 'nutrient' | 'nutrient_correction') => {
     if (surfaceKey === 'pesticide') {
-      handleOpenAdvisorTabs('pesticide');
+      handleOpenRagAssistant({
+        preset: 'pesticide',
+        query: locale === 'ko'
+          ? `${selectedCropLabel} 주요 병해충 후보와 교호 전략`
+          : `${selectedCropLabel} disease and pesticide rotation guidance`,
+        autoRun: true,
+        source: 'assistant',
+      });
       return;
     }
     if (surfaceKey === 'nutrient_correction') {
-      navigate('/nutrient#correction');
+      handleOpenRagAssistant({
+        preset: 'nutrient',
+        query: locale === 'ko'
+          ? `${selectedCropLabel} 양액 보정 경계 조건과 수동 검토 항목`
+          : `${selectedCropLabel} nutrient correction guardrails and manual review items`,
+        autoRun: true,
+        source: 'assistant',
+      });
       return;
     }
-    handleOpenAdvisorTabs('nutrient');
-  }, [handleOpenAdvisorTabs, navigate]);
+    handleOpenRagAssistant({
+      preset: 'nutrient',
+      query: locale === 'ko'
+        ? `${selectedCropLabel} 현재 단계 양액 레시피와 경계 조건`
+        : `${selectedCropLabel} nutrient recipe and guardrails for the current stage`,
+      autoRun: true,
+      source: 'assistant',
+    });
+  }, [handleOpenRagAssistant, locale, selectedCropLabel]);
 
   const resolveRoutePath = useCallback((key: string) => {
     switch (key) {
@@ -927,12 +936,6 @@ function App() {
     const nextRoute = primaryRoutes.find((route) => route.key === workspace);
     navigate(nextRoute?.path ?? resolveRoutePath(workspace));
   }, [navigate, primaryRoutes, resolveRoutePath, setAssistantDrawerOpen]);
-
-  const handleSectionTabSelect = useCallback((tabId: string) => {
-    setSectionTabSelections((current) => ({ ...current, [activeSection.key]: tabId }));
-
-    navigate({ pathname: activeSection.path, hash: `#${tabId}` }, { replace: true });
-  }, [activeSection.key, activeSection.path, navigate, setSectionTabSelections]);
 
   const handleWorkspaceActionSelect = useCallback((workspace: string, tabId: string) => {
     const targetSection = sections.find((section) => section.key === workspace);
@@ -1482,8 +1485,6 @@ function App() {
       locale={locale}
       crop={selectedCrop}
       cropLabel={selectedCropLabel}
-      panelTabs={assistantSection.tabs}
-      onSelectPanel={handleSectionTabSelect}
       summary={smartGrowSummary}
       activePanel={activePanelId as AssistantPanelId}
       searchRequest={assistantSearchRequest}
@@ -1498,7 +1499,7 @@ function App() {
       smartGrowLoading={isSmartGrowLoading}
       smartGrowError={smartGrowError}
       onOpenSearch={handleOpenRagAssistant}
-      onOpenSurface={handleOpenSmartGrowSurface}
+      onOpenSurface={handleOpenKnowledgeSurface}
     />
   );
 
@@ -1609,35 +1610,40 @@ function App() {
     );
   }
 
+  const isContactRoute = location.pathname.startsWith('/contact');
+
   return (
     <AppShell
       header={(
-        <TopBar
-          locale={locale}
-          selectedCrop={selectedCrop}
-          telemetryStatus={telemetry.status}
-          telemetryDetail={telemetryDetail}
-          pageTitle={activePrimaryRoute.title}
-          pageDescription={activePrimaryRoute.heroDescription}
-          onLocaleChange={setLocale}
-          onCropChange={setSelectedCrop}
-          onAssistantToggle={handleChatToggle}
-          onOpenAlerts={handleOpenAlerts}
-          onSearchSubmit={handleTopBarSearchSubmit}
-          onOpenSettings={handleOpenSettings}
-          assistantOpen={assistantDrawerOpen}
-          getCropLabel={getCropLabel}
-        />
+        <>
+          <GlobalTopNav
+            activeKey={activeGlobalNavigationKey}
+            onOpenAssistant={handleChatToggle}
+            onNavigate={handleGlobalNavigationSelect}
+          />
+          <TopBar
+            locale={locale}
+            selectedCrop={selectedCrop}
+            telemetryStatus={telemetry.status}
+            telemetryDetail={telemetryDetail}
+            pageTitle={isContactRoute ? (locale === 'ko' ? '문의하기' : 'Contact') : activePrimaryRoute.title}
+            pageDescription={isContactRoute ? '' : activePrimaryRoute.heroDescription}
+            onLocaleChange={setLocale}
+            onCropChange={setSelectedCrop}
+            onAssistantToggle={handleChatToggle}
+            onOpenAlerts={handleOpenAlerts}
+            onSearchSubmit={handleTopBarSearchSubmit}
+            onOpenSettings={handleOpenSettings}
+            assistantOpen={assistantDrawerOpen}
+            getCropLabel={getCropLabel}
+          />
+        </>
       )}
     >
       <WorkspaceTopNav
-        globalItems={GLOBAL_NAVIGATION_ITEMS}
         items={workspaceItems}
-        activeGlobalKey={activeGlobalNavigationKey}
         activeWorkspace={activePrimaryRouteKey}
         activeActionId={activePanelId}
-        onSelectGlobal={handleGlobalNavigationSelect}
-        onSelectContact={handleGlobalContactSelect}
         onSelect={handleWorkspaceSelect}
         onSelectAction={handleWorkspaceActionSelect}
       />
@@ -1685,6 +1691,14 @@ function App() {
         <Route path="/resources" element={<Suspense fallback={<RouteLoadingFallback />}>{resourcesPage}</Suspense>} />
         <Route path="/alerts" element={<Suspense fallback={<RouteLoadingFallback />}>{alertsPage}</Suspense>} />
         <Route path="/assistant" element={<Suspense fallback={<RouteLoadingFallback />}>{assistantPage}</Suspense>} />
+        <Route
+          path="/contact"
+          element={(
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <ContactRoutePage locale={locale} onOpenAssistant={handleChatToggle} />
+            </Suspense>
+          )}
+        />
         <Route path="/settings" element={<Suspense fallback={<RouteLoadingFallback />}>{settingsPage}</Suspense>} />
         <Route path="/overview/legacy" element={<Navigate to="/overview" replace />} />
         <Route path="/control/legacy" element={<Navigate to="/control" replace />} />

@@ -16,7 +16,6 @@ import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import AlertRail from '../components/dashboard/AlertRail';
 import ConsultingTrendCard from '../components/dashboard/ConsultingTrendCard';
 import HeroControlCard from '../components/dashboard/HeroControlCard';
-import ModelRuntimeBridge from '../components/dashboard/ModelRuntimeBridge';
 import OverviewSignalTrendCard from '../components/dashboard/OverviewSignalTrendCard';
 import TodayBoard from '../components/dashboard/TodayBoard';
 import {
@@ -270,11 +269,6 @@ export default function OverviewRoutePage({
               />
             </div>
           </div>
-          <div className="grid min-w-0 gap-4 xl:grid-cols-12">
-            <div className="min-w-0 xl:col-span-12">
-              <ModelRuntimeBridge crop={crop} onOpenAssistant={onOpenAssistant} />
-            </div>
-          </div>
         </div>
       )}
       watchTab={(
@@ -292,7 +286,6 @@ export default function OverviewRoutePage({
           />
         </div>
       )}
-      modelRuntimeBridge={<ModelRuntimeBridge crop={crop} onOpenAssistant={onOpenAssistant} />}
       weatherMarketKnowledgeBridge={(
         <WeatherMarketKnowledgeBridge
           crop={crop}
