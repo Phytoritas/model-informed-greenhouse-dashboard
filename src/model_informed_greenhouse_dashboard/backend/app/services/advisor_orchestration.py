@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from copy import deepcopy
 from datetime import datetime, timezone
+import hashlib
+import json
 import logging
 import re
 from typing import Any, Optional
@@ -75,7 +78,69 @@ _MODEL_RUNTIME_CONTROL_LABELS = {
     "screen_close": "스크린 닫힘",
 }
 _WORK_EVENT_COMPARE_HORIZONS_HOURS = (24, 72, 168, 336)
+
+# Full control set the emulation precomputes for every state, so any question
+# (or tab) reads an already-computed sensitivity instead of recomputing a
+# question-narrowed subset each time.
+_ALL_RUNTIME_CONTROLS = (
+    "co2_setpoint_day",
+    "temperature_day",
+    "temperature_night",
+    "rh_target",
+    "screen_close",
+)
+# State-fingerprinted LRU cache of the precomputed baseline scenario + full
+# sensitivity fan. Keyed by the crop/target and the live state values, so it is
+# reused across questions and tabs and only recomputed when the state changes.
+_RUNTIME_EMULATION_CACHE: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
+_RUNTIME_EMULATION_CACHE_MAX = 32
+
 logger = logging.getLogger(__name__)
+
+
+def _emulation_fingerprint(
+    *, crop: str, derivative_target: str, snapshot_record: dict[str, Any]
+) -> str:
+    normalized = _coerce_dict(snapshot_record.get("normalized_snapshot"))
+    material = {
+        "crop": crop,
+        "target": derivative_target,
+        "state": _coerce_dict(normalized.get("state")),
+        "live_observation": _coerce_dict(normalized.get("live_observation")),
+        "raw_adapter_state": _coerce_dict(snapshot_record.get("raw_adapter_state")),
+    }
+    blob = json.dumps(material, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def _runtime_emulation_snapshot(
+    *, crop: str, derivative_target: str, snapshot_record: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return (baseline_scenario, full_sensitivity) for this state, computing the
+    full-control fan once per state fingerprint and caching it for reuse."""
+    key = _emulation_fingerprint(
+        crop=crop, derivative_target=derivative_target, snapshot_record=snapshot_record
+    )
+    cached = _RUNTIME_EMULATION_CACHE.get(key)
+    if cached is not None:
+        _RUNTIME_EMULATION_CACHE.move_to_end(key)
+        return cached["baseline"], cached["sensitivity"]
+
+    baseline = run_bounded_scenario(
+        snapshot_record,
+        controls={},
+        horizons_hours=list(_MODEL_RUNTIME_HORIZONS_HOURS),
+    )
+    sensitivity = compute_local_sensitivities(
+        snapshot_record,
+        derivative_target=derivative_target,
+        controls=list(_ALL_RUNTIME_CONTROLS),
+    )
+    _RUNTIME_EMULATION_CACHE[key] = {"baseline": baseline, "sensitivity": sensitivity}
+    _RUNTIME_EMULATION_CACHE.move_to_end(key)
+    while len(_RUNTIME_EMULATION_CACHE) > _RUNTIME_EMULATION_CACHE_MAX:
+        _RUNTIME_EMULATION_CACHE.popitem(last=False)
+    return baseline, sensitivity
 
 
 def _normalize_tab_name(tab_name: str) -> str:
@@ -976,15 +1041,13 @@ def _build_model_runtime_payload(
     derivative_target = "canopy_A_72h" if tab_name == "physiology" else "predicted_yield_14d"
     selected_controls = _select_runtime_controls(tab_name=tab_name, messages=messages)
     try:
-        baseline_payload = run_bounded_scenario(
-            snapshot_record,
-            controls={},
-            horizons_hours=list(_MODEL_RUNTIME_HORIZONS_HOURS),
-        )
-        sensitivity_payload = compute_local_sensitivities(
-            snapshot_record,
+        # Read the precomputed full-control emulation for this state (computed
+        # once per state fingerprint, then cached and reused across questions and
+        # tabs) instead of recomputing a question-narrowed subset each time.
+        baseline_payload, sensitivity_payload = _runtime_emulation_snapshot(
+            crop=crop,
             derivative_target=derivative_target,
-            controls=selected_controls,
+            snapshot_record=snapshot_record,
         )
     except Exception:
         return _build_unavailable_model_runtime_payload(
@@ -4948,75 +5011,32 @@ def build_advisor_summary_fallback_response(
     }
 
 
-def _build_chat_answer_focus_markdown(
+def prime_advisor_chat_runtime(
     *,
-    model_runtime: dict[str, Any],
-    language: str,
-) -> str | None:
-    focus = _coerce_dict(model_runtime.get("answer_focus"))
-    if not focus or not focus.get("matched_user_request"):
-        return None
+    crop: str,
+    dashboard: Optional[dict[str, Any]] = None,
+    language: str = "ko",
+) -> dict[str, Any]:
+    """Warm the model-runtime emulation cache for the current dashboard state so
+    the first chat question is instant.
 
-    effects = _coerce_dict(focus.get("effects"))
-    operator_summary = _coerce_dict(focus.get("operator_summary"))
-    violations = focus.get("violated_constraints")
-    violation_items = violations if isinstance(violations, list) else []
-    confidence = _coerce_float(focus.get("confidence"))
-    locale = "ko" if not language.lower().startswith("en") else "en"
-
-    if locale == "ko":
-        confidence_text = "추가 데이터 필요" if confidence is None else f"{confidence:.0%}"
-        constraint_text = "제약 위반 없음" if not violation_items else f"제약 {len(violation_items)}건 확인 필요"
-        return (
-            "## 모델 계산 결과\n"
-            f"- {focus.get('summary')}\n"
-            f"- 수량 변화: 24시간 {_format_signed_delta(effects.get('yield_delta_24h'))}, "
-            f"72시간 {_format_signed_delta(effects.get('yield_delta_72h'))}, "
-            f"7일 {_format_signed_delta(effects.get('yield_delta_7d'))}, "
-            f"14일 {_format_signed_delta(effects.get('yield_delta_14d'))}.\n"
-            f"- 생리 반응: 72시간 캐노피 동화량 {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
-            f"소스-싱크 균형 {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
-            f"RTR {_format_signed_delta(effects.get('rtr_delta_72h'))}.\n"
-            f"- 비용/리스크: 에너지 {_format_signed_delta(effects.get('energy_delta'))}, "
-            f"습도 패널티 {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
-            f"병해 패널티 {_format_signed_delta(effects.get('disease_penalty_delta'))}; "
-            f"{constraint_text}, 계산 신뢰도 {confidence_text}.\n"
-            f"- 해석: {operator_summary.get('why') or '모델 계산값을 기준으로 효과와 비용을 함께 비교했습니다.'}\n"
-        )
-
-    confidence_text = "missing data" if confidence is None else f"{confidence:.0%}"
-    constraint_text = "no constraint violation" if not violation_items else f"{len(violation_items)} constraint checks need review"
-    return (
-        "## Model-calculated effect\n"
-        f"- {focus.get('summary')}\n"
-        f"- Yield change: 24h {_format_signed_delta(effects.get('yield_delta_24h'))}, "
-        f"72h {_format_signed_delta(effects.get('yield_delta_72h'))}, "
-        f"7d {_format_signed_delta(effects.get('yield_delta_7d'))}, "
-        f"14d {_format_signed_delta(effects.get('yield_delta_14d'))}.\n"
-        f"- Physiology: 72h canopy assimilation {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
-        f"source/sink balance {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
-        f"RTR {_format_signed_delta(effects.get('rtr_delta_72h'))}.\n"
-        f"- Cost/risk: energy {_format_signed_delta(effects.get('energy_delta'))}, "
-        f"humidity penalty {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
-        f"disease penalty {_format_signed_delta(effects.get('disease_penalty_delta'))}; "
-        f"{constraint_text}, confidence {confidence_text}.\n"
-        f"- Interpretation: {operator_summary.get('why') or 'The process model compared effect and operating cost together.'}\n"
-    )
-
-
-def _prepend_chat_answer_focus(
-    *,
-    text: str,
-    model_runtime: dict[str, Any],
-    language: str,
-) -> str:
-    focus_markdown = _build_chat_answer_focus_markdown(
-        model_runtime=model_runtime,
+    This computes the same ``_build_model_runtime_payload`` chat runtime that
+    ``build_advisor_chat_response`` uses — over the identical dashboard — so it
+    shares the exact state fingerprint and the cached emulation is reused. It
+    makes no LLM call and returns only a small status.
+    """
+    payload = _build_model_runtime_payload(
+        crop=crop,
+        dashboard=dashboard or {},
+        tab_name="chat",
+        messages=None,
         language=language,
     )
-    if not focus_markdown:
-        return text
-    return f"{focus_markdown}\n{text.lstrip()}"
+    return {
+        "status": "primed",
+        "crop": crop,
+        "model_runtime_status": payload.get("status"),
+    }
 
 
 def build_advisor_chat_response(
@@ -5044,21 +5064,15 @@ def build_advisor_chat_response(
         _inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
         model_runtime,
     )
+    # Natural conversation: return the model's reply verbatim, with no machine
+    # answer-focus prefix and no structured card parsing. The model_runtime and
+    # retrieval context stay in machine_payload for internal use, but the visible
+    # answer is the free-form text only.
     text = generate_chat_reply(
         crop=crop,
         messages=messages,
         dashboard=llm_dashboard,
         language=language,
-    )
-    text = _prepend_chat_answer_focus(
-        text=text,
-        model_runtime=model_runtime,
-        language=language,
-    )
-    display = build_advisory_display_payload(
-        text,
-        language=language,
-        confidence=_context_completeness(dashboard_payload),
     )
 
     return {
@@ -5072,7 +5086,7 @@ def build_advisor_chat_response(
             "missing_data": _collect_missing_data_flags(dashboard_payload),
             "retrieval_context": retrieval_context.get("summary", {}),
             "model_runtime": model_runtime,
-            "display": display,
+            "display": None,
             "internal_provenance": _build_internal_provenance(
                 catalog_payload,
                 advisory_surfaces,

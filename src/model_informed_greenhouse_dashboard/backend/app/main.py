@@ -23,6 +23,7 @@ from .services.advisory_api import (
 )
 from .services.advisor_orchestration import (
     build_advisor_chat_response,
+    prime_advisor_chat_runtime,
     build_environment_advisor_response,
     build_environment_recommendation_response,
     build_harvest_advisor_response,
@@ -96,6 +97,12 @@ class AdvisorSummaryRequest(BaseModel):
 class AdvisorChatRequest(BaseModel):
     crop: str
     messages: list[Dict[str, str]]
+    dashboard: Optional[Dict[str, Any]] = None
+    language: Optional[str] = "ko"
+
+
+class AdvisorChatPrimeRequest(BaseModel):
+    crop: str
     dashboard: Optional[Dict[str, Any]] = None
     language: Optional[str] = "ko"
 
@@ -2787,6 +2794,23 @@ async def advisor_tab(tab_name: str, req: AdvisorTabRequest):
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/advisor/chat/prime")
+async def advisor_chat_prime(req: AdvisorChatPrimeRequest):
+    """Warm the model-runtime emulation cache for the current dashboard state so
+    the first chat question is instant. Makes no LLM call; best-effort."""
+    crop = _validate_crop(req.crop)
+    try:
+        return await asyncio.to_thread(
+            prime_advisor_chat_runtime,
+            crop=crop,
+            dashboard=req.dashboard,
+            language=req.language or "ko",
+        )
+    except Exception as exc:  # best-effort warm; never surface to the user
+        logger.warning("Advisor chat prime skipped: %s", exc)
+        return {"status": "skipped", "crop": crop}
 
 
 @app.post("/api/advisor/chat")

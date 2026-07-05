@@ -172,6 +172,73 @@ def _system_prompt(crop: str, language: str = "ko") -> str:
     )
 
 
+def _chat_system_prompt(crop: str, language: str = "ko") -> str:
+    """Conversational system prompt for chat: natural dialogue, no report
+    scaffolding, and never cite sources."""
+    crop_norm = (crop or "").strip().lower()
+    if crop_norm == "tomato":
+        focus_ko = "토마토는 착과·비대, VPD·증산, 광합성·기공, 생식/영양 균형, 수확 전망, CO2·광, 에너지를 함께 봅니다."
+        focus_en = "For tomato, keep fruit set/sizing, VPD/transpiration, photosynthesis, generative/vegetative balance, harvest outlook, CO2/light, and energy in view."
+    elif crop_norm == "cucumber":
+        focus_ko = "오이는 마디 발달, 적심·엽수, 영양/생식 균형, VPD·증산, 광합성·기공, CO2·광, 에너지를 함께 봅니다."
+        focus_en = "For cucumber, keep node development, pruning/leaf targets, vegetative/generative balance, VPD/transpiration, photosynthesis, CO2/light, and energy in view."
+    else:
+        focus_ko = ""
+        focus_en = ""
+
+    if language.lower().startswith("en"):
+        return (
+            "You are an experienced greenhouse grower talking with a farmer. "
+            "Answer the question directly and conversationally, like a real chat — "
+            "no report structure, no headings, no fixed sections. Write in short, natural "
+            "paragraphs; use a brief list only when it genuinely helps. "
+            "Draw on the background knowledge and model calculations you are given, but "
+            "NEVER mention sources, references, documents, data numbers, or that you consulted "
+            "anything — just speak as someone who knows. Do not fabricate missing measurements; "
+            "if something is unknown, say so plainly. "
+            f"{focus_en}"
+        )
+
+    return (
+        "당신은 농가와 편하게 대화하는 노련한 온실 재배 전문가입니다. "
+        "질문에 곧바로, 대화하듯 자연스럽게 답하세요 — 리포트 구조나 제목·소제목·고정된 항목 나열은 쓰지 마세요. "
+        "짧고 자연스러운 문단으로 말하고, 목록은 정말 도움이 될 때만 간단히 쓰세요. "
+        "제공된 배경 지식과 모델 계산을 활용하되, '참고 자료', '출처', 문서·자료 이름, 자료 번호, 근거를 찾아봤다는 표현을 "
+        "답변에 절대 언급하지 마세요 — 그냥 원래 아는 것처럼 자연스럽게 말하세요. "
+        "없는 값을 지어내지 말고, 모르는 것은 솔직히 모른다고 하세요. "
+        f"{focus_ko}"
+    )
+
+
+def _chat_grounding_block(dashboard: Dict[str, Any], language: str) -> str:
+    """Inline the retrieved wiki/manual excerpts as background knowledge, with a
+    hard rule never to surface them as citations."""
+    knowledge = dashboard.get("knowledge") if isinstance(dashboard, dict) else None
+    retrieval = (knowledge or {}).get("advisor_retrieval_context") if isinstance(knowledge, dict) else None
+    cards = (retrieval or {}).get("evidence_cards") if isinstance(retrieval, dict) else None
+    if not cards:
+        return ""
+
+    excerpts = []
+    for card in cards[:5]:
+        excerpt = str((card or {}).get("evidence_excerpt") or "").strip()
+        if excerpt:
+            excerpts.append(f"- {excerpt}")
+    if not excerpts:
+        return ""
+
+    body = "\n".join(excerpts)
+    if language.lower().startswith("en"):
+        return (
+            "Background knowledge you may draw on (do NOT quote, cite, or name any of it in your reply):\n"
+            f"{body}\n\n"
+        )
+    return (
+        "답변에 활용할 배경 지식입니다 (이 내용을 인용하거나 출처·자료명을 답변에 절대 쓰지 마세요):\n"
+        f"{body}\n\n"
+    )
+
+
 def _knowledge_context_block(dashboard: Dict[str, Any]) -> str:
     knowledge = dashboard.get("knowledge") if isinstance(dashboard, dict) else None
     if not knowledge:
@@ -473,46 +540,44 @@ def generate_chat_reply(
     language: str = "ko",
     model: str = DEFAULT_MODEL,
 ) -> str:
-    """Generate a chat reply using the conversation and optional dashboard context."""
+    """Generate a natural-conversation chat reply. The live dashboard, retrieved
+    background knowledge, and model calculations are provided as private context;
+    the reply must read like ordinary conversation and never cite any of it."""
     ctx = dashboard or {}
-    knowledge_block = _knowledge_context_block(ctx)
+    grounding_block = _chat_grounding_block(ctx, language)
+    if language.lower().startswith("en"):
+        context_intro = (
+            "The following is PRIVATE context to help you answer — the current greenhouse "
+            "readings, background knowledge, and model calculations. Use it to inform your "
+            "answer, but never quote it, cite it, name a source, or say you looked anything up.\n\n"
+            "Reading the numbers: currentData holds live readings "
+            "(temperature °C, humidity %, co2 ppm, light PAR, vpd kPa, transpiration mm/h, "
+            "stomatalConductance mol m⁻² s⁻¹, photosynthesis µmol m⁻² s⁻¹, energyUsage kW); "
+            "weather is the live Daegu outlook; rtr is the temperature-strategy state; "
+            "model_runtime holds calculated what-if effects — lean on those effects for "
+            "what-if questions and explain the change in plain language. "
+            "Use only the numbers given; do not invent missing ones.\n\n"
+        )
+    else:
+        context_intro = (
+            "아래는 답변을 돕기 위한 비공개 참고 정보입니다 — 현재 온실 계측값, 배경 지식, 모델 계산 결과입니다. "
+            "이 정보를 바탕으로 답하되, 인용하거나 출처·자료명을 말하거나 뭔가 찾아봤다는 티를 내지 마세요.\n\n"
+            "수치 읽는 법: currentData는 실시간 계측값입니다 "
+            "(temperature ℃, humidity %, co2 ppm, light 광량, vpd kPa, transpiration mm/h, "
+            "stomatalConductance mol m⁻² s⁻¹, photosynthesis µmol m⁻² s⁻¹, energyUsage kW). "
+            "weather는 대구 외기, rtr는 온도 전략 상태, model_runtime은 계산된 what-if 효과입니다 — "
+            "'~하면 어떻게 되나' 류 질문은 이 계산 효과를 근거로 쉬운 말로 설명하세요. "
+            "주어진 수치만 쓰고 없는 값은 지어내지 마세요.\n\n"
+        )
+
     input_messages: List[Dict[str, str]] = [
         {
             "role": "user",
             "content": (
-                "Dashboard JSON (may be partial) and unit guide:\n"
-                "- currentData.temperature: air temperature (°C)\n"
-                "- currentData.canopyTemp: canopy temperature (°C)\n"
-                "- currentData.humidity: RH (%)\n"
-                "- currentData.co2: CO2 (ppm)\n"
-                "- currentData.light: PAR (µmol m⁻² s⁻¹)\n"
-                "- currentData.vpd: VPD (kPa)\n"
-                "- currentData.transpiration: transpiration (mm/h)\n"
-                "- currentData.stomatalConductance: stomatal conductance (mol m⁻² s⁻¹)\n"
-                "- currentData.photosynthesis: gross photosynthesis (µmol m⁻² s⁻¹)\n"
-                "- currentData.hFlux / currentData.leFlux: sensible/latent heat flux (W/m²)\n"
-                "- currentData.energyUsage: electrical power (kW)\n\n"
-                "Required live dashboard context when present:\n"
-                "- weather.current / weather.daily: live Daegu outside weather context\n"
-                "- rtr.profile: calibrated RTR line metadata\n"
-                "- rtr.live: current rolling-24 h RTR status\n"
-                "- rtr.forecastTargets: next 3 forecast-linked RTR targets\n"
-                "- knowledge: crop-scoped local corpus summary for tomato/cucumber manuals and workbooks\n\n"
-                "Structured runtime recommendation contract when present:\n"
-                "- model_runtime.answer_focus / recommendation_families / best_actions / control_precision_matrix / operator_view / tradeoff_summary\n"
-                "- If model_runtime.answer_focus is present, start from those exact calculated effects before giving general advice.\n"
-                "- For what-if questions, explain why the requested delta changes yield, canopy assimilation, source/sink balance, energy, and risk. Do not merely repeat that it is recommended.\n"
-                "- Use only the provided numbers. Do not invent missing values.\n"
-                "- Explain the strongest option, a stronger step, and a conservative step when the precision matrix supports it.\n"
-                "- Do not expose internal terms like partial derivative, elasticity, or trust region in the visible answer.\n\n"
-                f"{knowledge_block}"
-                "Priority rules:\n"
-                "- If weather or rtr fields are present, explicitly use them in the answer.\n"
-                "- When steering advice is requested, prioritize weather and rtr over recentSummary-only trend reading.\n"
-                "- If knowledge is present, use it as agronomy background context without inventing missing deterministic rule/calculator outputs.\n"
-                "- Use recentSummary as supporting evidence, not the primary signal, when weather/rtr are available.\n\n"
-                f"Crop: {crop}\n"
-                f"Dashboard JSON:\n{json.dumps(ctx, ensure_ascii=False)}"
+                f"{context_intro}"
+                f"{grounding_block}"
+                f"작물: {crop}\n"
+                f"참고 정보(JSON):\n{json.dumps(ctx, ensure_ascii=False)}"
             ),
         }
     ]
@@ -529,14 +594,7 @@ def generate_chat_reply(
         )
 
     return _generate_text(
-        instructions=(
-            f"{_system_prompt(crop, language)}\n\n"
-            "Reply as the assistant. Be specific and actionable. "
-            "Prefer Markdown bullets when listing actions. "
-            "Keep all visible section headings in the requested language. "
-            "For Korean responses, do not use English headings like Executive Summary or Recommendations. "
-            "Do NOT fabricate missing measurements."
-        ),
+        instructions=_chat_system_prompt(crop, language),
         input_data=input_messages,
         model=model,
     )
