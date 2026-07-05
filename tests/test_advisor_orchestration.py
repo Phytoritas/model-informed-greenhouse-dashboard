@@ -2727,7 +2727,7 @@ def test_build_advisor_summary_response_exposes_additive_model_runtime_block(
     }
 
 
-def test_build_advisor_chat_response_keeps_legacy_text_and_adds_runtime_focus(
+def test_build_advisor_chat_response_returns_reply_verbatim_with_runtime_internal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     structured_reply = (
@@ -2782,15 +2782,16 @@ def test_build_advisor_chat_response_keeps_legacy_text_and_adds_runtime_focus(
         language="ko",
     )
 
-    assert payload["text"].startswith("## 모델 계산 결과")
-    assert "주간 CO2 +100ppm" in payload["text"]
-    assert "14일 예상 수량" in payload["text"]
-    assert structured_reply in payload["text"]
+    # The visible answer is the model's reply verbatim — no machine-generated
+    # answer-focus prefix, and no structured card parsing.
+    assert payload["text"] == structured_reply
+    assert payload["machine_payload"]["display"] is None
     assert payload["machine_payload"]["model_runtime"]["status"] == "ready"
     assert (
         payload["machine_payload"]["model_runtime"]["provenance"]["selected_controls"][0]
         == "co2_setpoint_day"
     )
+    # The model runtime (with answer_focus) is still computed and kept internally.
     answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
     assert answer_focus["matched_user_request"] is True
     assert answer_focus["control"] == "co2_setpoint_day"
@@ -2800,43 +2801,6 @@ def test_build_advisor_chat_response_keeps_legacy_text_and_adds_runtime_focus(
         answer_focus["effects"]["yield_delta_72h"]
     )
     assert answer_focus["effects"]["canopy_delta_72h"] > 0
-    assert payload["machine_payload"]["display"] == {
-        "language": "ko",
-        "summary": "지금 CO2를 100 ppm 올리면 2주 수량이 소폭 개선될 가능성이 큽니다.",
-        "risks": ["오후 고습이 지속되면 증산 대비 이득이 줄 수 있습니다."],
-        "actions_now": ["CO2를 100 ppm 상향하고 20분 뒤 엽온과 동화량을 다시 봅니다."],
-        "actions_today": ["야간 RH가 높아지면 환기 개도를 5% 더 확보합니다."],
-        "actions_week": [],
-        "monitor": ["CO2 상승 뒤 상엽 동화량과 VPD 추세를 함께 기록합니다."],
-        "confidence": payload["machine_payload"]["context_completeness"],
-        "sections": [
-            {
-                "key": "summary",
-                "title": "핵심 요약",
-                "body": "- 지금 CO2를 100 ppm 올리면 2주 수량이 소폭 개선될 가능성이 큽니다.",
-            },
-            {
-                "key": "risks",
-                "title": "위험 신호",
-                "body": "- 오후 고습이 지속되면 증산 대비 이득이 줄 수 있습니다.",
-            },
-            {
-                "key": "actions",
-                "title": "권장 조치",
-                "body": (
-                    "### 지금\n"
-                    "- CO2를 100 ppm 상향하고 20분 뒤 엽온과 동화량을 다시 봅니다.\n\n"
-                    "### 오늘\n"
-                    "- 야간 RH가 높아지면 환기 개도를 5% 더 확보합니다."
-                ),
-            },
-            {
-                "key": "monitor",
-                "title": "모니터링",
-                "body": "- CO2 상승 뒤 상엽 동화량과 VPD 추세를 함께 기록합니다.",
-            },
-        ],
-    }
 
 
 def test_build_advisor_chat_response_uses_latest_user_turn_for_answer_focus(
@@ -2883,7 +2847,9 @@ def test_build_advisor_chat_response_uses_latest_user_turn_for_answer_focus(
     assert answer_focus["matched_user_request"] is True
     assert answer_focus["control"] == "rh_target"
     assert answer_focus["matched_delta"] == pytest.approx(-5.0)
-    assert "습도 -5%" in payload["text"]
+    # The latest user turn drives the internal answer_focus; the visible text
+    # stays the model's own reply (no machine prefix).
+    assert payload["text"] == "## 핵심 요약\n- 모델 계산값을 확인했습니다."
 
 
 def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
@@ -2925,7 +2891,8 @@ def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
     answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
     assert "was calculated by the process-model bounded scenario" in answer_focus["summary"]
     assert "조정은" not in answer_focus["summary"]
-    assert payload["text"].startswith("## Model-calculated effect")
+    # answer_focus stays internal; the visible reply is the model's own text.
+    assert payload["text"] == "## Summary\n- Model values are ready."
 
 
 def test_build_environment_recommendation_response_keeps_legacy_keys_and_carries_model_runtime(

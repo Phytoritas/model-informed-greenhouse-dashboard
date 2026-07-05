@@ -179,10 +179,13 @@ def test_openai_helper_mentions_precision_runtime_contract_when_present(
     )
 
     prompt = fake_client.responses.calls[0]["input"][0]["content"]
+    # The model runtime is provided as private context the reply can lean on.
     assert "answer_focus" in prompt
-    assert "exact calculated effects" in prompt
     assert "control_precision_matrix" in prompt
-    assert "Use only the provided numbers" in prompt
+    assert "model_runtime" in prompt
+    # Conversational guardrails: never cite sources, never invent missing values.
+    assert "인용" in prompt or "출처" in prompt
+    assert "없는 값" in prompt
 
 
 def test_build_advisory_display_payload_accepts_locale_aware_korean_headings() -> None:

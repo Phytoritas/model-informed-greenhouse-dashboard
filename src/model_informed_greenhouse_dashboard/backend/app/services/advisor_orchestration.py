@@ -4948,77 +4948,6 @@ def build_advisor_summary_fallback_response(
     }
 
 
-def _build_chat_answer_focus_markdown(
-    *,
-    model_runtime: dict[str, Any],
-    language: str,
-) -> str | None:
-    focus = _coerce_dict(model_runtime.get("answer_focus"))
-    if not focus or not focus.get("matched_user_request"):
-        return None
-
-    effects = _coerce_dict(focus.get("effects"))
-    operator_summary = _coerce_dict(focus.get("operator_summary"))
-    violations = focus.get("violated_constraints")
-    violation_items = violations if isinstance(violations, list) else []
-    confidence = _coerce_float(focus.get("confidence"))
-    locale = "ko" if not language.lower().startswith("en") else "en"
-
-    if locale == "ko":
-        confidence_text = "추가 데이터 필요" if confidence is None else f"{confidence:.0%}"
-        constraint_text = "제약 위반 없음" if not violation_items else f"제약 {len(violation_items)}건 확인 필요"
-        return (
-            "## 모델 계산 결과\n"
-            f"- {focus.get('summary')}\n"
-            f"- 수량 변화: 24시간 {_format_signed_delta(effects.get('yield_delta_24h'))}, "
-            f"72시간 {_format_signed_delta(effects.get('yield_delta_72h'))}, "
-            f"7일 {_format_signed_delta(effects.get('yield_delta_7d'))}, "
-            f"14일 {_format_signed_delta(effects.get('yield_delta_14d'))}.\n"
-            f"- 생리 반응: 72시간 캐노피 동화량 {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
-            f"소스-싱크 균형 {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
-            f"RTR {_format_signed_delta(effects.get('rtr_delta_72h'))}.\n"
-            f"- 비용/리스크: 에너지 {_format_signed_delta(effects.get('energy_delta'))}, "
-            f"습도 패널티 {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
-            f"병해 패널티 {_format_signed_delta(effects.get('disease_penalty_delta'))}; "
-            f"{constraint_text}, 계산 신뢰도 {confidence_text}.\n"
-            f"- 해석: {operator_summary.get('why') or '모델 계산값을 기준으로 효과와 비용을 함께 비교했습니다.'}\n"
-        )
-
-    confidence_text = "missing data" if confidence is None else f"{confidence:.0%}"
-    constraint_text = "no constraint violation" if not violation_items else f"{len(violation_items)} constraint checks need review"
-    return (
-        "## Model-calculated effect\n"
-        f"- {focus.get('summary')}\n"
-        f"- Yield change: 24h {_format_signed_delta(effects.get('yield_delta_24h'))}, "
-        f"72h {_format_signed_delta(effects.get('yield_delta_72h'))}, "
-        f"7d {_format_signed_delta(effects.get('yield_delta_7d'))}, "
-        f"14d {_format_signed_delta(effects.get('yield_delta_14d'))}.\n"
-        f"- Physiology: 72h canopy assimilation {_format_signed_delta(effects.get('canopy_delta_72h'))}, "
-        f"source/sink balance {_format_signed_delta(effects.get('source_sink_balance_delta'))}, "
-        f"RTR {_format_signed_delta(effects.get('rtr_delta_72h'))}.\n"
-        f"- Cost/risk: energy {_format_signed_delta(effects.get('energy_delta'))}, "
-        f"humidity penalty {_format_signed_delta(effects.get('humidity_penalty_delta'))}, "
-        f"disease penalty {_format_signed_delta(effects.get('disease_penalty_delta'))}; "
-        f"{constraint_text}, confidence {confidence_text}.\n"
-        f"- Interpretation: {operator_summary.get('why') or 'The process model compared effect and operating cost together.'}\n"
-    )
-
-
-def _prepend_chat_answer_focus(
-    *,
-    text: str,
-    model_runtime: dict[str, Any],
-    language: str,
-) -> str:
-    focus_markdown = _build_chat_answer_focus_markdown(
-        model_runtime=model_runtime,
-        language=language,
-    )
-    if not focus_markdown:
-        return text
-    return f"{focus_markdown}\n{text.lstrip()}"
-
-
 def build_advisor_chat_response(
     *,
     crop: str,
@@ -5044,21 +4973,15 @@ def build_advisor_chat_response(
         _inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
         model_runtime,
     )
+    # Natural conversation: return the model's reply verbatim, with no machine
+    # answer-focus prefix and no structured card parsing. The model_runtime and
+    # retrieval context stay in machine_payload for internal use, but the visible
+    # answer is the free-form text only.
     text = generate_chat_reply(
         crop=crop,
         messages=messages,
         dashboard=llm_dashboard,
         language=language,
-    )
-    text = _prepend_chat_answer_focus(
-        text=text,
-        model_runtime=model_runtime,
-        language=language,
-    )
-    display = build_advisory_display_payload(
-        text,
-        language=language,
-        confidence=_context_completeness(dashboard_payload),
     )
 
     return {
@@ -5072,7 +4995,7 @@ def build_advisor_chat_response(
             "missing_data": _collect_missing_data_flags(dashboard_payload),
             "retrieval_context": retrieval_context.get("summary", {}),
             "model_runtime": model_runtime,
-            "display": display,
+            "display": None,
             "internal_provenance": _build_internal_provenance(
                 catalog_payload,
                 advisory_surfaces,
