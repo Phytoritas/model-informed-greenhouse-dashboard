@@ -36,8 +36,6 @@ REPO_ROOT = DATA_ROOT.parent
 DIRECTIVE_FILE = REPO_ROOT / "codex_rag_advisor_prompt_smartgrow.md"
 CATALOG_OUTPUT_DIR = REPO_ROOT / "artifacts" / "knowledge"
 CATALOG_VERSION = "smartgrow-phase1-v1"
-WIKI_DIRNAME = "knowledge_wiki"
-WIKI_MANIFEST = "manifest.json"
 _PDF_WARNING_PATTERN = r"Advanced encoding .* not implemented yet"
 _PDF_CMAP_LOGGER = "pypdf._cmap"
 
@@ -225,71 +223,6 @@ ASSET_SPECS: list[dict[str, Any]] = [
 ]
 
 
-def _infer_wiki_crop_scopes(filename: str, text: str) -> list[str]:
-    """Infer crop scope from a wiki page. Pages that mention only one crop are
-    scoped to it; shared/comparison pages stay available to both crops."""
-
-    head = f"{filename}\n{text[:600]}"
-    has_tomato = "토마토" in head
-    has_cucumber = "오이" in head
-    if has_tomato and not has_cucumber:
-        return ["tomato"]
-    if has_cucumber and not has_tomato:
-        return ["cucumber"]
-    return ["tomato", "cucumber"]
-
-
-def _wiki_asset_specs() -> list[dict[str, Any]]:
-    """Build asset specs from the committed, anonymized wiki snapshot manifest.
-
-    Returns an empty list when the snapshot is absent (e.g. synthetic test data),
-    so the rest of the catalog is unaffected."""
-
-    wiki_root = DATA_ROOT / WIKI_DIRNAME
-    manifest_path = wiki_root / WIKI_MANIFEST
-    if not manifest_path.exists():
-        return []
-
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return []
-
-    specs: list[dict[str, Any]] = []
-    for entry in manifest.get("files", []):
-        rel = entry.get("path")
-        if not rel:
-            continue
-        page_path = wiki_root / rel
-        if not page_path.exists():
-            continue
-        text = page_path.read_text(encoding="utf-8")
-        stem = Path(rel).stem
-        title = _wiki_title(text, stem)
-        section = entry.get("section", "pages")
-        asset_family = "wiki_case" if section == "cases" else "wiki_page"
-        specs.append(
-            {
-                "filename": f"{WIKI_DIRNAME}/{rel}",
-                "title": title,
-                "crop_scopes": _infer_wiki_crop_scopes(stem, text),
-                "asset_family": asset_family,
-                "source_type": "markdown",
-                "topic_hints": ["wiki", "field_case" if asset_family == "wiki_case" else "curated"],
-                "manifest_sha256": entry.get("sha256"),
-            }
-        )
-    return specs
-
-
-def _wiki_title(text: str, fallback: str) -> str:
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("# "):
-            return stripped[2:].strip()
-    return fallback.replace("_", " ")
-
-
 def _matches_crop(spec_crops: Iterable[str], crop: str | None) -> bool:
     if crop is None:
         return True
@@ -396,17 +329,6 @@ def _inspect_pdf(path: Path) -> dict[str, Any]:
     }
 
 
-def _inspect_markdown(path: Path) -> dict[str, Any]:
-    text = path.read_text(encoding="utf-8")
-    section_count = sum(1 for line in text.splitlines() if line.startswith("## "))
-    return {
-        "parser_backend": "stdlib-markdown",
-        "char_count": len(text),
-        "section_count": section_count,
-        "inspection_status": "sections-ready",
-    }
-
-
 def _inspect_asset(path: Path, source_type: str) -> dict[str, Any]:
     if source_type == "csv":
         return _inspect_csv(path)
@@ -414,8 +336,6 @@ def _inspect_asset(path: Path, source_type: str) -> dict[str, Any]:
         return _inspect_xlsx(path)
     if source_type == "pdf":
         return _inspect_pdf(path)
-    if source_type == "markdown":
-        return _inspect_markdown(path)
     return {"parser_backend": "unknown"}
 
 
@@ -467,10 +387,9 @@ def _build_asset_entry(spec: dict[str, Any]) -> dict[str, Any]:
 
 
 def _build_knowledge_catalog_uncached(crop: str | None = None) -> dict[str, Any]:
-    all_specs = [*ASSET_SPECS, *_wiki_asset_specs()]
     assets = [
         _build_asset_entry(spec)
-        for spec in all_specs
+        for spec in ASSET_SPECS
         if _matches_crop(spec["crop_scopes"], crop)
     ]
     normalized_previews = build_workbook_previews(crop)

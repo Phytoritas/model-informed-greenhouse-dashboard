@@ -211,8 +211,8 @@ def _chat_system_prompt(crop: str, language: str = "ko") -> str:
 
 
 def _chat_grounding_block(dashboard: Dict[str, Any], language: str) -> str:
-    """Inline the retrieved wiki/manual excerpts as background knowledge, with a
-    hard rule never to surface them as citations."""
+    """Inline the retrieved manual/compendium excerpts as background knowledge,
+    with a hard rule never to surface them as citations."""
     knowledge = dashboard.get("knowledge") if isinstance(dashboard, dict) else None
     retrieval = (knowledge or {}).get("advisor_retrieval_context") if isinstance(knowledge, dict) else None
     cards = (retrieval or {}).get("evidence_cards") if isinstance(retrieval, dict) else None

@@ -35,7 +35,6 @@ _PDF_WARNING_PATTERN = r"Advanced encoding .* not implemented yet"
 _PDF_CMAP_LOGGER = "pypdf._cmap"
 _QUERY_TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]+")
 _MAX_QUERY_LIMIT = 10
-_CURATED_WIKI_BONUS = 8.0
 
 _SCHEMA_STATEMENTS = [
     """
@@ -593,12 +592,6 @@ def _document_filter_sql(
         clauses.append("kd.crop_scopes_json LIKE ?")
         params.append(f'%"{crop}"%')
 
-    # Curated LLM Wiki sections are cross-topic and should stay eligible for any
-    # narrative intent, so the source-type/topic hard filters exempt them. The
-    # explicit asset_families filter (workbook-only intents) is NOT exempted, so
-    # pesticide/nutrient routes still return only their structured workbooks.
-    wiki_bypass = "LOWER(kd.asset_family) LIKE 'wiki%'"
-
     source_types = [
         _normalize_text(value).lower()
         for value in filter_payload.get("source_types", [])
@@ -606,7 +599,7 @@ def _document_filter_sql(
     ]
     if source_types:
         placeholders = ", ".join("?" for _ in source_types)
-        clauses.append(f"(LOWER(kd.source_type) IN ({placeholders}) OR {wiki_bypass})")
+        clauses.append(f"LOWER(kd.source_type) IN ({placeholders})")
         params.extend(source_types)
 
     asset_families = [
@@ -621,12 +614,12 @@ def _document_filter_sql(
 
     topic_major = _normalize_text(filter_payload.get("topic_major"))
     if topic_major:
-        clauses.append(f"(LOWER(COALESCE(kc.topic_major, '')) = ? OR {wiki_bypass})")
+        clauses.append("LOWER(COALESCE(kc.topic_major, '')) = ?")
         params.append(topic_major.lower())
 
     topic_minor = _normalize_text(filter_payload.get("topic_minor"))
     if topic_minor:
-        clauses.append(f"(LOWER(COALESCE(kc.topic_minor, '')) = ? OR {wiki_bypass})")
+        clauses.append("LOWER(COALESCE(kc.topic_minor, '')) = ?")
         params.append(topic_minor.lower())
 
     return (" AND ".join(clauses), params)
@@ -823,14 +816,6 @@ def _result_score(
         for token in query_terms
         if token.lower() in _normalize_text(row["title"]).lower()
     )
-    # Curated LLM Wiki sections are cleaner than raw PDF paragraphs, so when they
-    # match the query at all they should outrank the noisier compendium chunks.
-    curated_bonus = (
-        _CURATED_WIKI_BONUS
-        if token_hits and _normalize_text(row["asset_family"]).startswith("wiki")
-        else 0.0
-    )
-
     if query_mode == "intent_routed_hybrid":
         fts_rank = float(row["fts_rank"]) if row["fts_rank"] is not None else 20.0
         base = max(2.0, 32.0 - min(fts_rank, 29.0))
@@ -839,7 +824,6 @@ def _result_score(
             + entity_hits * 14.0
             + title_hits * 5.0
             + token_hits * 1.75
-            + curated_bonus
             + routed_relevance_bonus(row=row, route=route, haystack=haystack),
             3,
         )
@@ -848,7 +832,7 @@ def _result_score(
         fts_rank = float(row["fts_rank"]) if row["fts_rank"] is not None else 20.0
         base = max(1.0, 30.0 - min(fts_rank, 29.0))
         return round(
-            base + entity_hits * 14.0 + title_hits * 5.0 + token_hits * 1.5 + curated_bonus,
+            base + entity_hits * 14.0 + title_hits * 5.0 + token_hits * 1.5,
             3,
         )
 
@@ -856,7 +840,6 @@ def _result_score(
         entity_hits * 14.0
         + title_hits * 6.0
         + token_hits * 4.0
-        + curated_bonus
         + routed_relevance_bonus(row=row, route=route, haystack=haystack),
         3,
     )
@@ -1347,76 +1330,6 @@ def _ingest_pdf_asset(
                         ("topic", hint)
                         for hint in asset.get("topic_hints", [])[:4]
                     ),
-                ),
-            )
-            ordinal += 1
-
-
-def _split_markdown_sections(text: str) -> list[tuple[str, str]]:
-    """Split curated wiki markdown into ``(heading, body)`` sections by ``##``."""
-
-    lines = text.split("\n")
-    sections: list[tuple[str, list[str]]] = []
-    current_heading = "요약"
-    current_body: list[str] = []
-    for line in lines:
-        if line.startswith("# ") and not line.startswith("## "):
-            continue  # page title handled separately
-        if line.startswith("## "):
-            if current_body:
-                sections.append((current_heading, current_body))
-            current_heading = line[3:].strip()
-            current_body = []
-        else:
-            current_body.append(line)
-    if current_body:
-        sections.append((current_heading, current_body))
-    return [
-        (heading, _normalize_text("\n".join(body)))
-        for heading, body in sections
-        if _normalize_text("\n".join(body))
-    ]
-
-
-def _ingest_markdown_asset(
-    connection: sqlite3.Connection,
-    *,
-    crop_scope: str,
-    document_id: int,
-    asset: dict[str, Any],
-) -> None:
-    path = REPO_ROOT / asset["relative_path"]
-    text = re.sub(r"\r\n?", "\n", path.read_text(encoding="utf-8"))
-    topic_major = asset.get("topic_hints", [asset["asset_family"]])[0]
-    ordinal = 1
-    for heading, body in _split_markdown_sections(text):
-        # Skip machine trace sections from the retrievable body but keep them as
-        # provenance metadata on the chunks below.
-        if heading in {"Source Trace", "현장 사용 주의"}:
-            continue
-        for chunk in _build_text_chunks(f"{heading}\n{body}"):
-            chunk_id = _insert_chunk(
-                connection,
-                document_id=document_id,
-                crop_scope=crop_scope,
-                chunk_type="wiki_section",
-                topic_major=topic_major,
-                topic_minor=asset["asset_family"],
-                source_locator=f"section:{heading}",
-                ordinal=ordinal,
-                text_content=chunk,
-                metadata={
-                    "heading": heading,
-                    "source_label": "consulting-llm-wiki-v2",
-                    "wiki_path": asset["relative_path"],
-                },
-            )
-            _insert_entities(
-                connection,
-                chunk_id,
-                (
-                    ("crop", crop_scope),
-                    *(("topic", hint) for hint in asset.get("topic_hints", [])[:4]),
                 ),
             )
             ordinal += 1
@@ -2061,13 +1974,6 @@ def rebuild_knowledge_database(payload: dict[str, Any]) -> dict[str, Any]:
                 )
             elif asset["source_type"] == "pdf":
                 _ingest_pdf_asset(
-                    connection,
-                    crop_scope=crop_scope,
-                    document_id=document_id,
-                    asset=asset,
-                )
-            elif asset["source_type"] == "markdown":
-                _ingest_markdown_asset(
                     connection,
                     crop_scope=crop_scope,
                     document_id=document_id,
