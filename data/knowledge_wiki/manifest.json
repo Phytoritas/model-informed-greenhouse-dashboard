@@ -9,10 +9,101 @@
     "새봄"
   ],
   "dropped_page_count": 23,
+  "case_dossier_count": 15,
   "farm_label_count": 5,
   "sensitive_token_count": 1,
-  "file_count": 41,
+  "file_count": 56,
   "files": [
+    {
+      "path": "cases/dossiers/case_dossier_0016.md",
+      "sha256": "f4d7f2917e1156721568b02399a9f6b373ecb66c488cc562d251877d1a1ad79b",
+      "char_count": 2024,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0019.md",
+      "sha256": "db80d1fc35c31b50a824943a674f352f9c8c619dc6d5eafed3188f8fa6659fce",
+      "char_count": 2955,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0075.md",
+      "sha256": "701c7a592bd872a5d39b4f9467f56158a017fcbc869cfbf11c6b3a437463208d",
+      "char_count": 2376,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0083.md",
+      "sha256": "890bb4d7c9b0721c1946eb5b70cbaf342004b08cf38ef358816a184e67f71aa0",
+      "char_count": 2203,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0084.md",
+      "sha256": "0ad4096902808fbe7dfc1957e8a205850bb5f158e70d2628c657a7a64edef1dc",
+      "char_count": 2212,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0087.md",
+      "sha256": "c893a8fd35c7fb6570e3cd7aaf45b3bda4ad039e9d8306ffe5806f63f0a6561e",
+      "char_count": 2133,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0089.md",
+      "sha256": "c9c9502d3ea231392c8762dfc6bfee84551e71170f4eee37e78eb51b6e55d296",
+      "char_count": 2597,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0108.md",
+      "sha256": "b91099ef976a7ba09b159ad044eaf6254ba79b04aa61e5a66b68e7fbb0e3d5bd",
+      "char_count": 2012,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0117.md",
+      "sha256": "db7485ea9e3bc7863dc2ca6e73aa52f3919977a5e9641aefb1104576037a1e7e",
+      "char_count": 2864,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0119.md",
+      "sha256": "cb0c39764799baa9bc632bf0b08b71fb4787ce12c0d67f70825b62ce49f389d2",
+      "char_count": 2571,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0128.md",
+      "sha256": "cfa21a901482da3de2b16ec20f59c59b791d2d6fd131a686f6489233c006ffcb",
+      "char_count": 2151,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0134.md",
+      "sha256": "4f7eec4784e4b1a715a5a971c2088cfc6b71cdf7892356bb30210911b22528c1",
+      "char_count": 2197,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0135.md",
+      "sha256": "254d269c244f4164db75eda6b3c8a287fd7643e69a174478c0357489998ba9a9",
+      "char_count": 2161,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0141.md",
+      "sha256": "cdef510a2f129b613300e9a9204588371cf41df375dea658566af61665b53679",
+      "char_count": 2421,
+      "section": "cases"
+    },
+    {
+      "path": "cases/dossiers/case_dossier_0144.md",
+      "sha256": "83ed8967366e2c49cf27fab8902d14ebb1ae1bf2037c374107ea036729383dbd",
+      "char_count": 2191,
+      "section": "cases"
+    },
     {
       "path": "pages/001_작물기초.md",
       "sha256": "a91bdfd82479e099a09a0ba7e442ef1b746f662a7aeb2eb8de2c6138d097eb0a",

@@ -27,6 +27,7 @@ import argparse
 import hashlib
 import json
 import re
+import sqlite3
 import sys
 import unicodedata
 from dataclasses import dataclass, field
@@ -259,6 +260,92 @@ def _collect_inputs(source: Path) -> list[tuple[str, Path]]:
     return inputs
 
 
+def _clean_case_title(title: str) -> str:
+    """Strip pipeline scaffolding from a dossier title -> a readable heading."""
+
+    text = title.split("dossier:", 1)[-1].strip()
+    text = re.sub(r"\s*\([^)]*\)\s*$", "", text).strip()
+    return text or title.strip()
+
+
+def _collect_sqlite_cases(db_path: Path, limit_evidence: int = 8) -> list[tuple[str, str]]:
+    """Render teaching-ready case dossiers from the llm_wiki_v2 sqlite export.
+
+    Only cases NOT sourced from excluded farms are included, and each case's
+    evidence bullets exclude any excerpt whose source is an excluded farm, so the
+    output is 1:1 pairable and drops cleanly through the anonymization pipeline.
+    Returns ``(relative_dest, markdown_text)`` pairs sorted by case key."""
+
+    connection = sqlite3.connect(db_path)
+    connection.row_factory = sqlite3.Row
+    try:
+        dossiers = connection.execute(
+            """
+            SELECT id, case_key, case_title, crop_context, field_situation_ko,
+                   problem_ko, management_judgment_ko, learner_takeaway_ko,
+                   source_paths_json
+            FROM case_dossiers
+            WHERE quality_status = 'teaching_ready'
+              AND case_readiness_status = 'case_ready'
+            ORDER BY case_key
+            """
+        ).fetchall()
+
+        rendered: list[tuple[str, str]] = []
+        for dossier in dossiers:
+            source_paths = " ".join(json.loads(dossier["source_paths_json"] or "[]"))
+            if EXCLUDED_SOURCE_RE.search(source_paths):
+                continue
+
+            evidence = connection.execute(
+                """
+                SELECT excerpt, source_path, locator FROM case_evidence
+                WHERE case_dossier_id = ?
+                ORDER BY sort_order
+                """,
+                (dossier["id"],),
+            ).fetchall()
+            pairs = [
+                (row["excerpt"], row["source_path"], row["locator"])
+                for row in evidence
+                if row["excerpt"]
+                and not EXCLUDED_SOURCE_RE.search(row["source_path"] or "")
+            ][:limit_evidence]
+            if not pairs:
+                continue
+
+            rendered.append(
+                (f"cases/dossiers/{dossier['case_key']}.md", _render_case(dossier, pairs))
+            )
+        return rendered
+    finally:
+        connection.close()
+
+
+def _render_case(dossier: sqlite3.Row, pairs: list[tuple[str, str, str]]) -> str:
+    title = _clean_case_title(dossier["case_title"] or dossier["case_key"])
+    situation = _normalize_newlines(dossier["field_situation_ko"] or "").strip()
+    problem = _normalize_newlines(dossier["problem_ko"] or "").strip()
+    judgment = _normalize_newlines(dossier["management_judgment_ko"] or "").strip()
+    takeaway = _normalize_newlines(dossier["learner_takeaway_ko"] or "").strip()
+
+    ev_lines = "\n".join(f"- {excerpt.strip()}" for excerpt, _, _ in pairs)
+    tr_lines = "\n".join(
+        f"- source_path={sp}; locator={loc}" for _, sp, loc in pairs
+    )
+    parts = [f"# {title}", ""]
+    if situation:
+        parts += ["## 요약", situation, ""]
+    if problem:
+        parts += ["## 왜 중요한가", problem, ""]
+    judgment_body = "\n".join(b for b in (judgment, takeaway) if b)
+    if judgment_body:
+        parts += ["## 판단과 시사점", judgment_body, ""]
+    parts += ["## Teaching-Ready Evidence", ev_lines, ""]
+    parts += ["## Source Trace", tr_lines, ""]
+    return "\n".join(parts)
+
+
 def _slugify(value: str) -> str:
     ascii_value = unicodedata.normalize("NFKD", value)
     out: list[str] = []
@@ -270,7 +357,7 @@ def _slugify(value: str) -> str:
     return "".join(out).strip("-") or "case"
 
 
-def run(source: Path, dest: Path, snapshot_at: str) -> dict:
+def run(source: Path, dest: Path, snapshot_at: str, sqlite_db: Path | None = None) -> dict:
     if not source.exists():
         raise SystemExit(f"source not found: {source}")
 
@@ -284,6 +371,13 @@ def run(source: Path, dest: Path, snapshot_at: str) -> dict:
         raw = _normalize_newlines(abs_source.read_text(encoding="utf-8"))
         raw_by_dest[rel_dest] = raw
         labeler.discover(raw)
+
+    # Optional enrichment: teaching-ready case dossiers from the sqlite export.
+    if sqlite_db is not None:
+        for rel_dest, text in _collect_sqlite_cases(sqlite_db):
+            raw_by_dest[rel_dest] = text
+            labeler.discover(text)
+
     labeler.finalize()
 
     # Start from a clean snapshot so pages dropped by source exclusion do not
@@ -326,6 +420,9 @@ def run(source: Path, dest: Path, snapshot_at: str) -> dict:
         "pii_redaction": True,
         "excluded_sources": ["우일팜", "새봄"],
         "dropped_page_count": dropped_pages,
+        "case_dossier_count": sum(
+            1 for entry in files_meta if entry["path"].startswith("cases/dossiers/")
+        ),
         "farm_label_count": len(labeler.mapping),
         "sensitive_token_count": len(SENSITIVE_NAME_TOKENS),
         "file_count": len(files_meta),
@@ -349,9 +446,15 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="ISO-8601 timestamp recorded in the manifest (kept out of code for determinism)",
     )
+    parser.add_argument(
+        "--sqlite",
+        type=Path,
+        default=None,
+        help="optional llm_wiki_v2.sqlite to enrich with teaching-ready case dossiers",
+    )
     args = parser.parse_args(argv)
 
-    manifest = run(args.source, args.dest, args.snapshot_at)
+    manifest = run(args.source, args.dest, args.snapshot_at, sqlite_db=args.sqlite)
     print(
         f"ingested {manifest['file_count']} files "
         f"(dropped {manifest['dropped_page_count']} excluded-source pages), "

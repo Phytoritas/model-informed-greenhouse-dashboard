@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import re
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -156,6 +157,72 @@ def test_ingest_manifest_records_exclusion(tmp_path: Path) -> None:
     assert (tmp_path / "out" / "pages" / "keep.md").exists()
 
 
+def _make_case_sqlite(tmp_path: Path) -> Path:
+    db = tmp_path / "wiki.sqlite"
+    con = sqlite3.connect(db)
+    con.execute(
+        """CREATE TABLE case_dossiers (
+            id INTEGER PRIMARY KEY, case_key TEXT, case_title TEXT, crop_context TEXT,
+            field_situation_ko TEXT, problem_ko TEXT, management_judgment_ko TEXT,
+            learner_takeaway_ko TEXT, source_paths_json TEXT,
+            quality_status TEXT, case_readiness_status TEXT)"""
+    )
+    con.execute(
+        """CREATE TABLE case_evidence (
+            id INTEGER PRIMARY KEY, case_dossier_id INTEGER, excerpt TEXT,
+            source_path TEXT, locator TEXT, sort_order INTEGER)"""
+    )
+    # Case 1: common source, teaching-ready -> kept.
+    con.execute(
+        "INSERT INTO case_dossiers VALUES (1,'c1','x dossier: 토마토 사례집 (진단)','토마토','상황','문제','판단','시사점','[\"20_작물별(ByCrop)/사례집.pdf\"]','teaching_ready','case_ready')"
+    )
+    con.execute("INSERT INTO case_evidence VALUES (1,1,'잎 반점 관찰','20_작물별(ByCrop)/사례집.pdf','page 3',1)")
+    con.execute("INSERT INTO case_evidence VALUES (2,1,'우일팜 구역 리뷰','10_농가별(ByFarm)/09. 우일팜 자료/x.pptx','slide 1',2)")
+    # Case 2: 우일팜 source -> dropped entirely.
+    con.execute(
+        "INSERT INTO case_dossiers VALUES (2,'c2','y dossier: 우일팜 사례','토마토','s','p','j','t','[\"10_농가별(ByFarm)/09. 우일팜 자료/z.pptx\"]','teaching_ready','case_ready')"
+    )
+    con.execute("INSERT INTO case_evidence VALUES (3,2,'우일팜 항목','10_농가별(ByFarm)/09. 우일팜 자료/z.pptx','slide 2',1)")
+    # Case 3: not teaching-ready -> skipped.
+    con.execute(
+        "INSERT INTO case_dossiers VALUES (3,'c3','z dossier: 미완성','토마토','s','p','j','t','[\"20_작물별(ByCrop)/b.pdf\"]','needs_review','case_review_required')"
+    )
+    con.execute("INSERT INTO case_evidence VALUES (4,3,'항목','20_작물별(ByCrop)/b.pdf','page 1',1)")
+    con.commit()
+    con.close()
+    return db
+
+
+def test_collect_sqlite_cases_filters_by_readiness_and_source(tmp_path: Path) -> None:
+    db = _make_case_sqlite(tmp_path)
+    cases = ingest._collect_sqlite_cases(db)
+
+    # Only the common-source, teaching-ready case survives.
+    assert len(cases) == 1
+    rel, text = cases[0]
+    assert rel == "cases/dossiers/c1.md"
+    assert "# 토마토 사례집" in text
+    assert "## Teaching-Ready Evidence" in text
+    # The 우일팜 evidence bullet inside the kept case is excluded.
+    assert "잎 반점 관찰" in text
+    assert "우일팜" not in text
+
+
+def test_run_enriches_with_sqlite_cases(tmp_path: Path) -> None:
+    source = tmp_path / "llm_wiki_v2"
+    (source / "wiki_pages").mkdir(parents=True)
+    (source / "wiki_pages" / "keep.md").write_text(
+        _page([("공통 지식", "30_공통자료(Common)/x.pdf")]), encoding="utf-8"
+    )
+    db = _make_case_sqlite(tmp_path)
+    manifest = ingest.run(source, tmp_path / "out", "2026-07-05T00:00:00Z", sqlite_db=db)
+
+    assert manifest["case_dossier_count"] == 1
+    case_file = tmp_path / "out" / "cases" / "dossiers" / "c1.md"
+    assert case_file.exists()
+    assert "우일팜" not in case_file.read_text(encoding="utf-8")
+
+
 def test_ingest_masks_personal_information(tmp_path: Path) -> None:
     source = _make_source(tmp_path)
     dest = tmp_path / "out"
@@ -195,6 +262,8 @@ def test_committed_snapshot_matches_manifest_hashes() -> None:
     manifest = json.loads((SNAPSHOT_DIR / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["anonymized"] is True
     assert manifest["file_count"] == len(manifest["files"])
+    # Snapshot is enriched with teaching-ready case dossiers.
+    assert manifest.get("case_dossier_count", 0) >= 1
     for entry in manifest["files"]:
         content = (SNAPSHOT_DIR / entry["path"]).read_text(encoding="utf-8")
         digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
