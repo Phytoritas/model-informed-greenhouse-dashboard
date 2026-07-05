@@ -63,13 +63,13 @@ function LauncherStatPill({
 }) {
     return (
         <div
-            className="rounded-[22px] bg-white/84 px-4 py-3"
+            className="min-w-0 rounded-[var(--sg-radius-md)] bg-white/84 px-3 py-2"
             style={{ boxShadow: 'var(--sg-shadow-card)' }}
         >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sg-text-faint)]">
+            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                 {label}
             </div>
-            <div className="mt-2 text-sm font-semibold tracking-[-0.03em] text-[color:var(--sg-text-strong)]">
+            <div className="sg-data-number mt-1 text-sm font-bold text-[color:var(--sg-text-strong)]">
                 {value}
             </div>
         </div>
@@ -195,81 +195,69 @@ export default function SmartGrowSurfacePanel({
         >
             {loading ? (
                 <div
-                    className="rounded-[26px] bg-white/82 px-5 py-12 text-center text-sm text-[color:var(--sg-text-muted)]"
+                    className="rounded-[var(--sg-radius-lg)] bg-white/82 px-4 py-6 text-center text-sm text-[color:var(--sg-text-muted)]"
                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                     {copy.loading}
                 </div>
             ) : error ? (
-                <div className="rounded-[26px] px-5 py-12 text-center text-sm text-[color:var(--sg-accent-amber)] sg-tint-amber">
+                <div className="rounded-[var(--sg-radius-lg)] px-4 py-6 text-center text-sm text-[color:var(--sg-accent-amber)] sg-tint-amber">
                     {copy.unavailable}: {error}
                 </div>
             ) : surfaces.length === 0 ? (
                 <div
-                    className="rounded-[26px] bg-white/82 px-5 py-12 text-center text-sm text-[color:var(--sg-text-muted)]"
+                    className="rounded-[var(--sg-radius-lg)] bg-white/82 px-4 py-6 text-center text-sm text-[color:var(--sg-text-muted)]"
                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                     {copy.empty}
                 </div>
             ) : (
-                <div className="space-y-4">
-                    <div className={`grid gap-3 ${isCompact ? 'xl:grid-cols-1' : 'md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)]'}`}>
+                <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-2">
                         <div
-                            className="rounded-[28px] px-5 py-5 sg-tint-green md:row-span-2"
+                            className="min-w-0 rounded-[var(--sg-radius-md)] px-3 py-2.5 sg-tint-green"
                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                         >
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+                            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                 {copy.readyCount}
                             </div>
-                            <div className="mt-3 flex items-end justify-between gap-3">
-                                <div className="text-4xl font-semibold tracking-[-0.06em] text-[color:var(--sg-text-strong)]">
+                            <div className="mt-1 flex items-baseline justify-between gap-2">
+                                <span className="sg-data-number text-lg font-bold leading-none text-[color:var(--sg-text-strong)]">
                                     {readyCount}
-                                </div>
+                                </span>
                                 {featuredSurface ? (
-                                    <div
-                                        className="rounded-full bg-white/84 px-3 py-1.5 text-[11px] font-semibold text-[color:var(--sg-accent-forest)]"
-                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                    >
+                                    <span className="truncate text-[11px] font-semibold text-[color:var(--sg-accent-forest)]">
                                         {labels[featuredSurface.key]}
-                                    </div>
+                                    </span>
                                 ) : null}
                             </div>
-                            <p className="mt-3 max-w-sm text-sm leading-6 text-[color:var(--sg-text-muted)]">
-                                {copy.readyLead}
-                            </p>
                         </div>
                         <div
-                            className="rounded-[24px] px-4 py-4 sg-tint-blue"
+                            className="min-w-0 rounded-[var(--sg-radius-md)] px-3 py-2.5 sg-tint-blue"
                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                         >
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+                            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                 {copy.pendingCount}
                             </div>
-                            <div className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+                            <div className="sg-data-number mt-1 text-lg font-bold leading-none text-[color:var(--sg-text-strong)]">
                                 {pendingCount}
                             </div>
-                            <p className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
-                                {copy.pendingLead}
-                            </p>
                         </div>
                         <div
-                            className="rounded-[24px] px-4 py-4 sg-tint-amber"
+                            className="min-w-0 rounded-[var(--sg-radius-md)] px-3 py-2.5 sg-tint-amber"
                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                         >
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
+                            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
                                 {copy.parserCount}
                             </div>
-                            <div className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
+                            <div className="sg-data-number mt-1 text-lg font-bold leading-none text-[color:var(--sg-text-strong)]">
                                 {parserPendingCount}
                             </div>
-                            <p className="mt-2 text-xs leading-6 text-[color:var(--sg-text-muted)]">
-                                {copy.parserLead}
-                            </p>
                         </div>
                     </div>
 
                     {featuredSurface ? (
-                        <div className={`grid gap-4 ${isCompact ? 'grid-cols-1' : 'xl:grid-cols-[minmax(0,1.28fr)_minmax(0,0.92fr)]'}`}>
+                        <div className={`grid gap-2 ${isCompact ? 'grid-cols-1' : 'xl:grid-cols-[minmax(0,1.28fr)_minmax(0,0.92fr)]'}`}>
                             {(() => {
                                 const Icon = SURFACE_ICON[featuredSurface.key];
                                 const ready = featuredSurface.status === 'ready';
@@ -285,49 +273,48 @@ export default function SmartGrowSurfacePanel({
 
                                 return (
                                     <article
-                                        className={`relative overflow-hidden rounded-[32px] px-6 py-6 ${accent.card}`}
-                                        style={{ boxShadow: 'var(--sg-shadow-soft)' }}
+                                        className={`rounded-[var(--sg-radius-lg)] px-4 py-3 ${accent.card}`}
+                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                     >
-                                        <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/18 blur-3xl" />
-                                        <div className="relative flex flex-col gap-6">
-                                            <div className={`flex flex-wrap items-start gap-4 ${isCompact ? 'flex-col' : 'justify-between'}`}>
-                                                <div className="flex min-w-0 items-start gap-3">
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                                                <div className="flex min-w-0 items-start gap-2.5">
                                                     <div
-                                                        className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-white/84"
+                                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--sg-radius-sm)] bg-white/84"
                                                         style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                                     >
-                                                        <Icon className="h-6 w-6" />
+                                                        <Icon className="h-4 w-4" />
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="sg-eyebrow">{copy.featuredSurface}</div>
-                                                        <div className="mt-3 text-[clamp(1.65rem,2.1vw,2.45rem)] font-semibold tracking-[-0.07em] text-[color:var(--sg-text-strong)]">
+                                                        <div className="mt-1 text-lg font-bold leading-tight text-[color:var(--sg-text-strong)]">
                                                             {labels[featuredSurface.key]}
                                                         </div>
-                                                        <p className="mt-3 max-w-2xl text-sm leading-7 text-[color:var(--sg-text-muted)]">
+                                                        <p className="mt-1 max-w-2xl text-xs leading-5 text-[color:var(--sg-text-muted)]">
                                                             {descriptions[featuredSurface.key]} {ready ? copy.readyHint : copy.pendingHint}
                                                         </p>
                                                     </div>
                                                 </div>
                                                 <div
-                                                    className={`rounded-full px-4 py-2 text-xs font-semibold ${accent.badge}`}
+                                                    className={`rounded-full px-3 py-1 text-[11px] font-semibold ${accent.badge}`}
                                                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                                 >
                                                     {ready ? copy.ready : copy.unavailableStatus}
                                                 </div>
                                             </div>
 
-                                            <div className={`grid gap-3 ${isCompact ? 'sm:grid-cols-2 xl:grid-cols-1' : 'md:grid-cols-3'}`}>
+                                            <div className="grid grid-cols-3 gap-2">
                                                 <LauncherStatPill label={copy.requiredInputs} value={featuredSurface.requiredFields.length} />
                                                 <LauncherStatPill label={copy.optionalInputs} value={featuredSurface.optionalFields.length} />
                                                 <LauncherStatPill label={copy.supportRange} value={coverageCount} />
                                             </div>
 
                                             {detailChips.length > 0 ? (
-                                                <div className="flex flex-wrap gap-2">
+                                                <div className="flex flex-wrap gap-1.5">
                                                     {detailChips.map((chip) => (
                                                         <div
                                                             key={chip}
-                                                            className="rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold text-[color:var(--sg-text-muted)]"
+                                                            className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-[color:var(--sg-text-muted)]"
                                                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                                         >
                                                             {chip}
@@ -336,22 +323,19 @@ export default function SmartGrowSurfacePanel({
                                                 </div>
                                             ) : null}
 
-                                            <div className={`flex flex-wrap items-center gap-3 ${isCompact ? 'justify-start' : 'justify-between'}`}>
-                                                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-text-faint)]">
-                                                    {copy.supportingSurface}
-                                                </div>
+                                            <div className="flex flex-wrap items-center justify-end gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={() => onOpenSurface?.(featuredSurface.key)}
                                                     disabled={!ready || !onOpenSurface}
-                                                    className={`inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
+                                                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition ${
                                                         ready && onOpenSurface
                                                             ? `${accent.button} hover:opacity-90`
                                                             : 'cursor-not-allowed bg-white/70 text-[color:var(--sg-text-faint)]'
                                                     }`}
                                                 >
                                                     {ready ? copy.openNow : copy.unavailableAction}
-                                                    {ready ? <ArrowUpRight className="h-4 w-4" /> : null}
+                                                    {ready ? <ArrowUpRight className="h-3.5 w-3.5" /> : null}
                                                 </button>
                                             </div>
                                         </div>
@@ -359,8 +343,8 @@ export default function SmartGrowSurfacePanel({
                                 );
                             })()}
 
-                            <div className="grid gap-4">
-                                {supportingSurfaces.map((surface, index) => {
+                            <div className="grid gap-2">
+                                {supportingSurfaces.map((surface) => {
                                     const Icon = SURFACE_ICON[surface.key];
                                     const ready = surface.status === 'ready';
                                     const accent = getSurfaceAccent(surface.key, ready);
@@ -371,47 +355,39 @@ export default function SmartGrowSurfacePanel({
                                     return (
                                         <article
                                             key={surface.key}
-                                            className={`relative overflow-hidden rounded-[28px] px-5 py-5 ${accent.card}`}
+                                            className={`rounded-[var(--sg-radius-lg)] px-4 py-3 ${accent.card}`}
                                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                                         >
-                                            <div className="absolute right-4 top-4 text-sm font-semibold tracking-[-0.05em] text-[color:var(--sg-text-faint)]">
-                                                {String(index + 2).padStart(2, '0')}
-                                            </div>
-                                            <div className="flex items-start gap-3">
-                                                <div
-                                                    className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-white/84"
-                                                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                                >
-                                                    <Icon className="h-5 w-5" />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="sg-eyebrow">{copy.supportingSurface}</div>
-                                                    <div className="mt-3 text-xl font-semibold tracking-[-0.04em] text-[color:var(--sg-text-strong)]">
-                                                        {labels[surface.key]}
+                                            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                                                <div className="flex min-w-0 items-start gap-2.5">
+                                                    <div
+                                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--sg-radius-sm)] bg-white/84"
+                                                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                                    >
+                                                        <Icon className="h-4 w-4" />
                                                     </div>
-                                                    <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
-                                                        {descriptions[surface.key]}
-                                                    </p>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                            <span className="text-sm font-bold text-[color:var(--sg-text-strong)]">
+                                                                {labels[surface.key]}
+                                                            </span>
+                                                            <span
+                                                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${accent.badge}`}
+                                                                style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                                                            >
+                                                                {ready ? copy.ready : copy.unavailableStatus}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-0.5 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">
+                                                            {descriptions[surface.key]} · {copy.requiredInputs} {surface.requiredFields.length} · {copy.supportRange} {coverageCount}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            </div>
-
-                                            <div className={`mt-4 grid gap-3 ${isCompact ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-1' : 'sm:grid-cols-2'}`}>
-                                                <LauncherStatPill label={copy.requiredInputs} value={surface.requiredFields.length} />
-                                                <LauncherStatPill label={copy.supportRange} value={coverageCount} />
-                                            </div>
-
-                                            <div className="mt-4 flex items-center justify-between gap-3">
-                                                <span
-                                                    className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${accent.badge}`}
-                                                    style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                                                >
-                                                    {ready ? copy.ready : copy.unavailableStatus}
-                                                </span>
                                                 <button
                                                     type="button"
                                                     onClick={() => onOpenSurface?.(surface.key)}
                                                     disabled={!ready || !onOpenSurface}
-                                                    className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+                                                    className={`inline-flex shrink-0 items-center justify-center rounded-full px-3 py-1.5 text-[11px] font-bold transition ${
                                                         ready && onOpenSurface
                                                             ? `${accent.button} hover:opacity-90`
                                                             : 'cursor-not-allowed bg-white/70 text-[color:var(--sg-text-faint)]'

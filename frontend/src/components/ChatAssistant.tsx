@@ -730,42 +730,44 @@ const ChatAssistant = ({
                 ) : null}
             </div>
 
-            <div className="border-b border-[color:var(--sg-outline-soft)] px-4 py-3 sg-tint-amber">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    {copy.smartGrowTitle}
+            <div className="border-b border-[color:var(--sg-outline-soft)] px-4 py-2 sg-tint-amber">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-color-olive)]">
+                        <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                        {copy.smartGrowTitle}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[11px] text-[color:var(--sg-text-muted)]">
+                        {smartGrowLoading
+                            ? copy.smartGrowLoading
+                            : smartGrowError
+                                ? `${copy.smartGrowUnavailable}: ${smartGrowError}`
+                                : copy.smartGrowHint}
+                    </span>
+                    {onOpenKnowledgeSearch ? (
+                        <button
+                            type="button"
+                            onClick={() => onOpenKnowledgeSearch(knowledgeSearchRequest)}
+                            className="shrink-0 rounded-full bg-[color:var(--sg-color-primary)] px-3 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-[color:var(--sg-color-terracotta)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]"
+                            style={{ boxShadow: 'var(--sg-shadow-card)' }}
+                        >
+                            {copy.knowledgeSearch}
+                        </button>
+                    ) : null}
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
-                    {smartGrowLoading
-                        ? copy.smartGrowLoading
-                        : smartGrowError
-                            ? `${copy.smartGrowUnavailable}: ${smartGrowError}`
-                            : copy.smartGrowHint}
-                </p>
                 {smartGrowPrompts.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {smartGrowPrompts.map((prompt) => (
                             <button
                                 key={prompt}
                                 type="button"
                                 onClick={() => setInput(prompt)}
-                                className="rounded-full bg-white/92 px-3 py-1 text-[11px] font-medium text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]"
+                                className="rounded-full bg-white/92 px-2.5 py-0.5 text-[11px] font-medium text-[color:var(--sg-text-strong)] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]"
                                 style={{ boxShadow: 'var(--sg-shadow-card)' }}
                             >
                                 {prompt}
                             </button>
                         ))}
                     </div>
-                ) : null}
-                {onOpenKnowledgeSearch ? (
-                    <button
-                        type="button"
-                        onClick={() => onOpenKnowledgeSearch(knowledgeSearchRequest)}
-                        className="mt-3 rounded-full bg-[color:var(--sg-color-primary)] px-3 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-white transition-colors hover:bg-[color:var(--sg-color-terracotta)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--sg-color-primary)]"
-                        style={{ boxShadow: 'var(--sg-shadow-card)' }}
-                    >
-                        {copy.knowledgeSearch}
-                    </button>
                 ) : null}
             </div>
 
