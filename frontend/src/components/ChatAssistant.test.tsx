@@ -84,7 +84,14 @@ describe('ChatAssistant', () => {
         );
         fireEvent.click(screen.getByRole('button', { name: 'Send question' }));
 
-        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+        // Exactly one chat request is issued (a background prime call uses a
+        // different endpoint and is not counted here).
+        await waitFor(() => {
+            const chatCalls = fetchMock.mock.calls.filter(
+                (call) => String(call[0]).endsWith('/advisor/chat'),
+            );
+            expect(chatCalls.length).toBe(1);
+        });
         // The reply renders as plain conversational markdown.
         expect(await screen.findByText(/Raising CO2 by 100 ppm should lift photosynthesis/)).toBeTruthy();
         // No structured model-effect cards, runtime strip, or source citations.
@@ -92,5 +99,42 @@ describe('ChatAssistant', () => {
         expect(screen.queryByText(/14d \+17\.493/)).toBeNull();
         expect(screen.queryByText(/Levers/)).toBeNull();
         expect(screen.queryByText(/전체 답변 보기|Show full answer/)).toBeNull();
+    });
+
+    it('primes the model-runtime cache when the chat is open', async () => {
+        vi.useFakeTimers();
+        try {
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                text: async () => JSON.stringify({ status: 'primed' }),
+            });
+            vi.stubGlobal('fetch', fetchMock);
+
+            render(
+                <LocaleProvider>
+                    <ChatAssistant
+                        layoutMode="inline"
+                        currentData={currentData}
+                        metrics={metrics}
+                        crop="Cucumber"
+                    />
+                </LocaleProvider>,
+            );
+
+            // The prime call is debounced (~500ms); advance past it.
+            await vi.advanceTimersByTimeAsync(700);
+
+            const primeCalls = fetchMock.mock.calls.filter(
+                (call) => String(call[0]).endsWith('/advisor/chat/prime'),
+            );
+            expect(primeCalls.length).toBe(1);
+            const body = JSON.parse(String(primeCalls[0][1]?.body ?? '{}'));
+            expect(body.crop).toBe('cucumber');
+            // Prime carries the dashboard but no conversation messages.
+            expect(body.dashboard).toBeTruthy();
+            expect(body.messages).toBeUndefined();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

@@ -2941,6 +2941,56 @@ def test_runtime_emulation_snapshot_precomputes_full_fan_and_caches_by_state(
     advisor_orchestration._RUNTIME_EMULATION_CACHE.clear()
 
 
+def test_prime_advisor_chat_runtime_warms_cache_for_first_question(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    advisor_orchestration._RUNTIME_EMULATION_CACHE.clear()
+    calls = {"scenario": 0, "sensitivity": 0}
+
+    real_scenario = advisor_orchestration.run_bounded_scenario
+    real_sensitivity = advisor_orchestration.compute_local_sensitivities
+
+    def _counting_scenario(*args, **kwargs):
+        calls["scenario"] += 1
+        return real_scenario(*args, **kwargs)
+
+    def _counting_sensitivity(*args, **kwargs):
+        calls["sensitivity"] += 1
+        return real_sensitivity(*args, **kwargs)
+
+    monkeypatch.setattr(advisor_orchestration, "run_bounded_scenario", _counting_scenario)
+    monkeypatch.setattr(
+        advisor_orchestration, "compute_local_sensitivities", _counting_sensitivity
+    )
+
+    dashboard = _runtime_ready_dashboard()
+
+    prime = advisor_orchestration.prime_advisor_chat_runtime(
+        crop="tomato",
+        dashboard=dashboard,
+        language="ko",
+    )
+    assert prime["status"] == "primed"
+    assert prime["model_runtime_status"] == "ready"
+    primed_scenario_calls = calls["scenario"]
+    primed_sensitivity_calls = calls["sensitivity"]
+    assert primed_scenario_calls >= 1
+    assert primed_sensitivity_calls >= 1
+
+    # A subsequent chat runtime over the same dashboard reuses the primed cache,
+    # so no additional scenario/sensitivity computation happens.
+    advisor_orchestration._build_model_runtime_payload(
+        crop="tomato",
+        dashboard=dashboard,
+        tab_name="chat",
+        messages=[{"role": "user", "content": "지금 CO2를 100ppm 올리면?"}],
+        language="ko",
+    )
+    assert calls["scenario"] == primed_scenario_calls
+    assert calls["sensitivity"] == primed_sensitivity_calls
+    advisor_orchestration._RUNTIME_EMULATION_CACHE.clear()
+
+
 def test_build_environment_recommendation_response_keeps_legacy_keys_and_carries_model_runtime(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

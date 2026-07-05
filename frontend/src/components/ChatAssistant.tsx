@@ -189,6 +189,7 @@ const ChatAssistant = ({
     const [input, setInput] = useState('');
     const [isSending, setIsSending] = useState(false);
     const processedQueryNonceRef = useRef<number | null>(null);
+    const lastPrimeSignatureRef = useRef<string>('');
 
     const smartGrowPrompts = !smartGrowLoading && !smartGrowError && smartGrowSummary
         ? [
@@ -324,6 +325,56 @@ const ChatAssistant = ({
         processedQueryNonceRef.current = initialUserQuery.nonce;
         sendInitialUserQuery(initialUserQuery.query);
     }, [initialUserQuery, isSending]);
+
+    // When the chat is visible, warm the backend model-runtime emulation cache
+    // for the current dashboard state (same dashboard payload as a real question,
+    // so it shares the exact state fingerprint). This makes the first question
+    // answer instantly. Best-effort and debounced; deduped per state.
+    useEffect(() => {
+        if (!isInline && !isOpen) {
+            return;
+        }
+        const signature = `${crop}:${currentData?.timestamp ?? ''}`;
+        if (lastPrimeSignatureRef.current === signature) {
+            return;
+        }
+        const timer = setTimeout(() => {
+            lastPrimeSignatureRef.current = signature;
+            void fetch(`${API_URL}/advisor/chat/prime`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    crop: crop.toLowerCase(),
+                    dashboard: buildAiDashboardContext({
+                        currentData,
+                        metrics,
+                        crop,
+                        history,
+                        forecast,
+                        producePrices,
+                        weather,
+                        rtrProfile,
+                    }),
+                    language: locale,
+                }),
+            }).catch(() => {
+                // Warm-up is best-effort; ignore failures.
+            });
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [
+        isInline,
+        isOpen,
+        crop,
+        currentData,
+        metrics,
+        history,
+        forecast,
+        producePrices,
+        weather,
+        rtrProfile,
+        locale,
+    ]);
 
     if (!isInline && !isOpen) {
         return null;

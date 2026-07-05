@@ -5011,6 +5011,34 @@ def build_advisor_summary_fallback_response(
     }
 
 
+def prime_advisor_chat_runtime(
+    *,
+    crop: str,
+    dashboard: Optional[dict[str, Any]] = None,
+    language: str = "ko",
+) -> dict[str, Any]:
+    """Warm the model-runtime emulation cache for the current dashboard state so
+    the first chat question is instant.
+
+    This computes the same ``_build_model_runtime_payload`` chat runtime that
+    ``build_advisor_chat_response`` uses — over the identical dashboard — so it
+    shares the exact state fingerprint and the cached emulation is reused. It
+    makes no LLM call and returns only a small status.
+    """
+    payload = _build_model_runtime_payload(
+        crop=crop,
+        dashboard=dashboard or {},
+        tab_name="chat",
+        messages=None,
+        language=language,
+    )
+    return {
+        "status": "primed",
+        "crop": crop,
+        "model_runtime_status": payload.get("status"),
+    }
+
+
 def build_advisor_chat_response(
     *,
     crop: str,
