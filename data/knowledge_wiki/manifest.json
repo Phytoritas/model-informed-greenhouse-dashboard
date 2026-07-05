@@ -4,22 +4,15 @@
   "anonymized": true,
   "fingerprint_redaction": true,
   "pii_redaction": true,
+  "excluded_sources": [
+    "우일팜",
+    "새봄"
+  ],
+  "dropped_page_count": 23,
   "farm_label_count": 5,
   "sensitive_token_count": 1,
-  "file_count": 64,
+  "file_count": 41,
   "files": [
-    {
-      "path": "cases/300-field-cases/Case Dossier - case_dossier_0001.md",
-      "sha256": "80a8f6a52fe11b1e65279b518a660b65df26d810bc0906064557efcd76b76f82",
-      "char_count": 3565,
-      "section": "cases"
-    },
-    {
-      "path": "cases/500-decisions-protocols/Field Decision Map - 1.md",
-      "sha256": "540f2cfbfd97bfd6d2106bbec9f3fda2d46c44f574a2930f12c45d2e590347ab",
-      "char_count": 4189,
-      "section": "cases"
-    },
     {
       "path": "pages/001_작물기초.md",
       "sha256": "a91bdfd82479e099a09a0ba7e442ef1b746f662a7aeb2eb8de2c6138d097eb0a",
@@ -88,8 +81,8 @@
     },
     {
       "path": "pages/012_물관리와_관수판단.md",
-      "sha256": "c3ad896efacf21e07f509a150ea228d63e028d119b24200d60e198c5f6af7346",
-      "char_count": 3089,
+      "sha256": "d5bd8a8b5f7a673a471c2368015716885c071561090d5752cf941c135e79e2d5",
+      "char_count": 1110,
       "section": "pages"
     },
     {
@@ -117,279 +110,153 @@
       "section": "pages"
     },
     {
-      "path": "pages/017_육묘와_정식.md",
-      "sha256": "63e0a699319d8ec894998e642289e8fda45b4be1ed7d0f841f8e4c7a4d27c3d4",
-      "char_count": 3284,
-      "section": "pages"
-    },
-    {
-      "path": "pages/018_좋은_모종_고르기.md",
-      "sha256": "04c24538e86fa468fea83c29904cc43f40cd405061cfdf59d6d2a6b9ab0b4ff0",
-      "char_count": 1038,
-      "section": "pages"
-    },
-    {
-      "path": "pages/019_정식_전_준비.md",
-      "sha256": "e4dc974c82c2b3e715b0057dfc3b4a1d0e0365aa98f87300fc0fb93d80bfd687",
-      "char_count": 1041,
-      "section": "pages"
-    },
-    {
-      "path": "pages/020_정식_후_활착_관리.md",
-      "sha256": "c3b21dd71234b15ab5fa6ad60777b10767f373c02d57a09977c42bc935213c8b",
-      "char_count": 1035,
-      "section": "pages"
-    },
-    {
-      "path": "pages/021_상토와_뿌리_상태.md",
-      "sha256": "a377ff9f56453a8b03f507a193b186a044bb0bffa49f287c1189f0ea396102f4",
-      "char_count": 1036,
-      "section": "pages"
-    },
-    {
       "path": "pages/022_오이_재배관리.md",
-      "sha256": "c9f8e84b03974caa0cbe36e43878584d7ac0de84d008865e3f7b83b53b884bcf",
-      "char_count": 3278,
-      "section": "pages"
-    },
-    {
-      "path": "pages/023_오이_유인망과_줄기_유인.md",
-      "sha256": "aebaa78c09221552b08a519349e70638edf90457c51af32da474e023d51e9db1",
-      "char_count": 1390,
-      "section": "pages"
-    },
-    {
-      "path": "pages/024_마디와_곁가지_관리.md",
-      "sha256": "e7198b1bd2f9c45d62e4aef4b3dbb7bfbd39c65b782361e6602268e96fe5b847",
-      "char_count": 1388,
-      "section": "pages"
-    },
-    {
-      "path": "pages/025_잎_정리와_통풍.md",
-      "sha256": "f47f6c1948c128bf994fb4bb4dd52c6e60594f668a0c5c03af53f473d6ec47a7",
-      "char_count": 1388,
-      "section": "pages"
-    },
-    {
-      "path": "pages/026_오이_수확_품질.md",
-      "sha256": "ffa53efc639b30d718497e71a11b7137842b10e7657d1cc8feeedf4dd38725ba",
-      "char_count": 1387,
-      "section": "pages"
-    },
-    {
-      "path": "pages/027_토마토_재배관리.md",
-      "sha256": "e062c11e8a0266c60f5334375ede2c9290d26dc9000210a99b0b0fd5a8df454c",
-      "char_count": 3580,
-      "section": "pages"
-    },
-    {
-      "path": "pages/028_곁순_제거_절차.md",
-      "sha256": "f9d29e2ad7abe4c0fd4924a01959bbadc04717374d545ad21158058577ae32f2",
-      "char_count": 1114,
-      "section": "pages"
-    },
-    {
-      "path": "pages/029_화방과_착과_판단.md",
-      "sha256": "b2dff6b8925c92cad207b3d24f329e234b43c14b8118bb0997abbd8555283612",
-      "char_count": 1114,
-      "section": "pages"
-    },
-    {
-      "path": "pages/030_적엽과_유인.md",
-      "sha256": "b8addc6fb637b0f3b11ad32c5a3fd1b8c96b778ed5d9040e154271cc7499192a",
-      "char_count": 1123,
-      "section": "pages"
-    },
-    {
-      "path": "pages/031_열과_예방과_관수.md",
-      "sha256": "cb4ceaf2ff6b8e004410ee4fb65553df809f0f91625a4cdeb077d58e865b6dd9",
-      "char_count": 1120,
-      "section": "pages"
-    },
-    {
-      "path": "pages/032_배꼽썩음과_칼슘_장해.md",
-      "sha256": "affb1485d5640cd3393b22eea70e347dab6a17262abb0bc81eff558887f58630",
-      "char_count": 1135,
-      "section": "pages"
-    },
-    {
-      "path": "pages/033_병해충_진단과_대응.md",
-      "sha256": "ba24244c486b024481d7873f8db9f29e5bb5c944826778fde8de6b87980884bf",
-      "char_count": 3188,
+      "sha256": "00d70cc72caf5c25f7e2f70d60d6a42a0dce01b11d5fb2b2d15eb9202be565dd",
+      "char_count": 1156,
       "section": "pages"
     },
     {
       "path": "pages/034_잎_증상_읽기.md",
-      "sha256": "f73aa1e1f650b16bd6833ea801d17efd581da9360cc5d3e3e33fed0146f9261b",
-      "char_count": 733,
+      "sha256": "a882c40e9417e287bc5a3bee588de2bd2174c9f92173b02312f17242f35d206f",
+      "char_count": 585,
       "section": "pages"
     },
     {
       "path": "pages/035_해충_흔적_찾기.md",
-      "sha256": "89fecce53d891fcd50c4e730dc9729b5c39f9a2961132c5ed254f1a782c56033",
-      "char_count": 727,
+      "sha256": "7856629f187df4eed9a401b66ac5a9d78e5f117a88fea8d38462bf46bcfdaba8",
+      "char_count": 579,
       "section": "pages"
     },
     {
       "path": "pages/036_방제_전_확인_절차.md",
-      "sha256": "8761e3e22d2c9ffed3cdcc7b001bda1e67077cc1d629a2876b026221137655e9",
-      "char_count": 728,
+      "sha256": "4651704fa4afe1c705a6538abc37dd8314d5222799180ed0ff818734d448feee",
+      "char_count": 580,
       "section": "pages"
     },
     {
       "path": "pages/037_사진_진단의_한계.md",
-      "sha256": "854d396a39ac7e92ebd798cc375f320e445dca7913de9e0e833067a71a07890d",
-      "char_count": 741,
+      "sha256": "64a2a788291d8c65384b44ec95071860c5cdb44504877988249ac03ead53d458",
+      "char_count": 593,
       "section": "pages"
     },
     {
       "path": "pages/038_생리장해와_환경관리.md",
-      "sha256": "9047b59fe2bc6f49d2bb8fc010f8a4c12773c60516f3e8e3385cce1e70e45423",
-      "char_count": 3613,
+      "sha256": "65f52c854be6966a029526db651a7868c16b3568856d05c92dd50ba8ac91817e",
+      "char_count": 454,
       "section": "pages"
     },
     {
       "path": "pages/039_온도_습도_환기.md",
-      "sha256": "b0e8be11a7a10290f8ad6c4a561ec208d953a155d36d4a6fb3d931d56dde0245",
-      "char_count": 933,
+      "sha256": "9b22c32505049658cec28b81821c2fbe6101044a90b916256c25aa219de54c44",
+      "char_count": 431,
       "section": "pages"
     },
     {
       "path": "pages/040_광_CO2_VPD_이해.md",
-      "sha256": "bea8ab0b7eda0913e6e5281178e744ab9c9e2ea8be5bc2406453db3e471c9709",
-      "char_count": 945,
+      "sha256": "a84ef6895abbd48788a211fc0ee7a7d553be1f6e09913b1bd160016c816ba871",
+      "char_count": 443,
       "section": "pages"
     },
     {
       "path": "pages/041_시듦과_황화_구분.md",
-      "sha256": "4c6b09d66c4eaf9f949c257ed3ec1802c993ef156502dc53b4d613ce0fac13bd",
-      "char_count": 944,
+      "sha256": "1eedafa4a8f1644c082f3bf6d8bb8d795f0a3be5e965e2edce9a35468752f15c",
+      "char_count": 442,
       "section": "pages"
     },
     {
       "path": "pages/042_생리장해와_병해_구분.md",
-      "sha256": "cd82103f10e5262b02b4fd24ec5eeb564dedc2862fbfac3ee471ffcaa4f6fb0b",
-      "char_count": 936,
+      "sha256": "2b2cc0da4b6c41cd5690af40c7228905d630651b1ae4c4d5efb558a378af3ce3",
+      "char_count": 434,
       "section": "pages"
     },
     {
       "path": "pages/043_수확_선별_저장_출하.md",
-      "sha256": "6b9afcf798d9d26d96d4ba708f5894927589219f47e71f631d776b084795d57e",
-      "char_count": 3105,
+      "sha256": "cbaf1aad0345976b0579895f2d0567aeb935fa70f071f5417a34e92adcee8929",
+      "char_count": 448,
       "section": "pages"
     },
     {
       "path": "pages/044_수확_시기_판단.md",
-      "sha256": "e0df1a4e2003656b9869ac388a440221719ab87156b9419c9ae7c47b0679e12f",
-      "char_count": 903,
+      "sha256": "89ba295cbc991f1656f7307f31bf22693849fa3ac4ac94dbfff98c2db26cdf9f",
+      "char_count": 437,
       "section": "pages"
     },
     {
       "path": "pages/045_선별_기준_만들기.md",
-      "sha256": "682abb9417179aec07268377f45aba42ac1cbcd9f6c2ecf6bd40c0f853ad607c",
-      "char_count": 898,
+      "sha256": "69562b273a68cd20dc3d0642b3b27c43ba10e0fb1f6441b562a3c4bde8c8d96e",
+      "char_count": 432,
       "section": "pages"
     },
     {
       "path": "pages/046_저장과_품질_유지.md",
-      "sha256": "46be8f87cd8a07dda8368ea2a4c02505aa361fd78cf4061a2a6260e38fa2c82b",
-      "char_count": 900,
+      "sha256": "e9063780364810de6cbf117ea71c28c6b75d342832787c7ec6906e5d7cfe5754",
+      "char_count": 434,
       "section": "pages"
     },
     {
       "path": "pages/047_출하와_판매_준비.md",
-      "sha256": "930a33c32a37daa2a30f2462b1d885a45fbf4e1211fd3aa9fc190bad0235cdf2",
-      "char_count": 899,
+      "sha256": "501b6caea3721f8efb11b49833e661dab45e988cc5f1cf2c99133c0265dcb2ba",
+      "char_count": 433,
       "section": "pages"
     },
     {
       "path": "pages/048_농가경영과_기록관리.md",
-      "sha256": "5b4ad1e5f4d9fab007a009f53c44796c938db8a3ac9a27ced62a7835b5854384",
-      "char_count": 3076,
+      "sha256": "cecc26071b60af838f155b82afce050fa84abc061921bdc232b74679bba7ffb4",
+      "char_count": 454,
       "section": "pages"
     },
     {
       "path": "pages/049_영농일지_작성.md",
-      "sha256": "aaafefff391145554f75f72e4eee8add4fb8d6f852cb47ff41024855cef7589a",
-      "char_count": 934,
+      "sha256": "6270967268c55344b4a0a0089251e5b8abeedff02e99c36629f73cbb373a49df",
+      "char_count": 433,
       "section": "pages"
     },
     {
       "path": "pages/050_비용과_수익_기록.md",
-      "sha256": "ed0c4c90059a18f67edc8d9b55df7e8f31303d55e915708c80681a62bebd8d7e",
-      "char_count": 943,
+      "sha256": "09b1abcb44e6ff4684a15fe6e06b9bb25a3c4efcb7bdb17da1ce9f192223ba0e",
+      "char_count": 442,
       "section": "pages"
     },
     {
       "path": "pages/051_작업_계획_세우기.md",
-      "sha256": "a78959e7b31e672a4559351f060f557487854d6c2348097856146561e82c2334",
-      "char_count": 943,
+      "sha256": "00c5631a05e4590b5dcf6e18773ef8e7354dfa1d2087496488a1fcb3ebec0a5e",
+      "char_count": 442,
       "section": "pages"
     },
     {
       "path": "pages/052_상담_기록과_개인정보.md",
-      "sha256": "e9f25f74ddf645a1b6348ff8b59c743a4eb2dc94caf99a5e67318786cd547c07",
-      "char_count": 949,
+      "sha256": "af1668bdc35532adccb62444f0597df0ba728780ba9a73426214ae78534fa38e",
+      "char_count": 448,
       "section": "pages"
     },
     {
       "path": "pages/053_현장실습과_교육운영.md",
-      "sha256": "99aefbac1f9a16a812046d42c621b12de290286ecef8ffd5023e8893c866d296",
-      "char_count": 3190,
+      "sha256": "d286beaf02f4d0e35a182a9545f9cc1150ba1151ee0bbed99e17a5c7e352663d",
+      "char_count": 451,
       "section": "pages"
     },
     {
       "path": "pages/054_사진_판독_실습.md",
-      "sha256": "0c25fce2c1d31d06c3ae13e397470a2fce333762a4faa609d6c2577398a723e0",
-      "char_count": 943,
+      "sha256": "a15c04bcb721989e3c8e6750332740dd8c469433d04eafaf35ff1fab1c4d860a",
+      "char_count": 441,
       "section": "pages"
     },
     {
       "path": "pages/055_체크리스트_운영.md",
-      "sha256": "2dc270093e66c522f2c94f433680eb350aabccdcccd96da28312f943ee631dc5",
-      "char_count": 942,
+      "sha256": "bc13ea8b1c8715a8e38d7fad01be9da4195bf2a261cf360ed004936c9a94a9f8",
+      "char_count": 440,
       "section": "pages"
     },
     {
       "path": "pages/056_Q_A와_사례_토론.md",
-      "sha256": "c6c2ce895880493f488d04d3738d690b7d2e4a9bba55b275dc1fef43c634e601",
-      "char_count": 942,
+      "sha256": "302144c94f83c93d1e759b7c289f47f3066dd00b3afa96374151479d12024794",
+      "char_count": 440,
       "section": "pages"
     },
     {
       "path": "pages/057_고령_학습자_실습_설계.md",
-      "sha256": "793c18459dc910c6ad8118acebb3ddb66cade86f50d93d22b9853e144f40ce38",
-      "char_count": 965,
-      "section": "pages"
-    },
-    {
-      "path": "pages/058_농작업안전.md",
-      "sha256": "cf1c9699072cfc87942eb5bf3c14a1ef9137aa4bcdc3005380f2769766592aa9",
-      "char_count": 3164,
-      "section": "pages"
-    },
-    {
-      "path": "pages/059_고온기_하우스_작업.md",
-      "sha256": "240a4a3590f1e3094ccbac76431e720d1a4cd06bead5ee98d79c4e13a4aba716",
-      "char_count": 1044,
-      "section": "pages"
-    },
-    {
-      "path": "pages/060_농약_취급_안전.md",
-      "sha256": "04f9c60d0eb57a55888a5293aa4f4564de1fa216e54f25b828938b8f3bbdc8e0",
-      "char_count": 1037,
-      "section": "pages"
-    },
-    {
-      "path": "pages/061_하우스_설비와_동선_안전.md",
-      "sha256": "fb1975321893a2da2f1b8915a9f9eb6e3a508c9192627d7c7838621596579be7",
-      "char_count": 1049,
-      "section": "pages"
-    },
-    {
-      "path": "pages/062_고령자_작업_안전.md",
-      "sha256": "efd89e34f48e7e46f6f5df48612128b209aac6c0274d3dd74f744ee20207d4a7",
-      "char_count": 1053,
+      "sha256": "fed0254085896c67af643b19a17fb2b56a47d09dfc1303723d3651c5322f1985",
+      "char_count": 463,
       "section": "pages"
     }
   ]

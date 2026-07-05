@@ -160,6 +160,76 @@ def find_leaks(text: str, labeler: FarmLabeler) -> list[str]:
     return sorted(leaks)
 
 
+# Sources to exclude entirely (owner consent): their evidence bullets and
+# provenance traces are dropped fact-by-fact, and a page left with no evidence
+# is removed from the snapshot. Matched against Source Trace source_path values.
+EXCLUDED_SOURCE_RE = re.compile(r"우일팜|참고자료/새봄/")
+
+
+def _bullets(section: str) -> list[str]:
+    """Split a markdown section into top-level ``- `` bullets (with continuations)."""
+
+    out: list[str] = []
+    current: list[str] = []
+    for line in section.split("\n"):
+        if line.startswith("- "):
+            if current:
+                out.append("\n".join(current))
+            current = [line]
+        elif current:
+            current.append(line)
+    if current:
+        out.append("\n".join(current))
+    return out
+
+
+_EVIDENCE_SECTION_RE = re.compile(
+    r"(## Teaching-Ready Evidence\n)(.*?)(?=\n## |\Z)", re.S
+)
+_TRACE_SECTION_RE = re.compile(r"(## Source Trace\n)(.*?)(?=\n## |\Z)", re.S)
+
+
+def exclude_sources(text: str) -> str | None:
+    """Drop evidence + trace bullets sourced from excluded farms, in place.
+
+    Evidence bullets and Source Trace bullets are 1:1 and ordered, so a trace
+    bullet matching ``EXCLUDED_SOURCE_RE`` marks its paired evidence bullet for
+    removal. Returns the rewritten page, or ``None`` if no evidence survives
+    (the page was entirely sourced from excluded farms)."""
+
+    ev_match = _EVIDENCE_SECTION_RE.search(text)
+    tr_match = _TRACE_SECTION_RE.search(text)
+    if not ev_match or not tr_match:
+        # No pairable sections (e.g. a case dossier is a single case unit):
+        # drop the whole file if it is sourced from an excluded farm.
+        return None if EXCLUDED_SOURCE_RE.search(text) else text
+
+    evidence = _bullets(ev_match.group(2))
+    traces = _bullets(tr_match.group(2))
+    if len(evidence) != len(traces) or not evidence:
+        return text  # unexpected shape; do not risk mis-pairing
+
+    kept = [
+        (ev, tr)
+        for ev, tr in zip(evidence, traces)
+        if not EXCLUDED_SOURCE_RE.search(tr)
+    ]
+    if not kept:
+        return None  # page had only excluded-farm evidence
+    if len(kept) == len(evidence):
+        return text  # nothing excluded on this page
+
+    new_ev_body = "\n".join(ev for ev, _ in kept) + "\n"
+    new_tr_body = "\n".join(tr for _, tr in kept) + "\n"
+    result = _EVIDENCE_SECTION_RE.sub(
+        lambda m: m.group(1) + new_ev_body, text, count=1
+    )
+    result = _TRACE_SECTION_RE.sub(
+        lambda m: m.group(1) + new_tr_body, result, count=1
+    )
+    return result
+
+
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -216,11 +286,21 @@ def run(source: Path, dest: Path, snapshot_at: str) -> dict:
         labeler.discover(raw)
     labeler.finalize()
 
+    # Start from a clean snapshot so pages dropped by source exclusion do not
+    # linger from a previous run.
+    for stale in dest.rglob("*.md"):
+        stale.unlink()
     dest.mkdir(parents=True, exist_ok=True)
 
     files_meta: list[dict] = []
+    dropped_pages = 0
     for rel_dest, raw in raw_by_dest.items():
-        clean = anonymize(raw, labeler)
+        # Fact-level exclusion runs on raw text (before farm names are relabeled).
+        filtered = exclude_sources(raw)
+        if filtered is None:
+            dropped_pages += 1
+            continue
+        clean = anonymize(filtered, labeler)
         leaked = find_leaks(clean, labeler)
         if leaked:
             raise SystemExit(
@@ -244,6 +324,8 @@ def run(source: Path, dest: Path, snapshot_at: str) -> dict:
         "anonymized": True,
         "fingerprint_redaction": True,
         "pii_redaction": True,
+        "excluded_sources": ["우일팜", "새봄"],
+        "dropped_page_count": dropped_pages,
         "farm_label_count": len(labeler.mapping),
         "sensitive_token_count": len(SENSITIVE_NAME_TOKENS),
         "file_count": len(files_meta),
@@ -271,7 +353,8 @@ def main(argv: list[str] | None = None) -> int:
 
     manifest = run(args.source, args.dest, args.snapshot_at)
     print(
-        f"ingested {manifest['file_count']} files, "
+        f"ingested {manifest['file_count']} files "
+        f"(dropped {manifest['dropped_page_count']} excluded-source pages), "
         f"{manifest['farm_label_count']} farm labels -> {args.dest}"
     )
     return 0

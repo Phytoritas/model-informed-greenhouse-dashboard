@@ -1,8 +1,8 @@
 {
   "summary": {
     "query_count": 16,
-    "wiki_top1_rate": 0.812,
-    "wiki_topk_rate": 0.812
+    "wiki_top1_rate": 0.688,
+    "wiki_topk_rate": 0.688
   },
   "rows": [
     {
@@ -12,16 +12,16 @@
       "returned": 5,
       "wiki_top1": true,
       "wiki_topk": true,
-      "top_title": "028 곁순 제거 절차"
+      "top_title": "006 토양과 양분관리"
     },
     {
       "crop": "tomato",
       "query": "토마토 화방과 착과 판단 기준",
       "intent": "crop_physiology",
       "returned": 5,
-      "wiki_top1": true,
-      "wiki_topk": true,
-      "top_title": "029 화방과 착과 판단"
+      "wiki_top1": false,
+      "wiki_topk": false,
+      "top_title": "Tomato technology guide"
     },
     {
       "crop": "tomato",
@@ -46,9 +46,9 @@
       "query": "약광기 착과량 조절과 누적광량",
       "intent": "general_chat",
       "returned": 5,
-      "wiki_top1": true,
-      "wiki_topk": true,
-      "top_title": "027 토마토 재배관리"
+      "wiki_top1": false,
+      "wiki_topk": false,
+      "top_title": "Tomato smart farm training material"
     },
     {
       "crop": "tomato",
@@ -66,7 +66,7 @@
       "returned": 5,
       "wiki_top1": true,
       "wiki_topk": true,
-      "top_title": "020 정식 후 활착 관리"
+      "top_title": "003 생육 단계별 관찰 포인트"
     },
     {
       "crop": "tomato",
@@ -84,7 +84,7 @@
       "returned": 5,
       "wiki_top1": true,
       "wiki_topk": true,
-      "top_title": "023 오이 유인망과 줄기 유인"
+      "top_title": "022 오이 재배관리"
     },
     {
       "crop": "cucumber",
@@ -93,7 +93,7 @@
       "returned": 5,
       "wiki_top1": true,
       "wiki_topk": true,
-      "top_title": "024 마디와 곁가지 관리"
+      "top_title": "006 토양과 양분관리"
     },
     {
       "crop": "cucumber",
@@ -102,7 +102,7 @@
       "returned": 5,
       "wiki_top1": true,
       "wiki_topk": true,
-      "top_title": "025 잎 정리와 통풍"
+      "top_title": "006 토양과 양분관리"
     },
     {
       "crop": "cucumber",
@@ -111,7 +111,7 @@
       "returned": 5,
       "wiki_top1": true,
       "wiki_topk": true,
-      "top_title": "026 오이 수확 품질"
+      "top_title": "043 수확 선별 저장 출하"
     },
     {
       "crop": "cucumber",
@@ -147,7 +147,7 @@
       "returned": 5,
       "wiki_top1": true,
       "wiki_topk": true,
-      "top_title": "019 정식 전 준비"
+      "top_title": "047 출하와 판매 준비"
     }
   ]
 }
