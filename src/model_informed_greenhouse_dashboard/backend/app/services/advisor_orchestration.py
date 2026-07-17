@@ -24,6 +24,8 @@ from .advisory_api import (
 )
 from .decision import DecisionSupport
 from .knowledge_catalog import build_knowledge_catalog
+from .knowledge_query_router import route_knowledge_query
+from .pesticide_safety import asks_for_safe_use_number, safe_use_refusal
 from .model_runtime.constraint_engine import CONTROL_SPECS
 from .model_runtime.model_state_store import ModelStateStore
 from .model_runtime.scenario_runner import (
@@ -5152,6 +5154,58 @@ def prime_advisor_chat_runtime(
     }
 
 
+def _build_chat_pesticide_context(*, crop: str, question: str | None) -> dict[str, Any] | None:
+    """Deterministic pesticide recommendation for a free-form chat question.
+
+    Returns None when the question is not a pesticide question, so the normal chat
+    path is untouched for everything else.
+    """
+    if not question:
+        return None
+    route = route_knowledge_query(question)
+    if route.get("intent") != "disease_pest":
+        return None
+    try:
+        payload = build_pesticide_recommendation_response(
+            crop=crop,
+            target=question,
+            limit=5,
+        )
+    except Exception:
+        return None
+    if payload.get("status") not in {"success", "ok"}:
+        return None
+    return payload
+
+
+def _inject_pesticide_recommendation_context(
+    dashboard: dict[str, Any],
+    pesticide_payload: dict[str, Any],
+) -> dict[str, Any]:
+    dashboard_payload = deepcopy(dashboard)
+    knowledge_payload = dict(dashboard_payload.get("knowledge") or {})
+    knowledge_payload["deterministic_pesticide"] = {
+        "source": "recommend_pesticides",
+        "note": (
+            "등록 상태·계통(MoA)·교호방제·혼용 주의는 이 결정론 결과에서만 답하세요. "
+            "안전사용기준(수확 전 사용일수·사용 횟수·희석배수)은 여기에 없으니 숫자를 지어내지 마세요."
+        ),
+        "recommendation": pesticide_payload,
+    }
+    dashboard_payload["knowledge"] = knowledge_payload
+    return dashboard_payload
+
+
+def _last_user_chat_message(messages: list[dict[str, str]] | None) -> str | None:
+    for message in reversed(messages or []):
+        if str(message.get("role") or "user").strip().lower() != "user":
+            continue
+        content = str(message.get("content") or "").strip()
+        if content:
+            return content
+    return None
+
+
 def build_advisor_chat_response(
     *,
     crop: str,
@@ -5162,6 +5216,26 @@ def build_advisor_chat_response(
     dashboard_payload = dashboard or {}
     catalog_payload = build_knowledge_catalog(crop)
     advisory_surfaces = catalog_payload.get("advisory_surfaces", {})
+
+    # A pesticide safe-use number (PHI, application count, dilution) is legally
+    # binding and the local schema has no field for it. Refuse it deterministically
+    # before any LLM call, rather than letting the model parse it out of free text
+    # or invent it. This is a hard gate, not a prompt instruction.
+    last_user = _last_user_chat_message(messages)
+    if last_user and asks_for_safe_use_number(last_user):
+        refusal = safe_use_refusal(language=language)
+        return {
+            "status": "success",
+            "family": "advisor_chat",
+            "crop": crop,
+            "text": refusal["message"],
+            "machine_payload": {
+                "answer_gate": "pesticide_safe_use_refusal",
+                "authoritative_sources": refusal["authoritative_sources"],
+                "reason": refusal["reason"],
+            },
+        }
+
     retrieval_context = build_chat_advisor_context(
         crop=crop,
         messages=messages,
@@ -5177,6 +5251,16 @@ def build_advisor_chat_response(
         _inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
         model_runtime,
     )
+    # A free-form pesticide question (not a PHI number, which was refused above) must
+    # be answered from the deterministic recommender — registration status, MoA,
+    # rotation, manual-review gate — not free-written. The tab path already uses it;
+    # chat bypassed it. Inject its result so the model narrates a governed answer.
+    pesticide_context = _build_chat_pesticide_context(crop=crop, question=last_user)
+    if pesticide_context is not None:
+        llm_dashboard = _inject_pesticide_recommendation_context(
+            llm_dashboard, pesticide_context
+        )
+
     # Natural conversation: return the model's reply verbatim, with no machine
     # answer-focus prefix and no structured card parsing. The model_runtime and
     # retrieval context stay in machine_payload for internal use, but the visible
