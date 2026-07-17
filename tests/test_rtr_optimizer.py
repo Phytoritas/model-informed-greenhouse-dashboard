@@ -7,6 +7,7 @@ import types
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 from model_informed_greenhouse_dashboard import get_app
@@ -1135,14 +1136,21 @@ def test_sensitivity_objective_derivative_respects_energy_option(monkeypatch) ->
     def _fake_eval(**kwargs):
         captured_weights.append(dict(kwargs["weights"]))
         heating_weight = float(kwargs["weights"].get("heating", 0.0))
+        # Mirrors the shape `build_objective_terms` actually returns, including the
+        # `_krw` currency fields that sit alongside the identically-named kWh ones
+        # and the node summary the node-rate derivative reads.
         return {
             "objective_value": heating_weight,
             "flux_projection": {"carbon_margin": 1.0},
+            "node_summary": {"predicted_rate_day": 0.0},
             "objective_breakdown": {
                 "humidity_risk_penalty": 0.0,
                 "disease_penalty": 0.0,
                 "heating_energy_cost": 0.0,
                 "cooling_energy_cost": 0.0,
+                "heating_energy_cost_krw": 0.0,
+                "cooling_energy_cost_krw": 0.0,
+                "energy_cost_krw": 0.0,
                 "labor_cost": 0.0,
             },
         }
@@ -2096,3 +2104,128 @@ def test_rtr_calibration_save_route_persists_windows_and_refreshes_profile(
         assert profiles_response.json()["profiles"]["Cucumber"]["calibration"]["mode"] == "fitted"
     finally:
         backend_main.app_state["cucumber"]["df_env"] = original_df_env
+
+
+def _sensitivity_rows_for(*, cost_per_kwh: float, actual_area_m2: float) -> dict:
+    """Run the RTR temperature sensitivity with a given tariff and area.
+
+    The candidate sits at 22℃, above the fixture's `heating_set_C` of 19℃. Below
+    that the heating demand is flat, so a ±0.3℃ probe would return a legitimately
+    zero derivative and prove nothing about the currency wiring.
+    """
+    services = _load_optimizer_rtr_services()
+    context = _fake_context(
+        crop="tomato",
+        par_umol_m2_s=860.0,
+        co2_ppm=760.0,
+        t_air_c=20.0,
+        outside_t_c=8.0,
+        source_capacity=1.02,
+        sink_demand=0.88,
+        fruit_load=10.5,
+        source_sink_balance=0.12,
+    )
+    context.cost_per_kwh = cost_per_kwh
+    context.actual_area_m2 = actual_area_m2
+    optimization_inputs = _optimization_inputs(
+        services,
+        "tomato",
+        target_node_development_per_day=0.12,
+    )
+    optimized_candidate = {
+        "controls": {
+            "day_heating_min_temp_C": 22.0,
+            "night_heating_min_temp_C": 21.4,
+            "day_cooling_target_C": 27.0,
+            "night_cooling_target_C": 24.0,
+            "vent_bias_C": 0.0,
+            "screen_bias_pct": 0.0,
+            "circulation_fan_pct": 35.0,
+            "co2_target_ppm": 760.0,
+            "dehumidification_bias": 0.0,
+            "fogging_or_evap_cooling_intensity": 0.0,
+        }
+    }
+    payload = services.scenario_runner.compute_rtr_temperature_sensitivity(
+        context=context,
+        optimization_inputs=optimization_inputs,
+        optimized_candidate=optimized_candidate,
+    )
+    rows: dict = {
+        (row["control"], row["target"]): row for row in payload["sensitivities"]
+    }
+    rows["__assumptions__"] = payload["assumptions"]
+    return rows
+
+
+def test_currency_derivative_scales_exactly_with_tariff_and_area() -> None:
+    """The council's kill-test for "the model is there, only the wiring is wrong".
+
+    If the ₩ derivative does not scale exactly with the tariff, or the total does not
+    scale exactly with area while per-m² and node rate stay put, then the currency
+    path is not a wiring fix and the energy model itself needs work first.
+    """
+    base = _sensitivity_rows_for(cost_per_kwh=135.0, actual_area_m2=3305.8)
+    double_tariff = _sensitivity_rows_for(cost_per_kwh=270.0, actual_area_m2=3305.8)
+    double_area = _sensitivity_rows_for(cost_per_kwh=135.0, actual_area_m2=6611.6)
+
+    key = ("day_heating_min_temp_C", "heating_energy_cost_krw")
+    node_key = ("day_heating_min_temp_C", "node_rate_day")
+
+    base_krw = base[key]["derivative"]
+    assert base_krw != 0.0, "a temperature step must move heating cost"
+
+    # Tariff x2 -> ₩ derivative x2 exactly; node rate is physiology, not price.
+    assert double_tariff[key]["derivative"] == pytest.approx(base_krw * 2.0, rel=1e-9)
+    assert double_tariff[node_key]["derivative"] == pytest.approx(
+        base[node_key]["derivative"], rel=1e-9
+    )
+
+    # Area x2 -> total ₩ x2, per-m² unchanged, node rate unchanged.
+    assert double_area[key]["derivative"] == pytest.approx(base_krw, rel=1e-9)
+    assert double_area[key]["derivative_total"] == pytest.approx(
+        base[key]["derivative_total"] * 2.0, rel=1e-9
+    )
+    assert double_area[node_key]["derivative"] == pytest.approx(
+        base[node_key]["derivative"], rel=1e-9
+    )
+
+
+def test_currency_and_energy_derivatives_are_distinct_and_carry_units() -> None:
+    """The kWh gradient and the ₩ gradient must not be the same number."""
+    rows = _sensitivity_rows_for(cost_per_kwh=135.0, actual_area_m2=3305.8)
+
+    kwh_row = rows[("day_heating_min_temp_C", "heating_energy_kwh_m2_day")]
+    krw_row = rows[("day_heating_min_temp_C", "heating_energy_cost_krw")]
+
+    assert kwh_row["unit"] == "kWh/m2/day/°C"
+    assert krw_row["unit"] == "KRW/m2/day/°C"
+    # ₩ = kWh x tariff. Before 2026-07-17 the "cost" derivative read the kWh field,
+    # so these two were literally the same number under different names.
+    # Tolerance is 1e-3, not tighter: each row is rounded to 6dp independently, and
+    # the kWh derivative is ~1e-3, so its rounding dominates the comparison.
+    assert krw_row["derivative"] == pytest.approx(kwh_row["derivative"] * 135.0, rel=1e-3)
+    # They must not be the same number — that was the bug.
+    assert abs(krw_row["derivative"] - kwh_row["derivative"]) > abs(kwh_row["derivative"])
+
+
+def test_node_rate_derivative_is_wired_and_has_a_unit() -> None:
+    rows = _sensitivity_rows_for(cost_per_kwh=135.0, actual_area_m2=3305.8)
+
+    for control in ("day_heating_min_temp_C", "night_heating_min_temp_C"):
+        row = rows[(control, "node_rate_day")]
+        assert row["unit"] == "node/day/°C"
+        assert isinstance(row["derivative"], float)
+
+
+def test_currency_assumptions_are_reported_with_provenance() -> None:
+    rows = _sensitivity_rows_for(cost_per_kwh=135.0, actual_area_m2=3305.8)
+    assumptions = rows["__assumptions__"]
+
+    assert assumptions["cost_per_kwh"] == 135.0
+    assert assumptions["cost_per_kwh_unit"] == "KRW/kWh"
+    assert assumptions["actual_area_m2"] == 3305.8
+    # Source must be present so a ₩120/kWh placeholder is never shown as the
+    # grower's own tariff.
+    assert "cost_per_kwh_source" in assumptions
+    assert "actual_area_m2_source" in assumptions
