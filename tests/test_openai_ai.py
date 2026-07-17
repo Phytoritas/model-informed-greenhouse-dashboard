@@ -179,13 +179,77 @@ def test_openai_helper_mentions_precision_runtime_contract_when_present(
     )
 
     prompt = fake_client.responses.calls[0]["input"][0]["content"]
-    # The model runtime is provided as private context the reply can lean on.
+    # The model runtime is the context the reply's numbers must come from.
     assert "answer_focus" in prompt
     assert "control_precision_matrix" in prompt
     assert "model_runtime" in prompt
-    # Conversational guardrails: never cite sources, never invent missing values.
-    assert "인용" in prompt or "출처" in prompt
-    assert "없는 값" in prompt
+    # Numeric-integrity guardrails. Before 2026-07-17 this prompt instead forbade
+    # citing sources and structuring the answer, which suppressed exactly the
+    # quantitative register the advisor exists to provide.
+    assert "그대로 가져와야" in prompt, "numbers must be taken from the model verbatim"
+    assert "외삽하지" in prompt, "a small step must not be extrapolated to a larger one"
+    assert "추정하지" in prompt, "missing/unreliable values must be surfaced, not estimated"
+
+
+def test_chat_system_prompt_requires_the_expert_register(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The prompt must demand units and a validity range, and must not gag the model.
+
+    Regression guard for commit 74c3fb1, which optimized the conversational register
+    and paid for it in substance: it told the model never to mention sources and to
+    "just speak as if you already knew", which is a prompt-level ban on the expert
+    answer the user was asking for.
+    """
+    prompt = ai_service._chat_system_prompt("tomato", "ko")
+
+    # Required: the quantitative register.
+    assert "단위" in prompt
+    assert "범위" in prompt
+    assert "모른다" in prompt
+    assert "만들어내지" in prompt
+
+    # Still conversational — the natural-chat UX is not the defect.
+    assert "리포트 구조" in prompt
+
+    # Forbidden: the gag clauses that caused the regression.
+    assert "절대 언급하지 마세요" not in prompt
+    assert "원래 아는 것처럼" not in prompt
+
+
+def test_chat_evidence_is_transmitted_exactly_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Excerpts belong in the grounding block, not also in the dashboard JSON."""
+    fake_client = _FakeOpenAI()
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(ai_service, "OpenAI", lambda: fake_client)
+
+    marker = "붕소 결핍은 생장점 괴사로 나타난다"
+    dashboard = {
+        "currentData": {"temperature": 22.5},
+        "knowledge": {
+            "advisor_retrieval_context": {
+                "status": "ready",
+                "evidence_cards": [
+                    {"topic_major": "physiology", "evidence_excerpt": marker},
+                ],
+            }
+        },
+    }
+
+    ai_service.generate_chat_reply(
+        crop="tomato",
+        messages=[{"role": "user", "content": "생리장해 원인이 뭔가요"}],
+        dashboard=dashboard,
+        language="ko",
+        model="gpt-5.4-mini",
+    )
+
+    prompt = fake_client.responses.calls[0]["input"][0]["content"]
+    assert prompt.count(marker) == 1, "evidence was transmitted more than once"
+    # The caller's dashboard must not be mutated.
+    assert dashboard["knowledge"]["advisor_retrieval_context"]["evidence_cards"]
 
 
 def test_build_advisory_display_payload_accepts_locale_aware_korean_headings() -> None:

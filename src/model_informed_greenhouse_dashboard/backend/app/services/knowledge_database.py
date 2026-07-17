@@ -853,7 +853,16 @@ def _result_score(
     )
 
 
-def _trim_chunk_text(text: str, max_chars: int = 360) -> str:
+#: Result-text budget per retrieved chunk.
+#:
+#: Chunks are stored at `_PDF_CHUNK_CHARS` (1,200) on paragraph/sentence boundaries.
+#: Trimming results to 360 chars discarded ~70% of every chunk the ranker had just
+#: worked to select, and cut the survivor mid-sentence. Returning the whole chunk
+#: keeps retrieval and delivery consistent: what ranked is what the caller gets.
+_MAX_RESULT_TEXT_CHARS = _PDF_CHUNK_CHARS
+
+
+def _trim_chunk_text(text: str, max_chars: int = _MAX_RESULT_TEXT_CHARS) -> str:
     normalized = _normalize_text(text)
     if len(normalized) <= max_chars:
         return normalized
