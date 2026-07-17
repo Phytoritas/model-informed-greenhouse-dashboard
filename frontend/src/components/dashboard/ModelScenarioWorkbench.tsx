@@ -22,13 +22,17 @@ const MODEL_SCENARIO_CONTROL_KEYS = [
   'screen_close',
 ] as const;
 
-const SENSITIVITY_TARGETS = [
-  'predicted_yield_24h',
-  'predicted_yield_72h',
-  'predicted_yield_7d',
-  'predicted_yield_14d',
-  'source_sink_balance_72h',
-  'energy_cost_72h',
+// `energy_load_index_72h` was called `energy_cost_72h` until 2026-07-17, which read
+// as money in a dropdown that renders raw identifiers. It is a dimensionless index —
+// `horizon_days * (0.75 + energy_rate_delta)`, never multiplied by kWh or a tariff —
+// so its gradient is an index gradient, not ₩/℃. The label says so.
+const SENSITIVITY_TARGETS: readonly { value: string; label: string }[] = [
+  { value: 'predicted_yield_24h', label: 'predicted_yield_24h — 예상 수량 (24h)' },
+  { value: 'predicted_yield_72h', label: 'predicted_yield_72h — 예상 수량 (72h)' },
+  { value: 'predicted_yield_7d', label: 'predicted_yield_7d — 예상 수량 (7d)' },
+  { value: 'predicted_yield_14d', label: 'predicted_yield_14d — 예상 수량 (14d)' },
+  { value: 'source_sink_balance_72h', label: 'source_sink_balance_72h — 소스/싱크 균형 (72h)' },
+  { value: 'energy_load_index_72h', label: 'energy_load_index_72h — 에너지 부하 지수 (무차원, 비용 아님)' },
 ];
 
 function toNumber(value: string): number {
@@ -208,7 +212,7 @@ export default function ModelScenarioWorkbench({ crop }: ModelScenarioWorkbenchP
             <label className="mt-3 block text-xs font-semibold text-[color:var(--sg-text-muted)]">
               <span>{copy.sensitivityTarget}</span>
               <Select className="mt-1" value={target} onChange={(event) => setTarget(event.target.value)} aria-label={copy.sensitivityTarget}>
-                {SENSITIVITY_TARGETS.map((value) => <option key={value} value={value}>{value}</option>)}
+                {SENSITIVITY_TARGETS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
               </Select>
             </label>
             <p className="mt-3 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-surface-muted)] p-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
