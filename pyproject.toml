@@ -21,6 +21,11 @@ dependencies = [
     "httpx>=0.27,<0.28",
     "openai (>=2.30.0,<3.0.0)",
     "pypdf (==5.5.0)",
+    # pdfminer.six (MIT) resolves CID->Unicode from an external table where pypdf
+    # cannot, which recovers the two Japanese 農業技術大系 PDFs and also raises the
+    # Hangul yield on the Korean guides. Chosen over PyMuPDF, whose AGPL/commercial
+    # dual licence would be contagious for a distributed tool.
+    "pdfminer.six (>=20250506)",
 ]
 
 

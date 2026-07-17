@@ -90,3 +90,52 @@ def test_quarantine_clause_actually_excludes_rows_in_sqlite() -> None:
     connection.close()
 
     assert [row[0] for row in rows] == [1, 6], "quarantined documents leaked into results"
+
+
+def _pages_from_text(text: str) -> list[str]:
+    return [text]
+
+
+def test_quality_gate_passes_korean_prose() -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.pdf_quality import (
+        assess_document,
+    )
+
+    korean = "토마토 생육 관리와 환경 제어에 관한 실제 한국어 본문 문장입니다. " * 5
+    result = assess_document(_pages_from_text(korean), expected_language="ko")
+    assert result.passes
+    assert result.hangul_share > 0.20
+
+
+def test_quality_gate_fails_japanese_text_for_a_korean_document() -> None:
+    """The compendia's recovered text is Japanese; a ko-expected doc must fail on it."""
+    from model_informed_greenhouse_dashboard.backend.app.services.pdf_quality import (
+        assess_document,
+    )
+
+    japanese = "果重は地温が高めで気温が組合わせのとき最もすぐれている。生理障害の防止策。" * 5
+    result = assess_document(_pages_from_text(japanese), expected_language="ko")
+    assert not result.passes
+    assert result.hangul_share == 0.0
+    assert "Hangul share" in result.reason
+
+
+def test_quality_gate_ignores_language_for_structured_documents() -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.pdf_quality import (
+        assess_document,
+    )
+
+    latin = "product active_ingredient FRAC group registration status " * 5
+    result = assess_document(_pages_from_text(latin), expected_language="any")
+    assert result.passes
+
+
+def test_quality_gate_flags_junk_characters() -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.pdf_quality import (
+        assess_document,
+    )
+
+    junk = "����� 토마토 �����" * 20
+    result = assess_document(_pages_from_text(junk), expected_language="ko")
+    assert not result.passes
+    assert "junk" in result.reason

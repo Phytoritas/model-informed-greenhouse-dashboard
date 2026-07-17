@@ -370,6 +370,8 @@ def _build_asset_entry(spec: dict[str, Any]) -> dict[str, Any]:
         "stage_hints": spec.get("stage_hints", []),
         "normalization_targets": spec.get("normalization_targets", []),
         "sheet_hints": spec.get("sheet_hints", []),
+        # Language the extraction quality gate should hold this document to.
+        "expected_language": spec.get("expected_language", "ko"),
         "exists": exists,
         "readiness": readiness,
         "limitations": limitations,

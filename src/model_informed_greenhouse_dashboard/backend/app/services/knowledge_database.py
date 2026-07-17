@@ -16,7 +16,8 @@ from typing import Any, Iterable, Mapping
 
 from pypdf import PdfReader
 
-from .corpus_quarantine import quarantine_filter_sql
+from .corpus_quarantine import is_quarantined, quarantine_filter_sql
+from .pdf_quality import assess_document, extract_pdf_pages
 
 from ..config import settings
 from .knowledge_query_router import route_knowledge_query, routed_relevance_bonus
@@ -1193,6 +1194,23 @@ def _extract_pdf_text(page: Any) -> str:
         return page.extract_text() or ""
 
 
+def _extract_pdf_pages_with_quality(
+    path: Path,
+    *,
+    expected_language: str = "ko",
+) -> tuple[list[str], dict[str, Any]]:
+    """Extract per-page text via pdfminer.six and assess it.
+
+    pdfminer resolves CID->Unicode where pypdf cannot, so it recovers more Korean
+    from the guides and readable Japanese from the compendia. The assessment makes a
+    garbage extraction measurable instead of silent; the caller decides what to do
+    with a document that fails.
+    """
+    pages = extract_pdf_pages(path)
+    assessment = assess_document(pages, expected_language=expected_language)
+    return pages, assessment.to_dict()
+
+
 def _ingest_telemetry_asset(
     connection: sqlite3.Connection,
     *,
@@ -1318,13 +1336,27 @@ def _ingest_pdf_asset(
     crop_scope: str,
     document_id: int,
     asset: dict[str, Any],
-) -> None:
+) -> dict[str, Any]:
+    """Ingest a PDF's chunks and return its extraction-quality assessment.
+
+    Quarantined documents (Japanese compendia) are still assessed so their quality is
+    on record, but their chunks are not indexed — no point storing text that retrieval
+    can never return. The assessment is returned so the catalog build can fail on a
+    Korean-expected document that extracts as garbage.
+    """
     path = REPO_ROOT / asset["relative_path"]
-    reader = _open_pdf_reader(path)
+    expected_language = str(asset.get("expected_language", "ko"))
+    pages, quality = _extract_pdf_pages_with_quality(
+        path, expected_language=expected_language
+    )
+    if is_quarantined(filename=asset.get("filename"), asset_family=asset.get("asset_family")):
+        quality["ingested"] = False
+        quality["skip_reason"] = "quarantined"
+        return quality
+
     topic_major = asset.get("topic_hints", [asset["asset_family"]])[0]
     ordinal = 1
-    for page_index, page in enumerate(reader.pages, start=1):
-        text = _extract_pdf_text(page)
+    for page_index, text in enumerate(pages, start=1):
         for chunk in _build_text_chunks(text):
             chunk_id = _insert_chunk(
                 connection,
@@ -1350,6 +1382,10 @@ def _ingest_pdf_asset(
                 ),
             )
             ordinal += 1
+
+    quality["ingested"] = True
+    quality["chunks"] = ordinal - 1
+    return quality
 
 
 def _ingest_workbook_previews(
@@ -1919,6 +1955,14 @@ def _insert_crop_profile(connection: sqlite3.Connection, payload: dict[str, Any]
     )
 
 
+class CorpusQualityError(RuntimeError):
+    """A build was blocked because a required document failed the quality gate.
+
+    Raised before the temp->final promotion, so the existing (last-known-good) index
+    is left untouched rather than replaced with a corrupt one.
+    """
+
+
 def rebuild_knowledge_database(payload: dict[str, Any]) -> dict[str, Any]:
     crop_scope = _scope_slug(payload.get("crop_scope"))
     db_path = knowledge_db_path(crop_scope)
@@ -1978,6 +2022,7 @@ def rebuild_knowledge_database(payload: dict[str, Any]) -> dict[str, Any]:
         )
         _insert_crop_profile(connection, payload)
 
+        pdf_quality: dict[str, dict[str, Any]] = {}
         for asset in payload.get("assets", []):
             document_id = document_ids[asset["filename"]]
             if asset.get("readiness") != "ready":
@@ -1990,12 +2035,32 @@ def rebuild_knowledge_database(payload: dict[str, Any]) -> dict[str, Any]:
                     asset=asset,
                 )
             elif asset["source_type"] == "pdf":
-                _ingest_pdf_asset(
+                pdf_quality[asset["filename"]] = _ingest_pdf_asset(
                     connection,
                     crop_scope=crop_scope,
                     document_id=document_id,
                     asset=asset,
                 )
+
+        # Promotion gate: a Korean-expected PDF that extracted real text which is the
+        # wrong language (or junk) must not be atomically promoted. Before 2026-07-17
+        # the catalog marked documents ready by page count alone and the temp->final
+        # swap had no quality check, so a fully-built garbage index shipped silently.
+        #
+        # A document that extracted *no* letters (empty or image-only) is recorded as
+        # needing OCR but does not block the build — it contributes no chunks, so it
+        # cannot poison retrieval, unlike garbage text that produces garbage chunks.
+        gate_failures = [
+            f"{filename}: {quality.get('reason')}"
+            for filename, quality in pdf_quality.items()
+            if quality.get("ingested")
+            and not quality.get("passes")
+            and int(quality.get("letters", 0)) > 0
+        ]
+        if gate_failures:
+            raise CorpusQualityError(
+                "PDF extraction quality gate failed for: " + "; ".join(gate_failures)
+            )
 
         pesticide_document_id = document_ids.get("농약 솔루션_260326_v1.xlsx")
         pesticide_asset = next(
@@ -2022,7 +2087,14 @@ def rebuild_knowledge_database(payload: dict[str, Any]) -> dict[str, Any]:
             )
 
         connection.commit()
-    finally:
+    except BaseException:
+        connection.close()
+        # Do not promote a temp build that failed the gate or errored midway; leave
+        # the last-known-good index in place.
+        if temp_path.exists():
+            temp_path.unlink()
+        raise
+    else:
         connection.close()
 
     temp_path.replace(db_path)

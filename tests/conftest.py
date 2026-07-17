@@ -12,6 +12,38 @@ from model_informed_greenhouse_dashboard.backend.app.services import (
 )
 
 
+def _write_minimal_pdf(path: Path, body_text: str) -> None:
+    """A minimal single-page PDF that pdfminer can extract text from.
+
+    The fixtures used to `.touch()` empty PDFs, which pdfminer cannot parse. A real
+    one-page PDF exercises the actual extraction + quality-gate path.
+    """
+    stream = f"BT /F1 12 Tf 72 700 Td ({body_text}) Tj ET".encode("latin-1", "replace")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+        b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % index + obj + b"\nendobj\n"
+    xref_pos = len(out)
+    out += b"xref\n0 %d\n" % (len(objects) + 1)
+    out += b"0000000000 65535 f \n"
+    for offset in offsets:
+        out += b"%010d 00000 n \n" % offset
+    out += b"trailer\n<< /Root 1 0 R /Size %d >>\nstartxref\n%d\n%%%%EOF" % (
+        len(objects) + 1,
+        xref_pos,
+    )
+    path.write_bytes(bytes(out))
+
+
 def _write_telemetry_csv(path: Path, crop_label: str) -> None:
     path.write_text(
         "\n".join(
@@ -237,9 +269,15 @@ def synthetic_knowledge_assets(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
 
     _write_telemetry_csv(data_dir / "Tomato_Env.CSV", "tomato")
     _write_telemetry_csv(data_dir / "Cucumber_Env.CSV", "cucumber")
+    _write_minimal_pdf(
+        data_dir / "농업기술길잡이-토마토.PDF",
+        "tomato cultivation guide environment management diagnosis harvest sample text",
+    )
+    _write_minimal_pdf(
+        data_dir / "농업기술길잡이-오이.PDF",
+        "cucumber cultivation guide environment management diagnosis harvest sample text",
+    )
     for filename in (
-        "농업기술길잡이-토마토.PDF",
-        "농업기술길잡이-오이.PDF",
         workbook_normalization.PESTICIDE_WORKBOOK,
         workbook_normalization.NUTRIENT_WORKBOOK,
     ):
@@ -273,6 +311,9 @@ def synthetic_knowledge_assets(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
             "crop_scopes": ["tomato"],
             "asset_family": "manual",
             "source_type": "pdf",
+            # The synthetic PDF carries ASCII text (no Korean font embedding in a
+            # hand-built fixture), so the Hangul gate does not apply to it.
+            "expected_language": "any",
             "topic_hints": ["environment", "management", "diagnosis", "harvest"],
             "stage_hints": ["vegetative", "fruit_set", "harvest"],
         },
@@ -282,6 +323,7 @@ def synthetic_knowledge_assets(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
             "crop_scopes": ["cucumber"],
             "asset_family": "manual",
             "source_type": "pdf",
+            "expected_language": "any",
             "topic_hints": ["environment", "management", "diagnosis", "harvest"],
             "stage_hints": ["vegetative", "fruit_set", "harvest"],
         },
