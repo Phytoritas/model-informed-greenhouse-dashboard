@@ -63,6 +63,43 @@ def asks_for_safe_use_number(question: str) -> bool:
     return any(re.search(pattern, text) for pattern in _PHI_QUESTION_PATTERNS)
 
 
+def authoritative_answer_or_refusal(
+    *,
+    crop: str,
+    product_or_ingredient: str,
+    target_pest: str | None = None,
+    now_iso: str | None = None,
+    language: str = "ko",
+) -> dict[str, Any]:
+    """Return an authoritative PHI answer if the PSIS gateway can supply one.
+
+    Fail-closed: without a configured gateway, or on any lookup that does not yield a
+    verified PHI, this returns the refusal. A number is only ever surfaced when it
+    came from the authoritative registry — never from the local free text or a guess.
+    """
+    from .psis_gateway import fetch_safe_use_standard, is_configured
+
+    if not is_configured():
+        return safe_use_refusal(language=language)
+
+    standard = fetch_safe_use_standard(
+        crop=crop,
+        product_or_ingredient=product_or_ingredient,
+        target_pest=target_pest,
+        now_iso=now_iso,
+    )
+    if not standard.is_authoritative:
+        refusal = safe_use_refusal(language=language)
+        refusal["lookup"] = standard.to_dict()
+        return refusal
+
+    return {
+        "status": "authoritative_safe_use_standard",
+        "standard": standard.to_dict(),
+        "authoritative_sources": {"registry": PSIS_URL},
+    }
+
+
 def safe_use_refusal(*, language: str = "ko") -> dict[str, Any]:
     """The refusal payload for a safe-use-number question.
 
