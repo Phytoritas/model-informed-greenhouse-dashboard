@@ -296,6 +296,26 @@ def _chat_grounding_block(dashboard: Dict[str, Any], language: str) -> str:
     """
     cards = _evidence_cards(dashboard)
     if not cards:
+        # No evidence must be visible as no evidence, not silently identical to a
+        # grounded answer. Surface the grounding decision so the reply can say it
+        # is speaking from general knowledge rather than the local references.
+        knowledge = dashboard.get("knowledge") if isinstance(dashboard, dict) else None
+        decision = (
+            str(knowledge.get("grounding_decision") or "")
+            if isinstance(knowledge, dict)
+            else ""
+        )
+        if decision and decision != "GROUNDED":
+            if language.lower().startswith("en"):
+                return (
+                    f"Retrieval status: {decision}. No local reference supports this "
+                    "question. Answer from general knowledge and say so plainly; do not "
+                    "imply you consulted the references.\n\n"
+                )
+            return (
+                f"검색 상태: {decision}. 이 질문을 뒷받침하는 로컬 문헌이 없습니다. "
+                "일반 지식으로 답하되 그렇다고 밝히고, 문헌을 참고한 것처럼 말하지 마세요.\n\n"
+            )
         return ""
 
     excerpts = []

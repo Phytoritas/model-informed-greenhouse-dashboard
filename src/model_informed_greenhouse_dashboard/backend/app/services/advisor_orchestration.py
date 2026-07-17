@@ -16,6 +16,7 @@ from .advisor_context_builder import (
     build_summary_advisor_context,
     build_tab_advisor_context,
 )
+from .answer_admission import grounding_decision
 from .advisory_api import (
     build_nutrient_correction_response,
     build_nutrient_recommendation_response,
@@ -259,16 +260,26 @@ def _inject_advisor_retrieval_context(
     dashboard: dict[str, Any],
     retrieval_context: dict[str, Any],
 ) -> dict[str, Any]:
-    if retrieval_context.get("status") != "ready":
-        return dashboard
+    # Always record the grounding decision, even when retrieval found nothing. The
+    # old early-return dropped the whole context on a miss, so a zero-evidence answer
+    # was indistinguishable from a grounded one — the silent-failure defect the
+    # council flagged. A GROUNDED answer and a NO_MATCH answer must look different.
+    decision = grounding_decision(retrieval_context)
 
-    llm_context = retrieval_context.get("llm_context")
-    if not llm_context:
-        return dashboard
+    llm_context = None
+    if retrieval_context.get("status") == "ready":
+        candidate = retrieval_context.get("llm_context")
+        # Only attach the context when it actually carries evidence; an empty card
+        # list is a NO_MATCH, and attaching it would put a hollow context next to a
+        # NO_MATCH decision.
+        if isinstance(candidate, dict) and candidate.get("evidence_cards"):
+            llm_context = candidate
 
     dashboard_payload = deepcopy(dashboard)
     knowledge_payload = dict(dashboard_payload.get("knowledge") or {})
-    knowledge_payload["advisor_retrieval_context"] = llm_context
+    if llm_context:
+        knowledge_payload["advisor_retrieval_context"] = llm_context
+    knowledge_payload["grounding_decision"] = decision.value
     dashboard_payload["knowledge"] = knowledge_payload
     return dashboard_payload
 
