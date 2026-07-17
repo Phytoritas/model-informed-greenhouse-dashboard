@@ -465,6 +465,62 @@ def _format_signed_delta(value: Any, digits: int = 3) -> str:
     return f"{numeric:+.{digits}f}"
 
 
+#: Below this the requested and computed deltas are the same number.
+_DELTA_EXACT_MATCH_TOLERANCE = 1e-6
+
+
+def _build_out_of_range_answer_focus(
+    *,
+    family: dict[str, Any],
+    requested_delta: float,
+    max_supported_delta: float,
+    language: str,
+) -> dict[str, Any]:
+    """A what-if the model cannot answer, rendered without any numbers.
+
+    The bounded scenario is only solved on a small ladder of steps around the
+    current state. Asking for a step beyond it is not a harder question, it is a
+    different one, and the model has no answer to it.
+    """
+    label = str(family.get("label") or family.get("control") or "control")
+    unit = str(family.get("unit") or "")
+    if language.lower().startswith("en"):
+        summary = (
+            f"{label} {requested_delta:+g}{unit} is outside the range the model solves "
+            f"(±{max_supported_delta:g}{unit} around the current setpoint), so there is no "
+            f"calculated effect for it. Ask within ±{max_supported_delta:g}{unit}, or change "
+            f"the setpoint and let the model re-solve around the new state."
+        )
+    else:
+        summary = (
+            f"{label} {requested_delta:+g}{unit}는 모델이 계산하는 범위(현재 설정 기준 "
+            f"±{max_supported_delta:g}{unit}) 밖이라 계산된 효과가 없습니다. "
+            f"±{max_supported_delta:g}{unit} 안에서 물어보시거나, 설정을 바꾼 뒤 새 상태에서 "
+            f"다시 계산하도록 하세요."
+        )
+    return {
+        "kind": "model_what_if_out_of_range",
+        "computed_by": "process_model_bounded_scenario",
+        "control": family.get("control"),
+        "label": label,
+        "requested_delta": requested_delta,
+        "matched_delta": None,
+        "max_supported_delta": max_supported_delta,
+        "unit": family.get("unit"),
+        "action": None,
+        "summary": summary,
+        # No effects: an out-of-range question has no calculated answer, and a
+        # nearby step's numbers are not an approximation of it.
+        "effects": {},
+        "confidence": 0.0,
+        "risk_flags": ["requested_delta_out_of_model_range"],
+        "violated_constraints": [],
+        "precision_mode": family.get("precision_mode"),
+        "matched_user_request": False,
+        "admissible": False,
+    }
+
+
 def _build_runtime_answer_focus(
     *,
     messages: Optional[list[dict[str, str]]],
@@ -498,6 +554,20 @@ def _build_runtime_answer_focus(
         if requested_delta is None:
             step = family.get("recommended_step")
         else:
+            # A nearest-neighbour match with no bound is a silent substitution: a
+            # grower asking "+5℃?" was answered with the +0.9℃ result, in fluent
+            # Korean, with the prompt forbidding any mention that a swap happened.
+            # Refuse instead of answering a question nobody asked.
+            max_supported_delta = max(
+                abs(float(item.get("applied_delta", 0.0))) for item in steps
+            )
+            if abs(requested_delta) > max_supported_delta:
+                return _build_out_of_range_answer_focus(
+                    family=family,
+                    requested_delta=requested_delta,
+                    max_supported_delta=max_supported_delta,
+                    language=language,
+                )
             step = min(
                 steps,
                 key=lambda item: abs(float(item.get("applied_delta", 0.0)) - requested_delta),
@@ -507,6 +577,14 @@ def _build_runtime_answer_focus(
 
         label = str(family.get("label") or family.get("control") or "control")
         step_label = str(step.get("step_label") or "")
+        matched_delta = _coerce_float(step.get("applied_delta"))
+        # In range, but the ladder is discrete: if the solved step is not the step
+        # that was asked for, the answer is about a different change and must say so.
+        substituted = (
+            requested_delta is not None
+            and matched_delta is not None
+            and abs(matched_delta - requested_delta) > _DELTA_EXACT_MATCH_TOLERANCE
+        )
         effects = {
             "yield_delta_24h": step.get("yield_delta_24h"),
             "yield_delta_72h": step.get("yield_delta_72h"),
@@ -520,21 +598,38 @@ def _build_runtime_answer_focus(
             "humidity_penalty_delta": step.get("humidity_penalty_delta"),
             "disease_penalty_delta": step.get("disease_penalty_delta"),
         }
+        unit = str(family.get("unit") or "")
         if language.lower().startswith("en"):
+            substitution_note = (
+                f" Note: {requested_delta:+g}{unit} was asked for, but the model solves a "
+                f"discrete ladder — these numbers are for {matched_delta:+g}{unit} and must be "
+                f"presented as such, not as the answer to {requested_delta:+g}{unit}."
+                if substituted
+                else ""
+            )
             summary = (
                 f"{label} {step_label} was calculated by the process-model bounded scenario as "
                 f"14d yield {_format_signed_delta(effects['yield_delta_14d'])}, "
                 f"72h canopy assimilation {_format_signed_delta(effects['canopy_delta_72h'])}, "
                 f"source/sink balance {_format_signed_delta(effects['source_sink_balance_delta'])}, "
                 f"and energy {_format_signed_delta(effects['energy_delta'])}."
+                f"{substitution_note}"
             )
         else:
+            substitution_note = (
+                f" 주의: 요청은 {requested_delta:+g}{unit}였지만 모델은 정해진 단계만 계산합니다 — "
+                f"이 숫자는 {matched_delta:+g}{unit} 기준이므로 {requested_delta:+g}{unit}의 답인 것처럼 "
+                f"말하지 말고 {matched_delta:+g}{unit} 기준임을 밝히세요."
+                if substituted
+                else ""
+            )
             summary = (
                 f"{label} {step_label} 조정은 process-model bounded scenario에서 "
                 f"14일 예상 수량 {_format_signed_delta(effects['yield_delta_14d'])}, "
                 f"72시간 캐노피 동화량 {_format_signed_delta(effects['canopy_delta_72h'])}, "
                 f"소스-싱크 균형 {_format_signed_delta(effects['source_sink_balance_delta'])}, "
                 f"에너지 {_format_signed_delta(effects['energy_delta'])}로 계산됐습니다."
+                f"{substitution_note}"
             )
         return {
             "kind": "model_what_if",
@@ -549,11 +644,18 @@ def _build_runtime_answer_focus(
             "summary": summary,
             "effects": effects,
             "confidence": step.get("confidence"),
-            "risk_flags": step.get("risk_flags", []),
+            "risk_flags": [
+                *step.get("risk_flags", []),
+                *(["computed_delta_differs_from_request"] if substituted else []),
+            ],
             "violated_constraints": step.get("violated_constraints", []),
             "operator_summary": family.get("operator_summary", {}),
             "precision_mode": family.get("precision_mode"),
-            "matched_user_request": requested_delta is not None,
+            # True only when the numbers are for the delta the grower actually
+            # asked about — not merely because a request was parsed.
+            "matched_user_request": requested_delta is not None and not substituted,
+            "delta_substituted": substituted,
+            "admissible": True,
         }
 
     return None
