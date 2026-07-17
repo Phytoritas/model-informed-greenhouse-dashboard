@@ -221,6 +221,12 @@ def admit_rtr_sensitivity_row(
         "scenario_alignment": row.get("scenario_alignment"),
         "direction": row.get("direction"),
     }
+    # Preserve the whole-house total (per-m² derivative x area) so the composer can
+    # answer "how much for MY greenhouse" rather than a per-m² figure.
+    if row.get("derivative_total") is not None:
+        diagnostics["derivative_total"] = row.get("derivative_total")
+        diagnostics["unit_total"] = row.get("unit_total")
+        diagnostics["area_m2"] = row.get("area_m2")
     common = {
         "quantity": quantity,
         "unit": row.get("unit"),

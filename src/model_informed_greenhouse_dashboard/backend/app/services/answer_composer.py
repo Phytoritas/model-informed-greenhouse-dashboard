@@ -12,9 +12,9 @@ not reachable from here — there is no number to print.
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Any, Iterable, Mapping
 
-from .answer_admission import AdmissionStatus, AnswerFact
+from .answer_admission import AdmissionStatus, AnswerFact, admit_rtr_sensitivity_row
 
 
 def _format_value(value: float, unit: str | None) -> str:
@@ -39,17 +39,23 @@ def _validity_phrase(fact: AnswerFact) -> str:
 
 def _provenance_phrase(fact: AnswerFact) -> str:
     provenance = fact.provenance or {}
+    unit = str(fact.unit or "")
     parts: list[str] = []
-    tariff = provenance.get("cost_per_kwh")
-    if tariff is not None:
-        source = provenance.get("cost_per_kwh_source")
-        note = "추정 기본값" if source == "default" else "설정값"
-        parts.append(f"요금 {tariff:g}원/kWh({note})")
-    area = provenance.get("area_m2")
-    if area is not None:
-        source = provenance.get("area_source")
-        note = "추정 기본값" if source == "default" else "설정값"
-        parts.append(f"면적 {area:g}㎡({note})")
+    # A tariff is only an assumption for a currency figure; a node rate does not
+    # depend on it, so do not attach it there.
+    if "KRW" in unit:
+        tariff = provenance.get("cost_per_kwh")
+        if tariff is not None:
+            source = provenance.get("cost_per_kwh_source")
+            note = "추정 기본값" if source == "default" else "설정값"
+            parts.append(f"요금 {tariff:g}원/kWh({note})")
+    # Area matters whenever a whole-house total is shown.
+    if fact.diagnostics.get("derivative_total") is not None:
+        area = provenance.get("area_m2")
+        if area is not None:
+            source = provenance.get("area_source")
+            note = "추정 기본값" if source == "default" else "설정값"
+            parts.append(f"면적 {area:g}㎡({note})")
     return f" [{', '.join(parts)}]" if parts else ""
 
 
@@ -77,11 +83,72 @@ def compose_fact_sentence(fact: AnswerFact) -> str:
         return f"{label} {fact.quantity}: {why}{detail}."
 
     magnitude = _format_value(fact.value, fact.unit)
-    per = f"/{fact.perturbation:g}단위" if fact.perturbation else ""
+
+    # For a currency figure, lead with the whole-house total per 1°C — the number a
+    # grower can act on — rather than the per-m² gradient. The derivative is already
+    # per-°C, so no "per step" suffix is appended (that would misread the FD step as
+    # a divisor).
+    total = fact.diagnostics.get("derivative_total")
+    unit_total = str(fact.diagnostics.get("unit_total") or "")
+    if total is not None and "KRW" in unit_total:
+        # KRW/m2/day/°C x area -> KRW/day/°C: "1°C 올리면 하루 약 N원".
+        per_c = f"1°C당 하루 약 {float(total):,.0f} 원 (온실 전체)"
+        return (
+            f"{label} {fact.quantity}: {per_c}, 즉 {magnitude}"
+            f"{_validity_phrase(fact)}{_provenance_phrase(fact)}."
+        )
+
     return (
-        f"{label} {fact.quantity}: {magnitude}{per}"
+        f"{label} {fact.quantity}: {magnitude} (1°C당)"
         f"{_validity_phrase(fact)}{_provenance_phrase(fact)}."
     )
+
+
+#: The RTR sensitivity targets that answer the canonical marginal-change question,
+#: mapped to the human quantity name the composer renders.
+_MARGINAL_CHANGE_TARGETS = {
+    "heating_energy_cost_krw": "난방비 변화",
+    "cooling_energy_cost_krw": "냉방비 변화",
+    "total_energy_cost_krw": "에너지 비용 변화",
+    "node_rate_day": "마디 발생속도 변화",
+}
+
+
+def build_marginal_change_facts(sensitivity_payload: Mapping[str, Any]) -> dict:
+    """Admit and compose the RTR sensitivity rows into the ₩/℃ and node/℃ answer.
+
+    This is where "온도를 1℃ 올리면 난방비가 얼마나, 마디는 얼마나?" becomes a set of
+    admitted facts with units, a validity range, and tariff/area provenance — or an
+    explicit refusal when the model does not trust the derivative. It is the join of
+    Phase 1 (the ₩/node derivatives) and Phase 2 (admission + composition).
+    """
+    rows = sensitivity_payload.get("sensitivities") or []
+    assumptions = sensitivity_payload.get("assumptions") or {}
+
+    facts: list[AnswerFact] = []
+    for row in rows:
+        target = str(row.get("target") or "")
+        quantity = _MARGINAL_CHANGE_TARGETS.get(target)
+        if quantity is None:
+            continue
+        fact = admit_rtr_sensitivity_row(row, assumptions=assumptions)
+        # Relabel with the human quantity while keeping the machine target as scope.
+        facts.append(
+            AnswerFact(
+                quantity=quantity,
+                status=fact.status,
+                value=fact.value,
+                unit=fact.unit,
+                control_scope=fact.control_scope,
+                perturbation=fact.perturbation,
+                validity=fact.validity,
+                provenance=fact.provenance,
+                reason=fact.reason,
+                diagnostics={**fact.diagnostics, "target": target},
+            )
+        )
+
+    return compose_answer_facts_block(facts)
 
 
 def compose_answer_facts_block(facts: Iterable[AnswerFact]) -> dict:

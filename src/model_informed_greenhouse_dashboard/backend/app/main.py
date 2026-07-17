@@ -3687,6 +3687,12 @@ async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
         horizon_hours=24,
         sensitivities=sensitivity_payload["sensitivities"],
     )
+    # The canonical "온도 1℃ 올리면 난방비/마디?" answer, admitted and composed: each
+    # ₩ and node derivative passes the admission gate and is rendered with its unit,
+    # validity range, and tariff/area provenance — or refused when untrustworthy.
+    from .services.answer_composer import build_marginal_change_facts
+
+    answer_facts = build_marginal_change_facts(sensitivity_payload)
     return {
         "status": "success",
         "mode": "optimizer",
@@ -3696,6 +3702,8 @@ async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
         "target_horizon": optimization_inputs.target_horizon,
         "step_c": req.step_c,
         "sensitivities": stored_rows,
+        "answer_facts": answer_facts,
+        "assumptions": sensitivity_payload.get("assumptions", {}),
         "optimized_targets": optimized_candidate["controls"],
         "area_unit_meta": area_meta,
         "actuator_availability": build_actuator_availability(context.ops_config).as_dict(),

@@ -223,3 +223,105 @@ def test_retrieval_context_injection_records_grounding_even_on_miss() -> None:
         {"status": "retrieval_unavailable"},
     )
     assert unavailable["knowledge"]["grounding_decision"] == "SOURCE_UNAVAILABLE"
+
+
+def test_marginal_change_facts_answer_the_canonical_question() -> None:
+    """"온도 1℃ 올리면 난방비/마디?" becomes admitted, composed facts.
+
+    This is the join of Phase 1 (the ₩/node derivatives) and Phase 2 (admission +
+    composition): the RTR sensitivity rows are admitted and rendered with a
+    whole-house total, a validity range, and tariff/area provenance.
+    """
+    from model_informed_greenhouse_dashboard.backend.app.services.answer_composer import (
+        build_marginal_change_facts,
+    )
+
+    payload = {
+        "sensitivities": [
+            {
+                "control": "day_heating_min_temp_C",
+                "target": "heating_energy_cost_krw",
+                "derivative": 0.1732,
+                "derivative_total": 572.6,
+                "unit": "KRW/m2/day/°C",
+                "unit_total": "KRW/day/°C",
+                "area_m2": 3305.8,
+                "perturbation_size": 0.3,
+                "trust_region": {"low": -0.3, "high": 0.3},
+                "scenario_alignment": True,
+            },
+            {
+                "control": "day_heating_min_temp_C",
+                "target": "node_rate_day",
+                "derivative": 0.0116,
+                "unit": "node/day/°C",
+                "perturbation_size": 0.3,
+                "trust_region": {"low": -0.3, "high": 0.3},
+                "scenario_alignment": True,
+            },
+            # A row that is not part of the canonical answer is ignored.
+            {
+                "control": "screen_bias_pct",
+                "target": "objective",
+                "derivative": 0.15,
+                "unit": "index/°C",
+                "scenario_alignment": True,
+            },
+        ],
+        "assumptions": {
+            "cost_per_kwh": 135.0,
+            "cost_per_kwh_source": "settings",
+            "actual_area_m2": 3305.8,
+            "actual_area_m2_source": "settings",
+        },
+    }
+
+    block = build_marginal_change_facts(payload)
+
+    quantities = {f["quantity"] for f in block["admitted_facts"]}
+    assert "난방비 변화" in quantities
+    assert "마디 발생속도 변화" in quantities
+    # The objective row is not a marginal-change target.
+    assert all(f["diagnostics"]["target"] != "objective" for f in block["admitted_facts"])
+
+    heating = next(f for f in block["admitted_facts"] if f["quantity"] == "난방비 변화")
+    # Whole-house total per 1°C, and its provenance.
+    assert "573 원" in heating["sentence"] or "572" in heating["sentence"]
+    assert "온실 전체" in heating["sentence"]
+    assert "요금 135" in heating["sentence"]
+    assert "면적 3305.8" in heating["sentence"]
+    assert "유효 범위" in heating["sentence"]
+
+    node = next(f for f in block["admitted_facts"] if f["quantity"] == "마디 발생속도 변화")
+    # A node rate does not depend on the tariff, so it must not carry one.
+    assert "요금" not in node["sentence"]
+    assert "node/day" in node["sentence"]
+
+
+def test_marginal_change_refuses_untrusted_derivative() -> None:
+    from model_informed_greenhouse_dashboard.backend.app.services.answer_composer import (
+        build_marginal_change_facts,
+    )
+
+    payload = {
+        "sensitivities": [
+            {
+                "control": "day_heating_min_temp_C",
+                "target": "heating_energy_cost_krw",
+                "derivative": 999.0,
+                "unit": "KRW/m2/day/°C",
+                "scenario_alignment": False,  # model does not trust it
+            },
+        ],
+        "assumptions": {
+            "cost_per_kwh": 135.0,
+            "cost_per_kwh_source": "settings",
+            "actual_area_m2": 3305.8,
+            "actual_area_m2_source": "settings",
+        },
+    }
+
+    block = build_marginal_change_facts(payload)
+    assert block["admitted_facts"] == []
+    assert len(block["refused_facts"]) == 1
+    assert "999" not in block["refused_facts"][0]["sentence"]
