@@ -16,6 +16,8 @@ from typing import Any, Iterable, Mapping
 
 from pypdf import PdfReader
 
+from .corpus_quarantine import quarantine_filter_sql
+
 from ..config import settings
 from .knowledge_query_router import route_knowledge_query, routed_relevance_bonus
 from .workbook_normalization import (
@@ -587,6 +589,12 @@ def _document_filter_sql(
     clauses: list[str] = []
     params: list[Any] = []
     filter_payload = filters or {}
+
+    # Quarantine is unconditional: it is applied here, on the clause every
+    # retrieval path shares, so no caller-supplied filter can opt out of it.
+    quarantine_sql, quarantine_params = quarantine_filter_sql(document_alias="kd")
+    clauses.append(quarantine_sql)
+    params.extend(quarantine_params)
 
     if crop:
         clauses.append("kd.crop_scopes_json LIKE ?")
