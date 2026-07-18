@@ -220,10 +220,11 @@ export function useSimulationRuntimeControls(crop: CropType) {
 
   const cropKey = cropToApiKey(crop);
 
-  const start = useCallback((timeStep: SimulationRuntimeTimeStep) => execute('start', '/start', {
+  const start = useCallback((timeStep: SimulationRuntimeTimeStep, csvFilename?: string) => execute('start', '/start', {
     body: JSON.stringify({
       crop: cropKey,
-      csv_filename: getDefaultSimulationCsv(crop),
+      // Default to the crop's bundled fixture; an uploaded dataset name overrides it.
+      csv_filename: csvFilename ?? getDefaultSimulationCsv(crop),
       time_step: timeStep,
     }),
   }), [crop, cropKey, execute]);
