@@ -15,6 +15,7 @@ import type { AlertRailItem } from '../components/dashboard/AlertRail';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import AlertRail from '../components/dashboard/AlertRail';
 import ConsultingTrendCard from '../components/dashboard/ConsultingTrendCard';
+import EnvironmentDatasetCard from '../components/dashboard/EnvironmentDatasetCard';
 import HeroControlCard from '../components/dashboard/HeroControlCard';
 import OverviewSignalTrendCard from '../components/dashboard/OverviewSignalTrendCard';
 import TodayBoard from '../components/dashboard/TodayBoard';
@@ -207,6 +208,13 @@ export default function OverviewRoutePage({
           history={history}
           modelMetrics={modelMetrics}
           rtrProfile={rtrProfile}
+        />
+      )}
+      environmentDatasetPanel={(
+        <EnvironmentDatasetCard
+          locale={locale}
+          crop={crop}
+          telemetryStatus={telemetryStatus}
         />
       )}
       dashboardTab={(

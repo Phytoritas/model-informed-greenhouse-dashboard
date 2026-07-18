@@ -12,6 +12,7 @@ interface OverviewPageProps {
   liveMetricStrip: ReactNode;
   todayActionBoard: ReactNode;
   scenarioOptimizerPreview: ReactNode;
+  environmentDatasetPanel?: ReactNode;
   weatherMarketKnowledgeBridge: ReactNode;
   finalCta: ReactNode;
   footer: ReactNode;
@@ -46,6 +47,7 @@ export default function OverviewPage({
   liveMetricStrip,
   todayActionBoard,
   scenarioOptimizerPreview,
+  environmentDatasetPanel,
   weatherMarketKnowledgeBridge,
   finalCta,
   footer,
@@ -126,6 +128,7 @@ export default function OverviewPage({
                 {liveMetricStrip}
                 {todayActionBoard}
                 {scenarioOptimizerPreview}
+                {environmentDatasetPanel}
                 {weatherMarketKnowledgeBridge}
                 {finalCta}
                 {footer}
