@@ -261,8 +261,13 @@ describe('overview landing sections', () => {
     );
 
     expect(screen.getByText('Current state vs RTR guardrail')).toBeTruthy();
-    expect(screen.getByText('Optimizer available')).toBeTruthy();
+    // The redesign shows the optimizer status honestly in the header and no longer
+    // renders a fabricated side-by-side setpoint table.
+    expect(screen.getByText('Optimizer ready')).toBeTruthy();
     expect(screen.getByText('27.6 kg/wk')).toBeTruthy();
+    // Current temp and RTR target are the only comparison; both are labelled.
+    expect(screen.getByText('Current mean temp')).toBeTruthy();
+    expect(screen.getByText('RTR target temp')).toBeTruthy();
     expect(screen.queryByText('AI recommended setpoints')).toBeNull();
     expect(screen.queryByText('680 ppm')).toBeNull();
     expect(screen.queryByText('15 min')).toBeNull();
@@ -332,5 +337,41 @@ describe('overview landing sections', () => {
       expect(link.getAttribute('href') ?? '').not.toContain('#overview-dashboard');
       expect(link.getAttribute('href') ?? '').not.toContain('#assistant-search');
     }
+  });
+});
+
+describe('today action board RTR verdict', () => {
+  const baseProps = {
+    crop: 'Tomato' as const,
+    currentData: SENSOR,
+    modelMetrics: MODEL_METRICS,
+    actionsNow: [] as string[],
+    actionsToday: [] as string[],
+    monitor: [] as string[],
+    onOpenRtr: () => undefined,
+    onOpenAdvisor: () => undefined,
+  };
+
+  it('shows a "below target — heat" verdict when current temp is under the band', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={-2.0} rtrToleranceC={0.8} />);
+    expect(screen.getByText('2.0°C below the RTR target. Consider heating.')).toBeTruthy();
+    expect(screen.getByText('Review setpoint')).toBeTruthy();
+  });
+
+  it('shows an "above target — vent" verdict when current temp is over the band', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={1.6} rtrToleranceC={0.8} />);
+    expect(screen.getByText('1.6°C above the RTR target. Consider venting or shading.')).toBeTruthy();
+    expect(screen.getByText('Review setpoint')).toBeTruthy();
+  });
+
+  it('shows a "within band — hold" verdict when current temp is inside the band', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={0.3} rtrToleranceC={0.8} />);
+    expect(screen.getByText('Within the RTR target band. Hold the current temperature strategy.')).toBeTruthy();
+    expect(screen.getByText('Within band')).toBeTruthy();
+  });
+
+  it('falls back to the static RTR copy when no delta is provided', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} />);
+    expect(screen.getByText(/Compare RTR target temperature before changing setpoints\./)).toBeTruthy();
   });
 });
