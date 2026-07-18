@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import httpx
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Optional, Literal
@@ -1641,11 +1641,69 @@ app.add_middleware(
 # ===== REST Endpoints =====
 
 
+@app.get("/api/datasets")
+async def list_environment_datasets():
+    """List the environment datasets the simulation can run on.
+
+    Includes the bundled fixtures and any uploaded datasets. Use a returned `name`
+    as `csv_filename` in POST /api/start.
+    """
+    from .services.datasets import REQUIRED_COLUMNS, list_datasets
+
+    return {
+        "status": "success",
+        "required_columns": list(REQUIRED_COLUMNS),
+        "datasets": [info.to_dict() for info in list_datasets()],
+    }
+
+
+@app.post("/api/datasets")
+async def upload_environment_dataset(
+    request: Request,
+    filename: str = Query(..., description="Target dataset filename, e.g. my_house.csv"),
+):
+    """Insert a new environment dataset by uploading a CSV.
+
+    The CSV is the raw request body (no multipart dependency needed); the filename is a
+    query parameter. The dataset is validated against the environment schema before it
+    is stored, and its name can then be passed to POST /api/start to simulate on it.
+    """
+    from datetime import datetime, timezone
+
+    from .services.datasets import DatasetError, save_uploaded_dataset
+
+    content = await request.body()
+    try:
+        info = save_uploaded_dataset(
+            filename=filename,
+            content=content,
+            now_iso=datetime.now(timezone.utc).isoformat(),
+        )
+    except DatasetError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    return {"status": "success", "dataset": info.to_dict()}
+
+
+@app.delete("/api/datasets/{name}")
+async def delete_environment_dataset(name: str):
+    """Delete an uploaded environment dataset. Bundled fixtures cannot be deleted."""
+    from .services.datasets import DatasetError, delete_uploaded_dataset
+
+    try:
+        delete_uploaded_dataset(name)
+    except DatasetError as exc:
+        # A protected/bundled name is a 403; a missing one is a 404.
+        status = 403 if "기본 제공" in str(exc) else 404
+        raise HTTPException(status_code=status, detail=str(exc))
+    return {"status": "success", "deleted": name}
+
+
 class StartRequest(BaseModel):
     """Request to start simulation."""
 
     crop: str  # 'tomato' or 'cucumber'
-    csv_filename: str  # Filename in data directory
+    csv_filename: str  # Dataset name (bundled fixture or uploaded), resolved safely
     time_step: Literal["auto", "1s", "1min", "10min", "1h"] = "auto"
 
 
@@ -1733,10 +1791,15 @@ async def start_simulation(req: StartRequest):
         # Small delay to allow cleanup
         await asyncio.sleep(0.2)
 
-    # Load CSV data
-    import os
+    # Resolve the dataset through the dataset service, which rejects path traversal:
+    # csv_filename is user-controlled, and joining it to the data dir by hand would
+    # let "../.." escape. It resolves both bundled fixtures and uploaded datasets.
+    from .services.datasets import DatasetError, resolve_dataset_path
 
-    csv_path = os.path.join(settings.data_dir, req.csv_filename)
+    try:
+        csv_path = str(resolve_dataset_path(req.csv_filename))
+    except DatasetError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
     try:
         ingestor = BatchIngestor(csv_path, quality_check=True)
