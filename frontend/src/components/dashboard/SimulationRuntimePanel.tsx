@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Activity, Gauge, Loader2, Pause, Play, RotateCcw, SkipForward, Square, Zap } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Activity, Gauge, Loader2, Pause, Play, RotateCcw, SkipForward, Square, Trash2, Upload, Zap } from 'lucide-react';
 import type { AppLocale } from '../../i18n/locale';
 import type { CropType, TelemetryStatus } from '../../types';
 import {
   DEFAULT_SIMULATION_PACE,
+  getDefaultSimulationCsv,
   readStoredSimulationPace,
   simulationRuntimePacePresets,
   simulationRuntimeTimeSteps,
@@ -13,7 +14,9 @@ import {
   type SimulationRuntimeTimeStep,
   useSimulationRuntimeControls,
 } from '../../hooks/useSimulationRuntimeControls';
+import { useEnvironmentDatasets } from '../../hooks/useEnvironmentDatasets';
 import { Button } from '../ui/button';
+import { Select } from '../ui/select';
 import { StatusChip } from '../ui/status-chip';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 
@@ -51,7 +54,27 @@ export default function SimulationRuntimePanel({
     () => readStoredSimulationPace() ?? DEFAULT_SIMULATION_PACE,
   );
   const runtime = useSimulationRuntimeControls(crop);
+  const datasets = useEnvironmentDatasets();
+  const [selectedDataset, setSelectedDataset] = useState<string>(() => getDefaultSimulationCsv(crop));
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isBusy = ACTION_ORDER.some((action) => runtime.state[action].status === 'loading');
+  const datasetOptions = datasets.datasets ?? [];
+  const selectedIsUploaded = datasetOptions.some(
+    (dataset) => dataset.name === selectedDataset && dataset.kind === 'uploaded',
+  );
+
+  const handleUploadFile = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+    const inserted = await datasets.upload(file);
+    if (inserted) {
+      setSelectedDataset(inserted.name);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
   const latestAction = useMemo(() => (
     [...ACTION_ORDER]
       .reverse()
@@ -77,6 +100,13 @@ export default function SimulationRuntimePanel({
         endpoint: 'endpoint',
         latest: '마지막 응답',
         noMessage: '아직 요청하지 않았습니다.',
+        dataset: '환경 데이터셋',
+        uploadDataset: 'CSV 넣기',
+        uploading: '올리는 중…',
+        deleteDataset: '삭제',
+        datasetHint: (columns: string) => `필수 컬럼: ${columns}`,
+        bundledTag: '기본',
+        uploadedTag: '내 데이터',
       }
     : {
         eyebrow: 'Simulation Runtime',
@@ -96,6 +126,13 @@ export default function SimulationRuntimePanel({
         endpoint: 'endpoint',
         latest: 'Latest response',
         noMessage: 'No runtime request yet.',
+        dataset: 'Environment dataset',
+        uploadDataset: 'Insert CSV',
+        uploading: 'Uploading…',
+        deleteDataset: 'Delete',
+        datasetHint: (columns: string) => `Required columns: ${columns}`,
+        bundledTag: 'bundled',
+        uploadedTag: 'yours',
       };
 
   const latestState = runtime.state[latestAction];
@@ -184,8 +221,68 @@ export default function SimulationRuntimePanel({
           </div>
         </div>
 
+        <div className="rounded-[var(--sg-radius-sm)] border border-[color:var(--sg-outline-soft)] p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <label className="flex-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--sg-text-faint)]">
+              <span>{copy.dataset}</span>
+              <Select
+                className="mt-1"
+                value={selectedDataset}
+                disabled={isBusy || datasets.busy}
+                onChange={(event) => setSelectedDataset(event.target.value)}
+                aria-label={copy.dataset}
+              >
+                {datasetOptions.map((dataset) => (
+                  <option key={dataset.name} value={dataset.name}>
+                    {dataset.name} · {dataset.kind === 'bundled' ? copy.bundledTag : copy.uploadedTag}
+                    {dataset.rows ? ` (${dataset.rows.toLocaleString()} rows)` : ''}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(event) => { void handleUploadFile(event.target.files?.[0] ?? null); }}
+              />
+              <Button
+                variant="secondary"
+                disabled={isBusy || datasets.busy}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {datasets.busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
+                {datasets.busy ? copy.uploading : copy.uploadDataset}
+              </Button>
+              {selectedIsUploaded && (
+                <Button
+                  variant="ghost"
+                  disabled={isBusy || datasets.busy}
+                  onClick={async () => {
+                    const removed = await datasets.remove(selectedDataset);
+                    if (removed) {
+                      setSelectedDataset(getDefaultSimulationCsv(crop));
+                    }
+                  }}
+                  aria-label={copy.deleteDataset}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              )}
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] leading-4 text-[color:var(--sg-text-faint)]">
+            {copy.datasetHint(datasets.requiredColumns.join(', '))}
+          </p>
+          {datasets.error && (
+            <p className="mt-1 text-[11px] leading-4 text-[color:var(--sg-color-danger,#c0392b)]">{datasets.error}</p>
+          )}
+        </div>
+
         <div className="grid gap-2 sm:grid-cols-4">
-          <Button variant="primary" disabled={isBusy} onClick={() => { void runtime.start(timeStep); }}>
+          <Button variant="primary" disabled={isBusy} onClick={() => { void runtime.start(timeStep, selectedDataset); }}>
             {runtime.state.start.status === 'loading' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
             {copy.start}
           </Button>
