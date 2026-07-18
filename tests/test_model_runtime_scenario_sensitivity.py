@@ -284,3 +284,38 @@ def test_model_sensitivity_endpoint_reports_positive_co2_derivative(
     assert payload["sensitivities"][0]["direction"] == "increase"
     assert payload["sensitivities"][0]["derivative"] > 0
     assert payload["sensitivities"][0]["scenario_alignment"] is True
+
+
+def test_energy_target_is_not_advertised_as_money() -> None:
+    """The dimensionless index must not be named or rendered as currency.
+
+    `energy_cost_pred` is `horizon_days * (0.75 + energy_rate_delta)` — a unitless
+    composite that is never multiplied by kWh or `cost_per_kwh`. Exposing its
+    gradient under the name `energy_cost_72h` invited every later reader, human or
+    model, to read ₩/℃ off an index gradient. The real currency derivative lives in
+    the RTR subsystem.
+    """
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        sensitivity_engine,
+    )
+
+    assert "energy_load_index_72h" in sensitivity_engine.SUPPORTED_DERIVATIVE_TARGETS
+    assert "energy_cost_72h" not in sensitivity_engine.SUPPORTED_DERIVATIVE_TARGETS
+    assert "energy_load_index_72h" in sensitivity_engine.NON_MONETARY_TARGETS
+
+    # No advertised target may claim to be a cost.
+    for target in sensitivity_engine.SUPPORTED_DERIVATIVE_TARGETS:
+        assert "cost" not in target, f"{target} reads as money but is not denominated in it"
+
+
+def test_retired_energy_target_name_still_resolves() -> None:
+    """Stored/scripted callers using the old name must not break."""
+    from model_informed_greenhouse_dashboard.backend.app.services.model_runtime import (
+        sensitivity_engine,
+    )
+
+    assert sensitivity_engine.resolve_derivative_target("energy_cost_72h") == (
+        "energy_load_index_72h"
+    )
+    # A name that was never valid still fails.
+    assert sensitivity_engine.resolve_derivative_target("nonsense") == "nonsense"

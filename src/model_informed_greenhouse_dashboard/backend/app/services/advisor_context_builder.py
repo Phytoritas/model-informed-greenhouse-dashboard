@@ -7,10 +7,20 @@ from typing import Any, Mapping, Sequence
 from .knowledge_database import query_knowledge_database
 
 
-_MAX_CHAT_RESULTS = 3
+#: Evidence budget for a chat answer.
+#:
+#: Until 2026-07-17 this was 3 results x 240 chars = **720 characters** of unique
+#: literature per answer, taken from chunks stored at 1,200 chars — i.e. ~80% of
+#: every retrieved chunk was discarded before the model ever saw it, and an expert
+#: agronomy answer was expected from roughly one page of pre-truncated prose.
+#:
+#: A 1,200-char excerpt is a complete chunk: `knowledge_database._PDF_CHUNK_CHARS`
+#: builds chunks on paragraph/sentence boundaries at that size, so this passes whole
+#: passages through instead of cutting them mid-sentence.
+_MAX_CHAT_RESULTS = 6
 _MAX_SUMMARY_RESULTS = 2
 _MAX_SUMMARY_QUERIES = 3
-_MAX_EXCERPT_CHARS = 240
+_MAX_EXCERPT_CHARS = 1200
 _TAB_DOMAIN_MAP = {
     "environment": ("environment_control",),
     "physiology": ("crop_physiology",),

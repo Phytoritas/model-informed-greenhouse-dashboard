@@ -150,6 +150,11 @@ class InternalModelContext:
     recent_events: list[dict[str, Any]]
     cost_per_kwh: float
     energy_estimator: EnergyEstimator
+    #: Where `cost_per_kwh` / `actual_area_m2` came from: "settings" when the grower
+    #: configured it, "default" when it is this module's fallback. A ₩ figure derived
+    #: from a ₩120/kWh placeholder must not be presented as the grower's own cost.
+    cost_per_kwh_source: str = "unknown"
+    actual_area_m2_source: str = "unknown"
 
 
 def build_internal_model_context(
@@ -161,6 +166,8 @@ def build_internal_model_context(
     recent_events: list[dict[str, Any]] | None = None,
     actual_area_m2: float | None = None,
     cost_per_kwh: float = 120.0,
+    cost_per_kwh_source: str = "unknown",
+    actual_area_m2_source: str = "unknown",
 ) -> InternalModelContext:
     normalized_snapshot = snapshot_record.get("normalized_snapshot", snapshot_record)
     state = normalized_snapshot.get("state", {})
@@ -397,4 +404,8 @@ def build_internal_model_context(
         recent_events=recent_events or [],
         cost_per_kwh=float(cost_per_kwh),
         energy_estimator=resolved_energy_estimator,
+        cost_per_kwh_source=cost_per_kwh_source,
+        actual_area_m2_source=(
+            actual_area_m2_source if actual_area_m2 is not None else "default"
+        ),
     )

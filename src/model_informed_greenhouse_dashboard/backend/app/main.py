@@ -1106,14 +1106,23 @@ def _build_rtr_provisional_state_response(crop: str, greenhouse_id: Optional[str
 
 
 def _get_crop_cost_per_kwh(crop: str) -> float:
+    return _get_crop_cost_per_kwh_with_source(crop)[0]
+
+
+def _get_crop_cost_per_kwh_with_source(crop: str) -> tuple[float, str]:
+    """The tariff and where it came from.
+
+    A ₩ figure computed from the ₩120/kWh placeholder must not be presented to a
+    grower as their own cost, so the caller has to be able to tell the difference.
+    """
     decision_service = app_state[crop].get("decision")
     settings_payload = getattr(decision_service, "settings", None) if decision_service else None
-    if isinstance(settings_payload, dict):
+    if isinstance(settings_payload, dict) and "cost_per_kwh" in settings_payload:
         try:
-            return float(settings_payload.get("cost_per_kwh", 120.0))
+            return (float(settings_payload["cost_per_kwh"]), "settings")
         except (TypeError, ValueError):
-            return 120.0
-    return 120.0
+            return (120.0, "default")
+    return (120.0, "default")
 
 
 def _build_rtr_request_bundle(req_payload: Dict[str, Any]):
@@ -1139,6 +1148,7 @@ def _build_rtr_request_bundle(req_payload: Dict[str, Any]):
     optimization_inputs = build_service_inputs(req_payload, greenhouse_id=greenhouse_id)
     profiles_payload = load_rtr_profiles()
     recent_events = store.list_work_events(greenhouse_id, crop, limit=12)
+    cost_per_kwh, cost_per_kwh_source = _get_crop_cost_per_kwh_with_source(crop)
     context = build_internal_model_context(
         snapshot_record=snapshot_record,
         crop_state=app_state[crop],
@@ -1146,7 +1156,9 @@ def _build_rtr_request_bundle(req_payload: Dict[str, Any]):
         profiles_payload=profiles_payload,
         recent_events=recent_events,
         actual_area_m2=float(area_meta["actual_area_m2"] or greenhouse_config["greenhouse"]["area_m2"]),
-        cost_per_kwh=_get_crop_cost_per_kwh(crop),
+        cost_per_kwh=cost_per_kwh,
+        cost_per_kwh_source=cost_per_kwh_source,
+        actual_area_m2_source=("settings" if area_meta["actual_area_m2"] else "default"),
     )
     return crop, store, greenhouse_id, snapshot_record, profiles_payload, area_meta, optimization_inputs, context
 
@@ -3345,7 +3357,9 @@ async def get_rtr_state(crop: str, greenhouse_id: Optional[str] = None, snapshot
         profiles_payload=load_rtr_profiles(),
         recent_events=store.list_work_events(resolved_greenhouse_id, normalized_crop, limit=12),
         actual_area_m2=float(area_meta["actual_area_m2"] or greenhouse_config["greenhouse"]["area_m2"]),
-        cost_per_kwh=_get_crop_cost_per_kwh(normalized_crop),
+        cost_per_kwh=_get_crop_cost_per_kwh_with_source(normalized_crop)[0],
+        cost_per_kwh_source=_get_crop_cost_per_kwh_with_source(normalized_crop)[1],
+        actual_area_m2_source=("settings" if area_meta["actual_area_m2"] else "default"),
     )
     optimizer_inputs = _build_rtr_request_bundle(
         {
@@ -3673,6 +3687,12 @@ async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
         horizon_hours=24,
         sensitivities=sensitivity_payload["sensitivities"],
     )
+    # The canonical "온도 1℃ 올리면 난방비/마디?" answer, admitted and composed: each
+    # ₩ and node derivative passes the admission gate and is rendered with its unit,
+    # validity range, and tariff/area provenance — or refused when untrustworthy.
+    from .services.answer_composer import build_marginal_change_facts
+
+    answer_facts = build_marginal_change_facts(sensitivity_payload)
     return {
         "status": "success",
         "mode": "optimizer",
@@ -3682,6 +3702,8 @@ async def compute_rtr_optimizer_sensitivity(req: RTRSensitivityRequest):
         "target_horizon": optimization_inputs.target_horizon,
         "step_c": req.step_c,
         "sensitivities": stored_rows,
+        "answer_facts": answer_facts,
+        "assumptions": sensitivity_payload.get("assumptions", {}),
         "optimized_targets": optimized_candidate["controls"],
         "area_unit_meta": area_meta,
         "actuator_availability": build_actuator_availability(context.ops_config).as_dict(),

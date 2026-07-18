@@ -226,6 +226,8 @@ def compute_rtr_temperature_sensitivity(
     base_candidate = _candidate_from_result(optimized_candidate)
     weights = _resolve_active_weights(context, optimization_inputs)
 
+    actual_area_m2 = float(getattr(context, "actual_area_m2", 0.0) or 0.0)
+
     def _finite_difference(
         *,
         target_name: str,
@@ -236,6 +238,8 @@ def compute_rtr_temperature_sensitivity(
         high_inputs: RTROptimizationInputs | None = None,
         extractor: Callable[[Mapping[str, Any]], float],
         control_name: str,
+        unit: str = "index/°C",
+        per_area: bool = False,
     ) -> dict[str, Any]:
         low_eval = _evaluate_candidate(
             context,
@@ -260,10 +264,13 @@ def compute_rtr_temperature_sensitivity(
         base_value = max(abs(extractor(base_eval)), 1e-9)
         derivative = (high_value - low_value) / (2 * perturbation_size)
         elasticity = (derivative / base_value) * perturbation_size
-        return {
+        row = {
             "control": control_name,
             "target": target_name,
             "derivative": round(derivative, 6),
+            # Units travel with the number. The absence of this field is how a
+            # kWh/m²/day gradient spent months being read as ₩/℃.
+            "unit": unit,
             "elasticity": round(elasticity, 6),
             "direction": "increase" if high_value >= low_value else "decrease",
             "trust_region": {"low": -perturbation_size, "high": perturbation_size},
@@ -272,6 +279,12 @@ def compute_rtr_temperature_sensitivity(
             "valid": True,
             "scenario_alignment": high_value >= low_value,
         }
+        if per_area:
+            # Per-m² is what the model computes; a grower asks about their house.
+            row["derivative_total"] = round(derivative * actual_area_m2, 6)
+            row["unit_total"] = unit.replace("/m2", "")
+            row["area_m2"] = actual_area_m2
+        return row
 
     screen_step = 5.0
     fan_step = 15.0
@@ -367,21 +380,82 @@ def compute_rtr_temperature_sensitivity(
             high_candidate=replace(base_candidate, screen_bias_pct=base_candidate.screen_bias_pct + screen_step),
             extractor=lambda payload: float(payload["objective_breakdown"]["disease_penalty"]),
         ),
+        # `objective_breakdown["heating_energy_cost"]` is named "cost" but holds
+        # kWh/m²/day (objective_terms.py). The currency field is `..._krw`, five
+        # lines away in the same dict. Reading the former and calling the result a
+        # cost derivative is how "온도 1℃ 올리면 난방비 얼마?" had no answer.
         _finite_difference(
             control_name="day_heating_min_temp_C",
-            target_name="heating_energy_cost",
+            target_name="heating_energy_kwh_m2_day",
             perturbation_size=step_c,
+            unit="kWh/m2/day/°C",
+            per_area=True,
             low_candidate=replace(base_candidate, day_heating_min_temp_C=base_candidate.day_heating_min_temp_C - step_c),
             high_candidate=replace(base_candidate, day_heating_min_temp_C=base_candidate.day_heating_min_temp_C + step_c),
             extractor=lambda payload: float(payload["objective_breakdown"]["heating_energy_cost"]),
         ),
         _finite_difference(
-            control_name="day_cooling_target_C",
-            target_name="cooling_energy_cost",
+            control_name="day_heating_min_temp_C",
+            target_name="heating_energy_cost_krw",
             perturbation_size=step_c,
+            unit="KRW/m2/day/°C",
+            per_area=True,
+            low_candidate=replace(base_candidate, day_heating_min_temp_C=base_candidate.day_heating_min_temp_C - step_c),
+            high_candidate=replace(base_candidate, day_heating_min_temp_C=base_candidate.day_heating_min_temp_C + step_c),
+            extractor=lambda payload: float(payload["objective_breakdown"]["heating_energy_cost_krw"]),
+        ),
+        _finite_difference(
+            control_name="night_heating_min_temp_C",
+            target_name="heating_energy_cost_krw",
+            perturbation_size=step_c,
+            unit="KRW/m2/day/°C",
+            per_area=True,
+            low_candidate=replace(base_candidate, night_heating_min_temp_C=base_candidate.night_heating_min_temp_C - step_c),
+            high_candidate=replace(base_candidate, night_heating_min_temp_C=base_candidate.night_heating_min_temp_C + step_c),
+            extractor=lambda payload: float(payload["objective_breakdown"]["heating_energy_cost_krw"]),
+        ),
+        _finite_difference(
+            control_name="day_cooling_target_C",
+            target_name="cooling_energy_cost_krw",
+            perturbation_size=step_c,
+            unit="KRW/m2/day/°C",
+            per_area=True,
             low_candidate=replace(base_candidate, day_cooling_target_C=base_candidate.day_cooling_target_C - step_c),
             high_candidate=replace(base_candidate, day_cooling_target_C=base_candidate.day_cooling_target_C + step_c),
-            extractor=lambda payload: float(payload["objective_breakdown"]["cooling_energy_cost"]),
+            extractor=lambda payload: float(payload["objective_breakdown"]["cooling_energy_cost_krw"]),
+        ),
+        _finite_difference(
+            control_name="day_cooling_target_C",
+            target_name="total_energy_cost_krw",
+            perturbation_size=step_c,
+            unit="KRW/m2/day/°C",
+            per_area=True,
+            low_candidate=replace(base_candidate, day_cooling_target_C=base_candidate.day_cooling_target_C - step_c),
+            high_candidate=replace(base_candidate, day_cooling_target_C=base_candidate.day_cooling_target_C + step_c),
+            extractor=lambda payload: float(payload["objective_breakdown"]["energy_cost_krw"]),
+        ),
+        # The other half of "온도 1℃ 올리면 …": node/truss development rate. The model
+        # already exists (node_target_engine); nothing was differentiating it against
+        # temperature. Deliberately wired here rather than by adding a node target to
+        # model_runtime's SUPPORTED_DERIVATIVE_TARGETS, whose scenario outputs carry
+        # no node state — that route would mean re-implementing the node engine.
+        _finite_difference(
+            control_name="day_heating_min_temp_C",
+            target_name="node_rate_day",
+            perturbation_size=step_c,
+            unit="node/day/°C",
+            low_candidate=replace(base_candidate, day_heating_min_temp_C=base_candidate.day_heating_min_temp_C - step_c),
+            high_candidate=replace(base_candidate, day_heating_min_temp_C=base_candidate.day_heating_min_temp_C + step_c),
+            extractor=lambda payload: float(payload["node_summary"]["predicted_rate_day"]),
+        ),
+        _finite_difference(
+            control_name="night_heating_min_temp_C",
+            target_name="node_rate_day",
+            perturbation_size=step_c,
+            unit="node/day/°C",
+            low_candidate=replace(base_candidate, night_heating_min_temp_C=base_candidate.night_heating_min_temp_C - step_c),
+            high_candidate=replace(base_candidate, night_heating_min_temp_C=base_candidate.night_heating_min_temp_C + step_c),
+            extractor=lambda payload: float(payload["node_summary"]["predicted_rate_day"]),
         ),
         _finite_difference(
             control_name="target_node_rate_day",
@@ -403,4 +477,15 @@ def compute_rtr_temperature_sensitivity(
         "crop": optimization_inputs.crop,
         "step_c": step_c,
         "sensitivities": sensitivities,
+        # A ₩ figure without its tariff and area is not an answer, it is a number.
+        # Any renderer showing `derivative_total` must show these next to it.
+        "assumptions": {
+            "cost_per_kwh": float(getattr(context, "cost_per_kwh", 0.0) or 0.0),
+            "cost_per_kwh_unit": "KRW/kWh",
+            "cost_per_kwh_source": str(getattr(context, "cost_per_kwh_source", "unknown")),
+            "actual_area_m2": actual_area_m2,
+            "actual_area_m2_source": str(
+                getattr(context, "actual_area_m2_source", "unknown")
+            ),
+        },
     }

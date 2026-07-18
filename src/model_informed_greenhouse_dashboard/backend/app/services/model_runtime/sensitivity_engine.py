@@ -16,15 +16,43 @@ SUPPORTED_DERIVATIVE_TARGETS = {
     "canopy_A_24h": ("canopy_A_pred", 24),
     "canopy_A_72h": ("canopy_A_pred", 72),
     "transpiration_72h": ("transpiration_pred", 72),
-    "energy_cost_72h": ("energy_cost_pred", 72),
+    # NOT money. Despite the `energy_cost_pred` field name, this resolves to
+    # `scenario_runner._project_output_row`'s
+    #     energy_cost_pred = horizon_days * (0.75 + energy_rate_delta)
+    # where `energy_rate_delta` is a unitless composite of normalized deviations
+    # and 0.75 is an undocumented constant. It is never multiplied by kWh or by
+    # `cost_per_kwh`, so its derivative is an index gradient, not ₩/℃.
+    #
+    # Renamed from `energy_cost_72h` on 2026-07-17: a target named "cost" that
+    # holds a dimensionless index is a trap for every later reader, human or model.
+    # The real currency derivative lives in the RTR subsystem
+    # (`rtr/objective_terms.py` -> `heating_energy_cost_krw`, `cost_per_kwh`).
+    "energy_load_index_72h": ("energy_cost_pred", 72),
     "source_sink_balance_72h": ("source_sink_balance_score", 72),
 }
+
+#: Retired target names kept resolvable so stored/scripted callers do not break.
+#: Not advertised: `SUPPORTED_DERIVATIVE_TARGETS` is what callers should discover.
+DEPRECATED_DERIVATIVE_TARGET_ALIASES = {
+    "energy_cost_72h": "energy_load_index_72h",
+}
+
+#: Targets that must never be rendered as a monetary amount, because they are not
+#: denominated in currency. `answer_composer` enforces this; the constant lives here
+#: so the ban travels with the definition rather than with a call site.
+NON_MONETARY_TARGETS = frozenset({"energy_load_index_72h"})
+
+
+def resolve_derivative_target(derivative_target: str) -> str:
+    """Canonical target name, following deprecated aliases."""
+    return DEPRECATED_DERIVATIVE_TARGET_ALIASES.get(derivative_target, derivative_target)
 
 
 def _resolve_target_value(
     scenario_payload: Mapping[str, Any],
     derivative_target: str,
 ) -> float:
+    derivative_target = resolve_derivative_target(derivative_target)
     if derivative_target not in SUPPORTED_DERIVATIVE_TARGETS:
         raise ValueError(f"Unsupported derivative target: {derivative_target}")
 
@@ -85,6 +113,10 @@ def compute_local_sensitivities(
 ) -> dict[str, Any]:
     """Compute bounded finite-difference sensitivities around the current snapshot."""
     del horizon_hours  # The derivative target controls which horizon is consumed today.
+
+    derivative_target = resolve_derivative_target(derivative_target)
+    if derivative_target not in SUPPORTED_DERIVATIVE_TARGETS:
+        raise ValueError(f"Unsupported derivative target: {derivative_target}")
 
     selected_controls = controls or list(CONTROL_SPECS)
     unknown_controls = sorted(control for control in selected_controls if control not in CONTROL_SPECS)

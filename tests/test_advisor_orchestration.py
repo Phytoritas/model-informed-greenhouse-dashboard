@@ -3046,3 +3046,90 @@ def test_build_environment_recommendation_response_keeps_legacy_keys_and_carries
     assert payload["machine_payload"]["environment_analysis"]["current_state"]["diagnosis"]
     assert payload["machine_payload"]["model_runtime"]["status"] == "ready"
     assert payload["machine_payload"]["model_runtime"]["scenario"]["baseline_outputs"]
+
+
+def _temperature_family_with_ladder() -> list[dict]:
+    """A control family whose bounded scenario only solves ±0.3/±0.9℃."""
+
+    def step(delta: float) -> dict:
+        return {
+            "applied_delta": delta,
+            "step_label": f"{delta:+g}℃",
+            "yield_delta_14d": delta * 3.0,
+            "canopy_delta_72h": delta * 0.3,
+            "source_sink_balance_delta": 0.0,
+            "energy_delta": delta * 0.6,
+            "confidence": 0.7,
+            "risk_flags": [],
+        }
+
+    return [
+        {
+            "control": "temperature_day",
+            "label": "주간 온도",
+            "unit": "℃",
+            "precision_mode": "bounded",
+            "recommended_step": step(0.3),
+            "steps": [step(-0.9), step(-0.3), step(0.3), step(0.9)],
+        }
+    ]
+
+
+def _focus_for(question: str) -> dict:
+    return advisor_orchestration._build_runtime_answer_focus(
+        messages=[{"role": "user", "content": question}],
+        recommendation_families=_temperature_family_with_ladder(),
+        language="ko",
+    )
+
+
+def test_out_of_range_what_if_returns_no_numbers() -> None:
+    """A +5℃ question must not be answered with the +0.9℃ result.
+
+    Regression guard for the council's most dangerous finding: the nearest-step
+    match had no bound, so a grower asking "온도를 5도 올리면?" was silently answered
+    with the model's +0.9℃ numbers, in fluent Korean, while the chat prompt forbade
+    any mention that a substitution had occurred.
+    """
+    focus = _focus_for("온도를 5도 올리면 어떻게 되나요")
+
+    assert focus["kind"] == "model_what_if_out_of_range"
+    assert focus["admissible"] is False
+    assert focus["effects"] == {}, "an out-of-range question has no calculated answer"
+    assert focus["matched_delta"] is None
+    assert focus["requested_delta"] == 5.0
+    assert focus["max_supported_delta"] == 0.9
+    assert "requested_delta_out_of_model_range" in focus["risk_flags"]
+    # The supported range must be stated so the grower can ask an answerable question.
+    assert "±0.9" in focus["summary"]
+
+
+def test_exactly_solved_delta_is_reported_as_the_users_request() -> None:
+    focus = _focus_for("온도를 0.9도 올리면?")
+
+    assert focus["kind"] == "model_what_if"
+    assert focus["matched_delta"] == 0.9
+    assert focus["matched_user_request"] is True
+    assert focus["delta_substituted"] is False
+    assert focus["effects"]["yield_delta_14d"] == pytest.approx(2.7)
+
+
+def test_in_range_but_unsolved_delta_discloses_the_substitution() -> None:
+    """+0.5℃ is inside the ladder but is not one of its steps."""
+    focus = _focus_for("온도를 0.5도 올리면?")
+
+    assert focus["kind"] == "model_what_if"
+    assert focus["matched_delta"] == 0.3
+    assert focus["delta_substituted"] is True
+    # It must not claim to have answered what was asked.
+    assert focus["matched_user_request"] is False
+    assert "computed_delta_differs_from_request" in focus["risk_flags"]
+    assert "주의: 요청은" in focus["summary"]
+
+
+def test_out_of_range_guard_does_not_disturb_unrequested_what_ifs() -> None:
+    focus = _focus_for("지금 상태 어때요")
+
+    assert focus["kind"] == "model_what_if"
+    assert focus["requested_delta"] is None
+    assert focus["effects"]

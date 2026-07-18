@@ -42,7 +42,7 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "결로",
             "이산화탄소",
         },
-        "search_filters": {"source_types": ["pdf", "csv"], "topic_major": "environment"},
+        "search_filters": {"source_types": ["pdf", "csv", "markdown"], "topic_major": "environment"},
         "boosts": {
             "source_types": ["pdf", "csv"],
             "topic_majors": ["environment"],
@@ -65,6 +65,7 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "growth",
             "balance",
             "생리",
+            "생리장해",
             "광합성",
             "증산",
             "기공",
@@ -73,8 +74,13 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "개화",
             "생육",
             "초세",
+            "마디",
+            "절간",
+            "화방",
+            "엽면적",
+            "장해",
         },
-        "search_filters": {"source_types": ["pdf"], "topic_major": "physiology"},
+        "search_filters": {"source_types": ["pdf", "markdown"], "topic_major": "physiology"},
         "boosts": {
             "source_types": ["pdf"],
             "topic_majors": ["physiology", "growth"],
@@ -112,7 +118,7 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "증상",
             "진단",
         },
-        "search_filters": {"source_types": ["pdf", "xlsx"]},
+        "search_filters": {"source_types": ["pdf", "xlsx", "markdown"]},
         "boosts": {
             "asset_families": ["pesticide_workbook"],
             "source_types": ["xlsx"],
@@ -189,7 +195,7 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "체크리스트",
             "수확작업",
         },
-        "search_filters": {"source_types": ["pdf"]},
+        "search_filters": {"source_types": ["pdf", "markdown"]},
         "boosts": {
             "source_types": ["pdf"],
             "topic_majors": ["management", "growth"],
@@ -217,7 +223,7 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "도매",
             "소매",
         },
-        "search_filters": {"source_types": ["pdf", "csv"]},
+        "search_filters": {"source_types": ["pdf", "csv", "markdown"]},
         "boosts": {
             "source_types": ["pdf", "csv"],
             "topic_majors": ["management", "growth"],
@@ -271,6 +277,19 @@ _ANALYTE_EXPANSIONS = {
     "nh4": "ammonium",
 }
 
+#: Substrings that are re-emitted as standalone tokens when they appear inside a
+#: longer word.
+#:
+#: Korean is agglutinative, so a naturally phrased question never yields the bare
+#: keyword: a grower writes "생리장해", "광합성이", "착과율이", not "생리 광합성 착과".
+#: ``_detect_intent`` scores by exact set intersection, so without an entry here a
+#: profile keyword is unreachable for real questions. Before 2026-07-17 this tuple
+#: held 23 terms covering cultivation and pest vocabulary but **none** of the
+#: physiology vocabulary, which left ``crop_physiology`` effectively dead: all four
+#: of the maintainer's real physiology questions fell through to ``general_chat``.
+#:
+#: Keep this list ordered coarse-to-fine within a family so that both the compound
+#: and its head are emitted (e.g. "생리장해" yields both "생리" and "장해").
 _KOREAN_COMPOUND_TERMS = (
     "오이",
     "토마토",
@@ -294,6 +313,22 @@ _KOREAN_COMPOUND_TERMS = (
     "노균",
     "나방류",
     "약제",
+    # Physiology vocabulary. Without these, `crop_physiology` never fires for a
+    # naturally phrased Korean question.
+    "생리장해",
+    "생리",
+    "광합성",
+    "증산",
+    "기공",
+    "착과",
+    "개화",
+    "초세",
+    "마디",
+    "절간",
+    "화방",
+    "엽면적",
+    "수관",
+    "장해",
 )
 
 
@@ -457,6 +492,9 @@ def _apply_sub_intent_profile(
     boosts = adjusted.setdefault("boosts", {})
 
     if intent == "disease_pest":
+        # `cycle_recommendation` and `product_recommendation` are structured
+        # lookups against the pesticide workbook, so they stay deliberately narrow
+        # — prose sources (pdf/markdown) must not dilute a registration answer.
         if sub_intent == "cycle_recommendation":
             adjusted["search_filters"] = {
                 "asset_families": ["pesticide_workbook"],
@@ -470,7 +508,8 @@ def _apply_sub_intent_profile(
             }
             boosts["topic_minors"] = ["pesticide_product"]
         else:
-            adjusted["search_filters"] = {"source_types": ["pdf", "xlsx"]}
+            # Symptom/diagnosis questions are prose questions; keep them broad.
+            adjusted["search_filters"] = {"source_types": ["pdf", "xlsx", "markdown"]}
         return adjusted
 
     if intent == "nutrient_recipe":
