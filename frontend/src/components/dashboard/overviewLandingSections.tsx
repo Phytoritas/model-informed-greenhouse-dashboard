@@ -2,8 +2,11 @@ import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import greenhouseHero from '../../assets/overview-greenhouse-hero.jpg';
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
   BookOpen,
+  Check,
   CloudSun,
   Droplets,
   Fan,
@@ -11,6 +14,7 @@ import {
   Mail,
   ShieldAlert,
   Sprout,
+  Thermometer,
   ThumbsDown,
   ThumbsUp,
   TrendingUp,
@@ -275,6 +279,19 @@ export function OverviewMetricDeck({
   );
 }
 
+// A consistent traffic light across every action card: act (red) needs attention now,
+// watch (amber) is worth checking today, ok (green) is inside its normal band. Before
+// this, chips like "확인 필요" were hardcoded per card and did not track the data.
+type ActionLevel = 'act' | 'watch' | 'ok';
+
+const ACTION_LEVEL_TONE: Record<ActionLevel, 'critical' | 'warning' | 'growth'> = {
+  act: 'critical',
+  watch: 'warning',
+  ok: 'growth',
+};
+
+const ACTION_LEVEL_PRIORITY: Record<ActionLevel, number> = { act: 2, watch: 1, ok: 0 };
+
 interface TodayActionBoardProps {
   crop: CropType;
   currentData: SensorData;
@@ -284,6 +301,10 @@ interface TodayActionBoardProps {
   monitor: string[];
   onOpenRtr: () => void;
   onOpenAdvisor: () => void;
+  /** Current mean temp minus RTR target (°C). When provided, the RTR card shows a
+   *  real verdict instead of the static fallback. */
+  rtrDeltaC?: number;
+  rtrToleranceC?: number;
 }
 
 export function TodayActionBoard({
@@ -295,6 +316,8 @@ export function TodayActionBoard({
   monitor,
   onOpenRtr,
   onOpenAdvisor,
+  rtrDeltaC,
+  rtrToleranceC,
 }: TodayActionBoardProps) {
   const { locale } = useLocale();
   const diseaseTone = currentData.humidity >= 85 || currentData.vpd < 0.65
@@ -302,12 +325,41 @@ export function TodayActionBoard({
     : currentData.humidity >= 80 || currentData.vpd < 0.75
       ? 'warning'
       : 'growth';
-  const vpdTone = currentData.vpd < 0.75 || currentData.vpd > 1.25 ? 'warning' : 'growth';
+  // RTR card verdict from the shared snapshot delta, when the parent supplies it.
+  const rtrTol = rtrToleranceC ?? 1.0;
+  const rtrKnown = typeof rtrDeltaC === 'number' && Number.isFinite(rtrDeltaC);
+  const rtrWithin = rtrKnown ? Math.abs(rtrDeltaC as number) <= rtrTol : true;
+
+  // Each signal's traffic-light level, computed from the live data.
+  const ventLevel: ActionLevel = currentData.vpd < 0.55 || currentData.vpd > 1.45
+    ? 'act'
+    : currentData.vpd < 0.75 || currentData.vpd > 1.25
+      ? 'watch'
+      : 'ok';
+  const irrigLevel: ActionLevel = currentData.soilMoisture < 40
+    ? 'act'
+    : currentData.soilMoisture < 52 || currentData.soilMoisture > 88
+      ? 'watch'
+      : 'ok';
+  const diseaseLevel: ActionLevel = diseaseTone === 'critical' ? 'act' : diseaseTone === 'warning' ? 'watch' : 'ok';
+  const rtrLevel: ActionLevel = !rtrKnown
+    ? 'ok'
+    : Math.abs(rtrDeltaC as number) > 2 * rtrTol
+      ? 'act'
+      : !rtrWithin
+        ? 'watch'
+        : 'ok';
   const copy = locale === 'ko'
     ? {
         eyebrow: 'Today Action Board',
         title: '오늘 바로 볼 조치',
         description: '환기, 관수, 병해 위험, RTR 시나리오를 행동 단위로 정리합니다.',
+        statusAct: '지금 조치',
+        statusWatch: '오늘 확인',
+        statusOk: '정상 범위',
+        summaryAct: (n: number) => `지금 조치 ${n}건`,
+        summaryWatch: (n: number) => `확인 ${n}건`,
+        summaryClear: '지금 급한 조치는 없어요',
         ventilation: '환기 조정',
         irrigation: '관수 타이밍',
         disease: '병해 위험',
@@ -318,15 +370,26 @@ export function TodayActionBoard({
         compare: '비교',
         details: '자세히',
         highRisk: '위험 높음',
+        rtrWithinChip: '기준 범위',
+        rtrOffChip: '조정 검토',
         vpdFallback: `VPD ${formatNumber(currentData.vpd, 2)} kPa입니다. 증산 요구에 맞춰 환기 상태를 확인하세요.`,
         irrigationFallback: `토양수분은 ${formatNumber(currentData.soilMoisture, 1)}%입니다. 정오 전 다음 관수 창을 확인하세요.`,
         diseaseFallback: `RH ${formatNumber(currentData.humidity, 0)}%와 VPD ${formatNumber(currentData.vpd, 2)} kPa 기준으로 병해 감시 수준을 봅니다.`,
         rtrFallback: `예상 수확량은 주 ${formatNumber(modelMetrics.yield.predictedWeekly, 1)} kg입니다. 설정값 변경 전 RTR 목표 온도를 비교하세요.`,
+        rtrWithinBody: 'RTR 목표 범위 안입니다. 현재 온도 관리를 유지하세요.',
+        rtrAboveBody: (d: string) => `RTR 목표보다 ${d}°C 높습니다. 환기·차광을 검토하세요.`,
+        rtrBelowBody: (d: string) => `RTR 목표보다 ${d}°C 낮습니다. 난방·보온을 검토하세요.`,
       }
     : {
         eyebrow: 'Today Action Board',
         title: 'Actions worth checking today',
         description: 'Ventilation, irrigation, disease risk, and RTR scenario signals are grouped into action cards.',
+        statusAct: 'Act now',
+        statusWatch: 'Check today',
+        statusOk: 'In range',
+        summaryAct: (n: number) => `${n} to act now`,
+        summaryWatch: (n: number) => `${n} to check`,
+        summaryClear: 'Nothing urgent right now',
         ventilation: 'Ventilation Adjustment',
         irrigation: 'Irrigation Timing',
         disease: 'Disease Risk',
@@ -337,56 +400,108 @@ export function TodayActionBoard({
         compare: 'Compare',
         details: 'See Details',
         highRisk: 'High risk',
+        rtrWithinChip: 'Within band',
+        rtrOffChip: 'Review setpoint',
         vpdFallback: `VPD ${formatNumber(currentData.vpd, 2)} kPa. Keep ventilation aligned with transpiration demand.`,
         irrigationFallback: `Soil moisture is ${formatNumber(currentData.soilMoisture, 1)}%. Confirm the next irrigation window before midday.`,
         diseaseFallback: `RH ${formatNumber(currentData.humidity, 0)}% and VPD ${formatNumber(currentData.vpd, 2)} kPa define the disease watch level.`,
         rtrFallback: `Yield outlook ${formatNumber(modelMetrics.yield.predictedWeekly, 1)} kg/week. Compare RTR target temperature before changing setpoints.`,
+        rtrWithinBody: 'Within the RTR target band. Hold the current temperature strategy.',
+        rtrAboveBody: (d: string) => `${d}°C above the RTR target. Consider venting or shading.`,
+        rtrBelowBody: (d: string) => `${d}°C below the RTR target. Consider heating.`,
       };
+
+  const rtrAbsDelta = rtrKnown ? formatNumber(Math.abs(rtrDeltaC as number), 1) : '0';
+  const rtrBody = !rtrKnown
+    ? copy.rtrFallback
+    : rtrWithin
+      ? copy.rtrWithinBody
+      : (rtrDeltaC as number) > 0
+        ? copy.rtrAboveBody(rtrAbsDelta)
+        : copy.rtrBelowBody(rtrAbsDelta);
+
+  const statusLabel = (level: ActionLevel) =>
+    level === 'act' ? copy.statusAct : level === 'watch' ? copy.statusWatch : copy.statusOk;
+
+  // One descriptor per signal, then sort most-urgent-first so the grower reads the
+  // card that needs attention before the ones that are fine.
+  const cards = [
+    {
+      key: 'ventilation',
+      icon: Fan,
+      title: copy.ventilation,
+      level: ventLevel,
+      body: actionsNow[0] ?? copy.vpdFallback,
+      recommendationId: 'overview-ventilation-adjustment',
+      actionLabel: copy.details,
+      onAction: onOpenAdvisor,
+    },
+    {
+      key: 'irrigation',
+      icon: Droplets,
+      title: copy.irrigation,
+      level: irrigLevel,
+      body: actionsToday[0] ?? copy.irrigationFallback,
+      recommendationId: 'overview-irrigation-timing',
+      actionLabel: copy.details,
+      onAction: onOpenAdvisor,
+    },
+    {
+      key: 'disease',
+      icon: ShieldAlert,
+      title: copy.disease,
+      level: diseaseLevel,
+      body: monitor[0] ?? copy.diseaseFallback,
+      recommendationId: 'overview-disease-risk',
+      actionLabel: copy.details,
+      onAction: onOpenAdvisor,
+    },
+    {
+      key: 'rtr',
+      icon: TrendingUp,
+      title: copy.rtr,
+      level: rtrLevel,
+      body: rtrBody,
+      recommendationId: 'overview-rtr-scenario',
+      actionLabel: copy.compare,
+      onAction: onOpenRtr,
+    },
+  ];
+  const orderedCards = [...cards].sort(
+    (a, b) => ACTION_LEVEL_PRIORITY[b.level] - ACTION_LEVEL_PRIORITY[a.level],
+  );
+  const actCount = cards.filter((card) => card.level === 'act').length;
+  const watchCount = cards.filter((card) => card.level === 'watch').length;
 
   return (
     <section id="today-action-board" tabIndex={-1} className="scroll-mt-24 space-y-1.5" aria-labelledby="today-action-board-title">
-      <LandingSectionHeading titleId="today-action-board-title" eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+      <LandingSectionHeading
+        titleId="today-action-board-title"
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        actions={(
+          <div className="flex flex-wrap items-center gap-1.5">
+            {actCount > 0 ? <StatusChip tone="critical">{copy.summaryAct(actCount)}</StatusChip> : null}
+            {watchCount > 0 ? <StatusChip tone="warning">{copy.summaryWatch(watchCount)}</StatusChip> : null}
+            {actCount === 0 && watchCount === 0 ? <StatusChip tone="growth">{copy.summaryClear}</StatusChip> : null}
+          </div>
+        )}
+      />
       <div className="overview-card-row-4">
-        <AlertCard
-          icon={Fan}
-          title={copy.ventilation}
-          chip={vpdTone === 'warning' ? copy.impact : copy.recommended}
-          tone={vpdTone}
-          body={actionsNow[0] ?? copy.vpdFallback}
-          meta={<FeedbackControls crop={crop} recommendationId="overview-ventilation-adjustment" />}
-          actionLabel={copy.details}
-          onAction={onOpenAdvisor}
-        />
-        <AlertCard
-          icon={Droplets}
-          title={copy.irrigation}
-          chip={copy.moderate}
-          tone="warning"
-          body={actionsToday[0] ?? copy.irrigationFallback}
-          meta={<FeedbackControls crop={crop} recommendationId="overview-irrigation-timing" />}
-          actionLabel={copy.details}
-          onAction={onOpenAdvisor}
-        />
-        <AlertCard
-          icon={ShieldAlert}
-          title={copy.disease}
-          chip={diseaseTone === 'critical' ? copy.highRisk : diseaseTone === 'warning' ? copy.moderate : copy.recommended}
-          tone={diseaseTone}
-          body={monitor[0] ?? copy.diseaseFallback}
-          meta={<FeedbackControls crop={crop} recommendationId="overview-disease-risk" />}
-          actionLabel={copy.details}
-          onAction={onOpenAdvisor}
-        />
-        <AlertCard
-          icon={TrendingUp}
-          title={copy.rtr}
-          chip={copy.recommended}
-          tone="stable"
-          body={copy.rtrFallback}
-          meta={<FeedbackControls crop={crop} recommendationId="overview-rtr-scenario" />}
-          actionLabel={copy.compare}
-          onAction={onOpenRtr}
-        />
+        {orderedCards.map((card) => (
+          <AlertCard
+            key={card.key}
+            icon={card.icon}
+            title={card.title}
+            chip={statusLabel(card.level)}
+            tone={ACTION_LEVEL_TONE[card.level]}
+            body={card.body}
+            meta={<FeedbackControls crop={crop} recommendationId={card.recommendationId} />}
+            actionLabel={card.actionLabel}
+            onAction={card.onAction}
+          />
+        ))}
       </div>
     </section>
   );
@@ -518,6 +633,24 @@ export function ScenarioOptimizerPreview({
         calibration: '보정 상태',
         coverage: '범위',
         yieldUnit: 'kg/주',
+        currentTemp: '현재 평균온도',
+        currentTempSub: '센서 기준',
+        targetTemp: 'RTR 목표온도',
+        targetTempSub: '광량 반영 기준값',
+        withinLabel: '기준 범위 안',
+        aboveLabel: '목표보다 높음',
+        belowLabel: '목표보다 낮음',
+        bandNow: '현재',
+        bandTarget: '목표',
+        toleranceNote: (tol: string) => `허용 ±${tol}°C`,
+        verdictWithin: 'RTR 목표 범위 안입니다. 지금 온도 관리를 유지하세요.',
+        verdictAbove: (d: string) => `목표보다 ${d}°C 높습니다. 환기·차광으로 낮추는 것을 검토하세요.`,
+        verdictBelow: (d: string) => `목표보다 ${d}°C 낮습니다. 난방·보온으로 올리는 것을 검토하세요.`,
+        context: '참고 지표',
+        ctxRadiation: '누적광량',
+        ctxSlope: '목표 기울기',
+        ctxCalibration: '보정',
+        ctxCoverage: '데이터 커버리지',
       }
     : {
         eyebrow: 'Scenario Optimizer',
@@ -535,15 +668,54 @@ export function ScenarioOptimizerPreview({
         calibration: 'Calibration',
         coverage: 'coverage',
         yieldUnit: 'kg/wk',
+        currentTemp: 'Current mean temp',
+        currentTempSub: 'From sensors',
+        targetTemp: 'RTR target temp',
+        targetTempSub: 'Light-adjusted target',
+        withinLabel: 'Within band',
+        aboveLabel: 'Above target',
+        belowLabel: 'Below target',
+        bandNow: 'Now',
+        bandTarget: 'Target',
+        toleranceNote: (tol: string) => `Band ±${tol}°C`,
+        verdictWithin: 'Within the RTR target band. Hold the current temperature strategy.',
+        verdictAbove: (d: string) => `${d}°C above target. Consider venting or shading to cool down.`,
+        verdictBelow: (d: string) => `${d}°C below target. Consider heating to warm up.`,
+        context: 'Reference',
+        ctxRadiation: 'Radiation sum',
+        ctxSlope: 'Target slope',
+        ctxCalibration: 'Calibration',
+        ctxCoverage: 'Data coverage',
       };
 
-  const setpointRows = [
-    { label: copy.meanTemp, baseline: `${formatNumber(snapshot.averageTempC, 1)}°C`, optimized: `${formatNumber(snapshot.targetTempC, 1)}°C` },
-    { label: copy.rtrDelta, baseline: `${snapshot.deltaTempC >= 0 ? '+' : ''}${formatNumber(snapshot.deltaTempC, 1)}°C`, optimized: `±${formatNumber(effectiveProfile.toleranceC, 1)}°C` },
-    { label: copy.radiation, baseline: `${formatNumber(snapshot.radiationSumMjM2D, 1)} MJ/m²`, optimized: `${formatNumber(effectiveProfile.slopeCPerMjM2, 2)}°C/MJ` },
-    { label: copy.calibration, baseline: `${formatNumber(snapshot.coveragePct, 0)}% ${copy.coverage}`, optimized: `${calibrationLabel} · ${effectiveProfile.calibration.sampleDays} d` },
-  ];
+  const tol = Math.max(effectiveProfile.toleranceC, 0.1);
+  const delta = snapshot.deltaTempC;
+  const absDelta = formatNumber(Math.abs(delta), 1);
+  const within = Math.abs(delta) <= tol;
+  const direction: 'above' | 'below' | 'on' = delta > tol ? 'above' : delta < -tol ? 'below' : 'on';
+  const verdictTone: 'growth' | 'warning' = within ? 'growth' : 'warning';
+  const verdictLabel = within ? copy.withinLabel : delta > 0 ? copy.aboveLabel : copy.belowLabel;
+  const verdictSentence = within
+    ? copy.verdictWithin
+    : delta > 0
+      ? copy.verdictAbove(absDelta)
+      : copy.verdictBelow(absDelta);
+
+  // Position the current-temp marker on an axis centred on the target, wide enough
+  // that both the tolerance band and the marker stay visible.
+  const axisHalf = Math.max(tol * 2.5, Math.abs(delta) * 1.25, 1);
+  const clampPct = (value: number) => Math.min(97, Math.max(3, value));
+  const markerPct = clampPct(50 + (delta / (2 * axisHalf)) * 100);
+  const bandLeftPct = clampPct(50 - (tol / (2 * axisHalf)) * 100);
+  const bandWidthPct = Math.min(94, (tol / axisHalf) * 100);
   const weeklyYieldLabel = `${formatNumber(modelMetrics.yield.predictedWeekly, 1)} ${copy.yieldUnit}`;
+
+  const contextItems: Array<[string, string]> = [
+    [copy.ctxRadiation, `${formatNumber(snapshot.radiationSumMjM2D, 1)} MJ/m²`],
+    [copy.ctxSlope, `${formatNumber(effectiveProfile.slopeCPerMjM2, 2)} °C/MJ`],
+    [copy.ctxCalibration, `${calibrationLabel} · ${effectiveProfile.calibration.sampleDays}d`],
+    [copy.ctxCoverage, `${formatNumber(snapshot.coveragePct, 0)}%`],
+  ];
 
   return (
     <section id="scenario-optimizer" tabIndex={-1} className="scroll-mt-24 space-y-0.5" aria-labelledby="scenario-optimizer-title">
@@ -560,13 +732,74 @@ export function ScenarioOptimizerPreview({
         )}
       />
       <div className="grid gap-1 xl:grid-cols-12">
-        <div className={cn('sg-panel p-1', trendNode ? 'xl:col-span-8' : 'xl:col-span-12')}>
-          <div className="grid gap-1 md:grid-cols-[1fr_auto_1fr] md:items-center">
-            <ScenarioCard title={copy.baseline} subtitle={copy.current} rows={setpointRows.map((row) => [row.label, row.baseline])} badgeLabel={weeklyYieldLabel} badgeCaption={copy.weeklyYield} />
-            <div className="hidden h-7 w-7 items-center justify-center rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-color-primary)] shadow-[var(--sg-shadow-card)] md:flex">
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <div className={cn('sg-panel p-2', trendNode ? 'xl:col-span-8' : 'xl:col-span-12')}>
+          {/* The one comparison that drives a decision: current temp vs RTR target. */}
+          <div className="grid items-stretch gap-2 sm:grid-cols-[1fr_auto_1fr_auto]">
+            <TempStat icon={Thermometer} label={copy.currentTemp} sub={copy.currentTempSub} value={`${formatNumber(snapshot.averageTempC, 1)}°C`} />
+            <div className="hidden items-center justify-center text-[color:var(--sg-text-faint)] sm:flex">
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </div>
-            <ScenarioCard title={copy.optimized} subtitle={copy.recommended} rows={setpointRows.map((row) => [row.label, row.optimized])} badgeLabel={balanceLabel} badgeCaption="RTR" emphasized />
+            <TempStat icon={Thermometer} label={copy.targetTemp} sub={copy.targetTempSub} value={`${formatNumber(snapshot.targetTempC, 1)}°C`} emphasized />
+            <div className="flex flex-col items-start justify-center gap-1 sm:items-end">
+              <StatusChip tone={verdictTone} className="gap-1">
+                {direction === 'above' ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+                  : direction === 'below' ? <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+                    : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+                {verdictLabel}
+              </StatusChip>
+              <span className="sg-data-number text-sm font-bold text-[color:var(--sg-text-strong)]">
+                {delta >= 0 ? '+' : '−'}{absDelta}°C
+              </span>
+            </div>
+          </div>
+
+          {/* Tolerance band: how far current sits from target relative to the ± band. */}
+          <div className="mt-2">
+            <div className="relative h-2 rounded-full bg-[color:var(--sg-surface-muted)]" role="presentation">
+              <div
+                className={cn('absolute inset-y-0 rounded-full', within ? 'bg-[color:var(--sg-color-sage-soft)]' : 'bg-[color:var(--sg-surface-raised)]')}
+                style={{ left: `${bandLeftPct}%`, width: `${bandWidthPct}%` } as CSSProperties}
+              />
+              <div className="absolute inset-y-[-2px] w-px bg-[color:var(--sg-outline-soft)]" style={{ left: '50%' } as CSSProperties} aria-hidden="true" />
+              <div
+                className={cn('absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[var(--sg-shadow-card)]',
+                  within ? 'bg-[color:var(--sg-color-sage)]' : 'bg-[color:var(--sg-color-clay,#c0714f)]')}
+                style={{ left: `${markerPct}%` } as CSSProperties}
+                aria-hidden="true"
+              />
+            </div>
+            <div className="mt-1 flex items-center justify-between text-[10px] font-semibold text-[color:var(--sg-text-faint)]">
+              <span>{copy.bandNow}</span>
+              <span>{copy.toleranceNote(formatNumber(tol, 1))}</span>
+              <span>{copy.bandTarget}</span>
+            </div>
+          </div>
+
+          {/* Plain-language verdict — the takeaway a grower acts on. */}
+          <p className={cn('mt-2 rounded-[var(--sg-radius-sm)] border px-2.5 py-1.5 text-[0.72rem] font-semibold leading-5',
+            within
+              ? 'border-[color:var(--sg-color-sage)] bg-[color:var(--sg-color-sage-soft)] text-[color:var(--sg-text-strong)]'
+              : 'border-[color:var(--sg-color-clay,#c0714f)] bg-[color:var(--sg-surface-raised)] text-[color:var(--sg-text-strong)]')}>
+            {verdictSentence}
+          </p>
+
+          {/* Reference metrics — context, explicitly NOT a current-vs-target comparison. */}
+          <div className="mt-2 border-t border-[color:var(--sg-outline-soft)] pt-1.5">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--sg-text-faint)]">{copy.context}</span>
+              <span className="flex items-baseline gap-1 text-[10px] font-semibold text-[color:var(--sg-text-muted)]">
+                {copy.weeklyYield}
+                <span className="sg-data-number font-bold text-[color:var(--sg-text-strong)]">{weeklyYieldLabel}</span>
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 md:grid-cols-4" role="list">
+              {contextItems.map(([label, value]) => (
+                <div key={label} role="listitem">
+                  <div className="text-[10px] font-semibold text-[color:var(--sg-text-faint)]">{label}</div>
+                  <div className="sg-data-number mt-0.5 text-[0.68rem] font-bold text-[color:var(--sg-text-strong)]">{value}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         {trendNode ? <div className="xl:col-span-4">{trendNode}</div> : null}
@@ -576,41 +809,29 @@ export function ScenarioOptimizerPreview({
   );
 }
 
-function ScenarioCard({
-  title,
-  subtitle,
-  rows,
-  badgeLabel,
-  badgeCaption,
+function TempStat({
+  icon: Icon,
+  label,
+  sub,
+  value,
   emphasized = false,
 }: {
-  title: string;
-  subtitle: string;
-  rows: Array<[string, string]>;
-  badgeLabel: string;
-  badgeCaption?: string;
+  icon: LucideIcon;
+  label: string;
+  sub: string;
+  value: string;
   emphasized?: boolean;
 }) {
   return (
-    <article className={cn('rounded-[var(--sg-radius-sm)] border p-[0.34rem]', emphasized ? 'border-[color:var(--sg-color-sage)] bg-[color:var(--sg-color-sage-soft)]' : 'border-[color:var(--sg-outline-soft)] bg-white')}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-[0.72rem] font-bold text-[color:var(--sg-text-strong)]">{title}</h3>
-          <p className="mt-0.5 text-[0.62rem] text-[color:var(--sg-text-muted)]">{subtitle}</p>
-        </div>
-        <div className="text-right">
-          {badgeCaption ? <div className="text-[10px] font-semibold uppercase text-[color:var(--sg-text-faint)]">{badgeCaption}</div> : null}
-          <StatusChip tone={emphasized ? 'stable' : 'growth'} className="mt-0.5 px-2 py-0.5 text-[10px]">{badgeLabel}</StatusChip>
-        </div>
+    <article className={cn('rounded-[var(--sg-radius-sm)] border p-2', emphasized
+      ? 'border-[color:var(--sg-color-sage)] bg-[color:var(--sg-color-sage-soft)]'
+      : 'border-[color:var(--sg-outline-soft)] bg-white')}>
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[color:var(--sg-text-faint)]">
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        {label}
       </div>
-      <div className="mt-0.5 grid grid-cols-2 gap-x-2 gap-y-0.5 md:grid-cols-4" role="list">
-        {rows.map(([label, value]) => (
-          <div key={label} role="listitem">
-            <div className="text-[10px] font-semibold text-[color:var(--sg-text-faint)]">{label}</div>
-            <div className="sg-data-number mt-0.5 text-[0.66rem] font-bold text-[color:var(--sg-text-strong)]">{value}</div>
-          </div>
-        ))}
-      </div>
+      <div className="sg-data-number mt-1 text-xl font-bold text-[color:var(--sg-text-strong)]">{value}</div>
+      <div className="mt-0.5 text-[0.62rem] text-[color:var(--sg-text-muted)]">{sub}</div>
     </article>
   );
 }

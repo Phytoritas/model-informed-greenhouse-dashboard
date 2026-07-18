@@ -31,6 +31,7 @@ import {
 } from '../components/dashboard/overviewLandingSections';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import { SectionHeader } from '../components/ui/section-header';
+import { buildRTRLiveSnapshot, getRtrProfile } from '../utils/rtr';
 import OverviewPage from './overview-page';
 
 const Charts = lazy(() => import('../components/Charts'));
@@ -137,6 +138,14 @@ export default function OverviewRoutePage({
   activeTabId,
 }: OverviewRoutePageProps) {
   const allMetricTiles = [...primaryKpiTiles, ...secondaryKpiTiles];
+  // Compute the RTR snapshot once so the action board and the comparison card agree.
+  const rtrSnapshot = buildRTRLiveSnapshot(
+    currentData,
+    history.length ? history : [currentData],
+    crop,
+    rtrProfile,
+  );
+  const rtrToleranceC = getRtrProfile(crop, rtrProfile).toleranceC;
   const fallbackAlerts = alertItems.length
     ? alertItems
     : [{
@@ -187,6 +196,8 @@ export default function OverviewRoutePage({
           monitor={monitor}
           onOpenRtr={onOpenRtr}
           onOpenAdvisor={onOpenAdvisor}
+          rtrDeltaC={rtrSnapshot.deltaTempC}
+          rtrToleranceC={rtrToleranceC}
         />
       )}
       scenarioOptimizerPreview={(

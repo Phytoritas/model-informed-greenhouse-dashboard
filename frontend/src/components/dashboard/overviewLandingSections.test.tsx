@@ -261,8 +261,13 @@ describe('overview landing sections', () => {
     );
 
     expect(screen.getByText('Current state vs RTR guardrail')).toBeTruthy();
-    expect(screen.getByText('Optimizer available')).toBeTruthy();
+    // The redesign shows the optimizer status honestly in the header and no longer
+    // renders a fabricated side-by-side setpoint table.
+    expect(screen.getByText('Optimizer ready')).toBeTruthy();
     expect(screen.getByText('27.6 kg/wk')).toBeTruthy();
+    // Current temp and RTR target are the only comparison; both are labelled.
+    expect(screen.getByText('Current mean temp')).toBeTruthy();
+    expect(screen.getByText('RTR target temp')).toBeTruthy();
     expect(screen.queryByText('AI recommended setpoints')).toBeNull();
     expect(screen.queryByText('680 ppm')).toBeNull();
     expect(screen.queryByText('15 min')).toBeNull();
@@ -332,5 +337,61 @@ describe('overview landing sections', () => {
       expect(link.getAttribute('href') ?? '').not.toContain('#overview-dashboard');
       expect(link.getAttribute('href') ?? '').not.toContain('#assistant-search');
     }
+  });
+});
+
+describe('today action board RTR verdict', () => {
+  const baseProps = {
+    crop: 'Tomato' as const,
+    currentData: SENSOR,
+    modelMetrics: MODEL_METRICS,
+    actionsNow: [] as string[],
+    actionsToday: [] as string[],
+    monitor: [] as string[],
+    onOpenRtr: () => undefined,
+    onOpenAdvisor: () => undefined,
+  };
+
+  it('flags "act now" when current temp is far under the band, with a heat instruction', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={-2.0} rtrToleranceC={0.8} />);
+    // |delta| 2.0 > 2×tolerance 1.6 -> act. Body proves the verdict; the unified chip
+    // vocabulary can repeat across cards, so assert presence rather than uniqueness.
+    expect(screen.getByText('2.0°C below the RTR target. Consider heating.')).toBeTruthy();
+    expect(screen.getAllByText('Act now').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('flags "check today" when current temp is over the band, with a vent instruction', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={1.6} rtrToleranceC={0.8} />);
+    // 0.8 < |delta| 1.6 <= 1.6 -> watch.
+    expect(screen.getByText('1.6°C above the RTR target. Consider venting or shading.')).toBeTruthy();
+    expect(screen.getAllByText('Check today').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows a "hold" verdict inside the band', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={0.3} rtrToleranceC={0.8} />);
+    expect(screen.getByText('Within the RTR target band. Hold the current temperature strategy.')).toBeTruthy();
+    expect(screen.getAllByText('In range').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('falls back to the static RTR copy when no delta is provided', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} />);
+    expect(screen.getByText(/Compare RTR target temperature before changing setpoints\./)).toBeTruthy();
+  });
+
+  it('summarises urgency and orders the most urgent card first', () => {
+    // For the SENSOR fixture, ventilation/irrigation/disease are all in range, so a
+    // far-off RTR delta is the only "act now" signal.
+    const { container } = renderWithProviders(
+      <TodayActionBoard {...baseProps} rtrDeltaC={-2.0} rtrToleranceC={0.8} />,
+    );
+    expect(screen.getByText('1 to act now')).toBeTruthy();
+    // The act card (RTR Scenario) renders before the in-range ventilation card.
+    const html = container.innerHTML;
+    expect(html.indexOf('RTR Scenario')).toBeLessThan(html.indexOf('Ventilation Adjustment'));
+  });
+
+  it('shows an all-clear summary when every signal is in range', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={0.1} rtrToleranceC={0.8} />);
+    expect(screen.getByText('Nothing urgent right now')).toBeTruthy();
   });
 });
