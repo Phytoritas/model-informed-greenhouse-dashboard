@@ -34,9 +34,9 @@ def temp_data_dir(monkeypatch, tmp_path: Path):
 
 def test_valid_dataset_is_accepted_and_normalized(temp_data_dir) -> None:
     info = datasets.save_uploaded_dataset(
-        filename="my house test!.csv", content=_valid_csv(), now_iso="2026-07-18T00:00:00Z"
+        filename="my house data.csv", content=_valid_csv(), now_iso="2026-07-18T00:00:00Z"
     )
-    assert info.name == "my_house_test.csv"  # sanitized
+    assert info.name == "my_house_data.csv"  # spaces collapse to underscores
     assert info.kind == "uploaded"
     assert info.rows == 6
     assert info.start and info.end
@@ -86,6 +86,16 @@ def test_unparseable_datetime_is_rejected(temp_data_dir) -> None:
 def test_resolve_rejects_path_traversal(temp_data_dir, evil: str) -> None:
     with pytest.raises(datasets.DatasetError):
         datasets.resolve_dataset_path(evil)
+
+
+def test_korean_filename_is_preserved(temp_data_dir) -> None:
+    """A Korean-named upload must keep its Hangul, not collapse to ASCII fragments."""
+    info = datasets.save_uploaded_dataset(filename="여름_실측_2024.csv", content=_valid_csv())
+    assert info.name == "여름_실측_2024.csv"
+    info2 = datasets.save_uploaded_dataset(filename="내 온실 데이터.csv", content=_valid_csv())
+    assert info2.name == "내_온실_데이터.csv"  # spaces collapse to underscores
+    # Both remain resolvable and traversal is still blocked.
+    assert datasets.resolve_dataset_path("여름_실측_2024.csv").is_file()
 
 
 def test_upload_cannot_shadow_a_bundled_fixture(temp_data_dir) -> None:

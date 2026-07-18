@@ -12,6 +12,9 @@ out/
 results/
 runs*/
 logs/
+
+# User-uploaded environment datasets are runtime data, not source.
+data/uploads/
 screenshots/
 *.screenshot.png
 *.screenshot.jpg

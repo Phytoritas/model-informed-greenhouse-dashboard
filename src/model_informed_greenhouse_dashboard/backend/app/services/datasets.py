@@ -67,7 +67,13 @@ _UPLOAD_SUBDIR = "uploads"
 
 _MAX_UPLOAD_BYTES = 64 * 1024 * 1024  # 64 MiB
 _MIN_ROWS = 2
-_SAFE_STEM = re.compile(r"[^A-Za-z0-9._-]+")
+#: Characters not allowed in a stored filename: path separators, Windows-reserved
+#: punctuation, and control characters. Everything else — including Hangul and other
+#: Unicode letters — is kept, so a Korean-named file stays readable rather than being
+#: collapsed to its ASCII fragments. Path traversal is separately blocked by taking
+#: Path(...).name and by resolve_dataset_path's containment check.
+_UNSAFE_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]+')
+_COLLAPSE_SPACE = re.compile(r"\s+")
 
 
 class DatasetError(ValueError):
@@ -116,7 +122,10 @@ def _sanitize_name(filename: str) -> str:
     if not base:
         raise DatasetError("파일 이름이 비어 있습니다.")
     stem = base[:-4] if base.lower().endswith(".csv") else base
-    safe_stem = _SAFE_STEM.sub("_", stem).strip("._-")
+    # Keep Unicode letters (incl. Hangul); only strip unsafe punctuation and collapse
+    # whitespace to underscores.
+    safe_stem = _UNSAFE_CHARS.sub("_", stem)
+    safe_stem = _COLLAPSE_SPACE.sub("_", safe_stem).strip("._-")
     if not safe_stem:
         raise DatasetError("파일 이름에 사용할 수 있는 문자가 없습니다.")
     name = f"{safe_stem}.csv"
