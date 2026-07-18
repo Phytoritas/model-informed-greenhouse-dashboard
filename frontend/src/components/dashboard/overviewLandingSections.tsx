@@ -279,6 +279,19 @@ export function OverviewMetricDeck({
   );
 }
 
+// A consistent traffic light across every action card: act (red) needs attention now,
+// watch (amber) is worth checking today, ok (green) is inside its normal band. Before
+// this, chips like "확인 필요" were hardcoded per card and did not track the data.
+type ActionLevel = 'act' | 'watch' | 'ok';
+
+const ACTION_LEVEL_TONE: Record<ActionLevel, 'critical' | 'warning' | 'growth'> = {
+  act: 'critical',
+  watch: 'warning',
+  ok: 'growth',
+};
+
+const ACTION_LEVEL_PRIORITY: Record<ActionLevel, number> = { act: 2, watch: 1, ok: 0 };
+
 interface TodayActionBoardProps {
   crop: CropType;
   currentData: SensorData;
@@ -312,17 +325,41 @@ export function TodayActionBoard({
     : currentData.humidity >= 80 || currentData.vpd < 0.75
       ? 'warning'
       : 'growth';
-  const vpdTone = currentData.vpd < 0.75 || currentData.vpd > 1.25 ? 'warning' : 'growth';
   // RTR card verdict from the shared snapshot delta, when the parent supplies it.
   const rtrTol = rtrToleranceC ?? 1.0;
   const rtrKnown = typeof rtrDeltaC === 'number' && Number.isFinite(rtrDeltaC);
   const rtrWithin = rtrKnown ? Math.abs(rtrDeltaC as number) <= rtrTol : true;
-  const rtrTone: 'growth' | 'warning' | 'stable' = rtrKnown && !rtrWithin ? 'warning' : rtrKnown ? 'growth' : 'stable';
+
+  // Each signal's traffic-light level, computed from the live data.
+  const ventLevel: ActionLevel = currentData.vpd < 0.55 || currentData.vpd > 1.45
+    ? 'act'
+    : currentData.vpd < 0.75 || currentData.vpd > 1.25
+      ? 'watch'
+      : 'ok';
+  const irrigLevel: ActionLevel = currentData.soilMoisture < 40
+    ? 'act'
+    : currentData.soilMoisture < 52 || currentData.soilMoisture > 88
+      ? 'watch'
+      : 'ok';
+  const diseaseLevel: ActionLevel = diseaseTone === 'critical' ? 'act' : diseaseTone === 'warning' ? 'watch' : 'ok';
+  const rtrLevel: ActionLevel = !rtrKnown
+    ? 'ok'
+    : Math.abs(rtrDeltaC as number) > 2 * rtrTol
+      ? 'act'
+      : !rtrWithin
+        ? 'watch'
+        : 'ok';
   const copy = locale === 'ko'
     ? {
         eyebrow: 'Today Action Board',
         title: '오늘 바로 볼 조치',
         description: '환기, 관수, 병해 위험, RTR 시나리오를 행동 단위로 정리합니다.',
+        statusAct: '지금 조치',
+        statusWatch: '오늘 확인',
+        statusOk: '정상 범위',
+        summaryAct: (n: number) => `지금 조치 ${n}건`,
+        summaryWatch: (n: number) => `확인 ${n}건`,
+        summaryClear: '지금 급한 조치는 없어요',
         ventilation: '환기 조정',
         irrigation: '관수 타이밍',
         disease: '병해 위험',
@@ -347,6 +384,12 @@ export function TodayActionBoard({
         eyebrow: 'Today Action Board',
         title: 'Actions worth checking today',
         description: 'Ventilation, irrigation, disease risk, and RTR scenario signals are grouped into action cards.',
+        statusAct: 'Act now',
+        statusWatch: 'Check today',
+        statusOk: 'In range',
+        summaryAct: (n: number) => `${n} to act now`,
+        summaryWatch: (n: number) => `${n} to check`,
+        summaryClear: 'Nothing urgent right now',
         ventilation: 'Ventilation Adjustment',
         irrigation: 'Irrigation Timing',
         disease: 'Disease Risk',
@@ -376,52 +419,89 @@ export function TodayActionBoard({
       : (rtrDeltaC as number) > 0
         ? copy.rtrAboveBody(rtrAbsDelta)
         : copy.rtrBelowBody(rtrAbsDelta);
-  const rtrChip = !rtrKnown ? copy.recommended : rtrWithin ? copy.rtrWithinChip : copy.rtrOffChip;
+
+  const statusLabel = (level: ActionLevel) =>
+    level === 'act' ? copy.statusAct : level === 'watch' ? copy.statusWatch : copy.statusOk;
+
+  // One descriptor per signal, then sort most-urgent-first so the grower reads the
+  // card that needs attention before the ones that are fine.
+  const cards = [
+    {
+      key: 'ventilation',
+      icon: Fan,
+      title: copy.ventilation,
+      level: ventLevel,
+      body: actionsNow[0] ?? copy.vpdFallback,
+      recommendationId: 'overview-ventilation-adjustment',
+      actionLabel: copy.details,
+      onAction: onOpenAdvisor,
+    },
+    {
+      key: 'irrigation',
+      icon: Droplets,
+      title: copy.irrigation,
+      level: irrigLevel,
+      body: actionsToday[0] ?? copy.irrigationFallback,
+      recommendationId: 'overview-irrigation-timing',
+      actionLabel: copy.details,
+      onAction: onOpenAdvisor,
+    },
+    {
+      key: 'disease',
+      icon: ShieldAlert,
+      title: copy.disease,
+      level: diseaseLevel,
+      body: monitor[0] ?? copy.diseaseFallback,
+      recommendationId: 'overview-disease-risk',
+      actionLabel: copy.details,
+      onAction: onOpenAdvisor,
+    },
+    {
+      key: 'rtr',
+      icon: TrendingUp,
+      title: copy.rtr,
+      level: rtrLevel,
+      body: rtrBody,
+      recommendationId: 'overview-rtr-scenario',
+      actionLabel: copy.compare,
+      onAction: onOpenRtr,
+    },
+  ];
+  const orderedCards = [...cards].sort(
+    (a, b) => ACTION_LEVEL_PRIORITY[b.level] - ACTION_LEVEL_PRIORITY[a.level],
+  );
+  const actCount = cards.filter((card) => card.level === 'act').length;
+  const watchCount = cards.filter((card) => card.level === 'watch').length;
 
   return (
     <section id="today-action-board" tabIndex={-1} className="scroll-mt-24 space-y-1.5" aria-labelledby="today-action-board-title">
-      <LandingSectionHeading titleId="today-action-board-title" eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+      <LandingSectionHeading
+        titleId="today-action-board-title"
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        actions={(
+          <div className="flex flex-wrap items-center gap-1.5">
+            {actCount > 0 ? <StatusChip tone="critical">{copy.summaryAct(actCount)}</StatusChip> : null}
+            {watchCount > 0 ? <StatusChip tone="warning">{copy.summaryWatch(watchCount)}</StatusChip> : null}
+            {actCount === 0 && watchCount === 0 ? <StatusChip tone="growth">{copy.summaryClear}</StatusChip> : null}
+          </div>
+        )}
+      />
       <div className="overview-card-row-4">
-        <AlertCard
-          icon={Fan}
-          title={copy.ventilation}
-          chip={vpdTone === 'warning' ? copy.impact : copy.recommended}
-          tone={vpdTone}
-          body={actionsNow[0] ?? copy.vpdFallback}
-          meta={<FeedbackControls crop={crop} recommendationId="overview-ventilation-adjustment" />}
-          actionLabel={copy.details}
-          onAction={onOpenAdvisor}
-        />
-        <AlertCard
-          icon={Droplets}
-          title={copy.irrigation}
-          chip={copy.moderate}
-          tone="warning"
-          body={actionsToday[0] ?? copy.irrigationFallback}
-          meta={<FeedbackControls crop={crop} recommendationId="overview-irrigation-timing" />}
-          actionLabel={copy.details}
-          onAction={onOpenAdvisor}
-        />
-        <AlertCard
-          icon={ShieldAlert}
-          title={copy.disease}
-          chip={diseaseTone === 'critical' ? copy.highRisk : diseaseTone === 'warning' ? copy.moderate : copy.recommended}
-          tone={diseaseTone}
-          body={monitor[0] ?? copy.diseaseFallback}
-          meta={<FeedbackControls crop={crop} recommendationId="overview-disease-risk" />}
-          actionLabel={copy.details}
-          onAction={onOpenAdvisor}
-        />
-        <AlertCard
-          icon={TrendingUp}
-          title={copy.rtr}
-          chip={rtrChip}
-          tone={rtrTone}
-          body={rtrBody}
-          meta={<FeedbackControls crop={crop} recommendationId="overview-rtr-scenario" />}
-          actionLabel={copy.compare}
-          onAction={onOpenRtr}
-        />
+        {orderedCards.map((card) => (
+          <AlertCard
+            key={card.key}
+            icon={card.icon}
+            title={card.title}
+            chip={statusLabel(card.level)}
+            tone={ACTION_LEVEL_TONE[card.level]}
+            body={card.body}
+            meta={<FeedbackControls crop={crop} recommendationId={card.recommendationId} />}
+            actionLabel={card.actionLabel}
+            onAction={card.onAction}
+          />
+        ))}
       </div>
     </section>
   );
