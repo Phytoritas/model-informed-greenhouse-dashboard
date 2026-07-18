@@ -52,6 +52,51 @@ chmod +x scripts/start_all.sh
 - `./scripts/start_all.sh` provides the same workflow for macOS, Linux, WSL, or Git Bash. If execute permissions are unavailable, use `bash scripts/start_all.sh` instead.
 - `.\start_all.bat check` or `./scripts/start_all.sh check` validates the launcher prerequisites without starting servers.
 
+## Deploying with the same answer quality (knowledge DB provisioning)
+
+The advisor's answer quality is backed by a SmartGrow knowledge database at
+`artifacts/knowledge/*.sqlite3` (plus `knowledge_catalog_*.json`). That directory is
+**gitignored on purpose**: the DB is a large, license-bound build artifact (it is derived
+from source material under `data/`), so committing it would redistribute copyrighted /
+internal content and permanently bloat history. Because it is not in git, a fresh deploy
+would start with no knowledge and give weaker answers than your local instance.
+
+To give every deployed instance the *same* answers without committing the data, publish
+the DB to a **private** store and pull it in at deploy time with
+`scripts/provision_knowledge_db.py`.
+
+1. Build the DB locally (the app rebuilds it from `data/` on demand), then hash it:
+
+   ```bash
+   poetry run python scripts/provision_knowledge_db.py build-manifest
+   ```
+
+   This writes `artifacts/knowledge/knowledge_db_manifest.json` (file names, sizes, and
+   sha256 only — it does not describe the contents).
+
+2. Upload the `knowledge_db_*.sqlite3` files, the `knowledge_catalog_*.json` files, and
+   the manifest to a private store you control: a mounted secret volume, private object
+   storage, or a **private** GitHub Release asset. Never a public URL.
+
+3. On deploy, point the app at a provisioned directory and materialize the DB before the
+   backend starts:
+
+   ```bash
+   export KNOWLEDGE_DB_DIR=/var/lib/smartgrow/knowledge
+   # A mounted directory, a file:// path, or a private https base URL:
+   export KNOWLEDGE_DB_SOURCE=https://private.example/knowledge
+   export KNOWLEDGE_DB_TOKEN=...   # only for a private https source
+   poetry run python scripts/provision_knowledge_db.py provision
+   ```
+
+   `provision` reads the manifest, downloads each listed file into `KNOWLEDGE_DB_DIR`,
+   and verifies size + sha256. It is idempotent (an already-current file is skipped) and
+   fail-closed (a checksum mismatch aborts and leaves no partial file).
+
+`KNOWLEDGE_DB_DIR` defaults to `<repo>/artifacts/knowledge`, so local development is
+unchanged. Regardless of what a provisioned DB contains, the runtime `corpus_quarantine`
+layer still excludes quarantined families from served answers.
+
 ## macOS setup guide (step by step)
 
 A detailed first-run walkthrough for Apple users. Every step is copy-paste ready for Terminal.

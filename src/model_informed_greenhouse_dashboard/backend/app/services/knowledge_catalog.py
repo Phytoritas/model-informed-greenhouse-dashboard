@@ -34,7 +34,9 @@ except ImportError:  # pragma: no cover - exercised when dependency is absent
 DATA_ROOT = Path(settings.data_dir)
 REPO_ROOT = DATA_ROOT.parent
 DIRECTIVE_FILE = REPO_ROOT / "codex_rag_advisor_prompt_smartgrow.md"
-CATALOG_OUTPUT_DIR = REPO_ROOT / "artifacts" / "knowledge"
+# Catalog JSON lives alongside the knowledge DB; env-configurable via KNOWLEDGE_DB_DIR so
+# a provisioned deployment reads/writes the same directory as the DB.
+CATALOG_OUTPUT_DIR = Path(settings.knowledge_dir)
 CATALOG_VERSION = "smartgrow-phase1-v1"
 _PDF_WARNING_PATTERN = r"Advanced encoding .* not implemented yet"
 _PDF_CMAP_LOGGER = "pypdf._cmap"

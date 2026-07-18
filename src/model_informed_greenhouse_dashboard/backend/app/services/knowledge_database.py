@@ -29,7 +29,9 @@ from .workbook_normalization import (
 
 DATA_ROOT = Path(settings.data_dir)
 REPO_ROOT = DATA_ROOT.parent
-KNOWLEDGE_DB_DIR = REPO_ROOT / "artifacts" / "knowledge"
+# Runtime location of the knowledge DB. Env-configurable (KNOWLEDGE_DB_DIR) so a deploy
+# can point at a provisioned volume; defaults to the gitignored artifacts/knowledge.
+KNOWLEDGE_DB_DIR = Path(settings.knowledge_dir)
 SCHEMA_VERSION = "smartgrow-knowledge-db-v1"
 _ALL_SCOPE = "all"
 _CSV_ENCODINGS = ("utf-8-sig", "utf-8", "cp949", "euc-kr")

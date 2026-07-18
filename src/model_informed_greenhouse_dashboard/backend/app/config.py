@@ -59,6 +59,16 @@ class Settings(BaseSettings):
     data_dir: str = Field(default=str(_REPO_ROOT / "data"), alias="DATA_DIR")
     config_dir: str = Field(default=str(_REPO_ROOT / "configs"), alias="CONFIG_DIR")
 
+    # Where the SmartGrow knowledge database + catalogs are read at runtime. Defaults to
+    # the gitignored <repo>/artifacts/knowledge so the (potentially large, license-bound)
+    # DB never lives in source control. In a deployment, point this at a provisioned
+    # volume and materialize the DB with scripts/provision_knowledge_db.py, so every
+    # instance serves the same answer quality without committing the data to git.
+    knowledge_dir: str = Field(
+        default=str(_REPO_ROOT / "artifacts" / "knowledge"),
+        alias="KNOWLEDGE_DB_DIR",
+    )
+
     ws_heartbeat_interval: int = Field(default=30, alias="WS_HEARTBEAT_INTERVAL")
 
     forecast_window_days: int = Field(default=7, alias="FORECAST_WINDOW_DAYS")
