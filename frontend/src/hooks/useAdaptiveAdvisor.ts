@@ -17,8 +17,9 @@ export type AdaptiveNodeName =
   | 'operations_calendar'
   | 'constraint_gate'
   | 'answer_admission'
-  | 'quality_gate'
-  | 'narrate';
+  | 'narrate'
+  | 'response_review'
+  | 'quality_gate';
 
 export type AdaptiveQualityProfile = {
   schema_version: 'advisor-quality-profile.v1';
@@ -34,13 +35,17 @@ export type AdaptiveQualityProfile = {
     | 'MONITORING_FIRST'
     | 'NEEDS_DATA'
     | 'REFUSED';
+  /** Quality of the answer actually delivered after post-render review. */
   score: number;
+  /** Readiness of sensor, model, context, and constraint inputs. */
+  readiness_score: number;
   data: {
     freshness: number;
     current_state_coverage: number;
     history_coverage: number;
     missing_fields: string[];
     inferred_fields: string[];
+    observed_signal_score?: number | null;
     latest_observation_at?: string | null;
   };
   model: {
@@ -48,6 +53,8 @@ export type AdaptiveQualityProfile = {
     exact_request_match?: boolean | null;
     within_supported_range?: boolean | null;
     scenario_confidence?: number | null;
+    observed_input_fraction?: number | null;
+    inferred_input_count: number;
     constraint_status: 'PASS' | 'WARNING' | 'FAIL';
     violated_constraints: Array<Record<string, unknown>>;
   };
@@ -56,6 +63,24 @@ export type AdaptiveQualityProfile = {
     weather: string;
     operations: string;
     market: string;
+  };
+  content: {
+    diagnostic_depth: number;
+    actionability: number;
+    temporal_alignment: number;
+    cross_domain_synthesis: number;
+    numerical_integrity: number;
+    uncertainty_honesty: number;
+    gaps: string[];
+  };
+  response: {
+    coverage: number;
+    required_elements: string[];
+    present_elements: string[];
+    unsupported_numeric_claims: string[];
+    fallback_used: boolean;
+    source: 'llm' | 'deterministic_fallback' | 'deterministic_only';
+    reasons: string[];
   };
   horizon: {
     valid_from: string;
