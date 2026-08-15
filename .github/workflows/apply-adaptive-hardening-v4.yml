@@ -46,21 +46,21 @@ jobs:
               "adaptive_advisor/quality.py"
           )
           text = quality.read_text(encoding="utf-8")
-          old = '''    if constraint_gate.status is ConstraintStatus.FAIL:
-              answer_status = AnswerStatus.REFUSED
-          elif current_coverage < 0.4:
-              answer_status = AnswerStatus.NEEDS_DATA
-          '''
-          new = '''    if constraint_gate.status is ConstraintStatus.FAIL:
-              answer_status = AnswerStatus.REFUSED
-          elif snapshot_resolution.get("primary_source") == "unavailable":
-              answer_status = AnswerStatus.NEEDS_DATA
-          elif current_coverage < 0.4:
-              answer_status = AnswerStatus.NEEDS_DATA
-          '''
-          if text.count(old) != 1:
-              raise RuntimeError("quality unavailable-snapshot status block drifted")
-          quality.write_text(text.replace(old, new, 1), encoding="utf-8")
+          marker = '    elif current_coverage < 0.4:'
+          lines = text.splitlines()
+          positions = [index for index, line in enumerate(lines) if line == marker]
+          if len(positions) != 1:
+              raise RuntimeError("quality current-coverage status marker drifted")
+          position = positions[0]
+          snapshot_line = (
+              '    elif snapshot_resolution.get("primary_source") == "unavailable":'
+          )
+          if snapshot_line not in lines:
+              lines[position:position] = [
+                  snapshot_line,
+                  '        answer_status = AnswerStatus.NEEDS_DATA',
+              ]
+          quality.write_text("\n".join(lines) + "\n", encoding="utf-8")
           PY
           rm -f apply_adaptive_hardening.py
           rm -rf .github/adaptive_hardening_parts
