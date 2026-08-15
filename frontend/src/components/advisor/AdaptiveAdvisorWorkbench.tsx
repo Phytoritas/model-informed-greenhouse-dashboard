@@ -46,7 +46,7 @@ export default function AdaptiveAdvisorWorkbench({
   weather = null,
   rtrProfile = null,
 }: Props) {
-  const [question, setQuestion] = useState(EXAMPLES[locale][0]);
+  const [question, setQuestion] = useState<string>(EXAMPLES[locale][0]);
   const { loading, result, error, execute } = useAdaptiveAdvisor();
 
   const dashboard = useMemo(() => {
@@ -69,7 +69,7 @@ export default function AdaptiveAdvisorWorkbench({
     const normalized = question.trim();
     if (!normalized || loading) return;
     await execute({
-      crop,
+      crop: crop.toLowerCase() as 'tomato' | 'cucumber',
       question: normalized,
       dashboard,
       language: locale,
