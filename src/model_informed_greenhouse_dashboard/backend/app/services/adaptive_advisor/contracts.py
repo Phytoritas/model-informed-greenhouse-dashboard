@@ -33,8 +33,9 @@ class AdaptiveNode(str, Enum):
     OPERATIONS_CALENDAR = "operations_calendar"
     CONSTRAINT_GATE = "constraint_gate"
     ANSWER_ADMISSION = "answer_admission"
-    QUALITY_GATE = "quality_gate"
     NARRATE = "narrate"
+    RESPONSE_REVIEW = "response_review"
+    QUALITY_GATE = "quality_gate"
 
 
 class AnswerCapability(str, Enum):
@@ -97,11 +98,7 @@ AllowedHorizon = Literal[24, 72, 168, 336]
 
 
 class AdaptiveGraphPlan(BaseModel):
-    """A validated, bounded run-specific graph plan.
-
-    The planner may choose context/calculation nodes, but the fixed safety spine is
-    mandatory and cannot be removed by an LLM- or client-proposed plan.
-    """
+    """A validated, bounded run-specific graph plan."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -125,6 +122,7 @@ class AdaptiveGraphPlan(BaseModel):
         required = (
             AdaptiveNode.CONSTRAINT_GATE,
             AdaptiveNode.ANSWER_ADMISSION,
+            AdaptiveNode.RESPONSE_REVIEW,
             AdaptiveNode.QUALITY_GATE,
         )
         missing = [node.value for node in required if node not in self.nodes]
@@ -135,20 +133,28 @@ class AdaptiveGraphPlan(BaseModel):
         if not (
             positions[AdaptiveNode.CONSTRAINT_GATE]
             < positions[AdaptiveNode.ANSWER_ADMISSION]
+            < positions[AdaptiveNode.RESPONSE_REVIEW]
             < positions[AdaptiveNode.QUALITY_GATE]
         ):
-            raise ValueError("safety nodes must run constraint -> admission -> quality")
+            raise ValueError(
+                "safety nodes must run constraint -> admission -> response_review -> quality"
+            )
+        if self.nodes[-1] is not AdaptiveNode.QUALITY_GATE:
+            raise ValueError("quality_gate must be the final graph node")
 
         if self.include_narrative:
-            if not self.nodes or self.nodes[-1] is not AdaptiveNode.NARRATE:
-                raise ValueError("narrate must be the final node when narrative is enabled")
+            if AdaptiveNode.NARRATE not in self.nodes:
+                raise ValueError("narrate is required when narrative is enabled")
+            if not (
+                positions[AdaptiveNode.ANSWER_ADMISSION]
+                < self.nodes.index(AdaptiveNode.NARRATE)
+                < positions[AdaptiveNode.RESPONSE_REVIEW]
+            ):
+                raise ValueError("narrate must run after admission and before response review")
         elif AdaptiveNode.NARRATE in self.nodes:
             raise ValueError("narrate cannot be present when narrative is disabled")
 
-        scenario_nodes = {
-            AdaptiveNode.BOUNDED_SCENARIO,
-            AdaptiveNode.SENSITIVITY,
-        }
+        scenario_nodes = {AdaptiveNode.BOUNDED_SCENARIO, AdaptiveNode.SENSITIVITY}
         if any(node in self.nodes for node in scenario_nodes) and not self.horizons_hours:
             raise ValueError("scenario or sensitivity nodes require at least one horizon")
         return self
@@ -246,6 +252,7 @@ class DataQuality(BaseModel):
     history_coverage: float = Field(ge=0, le=1)
     missing_fields: list[str] = Field(default_factory=list)
     inferred_fields: list[str] = Field(default_factory=list)
+    observed_signal_score: float | None = Field(default=None, ge=0, le=1)
     latest_observation_at: datetime | None = None
 
 
@@ -254,6 +261,8 @@ class ModelQuality(BaseModel):
     exact_request_match: bool | None = None
     within_supported_range: bool | None = None
     scenario_confidence: float | None = Field(default=None, ge=0, le=1)
+    observed_input_fraction: float | None = Field(default=None, ge=0, le=1)
+    inferred_input_count: int = Field(default=0, ge=0)
     constraint_status: ConstraintStatus
     violated_constraints: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -272,14 +281,41 @@ class HorizonQuality(BaseModel):
     invalidation_events: list[str] = Field(default_factory=list)
 
 
+class AnswerContentQuality(BaseModel):
+    """Quality of the realized answer, not merely availability of its inputs."""
+
+    diagnostic_depth: float = Field(ge=0, le=1)
+    actionability: float = Field(ge=0, le=1)
+    temporal_alignment: float = Field(ge=0, le=1)
+    cross_domain_synthesis: float = Field(ge=0, le=1)
+    numerical_integrity: float = Field(ge=0, le=1)
+    uncertainty_honesty: float = Field(ge=0, le=1)
+    gaps: list[str] = Field(default_factory=list)
+
+
+class ResponseQuality(BaseModel):
+    """Quality of the text that is actually returned to the operator."""
+
+    coverage: float = Field(ge=0, le=1)
+    required_elements: list[str] = Field(default_factory=list)
+    present_elements: list[str] = Field(default_factory=list)
+    unsupported_numeric_claims: list[str] = Field(default_factory=list)
+    fallback_used: bool = False
+    source: Literal["llm", "deterministic_fallback", "deterministic_only"]
+    reasons: list[str] = Field(default_factory=list)
+
+
 class AdvisorQualityProfile(BaseModel):
     schema_version: Literal["advisor-quality-profile.v1"] = "advisor-quality-profile.v1"
     capability: AnswerCapability
     answer_status: AnswerStatus
     score: float = Field(ge=0, le=1)
+    readiness_score: float = Field(ge=0, le=1)
     data: DataQuality
     model: ModelQuality
     context: ContextQuality
+    content: AnswerContentQuality
+    response: ResponseQuality
     horizon: HorizonQuality
     adaptive_triggers: list[str] = Field(default_factory=list)
     executed_nodes: list[AdaptiveNode] = Field(default_factory=list)
