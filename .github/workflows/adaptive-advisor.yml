@@ -8,12 +8,15 @@ on:
       - "tests/test_adaptive_*.py"
       - "tests/test_operations_calendar.py"
       - "tests/test_server_telemetry_store.py"
-      - "tests/test_market_supply_shock.py"
-      - "tests/test_routing_regression.py"
+      - "tests/test_market_supply_shock*.py"
+      - "tests/test_routing_regression*.py"
+      - "tests/test_quality_calibration.py"
+      - "tests/test_runtime_lane_cache.py"
       - "frontend/src/components/advisor/AdaptiveAdvisorWorkbench.tsx"
       - "frontend/src/components/advisor/AdvisorQualityProfilePanel*"
       - "frontend/src/hooks/useAdaptiveAdvisor.ts"
       - "frontend/src/pages/assistant-route-page.tsx"
+      - "frontend/src/utils/adaptiveHistory*"
       - ".github/workflows/adaptive-advisor.yml"
   push:
     branches:
@@ -35,16 +38,24 @@ jobs:
           version: "2.1.3"
           virtualenvs-in-project: true
       - run: poetry install
-      - name: Adaptive advisor regression suite
+      - name: Adaptive advisor hardening regression suite
         run: >-
           poetry run pytest -q
           tests/test_adaptive_planner.py
           tests/test_adaptive_change_detection.py
           tests/test_operations_calendar.py
           tests/test_server_telemetry_store.py
+          tests/test_adaptive_snapshot_resolution.py
+          tests/test_adaptive_conversation_store.py
+          tests/test_adaptive_numeric_claims.py
+          tests/test_runtime_lane_cache.py
           tests/test_market_supply_shock.py
+          tests/test_market_supply_shock_guardrails.py
           tests/test_routing_regression.py
+          tests/test_routing_regression_guardrails.py
+          tests/test_quality_calibration.py
           tests/test_adaptive_executor.py
+          tests/test_adaptive_runtime_hardening.py
       - name: Import adaptive ASGI and durable endpoints
         run: >-
           poetry run python -c
@@ -56,7 +67,9 @@ jobs:
           '/api/advisor/adaptive/market/observations',
           '/api/advisor/adaptive/feedback',
           '/api/advisor/adaptive/outcomes',
-          '/api/advisor/adaptive/routing-regression'};
+          '/api/advisor/adaptive/quality-calibration',
+          '/api/advisor/adaptive/routing-regression',
+          '/api/advisor/adaptive/threads/{thread_id}'};
           assert required <= paths, sorted(required-paths)"
       - name: Compile adaptive backend
         run: >-
@@ -74,8 +87,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --prefix frontend
-      - name: Quality profile component test
+      - name: Adaptive advisor frontend tests
         run: >-
           npm test --prefix frontend --
           src/components/advisor/AdvisorQualityProfilePanel.test.tsx
+          src/utils/adaptiveHistory.test.ts
       - run: npm run build --prefix frontend
