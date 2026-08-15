@@ -6,6 +6,8 @@ import json
 import re
 from typing import Any
 
+from .numeric_claims import collect_authorized_numeric_claims
+
 from .contracts import (
     AdaptiveAnswerPacket,
     AdaptiveGraphPlan,
@@ -354,39 +356,6 @@ def _uncertainties(
     return list(dict.fromkeys(result))[:12]
 
 
-def _authorized_numbers(payload: dict[str, Any]) -> list[str]:
-    numbers: set[str] = set()
-
-    def walk(value: Any) -> None:
-        if isinstance(value, bool) or value is None:
-            return
-        if isinstance(value, (int, float)):
-            number = float(value)
-            if number == number:
-                numbers.add(f"{number:g}")
-                numbers.add(f"{number:.1f}")
-                numbers.add(f"{number:.2f}")
-            return
-        if isinstance(value, dict):
-            for nested in value.values():
-                walk(nested)
-        elif isinstance(value, list):
-            for nested in value:
-                walk(nested)
-        elif isinstance(value, str):
-            for token in re.findall(r"[-+]?\d+(?:\.\d+)?", value):
-                try:
-                    number = float(token)
-                except ValueError:
-                    continue
-                numbers.add(f"{number:g}")
-                numbers.add(f"{number:.1f}")
-                numbers.add(f"{number:.2f}")
-
-    walk(payload)
-    return sorted(numbers)
-
-
 def build_answer_packet(
     *,
     question: str,
@@ -447,8 +416,14 @@ def build_answer_packet(
             "llm_context": expert.get("llm_context"),
         },
     )
-    dump = packet.model_dump(mode="json")
-    packet.authorized_numbers = _authorized_numbers(dump)
+    packet.authorized_numeric_claims = collect_authorized_numeric_claims(packet)
+    packet.authorized_numbers = sorted(
+        {
+            rendering
+            for claim in packet.authorized_numeric_claims
+            for rendering in claim.renderings
+        }
+    )
     return packet
 
 

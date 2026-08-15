@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from .contracts import (
     AdaptiveAdvisorRequest,
     AdaptiveGraphPlan,
@@ -9,6 +11,42 @@ from .contracts import (
     AdvisorIntent,
 )
 from .question_analysis import analyze_question
+
+
+_FOLLOW_UP_MARKERS = (
+    "그럼",
+    "그러면",
+    "그건",
+    "그 조치",
+    "그대로",
+    "아까",
+    "방금",
+    "이 경우",
+    "그 경우",
+    "then",
+    "what about",
+    "in that case",
+    "same action",
+)
+_DOMAIN_TERMS = (
+    "온도",
+    "co2",
+    "습도",
+    "vpd",
+    "스크린",
+    "광합성",
+    "증산",
+    "기공",
+    "수확",
+    "출하",
+    "가격",
+    "temperature",
+    "humidity",
+    "photosynthesis",
+    "harvest",
+    "shipment",
+    "price",
+)
 
 
 def classify_intent(question: str) -> AdvisorIntent:
@@ -19,6 +57,37 @@ def classify_intent(question: str) -> AdvisorIntent:
 def select_controls(question: str) -> list[str]:
     facets = analyze_question(question, crop="tomato", language="ko")
     return [str(item) for item in facets.get("control_candidates", []) if str(item)]
+
+
+def _is_contextual_follow_up(question: str) -> bool:
+    normalized = question.strip().lower()
+    if not normalized:
+        return False
+    if any(marker in normalized for marker in _FOLLOW_UP_MARKERS):
+        return True
+    has_number = bool(re.search(r"[-+]?\d+(?:\.\d+)?", normalized))
+    has_domain_term = any(term in normalized for term in _DOMAIN_TERMS)
+    return len(normalized) <= 48 and has_number and not has_domain_term
+
+
+def analysis_text_for_request(request: AdaptiveAdvisorRequest) -> str:
+    """Resolve bounded anaphoric follow-ups without making all history authoritative."""
+
+    if not request.messages or not _is_contextual_follow_up(request.question):
+        return request.question
+    prior: list[str] = []
+    for message in reversed(request.messages):
+        role = str(message.get("role") or "user")
+        content = str(message.get("content") or "").strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        prior.append(f"{role}: {content}")
+        if len(prior) >= 2:
+            break
+    if not prior:
+        return request.question
+    prior.reverse()
+    return "\n".join([*prior, f"user follow-up: {request.question}"])
 
 
 def _append_unique(nodes: list[AdaptiveNode], *items: AdaptiveNode) -> None:
@@ -57,6 +126,8 @@ def _normalize_requested_plan(
         horizons_hours=requested.horizons_hours,
         max_parallel_nodes=min(requested.max_parallel_nodes, 5),
         max_model_evaluations=min(requested.max_model_evaluations, 12),
+        node_timeout_seconds=min(requested.node_timeout_seconds, 30.0),
+        narration_timeout_seconds=min(requested.narration_timeout_seconds, 45.0),
         include_narrative=request.include_narrative,
         reasons=[
             *requested.reasons,
@@ -82,8 +153,9 @@ def _default_controls(intent: AdvisorIntent, facets: dict) -> list[str]:
 
 
 def build_adaptive_plan(request: AdaptiveAdvisorRequest) -> AdaptiveGraphPlan:
+    analysis_text = analysis_text_for_request(request)
     facets = analyze_question(
-        request.question,
+        analysis_text,
         crop=request.crop,
         language=request.language,
     )
@@ -102,11 +174,13 @@ def build_adaptive_plan(request: AdaptiveAdvisorRequest) -> AdaptiveGraphPlan:
         f"targets={','.join(facets.get('target_signals', [])) or 'unspecified'}",
         f"comparison={facets.get('comparison_mode')}",
     ]
+    if analysis_text != request.question:
+        reasons.append("bounded server conversation context resolved an anaphoric follow-up")
 
     if intent is AdvisorIntent.STATUS:
         if facets.get("market_relevant"):
             _append_unique(nodes, AdaptiveNode.MARKET_OUTLOOK)
-        if "weather" in request.question.lower() or "날씨" in request.question:
+        if "weather" in analysis_text.lower() or "날씨" in analysis_text:
             _append_unique(nodes, AdaptiveNode.WEATHER_OUTLOOK)
     elif intent is AdvisorIntent.DIAGNOSE:
         _append_unique(
@@ -152,7 +226,9 @@ def build_adaptive_plan(request: AdaptiveAdvisorRequest) -> AdaptiveGraphPlan:
             AdaptiveNode.MARKET_OUTLOOK,
             AdaptiveNode.OPERATIONS_CALENDAR,
         )
-        reasons.append("optimization joins crop, operations, weather, arrival volume, and market")
+        reasons.append(
+            "optimization joins crop, operations, weather, arrival volume, and market"
+        )
 
     if facets.get("market_relevant"):
         _append_unique(
@@ -180,6 +256,8 @@ def build_adaptive_plan(request: AdaptiveAdvisorRequest) -> AdaptiveGraphPlan:
         horizons_hours=horizons,
         max_parallel_nodes=5,
         max_model_evaluations=12 if intent is AdvisorIntent.OPTIMIZE else 8,
+        node_timeout_seconds=12.0,
+        narration_timeout_seconds=20.0,
         include_narrative=request.include_narrative,
         reasons=reasons,
     )

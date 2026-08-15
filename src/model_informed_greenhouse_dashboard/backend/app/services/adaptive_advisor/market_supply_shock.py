@@ -1,4 +1,4 @@
-"""Holiday- and arrival-volume-aware market supply shock model."""
+"""Holiday-, closure-, and arrival-volume-aware market supply shock model."""
 
 from __future__ import annotations
 
@@ -17,6 +17,9 @@ from .contracts import MarketArrivalObservation
 from .operations_calendar import OperationsCalendarStore
 
 
+_RELEASE_WEIGHTS = (0.65, 0.25, 0.10)
+
+
 def _median(values: list[float]) -> float | None:
     return float(statistics.median(values)) if values else None
 
@@ -33,8 +36,14 @@ def _risk_level(shock_ratio: float) -> str:
     return "normal"
 
 
+def _truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 class MarketObservationStore:
-    """Append-only market arrival and price observations."""
+    """Append-only daily market observations with latest-revision reads."""
 
     _lock = threading.RLock()
 
@@ -98,17 +107,22 @@ class MarketObservationStore:
                     observation.arrival_volume_kg,
                     observation.wholesale_price_krw_per_kg,
                     observation.source,
-                    json.dumps(observation.metadata, ensure_ascii=False, sort_keys=True),
+                    json.dumps(
+                        observation.metadata,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
                     digest,
                     datetime.now(UTC).isoformat(),
                 ),
             )
         return {"inserted": cursor.rowcount == 1, "content_sha256": digest}
 
-    def append_many(self, observations: list[MarketArrivalObservation]) -> dict[str, Any]:
-        inserted = 0
-        for observation in observations:
-            inserted += int(self.append(observation)["inserted"])
+    def append_many(
+        self,
+        observations: list[MarketArrivalObservation],
+    ) -> dict[str, Any]:
+        inserted = sum(int(self.append(item)["inserted"]) for item in observations)
         return {
             "inserted": inserted,
             "duplicates": len(observations) - inserted,
@@ -124,6 +138,8 @@ class MarketObservationStore:
         end: date | None = None,
         limit: int = 2000,
     ) -> list[dict[str, Any]]:
+        """Return the latest appended revision for each market/crop/date."""
+
         clauses = ["market_id = ?", "crop = ?"]
         params: list[Any] = [market_id, crop]
         if start is not None:
@@ -138,8 +154,17 @@ class MarketObservationStore:
                 f"""
                 SELECT market_id, crop, observation_date, arrival_volume_kg,
                        wholesale_price_krw_per_kg, source, metadata_json
-                FROM market_observations
-                WHERE {' AND '.join(clauses)}
+                FROM (
+                    SELECT market_id, crop, observation_date, arrival_volume_kg,
+                           wholesale_price_krw_per_kg, source, metadata_json,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY market_id, crop, observation_date
+                               ORDER BY created_at DESC, observation_id DESC
+                           ) AS revision_rank
+                    FROM market_observations
+                    WHERE {' AND '.join(clauses)}
+                )
+                WHERE revision_rank = 1
                 ORDER BY observation_date ASC
                 LIMIT ?
                 """,
@@ -164,8 +189,28 @@ class MarketObservationStore:
 
     def describe(self) -> dict[str, Any]:
         with self._connect() as connection:
-            count = int(connection.execute("SELECT COUNT(*) FROM market_observations").fetchone()[0])
-        return {"status": "ready", "path": str(self.path), "observation_count": count}
+            count = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM market_observations"
+                ).fetchone()[0]
+            )
+            canonical_count = int(
+                connection.execute(
+                    """
+                    SELECT COUNT(*) FROM (
+                        SELECT 1
+                        FROM market_observations
+                        GROUP BY market_id, crop, observation_date
+                    )
+                    """
+                ).fetchone()[0]
+            )
+        return {
+            "status": "ready",
+            "path": str(self.path),
+            "observation_count": count,
+            "canonical_daily_count": canonical_count,
+        }
 
 
 def _weekday_baseline(
@@ -175,20 +220,25 @@ def _weekday_baseline(
     same_weekday = [
         float(row["arrival_volume_kg"])
         for row in rows
-        if date.fromisoformat(str(row["observation_date"])).weekday() == forecast_date.weekday()
+        if date.fromisoformat(str(row["observation_date"])).weekday()
+        == forecast_date.weekday()
         and date.fromisoformat(str(row["observation_date"])) < forecast_date
     ]
     if len(same_weekday) >= 3:
-        return _median(same_weekday[-12:]), len(same_weekday[-12:])
+        values = same_weekday[-12:]
+        return _median(values), len(values)
     all_prior = [
         float(row["arrival_volume_kg"])
         for row in rows
         if date.fromisoformat(str(row["observation_date"])) < forecast_date
     ]
-    return _median(all_prior[-28:]), len(all_prior[-28:])
+    values = all_prior[-28:]
+    return _median(values), len(values)
 
 
-def _estimate_elasticity(rows: list[dict[str, Any]]) -> tuple[float, str, int]:
+def _estimate_elasticity(
+    rows: list[dict[str, Any]],
+) -> tuple[float, str, int]:
     pairs = [
         (
             float(row["arrival_volume_kg"]),
@@ -202,36 +252,96 @@ def _estimate_elasticity(rows: list[dict[str, Any]]) -> tuple[float, str, int]:
     if len(pairs) < 8:
         return -0.45, "conservative_prior", len(pairs)
 
-    xs = [math.log(volume) for volume, _price in pairs[-90:]]
-    ys = [math.log(price) for _volume, price in pairs[-90:]]
+    pairs = pairs[-90:]
+    xs = [math.log(volume) for volume, _price in pairs]
+    ys = [math.log(price) for _volume, price in pairs]
     x_mean = statistics.fmean(xs)
     y_mean = statistics.fmean(ys)
-    denominator = sum((x - x_mean) ** 2 for x in xs)
+    denominator = sum((value - x_mean) ** 2 for value in xs)
     if denominator <= 1e-12:
         return -0.45, "conservative_prior", len(pairs)
-    slope = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys)) / denominator
-    # Supply/price relation should not be allowed to turn into an implausible
-    # positive causal claim merely because the observational sample is confounded.
+    slope = sum(
+        (x - x_mean) * (y - y_mean)
+        for x, y in zip(xs, ys)
+    ) / denominator
     return max(-1.5, min(-0.05, slope)), "historical_log_log", len(pairs)
 
 
-def _closed_days(
-    operations: dict[str, Any],
+def _event_dates(
+    event: dict[str, Any],
     *,
     start: date,
     end: date,
 ) -> set[date]:
-    closed: set[date] = set()
-    events_by_type = operations.get("events_by_type") or {}
-    for event_type in ("MARKET_CLOSURE", "SHIPMENT_BLACKOUT", "HOLIDAY"):
-        for event in events_by_type.get(event_type, []):
-            event_start = date.fromisoformat(str(event["start_date"]))
-            event_end = date.fromisoformat(str(event["end_date"]))
-            cursor = max(event_start, start)
-            while cursor <= min(event_end, end):
-                closed.add(cursor)
-                cursor += timedelta(days=1)
-    return closed
+    event_start = date.fromisoformat(str(event["start_date"]))
+    event_end = date.fromisoformat(str(event["end_date"]))
+    cursor = max(event_start, start)
+    stop = min(event_end, end)
+    result: set[date] = set()
+    while cursor <= stop:
+        result.add(cursor)
+        cursor += timedelta(days=1)
+    return result
+
+
+def _calendar_day_sets(
+    operations: dict[str, Any],
+    *,
+    start: date,
+    end: date,
+) -> tuple[set[date], set[date], list[str]]:
+    """Separate market closure from one greenhouse's shipment blackout."""
+
+    market_closed: set[date] = set()
+    shipment_blackout: set[date] = set()
+    assumptions: list[str] = []
+    events = operations.get("events_by_type") or {}
+
+    for event in events.get("MARKET_CLOSURE", []):
+        market_closed.update(_event_dates(event, start=start, end=end))
+    for event in events.get("SHIPMENT_BLACKOUT", []):
+        shipment_blackout.update(_event_dates(event, start=start, end=end))
+
+    for event in events.get("HOLIDAY", []):
+        metadata = event.get("metadata") or {}
+        scope = str(metadata.get("scope") or "").strip().lower()
+        dates = _event_dates(event, start=start, end=end)
+        if _truthy(metadata.get("market_closed")) or scope in {
+            "market",
+            "wholesale_market",
+        }:
+            market_closed.update(dates)
+        elif _truthy(metadata.get("shipment_blackout")) or scope in {
+            "greenhouse",
+            "shipment",
+            "farm",
+        }:
+            shipment_blackout.update(dates)
+        else:
+            assumptions.append(
+                f"HOLIDAY {event.get('event_id')} was not treated as a market closure "
+                "because metadata.market_closed or metadata.scope=market was absent"
+            )
+    return market_closed, shipment_blackout, assumptions
+
+
+def _release_backlog(
+    pool: float,
+    stage: int,
+) -> tuple[float, float, int]:
+    if pool <= 0:
+        return 0.0, 0.0, 0
+    stage = max(0, min(stage, len(_RELEASE_WEIGHTS) - 1))
+    remaining_weight = sum(_RELEASE_WEIGHTS[stage:])
+    fraction = _RELEASE_WEIGHTS[stage] / max(remaining_weight, 1e-12)
+    release = pool * fraction
+    remaining = max(0.0, pool - release)
+    next_stage = stage + 1
+    if next_stage >= len(_RELEASE_WEIGHTS) or remaining <= 1e-6:
+        release += remaining
+        remaining = 0.0
+        next_stage = 0
+    return release, remaining, next_stage
 
 
 def estimate_supply_shock(
@@ -245,7 +355,8 @@ def estimate_supply_shock(
     horizon_days: int = 14,
     dashboard_market: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Estimate post-closure arrival concentration and bounded price pressure."""
+    """Estimate arrival concentration and bounded elasticity-based price pressure."""
+
     horizon_days = max(1, min(int(horizon_days), 31))
     forecast_end = forecast_start + timedelta(days=horizon_days - 1)
     rows = market_store.list(
@@ -259,7 +370,7 @@ def estimate_supply_shock(
         start=forecast_start - timedelta(days=7),
         end=forecast_end,
     )
-    closed = _closed_days(
+    market_closed, shipment_blackout, calendar_assumptions = _calendar_day_sets(
         operations,
         start=forecast_start - timedelta(days=7),
         end=forecast_end,
@@ -267,62 +378,120 @@ def estimate_supply_shock(
     elasticity, elasticity_source, elasticity_samples = _estimate_elasticity(rows)
 
     explicit_targets: dict[date, float] = {}
-    for event in (operations.get("events_by_type") or {}).get("SHIPMENT_TARGET", []):
+    for event in (operations.get("events_by_type") or {}).get(
+        "SHIPMENT_TARGET",
+        [],
+    ):
         amount = event.get("amount")
         unit = str(event.get("unit") or "").lower()
         if amount is None or unit not in {"kg", "kilogram", "kilograms"}:
             continue
         event_date = date.fromisoformat(str(event["start_date"]))
-        explicit_targets[event_date] = explicit_targets.get(event_date, 0.0) + float(amount)
+        explicit_targets[event_date] = (
+            explicit_targets.get(event_date, 0.0) + float(amount)
+        )
 
-    release_weights = (0.65, 0.25, 0.10)
-    backlog_pool = 0.0
+    market_backlog = 0.0
+    market_release_stage = 0
+    greenhouse_backlog = 0.0
+    greenhouse_release_stage = 0
     daily: list[dict[str, Any]] = []
-    prior_baseline_samples: list[int] = []
+    baseline_support_values: list[int] = []
+
     for offset in range(horizon_days):
         day = forecast_start + timedelta(days=offset)
-        baseline, sample_count = _weekday_baseline(rows, day)
-        prior_baseline_samples.append(sample_count)
+        baseline, support = _weekday_baseline(rows, day)
+        baseline_support_values.append(support)
         baseline_value = float(baseline or 0.0)
+        registered_shipment = explicit_targets.get(day, 0.0)
+        is_market_closed = day in market_closed
+        is_shipment_blackout = day in shipment_blackout
 
-        if day in closed:
-            # Observed arrivals that cannot clear on a closed day are carried into
-            # the next open sessions. The carryover is conservative rather than 100%.
-            backlog_pool += baseline_value * 0.82
+        if is_market_closed:
+            market_backlog += baseline_value * 0.82
+            greenhouse_backlog += registered_shipment
+            market_release_stage = 0
+            greenhouse_release_stage = 0
             daily.append(
                 {
                     "date": day.isoformat(),
                     "market_open": False,
+                    "market_closed": True,
+                    "shipment_blackout": is_shipment_blackout,
                     "baseline_arrival_kg": round(baseline_value, 3),
                     "expected_arrival_kg": 0.0,
                     "shock_ratio": 0.0,
                     "risk_level": "closed",
                     "price_pressure_pct": None,
                     "price_pressure_range_pct": None,
-                    "explicit_shipment_kg": round(explicit_targets.get(day, 0.0), 3),
+                    "explicit_shipment_kg": round(registered_shipment, 3),
+                    "deferred_registered_shipment_kg": round(
+                        registered_shipment,
+                        3,
+                    ),
                 }
             )
-            backlog_pool += explicit_targets.get(day, 0.0)
             continue
 
-        release = 0.0
-        if backlog_pool > 0:
-            release = backlog_pool * release_weights[0]
-            backlog_pool -= release
-        explicit = explicit_targets.get(day, 0.0)
-        expected = baseline_value + release + explicit
+        if is_shipment_blackout and registered_shipment > 0:
+            greenhouse_backlog += registered_shipment
+            greenhouse_release_stage = 0
+            explicit_today = 0.0
+        else:
+            explicit_today = registered_shipment
+
+        market_release, market_backlog, market_release_stage = _release_backlog(
+            market_backlog,
+            market_release_stage,
+        )
+        greenhouse_release = 0.0
+        if not is_shipment_blackout:
+            (
+                greenhouse_release,
+                greenhouse_backlog,
+                greenhouse_release_stage,
+            ) = _release_backlog(
+                greenhouse_backlog,
+                greenhouse_release_stage,
+            )
+
+        expected = (
+            baseline_value
+            + market_release
+            + greenhouse_release
+            + explicit_today
+        )
         shock_ratio = expected / baseline_value if baseline_value > 0 else 1.0
         log_change = math.log(max(shock_ratio, 1e-6))
         pressure = 100.0 * (math.exp(elasticity * log_change) - 1.0)
-        uncertainty = 4.0 if elasticity_source == "historical_log_log" else 9.0
+        base_uncertainty = (
+            4.0 if elasticity_source == "historical_log_log" else 9.0
+        )
+        support_penalty = max(0.0, 3 - support) * 1.5
+        uncertainty = base_uncertainty + support_penalty
+
         daily.append(
             {
                 "date": day.isoformat(),
                 "market_open": True,
+                "market_closed": False,
+                "shipment_blackout": is_shipment_blackout,
                 "baseline_arrival_kg": round(baseline_value, 3),
                 "expected_arrival_kg": round(expected, 3),
-                "released_backlog_kg": round(release, 3),
-                "explicit_shipment_kg": round(explicit, 3),
+                "released_market_backlog_kg": round(market_release, 3),
+                "released_greenhouse_backlog_kg": round(
+                    greenhouse_release,
+                    3,
+                ),
+                "released_backlog_kg": round(
+                    market_release + greenhouse_release,
+                    3,
+                ),
+                "explicit_shipment_kg": round(explicit_today, 3),
+                "deferred_registered_shipment_kg": round(
+                    registered_shipment - explicit_today,
+                    3,
+                ),
                 "shock_ratio": round(shock_ratio, 4),
                 "risk_level": _risk_level(shock_ratio),
                 "price_pressure_pct": round(pressure, 3),
@@ -334,15 +503,23 @@ def estimate_supply_shock(
         )
 
     open_days = [row for row in daily if row["market_open"]]
-    peak = max(open_days, key=lambda row: float(row["shock_ratio"]), default=None)
+    peak = max(
+        open_days,
+        key=lambda row: float(row["shock_ratio"]),
+        default=None,
+    )
     observation_count = len(rows)
-    baseline_support = max(prior_baseline_samples, default=0)
+    baseline_support = max(baseline_support_values, default=0)
     confidence = min(
         0.92,
         0.20
         + min(observation_count / 56.0, 0.35)
         + min(baseline_support / 12.0, 0.20)
-        + (0.12 if elasticity_source == "historical_log_log" else 0.0)
+        + (
+            0.12
+            if elasticity_source == "historical_log_log"
+            else 0.0
+        )
         + (0.05 if operations.get("revision", 0) > 0 else 0.0),
     )
     if observation_count == 0:
@@ -352,10 +529,9 @@ def estimate_supply_shock(
     else:
         status = "ready"
 
-    seasonal_context = dashboard_market or {}
     return {
         "status": status,
-        "model": "holiday-arrival-supply-shock.v1",
+        "model": "holiday-arrival-supply-shock.v2",
         "market_id": market_id,
         "crop": crop,
         "greenhouse_id": greenhouse_id,
@@ -369,14 +545,23 @@ def estimate_supply_shock(
         "elasticity_source": elasticity_source,
         "elasticity_sample_count": elasticity_samples,
         "operations_revision": operations.get("revision", 0),
+        "market_closed_dates": sorted(day.isoformat() for day in market_closed),
+        "shipment_blackout_dates": sorted(
+            day.isoformat() for day in shipment_blackout
+        ),
         "peak_shock": peak,
         "daily": daily,
         "confidence": round(confidence, 4),
-        "seasonal_market_context": seasonal_context,
+        "seasonal_market_context": dashboard_market or {},
         "assumptions": [
-            "closed-day arrivals carry over at 82 percent",
-            "backlog release is front-loaded over subsequent open sessions",
+            "market-wide baseline carryover is applied only to MARKET_CLOSURE "
+            "or explicitly market-scoped HOLIDAY events",
+            "a greenhouse SHIPMENT_BLACKOUT defers registered greenhouse "
+            "shipment targets but does not close the whole market",
+            "closed-market baseline carryover is bounded at 82 percent",
+            "backlog release follows explicit 65/25/10 percent open-session weights",
             "price pressure is an elasticity-based scenario, not a quoted market forecast",
             "explicit shipment targets are included only when registered in kilograms",
+            *calendar_assumptions,
         ],
     }

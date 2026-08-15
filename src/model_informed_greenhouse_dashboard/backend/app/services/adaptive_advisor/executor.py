@@ -5,14 +5,16 @@ from __future__ import annotations
 import asyncio
 import copy
 import time
+import threading
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from .answer_packet import build_answer_packet, render_answer_packet, select_primary_runtime
 from .change_detection import fingerprint_snapshot
+from .conversation_store import ConversationStore
 from .contracts import (
     AdaptiveAdvisorRequest,
     AdaptiveAdvisorResponse,
@@ -27,11 +29,13 @@ from .contracts import (
 )
 from .market_supply_shock import MarketObservationStore, estimate_supply_shock
 from .operations_calendar import OperationsCalendarStore
-from .planner import build_adaptive_plan
+from .planner import analysis_text_for_request, build_adaptive_plan
 from .quality import build_quality_profile
 from .quality_ledger import QualityLedger
 from .question_analysis import analyze_question
 from .response_review import review_response
+from .runtime_cache import RuntimeLaneCache
+from .snapshot_resolution import resolve_dashboard_snapshot
 from .telemetry_store import TelemetryStore
 from .temporal_compare import compare_temporal_windows
 
@@ -51,23 +55,40 @@ class AdaptiveAdvisorDependencies:
     telemetry_store: TelemetryStore
     market_store: MarketObservationStore
     quality_ledger: QualityLedger
+    conversation_store: ConversationStore = field(default_factory=ConversationStore)
+    lane_cache: RuntimeLaneCache = field(default_factory=RuntimeLaneCache)
+    node_timeouts: dict[AdaptiveNode, float] = field(default_factory=dict)
     clock: Callable[[], datetime] = lambda: datetime.now(UTC)
 
 
-def default_dependencies() -> AdaptiveAdvisorDependencies:
-    from ..advisor_context_builder import build_chat_advisor_context
-    from ..advisor_orchestration import build_advisor_tab_response
-    from .narrator import build_adaptive_narrative_response
+_DEFAULT_DEPENDENCIES: AdaptiveAdvisorDependencies | None = None
+_DEFAULT_DEPENDENCIES_LOCK = threading.Lock()
 
-    return AdaptiveAdvisorDependencies(
-        tab_builder=build_advisor_tab_response,
-        narrator_builder=build_adaptive_narrative_response,
-        retrieval_builder=build_chat_advisor_context,
-        calendar_store=OperationsCalendarStore(),
-        telemetry_store=TelemetryStore(),
-        market_store=MarketObservationStore(),
-        quality_ledger=QualityLedger(),
-    )
+
+def default_dependencies() -> AdaptiveAdvisorDependencies:
+    global _DEFAULT_DEPENDENCIES
+    if _DEFAULT_DEPENDENCIES is not None:
+        return _DEFAULT_DEPENDENCIES
+    with _DEFAULT_DEPENDENCIES_LOCK:
+        if _DEFAULT_DEPENDENCIES is not None:
+            return _DEFAULT_DEPENDENCIES
+
+        from ..advisor_context_builder import build_chat_advisor_context
+        from ..advisor_orchestration import build_advisor_tab_response
+        from .narrator import build_adaptive_narrative_response
+
+        _DEFAULT_DEPENDENCIES = AdaptiveAdvisorDependencies(
+            tab_builder=build_advisor_tab_response,
+            narrator_builder=build_adaptive_narrative_response,
+            retrieval_builder=build_chat_advisor_context,
+            calendar_store=OperationsCalendarStore(),
+            telemetry_store=TelemetryStore(),
+            market_store=MarketObservationStore(),
+            quality_ledger=QualityLedger(),
+            conversation_store=ConversationStore(),
+            lane_cache=RuntimeLaneCache(),
+        )
+        return _DEFAULT_DEPENDENCIES
 
 
 def _dict(value: Any) -> dict[str, Any]:
@@ -122,15 +143,28 @@ async def _run_traced(
     fn: Callable[[], Any],
     *,
     clock: Callable[[], datetime],
+    timeout_seconds: float | None,
 ) -> tuple[AdaptiveNode, Any, NodeTrace]:
     started_at = clock().astimezone(UTC)
     started_perf = time.perf_counter()
     status = NodeStatus.SUCCESS
     error = None
-    try:
+    timed_out = False
+
+    async def invoke() -> Any:
         value = fn()
         if asyncio.iscoroutine(value):
-            value = await value
+            return await value
+        return value
+
+    try:
+        if timeout_seconds is None:
+            value = await invoke()
+        else:
+            value = await asyncio.wait_for(
+                invoke(),
+                timeout=max(0.001, float(timeout_seconds)),
+            )
         marker = str(_dict(value).get("status") or "").lower()
         if marker in {
             "degraded",
@@ -141,10 +175,23 @@ async def _run_traced(
             "insufficient_data",
         }:
             status = NodeStatus.DEGRADED
+    except TimeoutError:
+        timed_out = True
+        status = NodeStatus.DEGRADED
+        error = (
+            f"TimeoutError: {node.value} exceeded "
+            f"{float(timeout_seconds or 0.0):g} seconds"
+        )
+        value = {
+            "status": "unavailable",
+            "error": error,
+            "timed_out": True,
+        }
     except Exception as exc:
         status = NodeStatus.FAILED
         error = f"{type(exc).__name__}: {exc}"
         value = {"status": "unavailable", "error": error}
+
     finished_at = clock().astimezone(UTC)
     summary, output_keys = _result_summary(value)
     return (
@@ -155,10 +202,15 @@ async def _run_traced(
             status=status,
             started_at=started_at,
             finished_at=finished_at,
-            duration_ms=round(max((time.perf_counter() - started_perf) * 1000, 0.0), 3),
+            duration_ms=round(
+                max((time.perf_counter() - started_perf) * 1000, 0.0),
+                3,
+            ),
             summary=summary,
             output_keys=output_keys,
             error=error,
+            timeout_seconds=timeout_seconds,
+            timed_out=timed_out,
         ),
     )
 
@@ -314,6 +366,12 @@ def _preliminary_status(
     )
     if present < 2:
         return AnswerStatus.NEEDS_DATA
+    resolution = _dict(request.dashboard.get("_adaptive_snapshot_resolution"))
+    snapshot_age = _float(resolution.get("snapshot_age_seconds"))
+    if snapshot_age is None or snapshot_age > 60 * 60:
+        return AnswerStatus.NEEDS_DATA
+    if snapshot_age > 15 * 60:
+        return AnswerStatus.MONITORING_FIRST
     if not admission.admitted:
         return AnswerStatus.CONDITIONAL
     required_nodes = set(request.requested_plan.nodes) if request.requested_plan else set()
@@ -427,27 +485,95 @@ def _enriched_messages(
     ]
 
 
+def _merge_messages(
+    stored: list[dict[str, str]],
+    supplied: list[dict[str, str]],
+    *,
+    limit: int = 20,
+) -> list[dict[str, str]]:
+    result: list[dict[str, str]] = []
+    for message in [*stored, *supplied]:
+        role = str(message.get("role") or "user")
+        content = str(message.get("content") or "").strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        normalized = {"role": role, "content": content}
+        if result and result[-1] == normalized:
+            continue
+        result.append(normalized)
+    return result[-max(1, min(limit, 40)):]
+
+
 async def execute_adaptive_advisor(
     request: AdaptiveAdvisorRequest,
     *,
     deps: AdaptiveAdvisorDependencies | None = None,
 ) -> AdaptiveAdvisorResponse:
     deps = deps or default_dependencies()
-    plan = build_adaptive_plan(request)
     greenhouse_id = request.greenhouse_id or request.crop
-    frozen_dashboard = copy.deepcopy(request.dashboard)
-    snapshot_fingerprint = fingerprint_snapshot(frozen_dashboard)
     run_id = str(uuid.uuid4())
+    execution_now = deps.clock().astimezone(UTC)
+    thread_id = deps.conversation_store.ensure_thread(
+        request.thread_id,
+        crop=request.crop,
+        greenhouse_id=greenhouse_id,
+        now=execution_now,
+    )
+    stored_messages = (
+        deps.conversation_store.history(thread_id, limit=16)
+        if request.use_thread_context
+        else []
+    )
+    merged_messages = _merge_messages(stored_messages, request.messages)
+    original_dashboard = copy.deepcopy(request.dashboard)
+    browser_current = _dict(
+        original_dashboard.get("currentData") or original_dashboard.get("data")
+    )
+    server_latest = deps.telemetry_store.latest(
+        crop=request.crop,
+        greenhouse_id=greenhouse_id,
+    )
+    resolved_dashboard, snapshot_resolution = resolve_dashboard_snapshot(
+        original_dashboard,
+        server_latest,
+        now=execution_now,
+    )
+    request = request.model_copy(
+        update={
+            "greenhouse_id": greenhouse_id,
+            "thread_id": thread_id,
+            "messages": merged_messages,
+            "dashboard": resolved_dashboard,
+        }
+    )
+    plan = build_adaptive_plan(request)
+    frozen_dashboard = copy.deepcopy(resolved_dashboard)
+    fingerprint_dashboard = copy.deepcopy(resolved_dashboard)
+    fingerprint_dashboard.pop("_adaptive_snapshot_resolution", None)
+    snapshot_fingerprint = fingerprint_snapshot(fingerprint_dashboard)
     outputs: dict[str, Any] = {}
     trace_by_node: dict[AdaptiveNode, NodeTrace] = {}
+    analysis_text = analysis_text_for_request(request)
     facets = analyze_question(
-        request.question,
+        analysis_text,
         crop=request.crop,
         language=request.language,
     )
 
     async def record(node: AdaptiveNode, fn: Callable[[], Any]) -> Any:
-        result_node, value, trace = await _run_traced(node, fn, clock=deps.clock)
+        timeout_seconds = deps.node_timeouts.get(node)
+        if timeout_seconds is None:
+            timeout_seconds = (
+                plan.narration_timeout_seconds
+                if node is AdaptiveNode.NARRATE
+                else plan.node_timeout_seconds
+            )
+        result_node, value, trace = await _run_traced(
+            node,
+            fn,
+            clock=deps.clock,
+            timeout_seconds=timeout_seconds,
+        )
         outputs[result_node.value] = value
         trace_by_node[result_node] = trace
         return value
@@ -468,9 +594,12 @@ async def execute_adaptive_advisor(
 
     def persist_live() -> dict[str, Any]:
         persisted = None
-        if current_data:
+        if (
+            browser_current
+            and snapshot_resolution.get("browser_current_should_persist")
+        ):
             persisted = deps.telemetry_store.append(
-                current_data,
+                browser_current,
                 crop=request.crop,
                 greenhouse_id=greenhouse_id,
                 source="adaptive_request",
@@ -529,12 +658,33 @@ async def execute_adaptive_advisor(
             AdaptiveNode.WORK_PLANNING: "work",
             AdaptiveNode.HARVEST_MARKET_ANALYSIS: "harvest_market",
         }[node]
-        return lambda: deps.tab_builder(
-            tab_name=tab_name,
-            crop=request.crop,
-            greenhouse_id=greenhouse_id,
-            dashboard=frozen_dashboard,
-        )
+        def cached_tab_lane() -> dict[str, Any]:
+            cache_key = "|".join(
+                [
+                    "adaptive-tab-v1",
+                    snapshot_fingerprint,
+                    request.crop,
+                    greenhouse_id,
+                    node.value,
+                ]
+            )
+            value, cache_hit = deps.lane_cache.get_or_compute(
+                cache_key,
+                lambda: deps.tab_builder(
+                    tab_name=tab_name,
+                    crop=request.crop,
+                    greenhouse_id=greenhouse_id,
+                    dashboard=frozen_dashboard,
+                ),
+            )
+            payload = copy.deepcopy(_dict(value))
+            payload["_adaptive_cache"] = {
+                "hit": cache_hit,
+                "key": cache_key,
+            }
+            return payload
+
+        return cached_tab_lane
 
     async def run_parallel(node: AdaptiveNode) -> None:
         async with semaphore:
@@ -706,6 +856,7 @@ async def execute_adaptive_advisor(
     )
     response = AdaptiveAdvisorResponse(
         run_id=run_id,
+        thread_id=thread_id,
         status=status,
         crop=request.crop,
         greenhouse_id=greenhouse_id,
@@ -722,7 +873,15 @@ async def execute_adaptive_advisor(
             "node_outputs": outputs,
             "question_facets": facets,
             "history_authority": "server_timeseries",
-            "market_model": "holiday-arrival-supply-shock.v1",
+            "market_model": "holiday-arrival-supply-shock.v2",
+            "snapshot_resolution": snapshot_resolution,
+            "runtime_lane_cache": deps.lane_cache.describe(),
+            "conversation": {
+                "thread_id": thread_id,
+                "loaded_message_count": len(stored_messages),
+                "merged_message_count": len(merged_messages),
+                "context_used": analysis_text != request.question,
+            },
             "fixed_tail": [
                 AdaptiveNode.CONSTRAINT_GATE.value,
                 AdaptiveNode.ANSWER_ADMISSION.value,
@@ -741,6 +900,21 @@ async def execute_adaptive_advisor(
         deps.quality_ledger.record_run(response.model_dump(mode="json"))
     except Exception as exc:
         response.machine_payload["quality_ledger_warning"] = (
+            f"{type(exc).__name__}: {exc}"
+        )
+    try:
+        conversation_receipt = deps.conversation_store.append_exchange(
+            thread_id=thread_id,
+            run_id=run_id,
+            user_text=request.question,
+            assistant_text=response.text,
+            created_at=deps.clock(),
+        )
+        response.machine_payload["conversation"]["persisted"] = True
+        response.machine_payload["conversation"]["receipt"] = conversation_receipt
+    except Exception as exc:
+        response.machine_payload["conversation"]["persisted"] = False
+        response.machine_payload["conversation_warning"] = (
             f"{type(exc).__name__}: {exc}"
         )
     return response

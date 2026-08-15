@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -20,6 +21,7 @@ from .contracts import (
     OperationsCalendarWrite,
     TelemetryIngestRequest,
 )
+from .conversation_store import ConversationStore, ConversationThreadConflict
 from .executor import execute_adaptive_advisor
 from .market_supply_shock import MarketObservationStore, estimate_supply_shock
 from .operations_calendar import CalendarRevisionConflict, OperationsCalendarStore
@@ -29,24 +31,29 @@ from .routing_regression import evaluate_routing_regression
 from .telemetry_store import TelemetryStore
 
 
+SEOUL = ZoneInfo("Asia/Seoul")
 router = APIRouter(prefix="/api/advisor/adaptive", tags=["adaptive-advisor"])
 _calendar_store = OperationsCalendarStore()
 _telemetry_store = TelemetryStore()
 _market_store = MarketObservationStore()
 _quality_ledger = QualityLedger()
+_conversation_store = ConversationStore()
 
 
 @router.get("/health")
 async def adaptive_advisor_health() -> dict:
     return {
         "status": "ready",
-        "schema_version": "adaptive-advisor-response.v2",
+        "schema_version": "adaptive-advisor-response.v3",
         "runtime": "bounded-run-specific-graph",
         "history_authority": _telemetry_store.describe(),
+        "conversation_store": _conversation_store.describe(),
         "market_observations": _market_store.describe(),
         "quality_ledger": _quality_ledger.summary(),
         "market_model": "holiday-arrival-supply-shock.v1",
-        "routing_regression": "offline-routing-ridge.v1",
+        "routing_regression": "offline-routing-ridge.v2",
+        "numeric_gate": "unit-aware-curated-claims.v1",
+        "snapshot_resolution": "server-aware-current-state.v1",
     }
 
 
@@ -59,6 +66,8 @@ async def plan_adaptive_advisor(request: AdaptiveAdvisorRequest) -> AdaptiveGrap
 async def run_adaptive_advisor(request: AdaptiveAdvisorRequest) -> AdaptiveAdvisorResponse:
     try:
         return await execute_adaptive_advisor(request)
+    except ConversationThreadConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -157,6 +166,20 @@ async def compare_server_same_time(
     )
 
 
+@router.get("/threads/{thread_id}")
+async def get_adaptive_thread(
+    thread_id: str,
+    limit: int = Query(default=20, ge=1, le=40),
+) -> dict:
+    try:
+        payload = _conversation_store.get_thread(thread_id, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if payload is None:
+        raise HTTPException(status_code=404, detail=f"unknown thread_id: {thread_id}")
+    return payload
+
+
 @router.post("/market/observations")
 async def ingest_market_observations(request: MarketObservationBatch) -> dict:
     return {
@@ -180,7 +203,7 @@ async def get_market_supply_shock(
         market_id=market_id,
         crop=crop,
         greenhouse_id=greenhouse_id,
-        forecast_start=forecast_start or date.today(),
+        forecast_start=forecast_start or datetime.now(SEOUL).date(),
         horizon_days=horizon_days,
     )
 
@@ -204,6 +227,13 @@ async def submit_advisor_outcome(outcome: AdvisorOutcome) -> dict:
 @router.get("/quality-summary")
 async def adaptive_quality_summary() -> dict:
     return _quality_ledger.summary()
+
+
+@router.get("/quality-calibration")
+async def adaptive_quality_calibration(
+    minimum_examples: int = Query(default=10, ge=5, le=1000),
+) -> dict:
+    return _quality_ledger.calibration(minimum_examples=minimum_examples)
 
 
 @router.get("/runs/{run_id}")

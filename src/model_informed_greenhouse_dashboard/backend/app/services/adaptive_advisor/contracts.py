@@ -103,13 +103,15 @@ class AdaptiveGraphPlan(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["adaptive-advisor-plan.v2"] = "adaptive-advisor-plan.v2"
+    schema_version: Literal["adaptive-advisor-plan.v3"] = "adaptive-advisor-plan.v3"
     intent: AdvisorIntent
     nodes: list[AdaptiveNode] = Field(min_length=6, max_length=24)
     controls: list[AllowedControl] = Field(default_factory=list, max_length=5)
     horizons_hours: list[AllowedHorizon] = Field(default_factory=list, max_length=4)
     max_parallel_nodes: int = Field(default=5, ge=1, le=8)
     max_model_evaluations: int = Field(default=8, ge=0, le=24)
+    node_timeout_seconds: float = Field(default=12.0, ge=0.05, le=120.0)
+    narration_timeout_seconds: float = Field(default=20.0, ge=0.05, le=180.0)
     include_narrative: bool = True
     reasons: list[str] = Field(default_factory=list, max_length=20)
 
@@ -176,6 +178,13 @@ class AdaptiveAdvisorRequest(BaseModel):
     dashboard: dict[str, Any] = Field(default_factory=dict)
     language: Literal["ko", "en"] = "ko"
     include_narrative: bool = True
+    thread_id: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=96,
+        pattern=r"^[A-Za-z0-9._:-]+$",
+    )
+    use_thread_context: bool = True
     requested_plan: AdaptiveGraphPlan | None = None
 
 
@@ -234,6 +243,8 @@ class NodeTrace(BaseModel):
     summary: str
     output_keys: list[str] = Field(default_factory=list)
     error: str | None = None
+    timeout_seconds: float | None = Field(default=None, ge=0)
+    timed_out: bool = False
 
 
 class ConstraintGateResult(BaseModel):
@@ -260,6 +271,9 @@ class DataQuality(BaseModel):
     inferred_fields: list[str] = Field(default_factory=list)
     observed_signal_score: float | None = Field(default=None, ge=0, le=1)
     latest_observation_at: datetime | None = None
+    snapshot_source: str = "unavailable"
+    snapshot_age_seconds: float | None = Field(default=None, ge=0)
+    server_filled_fields: list[str] = Field(default_factory=list)
 
 
 class ModelQuality(BaseModel):
@@ -308,7 +322,7 @@ class HorizonQuality(BaseModel):
 
 
 class AdvisorQualityProfile(BaseModel):
-    schema_version: Literal["advisor-quality-profile.v2"] = "advisor-quality-profile.v2"
+    schema_version: Literal["advisor-quality-profile.v3"] = "advisor-quality-profile.v3"
     capability: AnswerCapability
     answer_status: AnswerStatus
     score: float = Field(ge=0, le=1)
@@ -340,8 +354,20 @@ class AnswerAction(BaseModel):
     control: AllowedControl | None = None
 
 
+class AuthorizedNumericClaim(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    claim_id: str = Field(min_length=8, max_length=64)
+    value: float
+    unit: str = Field(min_length=1, max_length=64)
+    semantic: str = Field(min_length=1, max_length=160)
+    source_path: str = Field(min_length=1, max_length=240)
+    tolerance: float = Field(default=1e-9, ge=0)
+    renderings: list[str] = Field(default_factory=list, max_length=20)
+
+
 class AdaptiveAnswerPacket(BaseModel):
-    schema_version: Literal["adaptive-answer-packet.v3"] = "adaptive-answer-packet.v3"
+    schema_version: Literal["adaptive-answer-packet.v4"] = "adaptive-answer-packet.v4"
     question: str
     intent: AdvisorIntent
     answer_status: AnswerStatus
@@ -351,6 +377,10 @@ class AdaptiveAnswerPacket(BaseModel):
     actions: list[AnswerAction] = Field(default_factory=list)
     uncertainties: list[str] = Field(default_factory=list)
     authorized_numbers: list[str] = Field(default_factory=list)
+    authorized_numeric_claims: list[AuthorizedNumericClaim] = Field(
+        default_factory=list,
+        max_length=500,
+    )
     temporal_context: dict[str, Any] = Field(default_factory=dict)
     model_context: dict[str, Any] = Field(default_factory=dict)
     weather_context: dict[str, Any] = Field(default_factory=dict)
@@ -441,8 +471,9 @@ class AdvisorOutcome(BaseModel):
 
 
 class AdaptiveAdvisorResponse(BaseModel):
-    schema_version: Literal["adaptive-advisor-response.v2"] = "adaptive-advisor-response.v2"
+    schema_version: Literal["adaptive-advisor-response.v3"] = "adaptive-advisor-response.v3"
     run_id: str
+    thread_id: str
     status: Literal["success", "degraded", "refused"]
     crop: Literal["tomato", "cucumber"]
     greenhouse_id: str

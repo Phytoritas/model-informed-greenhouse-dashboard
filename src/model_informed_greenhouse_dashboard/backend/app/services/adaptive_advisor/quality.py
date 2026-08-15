@@ -150,19 +150,20 @@ def _capability(
         and AdaptiveNode.BOUNDED_SCENARIO in nodes
         and AdaptiveNode.OPERATIONS_CALENDAR in nodes
         and AdaptiveNode.MARKET_OUTLOOK in nodes
-        and context.operations in {ContextStatus.READY, ContextStatus.PARTIAL}
-        and context.market in {ContextStatus.READY, ContextStatus.PARTIAL}
-        and model_applicability >= 0.45
-        and constraint_status is not ConstraintStatus.FAIL
+        and context.operations is ContextStatus.READY
+        and context.market is ContextStatus.READY
+        and model_applicability >= 0.55
+        and constraint_status is ConstraintStatus.PASS
     ):
         return AnswerCapability.CONSTRAINED_OPTIMIZATION
     if (
         AdaptiveNode.OPERATIONS_CALENDAR in nodes
         and AdaptiveNode.BOUNDED_SCENARIO in nodes
-        and model_applicability >= 0.35
+        and model_applicability >= 0.45
+        and constraint_status is not ConstraintStatus.FAIL
     ):
         return AnswerCapability.OPERATIONAL_PLAN
-    if AdaptiveNode.BOUNDED_SCENARIO in nodes and model_applicability >= 0.35:
+    if AdaptiveNode.BOUNDED_SCENARIO in nodes and model_applicability >= 0.45:
         return AnswerCapability.MODEL_WHAT_IF
     if AdaptiveNode.HISTORY_COMPARE in nodes or AdaptiveNode.PHYSIOLOGY_DIAGNOSIS in nodes:
         return AnswerCapability.DIAGNOSTIC
@@ -184,6 +185,13 @@ def build_quality_profile(
     latest = _latest_observation(dashboard, outputs)
     freshness = _freshness(latest, now)
     current_coverage, history_coverage, missing_fields = _coverage(dashboard, outputs)
+    snapshot_resolution = _dict(
+        dashboard.get("_adaptive_snapshot_resolution")
+    )
+
+    if snapshot_resolution.get("primary_source") in {"unavailable", "server_stale"}:
+        current_coverage = 0.0
+        missing_fields.append("currentData.fresh")
 
     runtime = select_primary_runtime(outputs, plan=plan)
     runtime_status = str(runtime.get("status") or "").lower()
@@ -247,13 +255,22 @@ def build_quality_profile(
 
     unavailable_required = any(
         status is ContextStatus.UNAVAILABLE
-        for status in (context.weather, context.operations, context.market)
+        for status in (
+            context.expert_knowledge,
+            context.weather,
+            context.operations,
+            context.market,
+        )
         if status is not ContextStatus.NOT_REQUESTED
     )
     if constraint_gate.status is ConstraintStatus.FAIL:
         answer_status = AnswerStatus.REFUSED
+    elif snapshot_resolution.get("primary_source") in {"unavailable", "server_stale"}:
+        answer_status = AnswerStatus.NEEDS_DATA
     elif current_coverage < 0.4:
         answer_status = AnswerStatus.NEEDS_DATA
+    elif freshness < 0.3:
+        answer_status = AnswerStatus.MONITORING_FIRST
     elif runtime_status in {"monitoring-first", "unavailable"}:
         answer_status = AnswerStatus.MONITORING_FIRST
     elif unavailable_required or not admission.admitted or response_review.coverage < 0.8:
@@ -269,15 +286,22 @@ def build_quality_profile(
         ContextStatus.UNAVAILABLE: 0.0,
         ContextStatus.NOT_REQUESTED: 1.0,
     }
-    context_score = sum(
-        context_score_map[value]
+    requested_context_values = [
+        value
         for value in (
             context.expert_knowledge,
             context.weather,
             context.operations,
             context.market,
         )
-    ) / 4
+        if value is not ContextStatus.NOT_REQUESTED
+    ]
+    context_score = (
+        sum(context_score_map[value] for value in requested_context_values)
+        / len(requested_context_values)
+        if requested_context_values
+        else 1.0
+    )
     constraint_score = {
         ConstraintStatus.PASS: 1.0,
         ConstraintStatus.WARNING: 0.65,
@@ -341,6 +365,11 @@ def build_quality_profile(
         triggers.append("forecast_signature_change")
     if missing_fields:
         triggers.append("missing_data_recovered")
+    if snapshot_resolution.get("primary_source") in {
+        "server_stale",
+        "unavailable",
+    }:
+        triggers.append("fresh_server_snapshot")
 
     return AdvisorQualityProfile(
         capability=capability,
@@ -355,6 +384,16 @@ def build_quality_profile(
             inferred_fields=inferred_fields,
             observed_signal_score=round(observed_signal_score, 4),
             latest_observation_at=latest,
+            snapshot_source=str(
+                snapshot_resolution.get("primary_source") or "unavailable"
+            ),
+            snapshot_age_seconds=_float(
+                snapshot_resolution.get("snapshot_age_seconds")
+            ),
+            server_filled_fields=[
+                str(item)
+                for item in _list(snapshot_resolution.get("filled_fields"))
+            ],
         ),
         model=ModelQuality(
             applicability=round(model_applicability, 4),

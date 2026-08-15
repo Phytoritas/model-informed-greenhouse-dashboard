@@ -70,10 +70,14 @@ export default function AdaptiveAdvisorWorkbench({
 
   const dashboard = useMemo(() => {
     const timestamp = typeof currentData.timestamp === 'number'
+      && Number.isFinite(currentData.timestamp)
       ? new Date(currentData.timestamp).toISOString()
-      : new Date().toISOString();
+      : undefined;
+    const resolvedCurrentData = timestamp
+      ? { ...currentData, datetime: timestamp }
+      : { ...currentData };
     return {
-      currentData: { ...currentData, datetime: timestamp },
+      currentData: resolvedCurrentData,
       // This history is only a request-local fallback. The adaptive backend first
       // queries its server-owned telemetry store for the previous-day baseline.
       history: buildAdaptiveHistoryPayload(currentData, history),
@@ -129,7 +133,7 @@ export default function AdaptiveAdvisorWorkbench({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-accent-blue)]">
-            Adaptive Advisor Graph v3
+            Adaptive Advisor Graph v4
           </p>
           <h2 className="mt-1 text-xl font-bold text-[color:var(--sg-text-strong)]">
             {locale === 'ko'
@@ -203,7 +207,11 @@ export default function AdaptiveAdvisorWorkbench({
                   {result.plan.intent}
                 </span>
                 <span className="rounded-full bg-[color:var(--sg-accent-blue-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--sg-accent-blue)]">
-                  {locale === 'ko' ? '서버 시계열 우선' : 'Server history first'}
+                  {result.quality_profile.data.snapshot_source === 'server'
+                    ? (locale === 'ko' ? '서버 현재값' : 'Server current state')
+                    : result.quality_profile.data.snapshot_source === 'browser'
+                      ? (locale === 'ko' ? '브라우저 현재값' : 'Browser current state')
+                      : (locale === 'ko' ? '혼합·제한 상태' : 'Merged or limited state')}
                 </span>
               </div>
             </div>

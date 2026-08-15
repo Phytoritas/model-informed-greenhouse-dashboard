@@ -4,7 +4,7 @@ import AdvisorQualityProfilePanel from './AdvisorQualityProfilePanel';
 import type { AdaptiveQualityProfile } from '../../hooks/useAdaptiveAdvisor';
 
 const profile: AdaptiveQualityProfile = {
-  schema_version: 'advisor-quality-profile.v2',
+  schema_version: 'advisor-quality-profile.v3',
   capability: 'CONSTRAINED_OPTIMIZATION',
   answer_status: 'CONDITIONAL',
   score: 0.74,

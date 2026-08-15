@@ -1,98 +1,112 @@
-"""Post-render response validation and deterministic repair."""
+"""Post-render semantic validation, unit-aware numeric checks, and repair."""
 
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Iterable
 
 from .answer_packet import render_answer_packet
 from .contracts import AdaptiveAnswerPacket, AdvisorIntent, ResponseReview
-
-
-_NUMBER_RE = re.compile(r"(?<![\w])[-+]?\d+(?:\.\d+)?(?:%|℃|°C|ppm|h|kg|원)?")
-_ACTION_TERMS = (
-    "조치",
-    "설정",
-    "유지",
-    "낮추",
-    "높이",
-    "확인",
-    "monitor",
-    "set",
-    "lower",
-    "raise",
-    "hold",
+from .numeric_claims import (
+    extract_numeric_mentions,
+    numeric_mention_is_authorized,
 )
+
+
+_WORD_RE = re.compile(r"[A-Za-z]{3,}|[가-힣]{2,}")
+_TIME_RE = re.compile(
+    r"(지금|오늘(?:\s*밤)?|내일|이번\s*주|다음\s*주|"
+    r"\d+(?:\.\d+)?\s*(?:시간|일|h|hours?|days?)|"
+    r"now|today|tonight|tomorrow|this\s+week|next\s+week)",
+    re.IGNORECASE,
+)
+_STOPWORDS = {
+    "입니다",
+    "합니다",
+    "하세요",
+    "가능성",
+    "현재",
+    "답변",
+    "조건부",
+    "because",
+    "possible",
+    "current",
+    "answer",
+    "should",
+}
 _CAUSE_TERMS = (
     "원인",
     "때문",
-    "가능성",
     "제한",
+    "영향",
     "driver",
     "because",
     "limitation",
+    "caused",
 )
 _UNCERTAINTY_TERMS = (
     "한계",
     "조건부",
     "확인되지",
-    "자료가",
+    "자료가 부족",
     "불확실",
+    "추가 측정",
     "limit",
     "conditional",
     "uncertain",
     "missing",
+    "insufficient",
 )
-_TIME_TERMS = (
-    "지금",
-    "오늘",
-    "다음",
-    "시간",
-    "일",
-    "now",
-    "today",
-    "next",
-    "hour",
-    "day",
+_MARKET_TERMS = (
+    "시장",
+    "가격",
+    "반입",
+    "출하",
+    "market",
+    "price",
+    "arrival",
+    "shipment",
 )
 
 
-def _normalize_numeric_token(value: str) -> str:
-    return (
-        value.replace("℃", "")
-        .replace("°C", "")
-        .replace("ppm", "")
-        .replace("kg", "")
-        .replace("원", "")
-        .replace("h", "")
-        .replace("%", "")
-        .strip()
-    )
+def _tokens(text: str) -> set[str]:
+    return {
+        token.lower()
+        for token in _WORD_RE.findall(str(text))
+        if token.lower() not in _STOPWORDS
+    }
+
+
+def _anchor_overlap(text: str, anchors: Iterable[str], *, minimum: int) -> bool:
+    text_tokens = _tokens(text)
+    for anchor in anchors:
+        anchor_tokens = _tokens(anchor)
+        if len(text_tokens.intersection(anchor_tokens)) >= min(
+            minimum,
+            max(len(anchor_tokens), 1),
+        ):
+            return True
+    return False
 
 
 def _authorized_numeric_claims(
     text: str,
     packet: AdaptiveAnswerPacket,
 ) -> list[str]:
-    authorized = set(packet.authorized_numbers)
     unsupported: list[str] = []
-    for token in _NUMBER_RE.findall(text):
-        normalized = _normalize_numeric_token(token)
-        try:
-            numeric = float(normalized)
-        except ValueError:
-            continue
-        candidates = {
-            f"{numeric:g}",
-            f"{numeric:.1f}",
-            f"{numeric:.2f}",
-        }
-        if not candidates.intersection(authorized):
-            unsupported.append(token)
+    for mention in extract_numeric_mentions(text):
+        if not numeric_mention_is_authorized(
+            mention,
+            packet.authorized_numeric_claims,
+        ):
+            unsupported.append(str(mention["token"]))
     return list(dict.fromkeys(unsupported))
 
 
-def _required_elements(intent: AdvisorIntent, packet: AdaptiveAnswerPacket) -> list[str]:
+def _required_elements(
+    intent: AdvisorIntent,
+    packet: AdaptiveAnswerPacket,
+) -> list[str]:
     required = ["direct_answer", "uncertainty"]
     if intent in {AdvisorIntent.DIAGNOSE, AdvisorIntent.WHAT_IF}:
         required.append("explanation")
@@ -109,17 +123,51 @@ def _present_elements(
 ) -> list[str]:
     lower = text.lower()
     present = ["direct_answer"] if text.strip() else []
-    if packet.causal_drivers and any(term in lower for term in _CAUSE_TERMS):
-        present.append("explanation")
-    if packet.actions and any(term in lower for term in _ACTION_TERMS):
-        present.append("action")
-    if packet.actions and any(term in lower for term in _TIME_TERMS):
-        present.append("time_window")
-    if packet.uncertainties and any(term in lower for term in _UNCERTAINTY_TERMS):
-        present.append("uncertainty")
-    if packet.market_context and any(
-        term in lower for term in ("시장", "가격", "반입", "market", "price", "arrival")
+
+    driver_anchors = [
+        driver.label
+        for driver in packet.causal_drivers
+        if driver.label.strip()
+    ]
+    driver_anchors.extend(
+        observation
+        for driver in packet.causal_drivers
+        for observation in driver.observations
+        if observation.strip()
+    )
+    if packet.causal_drivers and (
+        _anchor_overlap(text, driver_anchors, minimum=1)
+        and any(term in lower for term in _CAUSE_TERMS)
     ):
+        present.append("explanation")
+
+    action_anchors = [
+        value
+        for action in packet.actions
+        for value in (action.title, action.operator, action.expected_effect)
+        if value.strip()
+    ]
+    if packet.actions and _anchor_overlap(text, action_anchors, minimum=2):
+        present.append("action")
+
+    time_anchors = [
+        action.time_window
+        for action in packet.actions
+        if action.time_window.strip()
+    ]
+    if packet.actions and (
+        any(anchor.lower() in lower for anchor in time_anchors)
+        or _TIME_RE.search(text)
+    ):
+        present.append("time_window")
+
+    if packet.uncertainties and (
+        _anchor_overlap(text, packet.uncertainties, minimum=2)
+        or any(term in lower for term in _UNCERTAINTY_TERMS)
+    ):
+        present.append("uncertainty")
+
+    if packet.market_context and any(term in lower for term in _MARKET_TERMS):
         present.append("market_context")
     return list(dict.fromkeys(present))
 
@@ -177,14 +225,20 @@ def _content_scores(
     if not packet.uncertainties:
         uncertainty = 0.25
 
-    coverage = len(set(required).intersection(present)) / max(len(required), 1)
-    if coverage < 1:
+    required_set = set(required)
+    coverage = len(required_set.intersection(present)) / max(len(required_set), 1)
+    missing = sorted(required_set.difference(present))
+    if missing:
         gaps.append("response_element_missing")
+        gaps.extend(f"missing_response_element:{name}" for name in missing)
     return (
         {
             "diagnostic_depth": round(diagnostic_depth, 4),
             "actionability": round(actionability, 4),
-            "temporal_alignment": round(max(0.0, min(1.0, temporal_alignment)), 4),
+            "temporal_alignment": round(
+                max(0.0, min(1.0, temporal_alignment)),
+                4,
+            ),
             "cross_domain_synthesis": round(cross_domain, 4),
             "numerical_integrity": round(numerical, 4),
             "uncertainty_honesty": round(uncertainty, 4),
@@ -213,12 +267,17 @@ def review_response(
         unsupported=unsupported,
     )
     coverage = scores["coverage"]
-    accepted = bool(text.strip()) and coverage >= 0.8 and not unsupported
+    max_chars = 1800 if language == "ko" else 2200
+    too_verbose = len(text.strip()) > max_chars
+    accepted = bool(text.strip()) and coverage >= 1.0 and not unsupported and not too_verbose
     reasons: list[str] = []
-    if coverage < 0.8:
+    if coverage < 1.0:
         reasons.append("response_element_missing")
     if unsupported:
         reasons.append("unsupported_numeric_claim")
+    if too_verbose:
+        reasons.append("response_too_verbose")
+        gaps.append("response_too_verbose")
     if not text.strip():
         reasons.append("empty_response")
 
@@ -233,8 +292,12 @@ def review_response(
             fallback_used=False,
             source=source,
             reasons=[],
-            content_scores={key: value for key, value in scores.items() if key != "coverage"},
-            quality_gaps=gaps,
+            content_scores={
+                key: value
+                for key, value in scores.items()
+                if key != "coverage"
+            },
+            quality_gaps=list(dict.fromkeys(gaps)),
         )
 
     deterministic_present = _present_elements(deterministic, packet)
@@ -252,10 +315,24 @@ def review_response(
         present_elements=deterministic_present,
         unsupported_numeric_claims=unsupported,
         fallback_used=narrative_attempted,
-        source="deterministic_fallback" if narrative_attempted else "deterministic_only",
-        reasons=reasons,
+        source=(
+            "deterministic_fallback"
+            if narrative_attempted
+            else "deterministic_only"
+        ),
+        reasons=list(dict.fromkeys(reasons)),
         content_scores={
-            key: value for key, value in deterministic_scores.items() if key != "coverage"
+            key: value
+            for key, value in deterministic_scores.items()
+            if key != "coverage"
         },
-        quality_gaps=list(dict.fromkeys([*gaps, *deterministic_gaps, *reasons])),
+        quality_gaps=list(
+            dict.fromkeys(
+                [
+                    *gaps,
+                    *deterministic_gaps,
+                    *reasons,
+                ]
+            )
+        ),
     )

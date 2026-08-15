@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { API_URL } from '../config';
 
 export type AdaptiveNodeName =
@@ -23,7 +23,7 @@ export type AdaptiveNodeName =
   | 'quality_gate';
 
 export type AdaptiveQualityProfile = {
-  schema_version: 'advisor-quality-profile.v2';
+  schema_version: 'advisor-quality-profile.v3';
   capability:
     | 'LIVE_STATUS'
     | 'DIAGNOSTIC'
@@ -46,6 +46,9 @@ export type AdaptiveQualityProfile = {
     inferred_fields: string[];
     observed_signal_score?: number | null;
     latest_observation_at?: string | null;
+    snapshot_source?: string;
+    snapshot_age_seconds?: number | null;
+    server_filled_fields?: string[];
   };
   model: {
     applicability: number;
@@ -92,19 +95,22 @@ export type AdaptiveQualityProfile = {
 };
 
 export type AdaptiveAdvisorResult = {
-  schema_version: 'adaptive-advisor-response.v2';
+  schema_version: 'adaptive-advisor-response.v3';
   run_id: string;
+  thread_id: string;
   status: 'success' | 'degraded' | 'refused';
   crop: 'tomato' | 'cucumber';
   greenhouse_id: string;
   question: string;
   snapshot_fingerprint: string;
   plan: {
-    schema_version: 'adaptive-advisor-plan.v2';
+    schema_version: 'adaptive-advisor-plan.v3';
     intent: 'STATUS' | 'DIAGNOSE' | 'WHAT_IF' | 'PLAN' | 'OPTIMIZE';
     nodes: AdaptiveNodeName[];
     controls: string[];
     horizons_hours: number[];
+    node_timeout_seconds: number;
+    narration_timeout_seconds: number;
     reasons: string[];
   };
   trace: Array<{
@@ -113,6 +119,8 @@ export type AdaptiveAdvisorResult = {
     duration_ms: number;
     summary: string;
     error?: string | null;
+    timeout_seconds?: number | null;
+    timed_out?: boolean;
   }>;
   quality_profile: AdaptiveQualityProfile;
   constraint_gate: {
@@ -128,6 +136,7 @@ export type AdaptiveAdvisorResult = {
     reasons: string[];
   };
   answer_packet: {
+    schema_version: 'adaptive-answer-packet.v4';
     causal_drivers: Array<{
       code: string;
       label: string;
@@ -144,11 +153,28 @@ export type AdaptiveAdvisorResult = {
     }>;
     uncertainties: string[];
     market_context: Record<string, unknown>;
+    authorized_numeric_claims: Array<{
+      claim_id: string;
+      value: number;
+      unit: string;
+      semantic: string;
+      source_path: string;
+    }>;
   };
   text: string;
   machine_payload?: {
     history_authority?: string;
     market_model?: string;
+    snapshot_resolution?: {
+      source?: string;
+      primary_source?: string;
+      snapshot_age_seconds?: number | null;
+      filled_fields?: string[];
+    };
+    conversation?: {
+      loaded_message_count?: number;
+      persisted?: boolean;
+    };
   };
 };
 
@@ -159,6 +185,9 @@ export type AdaptiveAdvisorInput = {
   dashboard: Record<string, unknown>;
   language: 'ko' | 'en';
   include_narrative?: boolean;
+  messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  thread_id?: string | null;
+  use_thread_context?: boolean;
 };
 
 export type AdaptiveFeedbackIssue =
@@ -174,6 +203,7 @@ type AdaptiveAdvisorState = {
   loading: boolean;
   result: AdaptiveAdvisorResult | null;
   error: string | null;
+  threadId: string | null;
 };
 
 async function parseResponse(response: Response) {
@@ -193,9 +223,18 @@ export function useAdaptiveAdvisor() {
     loading: false,
     result: null,
     error: null,
+    threadId: null,
   });
+  const threadIdRef = useRef<string | null>(null);
+  const threadCropRef = useRef<AdaptiveAdvisorInput['crop'] | null>(null);
 
   const execute = useCallback(async (input: AdaptiveAdvisorInput) => {
+    if (threadCropRef.current && threadCropRef.current !== input.crop) {
+      threadIdRef.current = null;
+    }
+    threadCropRef.current = input.crop;
+    const selectedThreadId = input.thread_id ?? threadIdRef.current;
+
     setState((previous) => ({ ...previous, loading: true, error: null }));
     try {
       const response = await fetch(`${API_URL}/advisor/adaptive/execute`, {
@@ -203,16 +242,29 @@ export function useAdaptiveAdvisor() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...input,
-          messages: [],
+          thread_id: selectedThreadId,
+          use_thread_context: input.use_thread_context ?? true,
+          messages: input.messages ?? [],
           include_narrative: input.include_narrative ?? true,
         }),
       });
       const payload = await parseResponse(response) as AdaptiveAdvisorResult;
-      setState({ loading: false, result: payload, error: null });
+      threadIdRef.current = payload.thread_id;
+      setState({
+        loading: false,
+        result: payload,
+        error: null,
+        threadId: payload.thread_id,
+      });
       return payload;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Adaptive advisor failed';
-      setState({ loading: false, result: null, error: message });
+      setState((previous) => ({
+        ...previous,
+        loading: false,
+        result: null,
+        error: message,
+      }));
       throw error;
     }
   }, []);
@@ -237,7 +289,14 @@ export function useAdaptiveAdvisor() {
   }, []);
 
   const reset = useCallback(() => {
-    setState({ loading: false, result: null, error: null });
+    threadIdRef.current = null;
+    threadCropRef.current = null;
+    setState({
+      loading: false,
+      result: null,
+      error: null,
+      threadId: null,
+    });
   }, []);
 
   return { ...state, execute, submitFeedback, reset };

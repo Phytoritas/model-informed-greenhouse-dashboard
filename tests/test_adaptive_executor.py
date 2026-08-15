@@ -247,7 +247,7 @@ def test_cross_domain_execution_uses_server_history_market_and_ledger(tmp_path):
     history = result.machine_payload["node_outputs"]["history_compare"]
     assert history["history_source"] == "server_timeseries"
     market = result.machine_payload["node_outputs"]["market_outlook"]
-    assert market["model"] == "holiday-arrival-supply-shock.v1"
+    assert market["model"] == "holiday-arrival-supply-shock.v2"
     assert deps.quality_ledger.get_run(result.run_id) is not None
     assert [item.node.value for item in result.trace] == [
         node.value for node in result.plan.nodes
