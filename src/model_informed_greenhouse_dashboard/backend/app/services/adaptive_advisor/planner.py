@@ -18,17 +18,25 @@ def classify_intent(question: str) -> AdvisorIntent:
 
 def select_controls(question: str) -> list[str]:
     facets = analyze_question(question, crop="tomato", language="ko")
-    return [
-        str(item)
-        for item in facets.get("control_candidates", [])
-        if str(item)
-    ]
+    return [str(item) for item in facets.get("control_candidates", []) if str(item)]
 
 
 def _append_unique(nodes: list[AdaptiveNode], *items: AdaptiveNode) -> None:
     for item in items:
         if item not in nodes:
             nodes.append(item)
+
+
+def _managed_tail(include_narrative: bool) -> list[AdaptiveNode]:
+    result = [
+        AdaptiveNode.CONSTRAINT_GATE,
+        AdaptiveNode.ANSWER_ADMISSION,
+        AdaptiveNode.ANSWER_PACKET,
+    ]
+    if include_narrative:
+        result.append(AdaptiveNode.NARRATE)
+    result.extend([AdaptiveNode.RESPONSE_REVIEW, AdaptiveNode.QUALITY_GATE])
+    return result
 
 
 def _normalize_requested_plan(
@@ -38,34 +46,13 @@ def _normalize_requested_plan(
     requested = request.requested_plan
     if requested is None:
         return None
-
-    managed = {
-        AdaptiveNode.CONSTRAINT_GATE,
-        AdaptiveNode.ANSWER_ADMISSION,
-        AdaptiveNode.NARRATE,
-        AdaptiveNode.RESPONSE_REVIEW,
-        AdaptiveNode.QUALITY_GATE,
-    }
+    managed = set(_managed_tail(True))
     optional = [node for node in requested.nodes if node not in managed]
     if not optional or optional[0] is not AdaptiveNode.FREEZE_SNAPSHOT:
         optional.insert(0, AdaptiveNode.FREEZE_SNAPSHOT)
-    nodes = [
-        *optional,
-        AdaptiveNode.CONSTRAINT_GATE,
-        AdaptiveNode.ANSWER_ADMISSION,
-    ]
-    if request.include_narrative:
-        nodes.append(AdaptiveNode.NARRATE)
-    nodes.extend(
-        [
-            AdaptiveNode.RESPONSE_REVIEW,
-            AdaptiveNode.QUALITY_GATE,
-        ]
-    )
-
     return AdaptiveGraphPlan(
         intent=intent,
-        nodes=nodes,
+        nodes=[*optional, *_managed_tail(request.include_narrative)],
         controls=requested.controls,
         horizons_hours=requested.horizons_hours,
         max_parallel_nodes=min(requested.max_parallel_nodes, 5),
@@ -73,17 +60,13 @@ def _normalize_requested_plan(
         include_narrative=request.include_narrative,
         reasons=[
             *requested.reasons,
-            "client plan admitted through the fixed safety spine",
+            "client plan admitted through the fixed safety and response-review tail",
         ],
     )
 
 
 def _default_controls(intent: AdvisorIntent, facets: dict) -> list[str]:
-    explicit = [
-        str(item)
-        for item in facets.get("control_candidates", [])
-        if str(item)
-    ]
+    explicit = [str(item) for item in facets.get("control_candidates", []) if str(item)]
     if explicit:
         return list(dict.fromkeys(explicit))
     targets = set(str(item) for item in facets.get("target_signals", []))
@@ -132,7 +115,7 @@ def build_adaptive_plan(request: AdaptiveAdvisorRequest) -> AdaptiveGraphPlan:
             AdaptiveNode.PHYSIOLOGY_DIAGNOSIS,
             AdaptiveNode.EXPERT_WIKI,
         )
-        reasons.append("diagnosis requires a paired temporal baseline before mechanism retrieval")
+        reasons.append("diagnosis requires a server-side temporal baseline")
     elif intent is AdvisorIntent.WHAT_IF:
         _append_unique(
             nodes,
@@ -142,7 +125,7 @@ def build_adaptive_plan(request: AdaptiveAdvisorRequest) -> AdaptiveGraphPlan:
             AdaptiveNode.SENSITIVITY,
             AdaptiveNode.EXPERT_WIKI,
         )
-        reasons.append("counterfactual requires an exact bounded scenario when the delta is resolvable")
+        reasons.append("counterfactual requires exact bounded model output")
     elif intent is AdvisorIntent.PLAN:
         _append_unique(
             nodes,
@@ -153,7 +136,7 @@ def build_adaptive_plan(request: AdaptiveAdvisorRequest) -> AdaptiveGraphPlan:
             AdaptiveNode.BOUNDED_SCENARIO,
             AdaptiveNode.EXPERT_WIKI,
         )
-        reasons.append("future plan requires weather, operations, work, and bounded model context")
+        reasons.append("plan joins operations, weather, work, and model context")
     else:
         _append_unique(
             nodes,
@@ -169,42 +152,30 @@ def build_adaptive_plan(request: AdaptiveAdvisorRequest) -> AdaptiveGraphPlan:
             AdaptiveNode.MARKET_OUTLOOK,
             AdaptiveNode.OPERATIONS_CALENDAR,
         )
-        reasons.append("optimization joins crop, operations, weather, market, and model lanes")
+        reasons.append("optimization joins crop, operations, weather, arrival volume, and market")
 
     if facets.get("market_relevant"):
-        _append_unique(nodes, AdaptiveNode.MARKET_OUTLOOK, AdaptiveNode.HARVEST_MARKET_ANALYSIS)
+        _append_unique(
+            nodes,
+            AdaptiveNode.MARKET_OUTLOOK,
+            AdaptiveNode.HARVEST_MARKET_ANALYSIS,
+        )
     if facets.get("operations_relevant"):
-        _append_unique(nodes, AdaptiveNode.OPERATIONS_CALENDAR, AdaptiveNode.WORK_PLANNING)
+        _append_unique(
+            nodes,
+            AdaptiveNode.OPERATIONS_CALENDAR,
+            AdaptiveNode.WORK_PLANNING,
+        )
     if facets.get("requires_temporal_pair"):
         _append_unique(nodes, AdaptiveNode.HISTORY_COMPARE)
 
-    nodes.extend(
-        [
-            AdaptiveNode.CONSTRAINT_GATE,
-            AdaptiveNode.ANSWER_ADMISSION,
-        ]
-    )
-    if request.include_narrative:
-        nodes.append(AdaptiveNode.NARRATE)
-    nodes.extend(
-        [
-            AdaptiveNode.RESPONSE_REVIEW,
-            AdaptiveNode.QUALITY_GATE,
-        ]
-    )
-
     horizons: list[int] = []
     if AdaptiveNode.BOUNDED_SCENARIO in nodes or AdaptiveNode.SENSITIVITY in nodes:
-        if facets.get("time_scope") == "NEXT_14D":
-            horizons = [24, 72, 168, 336]
-        elif facets.get("time_scope") == "NEXT_7D":
-            horizons = [24, 72, 168, 336]
-        else:
-            horizons = [24, 72, 168, 336]
+        horizons = [24, 72, 168, 336]
 
     return AdaptiveGraphPlan(
         intent=intent,
-        nodes=nodes,
+        nodes=[*nodes, *_managed_tail(request.include_narrative)],
         controls=controls,
         horizons_hours=horizons,
         max_parallel_nodes=5,

@@ -8,7 +8,10 @@ import type {
   SensorData,
   WeatherOutlook,
 } from '../../types';
-import { useAdaptiveAdvisor } from '../../hooks/useAdaptiveAdvisor';
+import {
+  useAdaptiveAdvisor,
+  type AdaptiveFeedbackIssue,
+} from '../../hooks/useAdaptiveAdvisor';
 import { buildAdaptiveHistoryPayload } from '../../utils/adaptiveHistory';
 import { buildDashboardRecentSummary } from '../../utils/recentSummary';
 import AdvisorQualityProfilePanel from './AdvisorQualityProfilePanel';
@@ -36,6 +39,19 @@ const EXAMPLES = {
   ],
 } as const;
 
+const FEEDBACK_ISSUES: Array<{
+  code: AdaptiveFeedbackIssue;
+  ko: string;
+  en: string;
+}> = [
+  { code: 'missing_cause', ko: '원인 설명 부족', en: 'Missing cause' },
+  { code: 'vague_action', ko: '조치가 모호함', en: 'Vague action' },
+  { code: 'wrong_number', ko: '수치가 맞지 않음', en: 'Wrong number' },
+  { code: 'missing_context', ko: '상황 반영 부족', en: 'Missing context' },
+  { code: 'too_verbose', ko: '너무 장황함', en: 'Too verbose' },
+  { code: 'wrong_route', ko: '계산 경로가 부적절함', en: 'Wrong route' },
+];
+
 export default function AdaptiveAdvisorWorkbench({
   locale,
   crop,
@@ -48,7 +64,9 @@ export default function AdaptiveAdvisorWorkbench({
   rtrProfile = null,
 }: Props) {
   const [question, setQuestion] = useState<string>(EXAMPLES[locale][0]);
-  const { loading, result, error, execute } = useAdaptiveAdvisor();
+  const [feedbackIssues, setFeedbackIssues] = useState<AdaptiveFeedbackIssue[]>([]);
+  const [feedbackState, setFeedbackState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const { loading, result, error, execute, submitFeedback } = useAdaptiveAdvisor();
 
   const dashboard = useMemo(() => {
     const timestamp = typeof currentData.timestamp === 'number'
@@ -56,6 +74,8 @@ export default function AdaptiveAdvisorWorkbench({
       : new Date().toISOString();
     return {
       currentData: { ...currentData, datetime: timestamp },
+      // This history is only a request-local fallback. The adaptive backend first
+      // queries its server-owned telemetry store for the previous-day baseline.
       history: buildAdaptiveHistoryPayload(currentData, history),
       metrics,
       forecast,
@@ -70,6 +90,8 @@ export default function AdaptiveAdvisorWorkbench({
     event.preventDefault();
     const normalized = question.trim();
     if (!normalized || loading) return;
+    setFeedbackIssues([]);
+    setFeedbackState('idle');
     await execute({
       crop: crop.toLowerCase() as 'tomato' | 'cucumber',
       question: normalized,
@@ -79,22 +101,45 @@ export default function AdaptiveAdvisorWorkbench({
     }).catch(() => undefined);
   };
 
+  const saveFeedback = async (helpful: boolean) => {
+    if (!result || feedbackState === 'saving') return;
+    setFeedbackState('saving');
+    try {
+      await submitFeedback({
+        run_id: result.run_id,
+        helpful,
+        issue_codes: helpful ? [] : feedbackIssues,
+      });
+      setFeedbackState('saved');
+    } catch {
+      setFeedbackState('error');
+    }
+  };
+
+  const toggleIssue = (issue: AdaptiveFeedbackIssue) => {
+    setFeedbackIssues((previous) => (
+      previous.includes(issue)
+        ? previous.filter((value) => value !== issue)
+        : [...previous, issue]
+    ));
+  };
+
   return (
     <section className="rounded-3xl border border-[color:var(--sg-border-soft)] bg-[color:var(--sg-surface-card)] p-5 shadow-[var(--sg-shadow-card)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-accent-blue)]">
-            Adaptive Advisor Graph v2
+            Adaptive Advisor Graph v3
           </p>
           <h2 className="mt-1 text-xl font-bold text-[color:var(--sg-text-strong)]">
             {locale === 'ko'
-              ? '상황에 맞춰 계산하고, 답변 자체도 다시 검증합니다'
-              : 'Adaptive calculations with post-answer verification'}
+              ? '서버 이력·반입 충격·실제 결과로 답변 경로를 개선합니다'
+              : 'Server history, supply shocks, and outcome-informed routing'}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[color:var(--sg-text-muted)]">
             {locale === 'ko'
-              ? '전일 동시간 비교, 생리 모델, 전문가 지식, 날씨, 출하 일정, 시장 중 필요한 경로만 실행합니다. 최종 문장의 숫자와 필수 내용도 다시 검사하며, 실패하면 검증된 결정론적 답변으로 자동 교체합니다.'
-              : 'Runs only the required same-time comparison, physiology, model, knowledge, weather, operations, and market lanes. Final numbers and required answer elements are reviewed, with a deterministic fallback on failure.'}
+              ? '브라우저가 보유한 짧은 이력보다 서버 시계열을 우선하고, 휴일 뒤 반입 집중과 가격 압력을 범위형 시나리오로 계산합니다. 답변 평가는 특정 실행 ID에 축적되어 오프라인 라우팅 회귀평가에 사용됩니다.'
+              : 'Prioritizes server-owned telemetry, estimates post-holiday arrival concentration and bounded price pressure, and links feedback to an immutable run for offline routing regression.'}
           </p>
         </div>
       </div>
@@ -154,19 +199,103 @@ export default function AdaptiveAdvisorWorkbench({
                 {locale === 'ko' ? '검증된 적응형 답변' : 'Reviewed adaptive answer'}
               </h3>
               <div className="flex flex-wrap items-center gap-2">
-                {result.quality_profile.response.fallback_used && (
-                  <span className="rounded-full bg-[color:var(--sg-accent-amber-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--sg-accent-amber)]">
-                    {locale === 'ko' ? '안전 대체 답변' : 'Safe fallback'}
-                  </span>
-                )}
                 <span className="rounded-full bg-[color:var(--sg-surface-muted)] px-3 py-1 text-xs font-semibold text-[color:var(--sg-text-muted)]">
                   {result.plan.intent}
+                </span>
+                <span className="rounded-full bg-[color:var(--sg-accent-blue-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--sg-accent-blue)]">
+                  {locale === 'ko' ? '서버 시계열 우선' : 'Server history first'}
                 </span>
               </div>
             </div>
             <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[color:var(--sg-text-strong)]">
               {result.text}
             </p>
+          </div>
+
+          {(result.answer_packet.causal_drivers.length > 0
+            || result.answer_packet.actions.length > 0) && (
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-[color:var(--sg-border-soft)] bg-white p-4">
+                <h3 className="text-sm font-bold text-[color:var(--sg-text-strong)]">
+                  {locale === 'ko' ? '원인 우선순위' : 'Ranked drivers'}
+                </h3>
+                <ol className="mt-3 space-y-2">
+                  {result.answer_packet.causal_drivers.slice(0, 4).map((driver, index) => (
+                    <li key={driver.code} className="text-sm text-[color:var(--sg-text-muted)]">
+                      <span className="font-semibold text-[color:var(--sg-text-strong)]">
+                        {index + 1}. {driver.label}
+                      </span>
+                      <span className="ml-2 text-xs">{Math.round(driver.support * 100)}%</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="rounded-2xl border border-[color:var(--sg-border-soft)] bg-white p-4">
+                <h3 className="text-sm font-bold text-[color:var(--sg-text-strong)]">
+                  {locale === 'ko' ? '실행 순서' : 'Action sequence'}
+                </h3>
+                <ol className="mt-3 space-y-2">
+                  {result.answer_packet.actions.slice(0, 4).map((action) => (
+                    <li key={`${action.rank}-${action.title}`} className="text-sm">
+                      <p className="font-semibold text-[color:var(--sg-text-strong)]">
+                        {action.rank}. [{action.time_window}] {action.title}
+                      </p>
+                      <p className="text-[color:var(--sg-text-muted)]">{action.operator}</p>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-[color:var(--sg-border-soft)] bg-white p-4">
+            <h3 className="text-sm font-bold text-[color:var(--sg-text-strong)]">
+              {locale === 'ko' ? '이 답변이 도움이 되었나요?' : 'Was this answer useful?'}
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={feedbackState === 'saving' || feedbackState === 'saved'}
+                onClick={() => saveFeedback(true)}
+                className="rounded-xl border border-[color:var(--sg-border-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--sg-accent-success)] disabled:opacity-50"
+              >
+                {locale === 'ko' ? '도움 됨' : 'Helpful'}
+              </button>
+              <button
+                type="button"
+                disabled={feedbackState === 'saving' || feedbackState === 'saved'}
+                onClick={() => saveFeedback(false)}
+                className="rounded-xl border border-[color:var(--sg-border-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--sg-accent-amber)] disabled:opacity-50"
+              >
+                {locale === 'ko' ? '개선 필요' : 'Needs improvement'}
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {FEEDBACK_ISSUES.map((issue) => (
+                <button
+                  key={issue.code}
+                  type="button"
+                  aria-pressed={feedbackIssues.includes(issue.code)}
+                  onClick={() => toggleIssue(issue.code)}
+                  className={`rounded-full border px-3 py-1.5 text-xs ${
+                    feedbackIssues.includes(issue.code)
+                      ? 'border-[color:var(--sg-accent-amber)] bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]'
+                      : 'border-[color:var(--sg-border-soft)] text-[color:var(--sg-text-muted)]'
+                  }`}
+                >
+                  {issue[locale]}
+                </button>
+              ))}
+            </div>
+            {feedbackState !== 'idle' && (
+              <p className="mt-3 text-xs text-[color:var(--sg-text-muted)]">
+                {feedbackState === 'saving'
+                  ? (locale === 'ko' ? '평가 저장 중...' : 'Saving feedback...')
+                  : feedbackState === 'saved'
+                    ? (locale === 'ko' ? '평가가 실행 ID에 저장되었습니다.' : 'Feedback was linked to this run.')
+                    : (locale === 'ko' ? '평가 저장에 실패했습니다.' : 'Feedback could not be saved.')}
+              </p>
+            )}
           </div>
 
           <details className="rounded-2xl border border-[color:var(--sg-border-soft)] bg-white p-4">

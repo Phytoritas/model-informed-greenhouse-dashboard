@@ -1,4 +1,4 @@
-"""Typed contracts for the run-specific adaptive advisor computation graph."""
+"""Typed contracts for the adaptive greenhouse advisor and quality loop."""
 
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ class AdaptiveNode(str, Enum):
     OPERATIONS_CALENDAR = "operations_calendar"
     CONSTRAINT_GATE = "constraint_gate"
     ANSWER_ADMISSION = "answer_admission"
+    ANSWER_PACKET = "answer_packet"
     NARRATE = "narrate"
     RESPONSE_REVIEW = "response_review"
     QUALITY_GATE = "quality_gate"
@@ -98,22 +99,22 @@ AllowedHorizon = Literal[24, 72, 168, 336]
 
 
 class AdaptiveGraphPlan(BaseModel):
-    """A validated, bounded run-specific graph plan."""
+    """Validated run-specific plan with a non-removable safety and review tail."""
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["adaptive-advisor-plan.v1"] = "adaptive-advisor-plan.v1"
+    schema_version: Literal["adaptive-advisor-plan.v2"] = "adaptive-advisor-plan.v2"
     intent: AdvisorIntent
-    nodes: list[AdaptiveNode] = Field(min_length=5, max_length=18)
+    nodes: list[AdaptiveNode] = Field(min_length=6, max_length=24)
     controls: list[AllowedControl] = Field(default_factory=list, max_length=5)
     horizons_hours: list[AllowedHorizon] = Field(default_factory=list, max_length=4)
     max_parallel_nodes: int = Field(default=5, ge=1, le=8)
     max_model_evaluations: int = Field(default=8, ge=0, le=24)
     include_narrative: bool = True
-    reasons: list[str] = Field(default_factory=list, max_length=16)
+    reasons: list[str] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
-    def validate_safety_spine(self) -> "AdaptiveGraphPlan":
+    def validate_graph(self) -> "AdaptiveGraphPlan":
         if len(self.nodes) != len(set(self.nodes)):
             raise ValueError("graph plan nodes must be unique")
         if self.nodes[0] is not AdaptiveNode.FREEZE_SNAPSHOT:
@@ -122,22 +123,24 @@ class AdaptiveGraphPlan(BaseModel):
         required = (
             AdaptiveNode.CONSTRAINT_GATE,
             AdaptiveNode.ANSWER_ADMISSION,
+            AdaptiveNode.ANSWER_PACKET,
             AdaptiveNode.RESPONSE_REVIEW,
             AdaptiveNode.QUALITY_GATE,
         )
         missing = [node.value for node in required if node not in self.nodes]
         if missing:
-            raise ValueError(f"missing mandatory safety nodes: {', '.join(missing)}")
+            raise ValueError(f"missing mandatory graph nodes: {', '.join(missing)}")
 
         positions = {node: self.nodes.index(node) for node in required}
         if not (
             positions[AdaptiveNode.CONSTRAINT_GATE]
             < positions[AdaptiveNode.ANSWER_ADMISSION]
+            < positions[AdaptiveNode.ANSWER_PACKET]
             < positions[AdaptiveNode.RESPONSE_REVIEW]
             < positions[AdaptiveNode.QUALITY_GATE]
         ):
             raise ValueError(
-                "safety nodes must run constraint -> admission -> response_review -> quality"
+                "mandatory order is constraint -> admission -> packet -> review -> quality"
             )
         if self.nodes[-1] is not AdaptiveNode.QUALITY_GATE:
             raise ValueError("quality_gate must be the final graph node")
@@ -145,18 +148,21 @@ class AdaptiveGraphPlan(BaseModel):
         if self.include_narrative:
             if AdaptiveNode.NARRATE not in self.nodes:
                 raise ValueError("narrate is required when narrative is enabled")
+            narrative_position = self.nodes.index(AdaptiveNode.NARRATE)
             if not (
-                positions[AdaptiveNode.ANSWER_ADMISSION]
-                < self.nodes.index(AdaptiveNode.NARRATE)
+                positions[AdaptiveNode.ANSWER_PACKET]
+                < narrative_position
                 < positions[AdaptiveNode.RESPONSE_REVIEW]
             ):
-                raise ValueError("narrate must run after admission and before response review")
+                raise ValueError("narrate must run between answer_packet and response_review")
         elif AdaptiveNode.NARRATE in self.nodes:
             raise ValueError("narrate cannot be present when narrative is disabled")
 
-        scenario_nodes = {AdaptiveNode.BOUNDED_SCENARIO, AdaptiveNode.SENSITIVITY}
-        if any(node in self.nodes for node in scenario_nodes) and not self.horizons_hours:
-            raise ValueError("scenario or sensitivity nodes require at least one horizon")
+        if any(
+            node in self.nodes
+            for node in (AdaptiveNode.BOUNDED_SCENARIO, AdaptiveNode.SENSITIVITY)
+        ) and not self.horizons_hours:
+            raise ValueError("model nodes require at least one horizon")
         return self
 
 
@@ -274,16 +280,7 @@ class ContextQuality(BaseModel):
     market: ContextStatus = ContextStatus.NOT_REQUESTED
 
 
-class HorizonQuality(BaseModel):
-    valid_from: datetime
-    valid_until: datetime
-    forecast_hours: int = Field(ge=0)
-    invalidation_events: list[str] = Field(default_factory=list)
-
-
 class AnswerContentQuality(BaseModel):
-    """Quality of the realized answer, not merely availability of its inputs."""
-
     diagnostic_depth: float = Field(ge=0, le=1)
     actionability: float = Field(ge=0, le=1)
     temporal_alignment: float = Field(ge=0, le=1)
@@ -294,8 +291,6 @@ class AnswerContentQuality(BaseModel):
 
 
 class ResponseQuality(BaseModel):
-    """Quality of the text that is actually returned to the operator."""
-
     coverage: float = Field(ge=0, le=1)
     required_elements: list[str] = Field(default_factory=list)
     present_elements: list[str] = Field(default_factory=list)
@@ -305,8 +300,15 @@ class ResponseQuality(BaseModel):
     reasons: list[str] = Field(default_factory=list)
 
 
+class HorizonQuality(BaseModel):
+    valid_from: datetime
+    valid_until: datetime
+    forecast_hours: int = Field(ge=0)
+    invalidation_events: list[str] = Field(default_factory=list)
+
+
 class AdvisorQualityProfile(BaseModel):
-    schema_version: Literal["advisor-quality-profile.v1"] = "advisor-quality-profile.v1"
+    schema_version: Literal["advisor-quality-profile.v2"] = "advisor-quality-profile.v2"
     capability: AnswerCapability
     answer_status: AnswerStatus
     score: float = Field(ge=0, le=1)
@@ -319,6 +321,56 @@ class AdvisorQualityProfile(BaseModel):
     horizon: HorizonQuality
     adaptive_triggers: list[str] = Field(default_factory=list)
     executed_nodes: list[AdaptiveNode] = Field(default_factory=list)
+
+
+class AnswerDriver(BaseModel):
+    code: str
+    label: str
+    support: float = Field(ge=0, le=1)
+    observations: list[str] = Field(default_factory=list)
+
+
+class AnswerAction(BaseModel):
+    rank: int = Field(ge=1)
+    title: str
+    operator: str
+    time_window: str
+    expected_effect: str
+    condition: str | None = None
+    control: AllowedControl | None = None
+
+
+class AdaptiveAnswerPacket(BaseModel):
+    schema_version: Literal["adaptive-answer-packet.v3"] = "adaptive-answer-packet.v3"
+    question: str
+    intent: AdvisorIntent
+    answer_status: AnswerStatus
+    direct_answer: str
+    observations: list[str] = Field(default_factory=list)
+    causal_drivers: list[AnswerDriver] = Field(default_factory=list)
+    actions: list[AnswerAction] = Field(default_factory=list)
+    uncertainties: list[str] = Field(default_factory=list)
+    authorized_numbers: list[str] = Field(default_factory=list)
+    temporal_context: dict[str, Any] = Field(default_factory=dict)
+    model_context: dict[str, Any] = Field(default_factory=dict)
+    weather_context: dict[str, Any] = Field(default_factory=dict)
+    market_context: dict[str, Any] = Field(default_factory=dict)
+    operations_context: dict[str, Any] = Field(default_factory=dict)
+    expert_context: dict[str, Any] = Field(default_factory=dict)
+
+
+class ResponseReview(BaseModel):
+    accepted: bool
+    text: str
+    coverage: float = Field(ge=0, le=1)
+    required_elements: list[str] = Field(default_factory=list)
+    present_elements: list[str] = Field(default_factory=list)
+    unsupported_numeric_claims: list[str] = Field(default_factory=list)
+    fallback_used: bool = False
+    source: Literal["llm", "deterministic_fallback", "deterministic_only"]
+    reasons: list[str] = Field(default_factory=list)
+    content_scores: dict[str, float] = Field(default_factory=dict)
+    quality_gaps: list[str] = Field(default_factory=list)
 
 
 class MaterialChangeRequest(BaseModel):
@@ -334,8 +386,63 @@ class MaterialChangeDecision(BaseModel):
     current_fingerprint: str
 
 
+class TelemetryIngestRequest(BaseModel):
+    crop: Literal["tomato", "cucumber"]
+    greenhouse_id: str | None = None
+    source: str = Field(default="api", min_length=1, max_length=80)
+    points: list[dict[str, Any]] = Field(min_length=1, max_length=10000)
+
+
+class MarketArrivalObservation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    market_id: str = Field(min_length=1, max_length=96)
+    crop: Literal["tomato", "cucumber"]
+    observation_date: date
+    arrival_volume_kg: float = Field(gt=0)
+    wholesale_price_krw_per_kg: float | None = Field(default=None, gt=0)
+    source: str = Field(default="operator", min_length=1, max_length=120)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class MarketObservationBatch(BaseModel):
+    observations: list[MarketArrivalObservation] = Field(min_length=1, max_length=5000)
+
+
+class FeedbackIssue(str, Enum):
+    MISSING_CAUSE = "missing_cause"
+    VAGUE_ACTION = "vague_action"
+    WRONG_NUMBER = "wrong_number"
+    MISSING_CONTEXT = "missing_context"
+    TOO_VERBOSE = "too_verbose"
+    WRONG_ROUTE = "wrong_route"
+    OTHER = "other"
+
+
+class AdvisorFeedback(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=8, max_length=96)
+    helpful: bool
+    issue_codes: list[FeedbackIssue] = Field(default_factory=list, max_length=10)
+    comment: str | None = Field(default=None, max_length=2000)
+    submitted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class AdvisorOutcome(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=8, max_length=96)
+    observed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    horizon_hours: int = Field(ge=0, le=24 * 365)
+    reward: float | None = Field(default=None, ge=-1, le=1)
+    metrics: dict[str, float] = Field(default_factory=dict)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
 class AdaptiveAdvisorResponse(BaseModel):
-    schema_version: Literal["adaptive-advisor-response.v1"] = "adaptive-advisor-response.v1"
+    schema_version: Literal["adaptive-advisor-response.v2"] = "adaptive-advisor-response.v2"
+    run_id: str
     status: Literal["success", "degraded", "refused"]
     crop: Literal["tomato", "cucumber"]
     greenhouse_id: str
@@ -346,5 +453,6 @@ class AdaptiveAdvisorResponse(BaseModel):
     quality_profile: AdvisorQualityProfile
     constraint_gate: ConstraintGateResult
     admission: AdmissionResult
+    answer_packet: AdaptiveAnswerPacket
     text: str
     machine_payload: dict[str, Any] = Field(default_factory=dict)

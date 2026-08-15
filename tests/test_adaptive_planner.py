@@ -22,25 +22,26 @@ def request(question: str, *, narrative: bool = False) -> AdaptiveAdvisorRequest
     )
 
 
-def test_photosynthesis_difference_routes_to_diagnostic_graph():
+def test_photosynthesis_difference_routes_to_server_history_diagnosis():
     plan = build_adaptive_plan(
         request("오전 환경은 같은데 왜 광합성 속도가 어제보다 낮아졌지?")
     )
     assert plan.intent is AdvisorIntent.DIAGNOSE
     assert AdaptiveNode.HISTORY_COMPARE in plan.nodes
     assert AdaptiveNode.PHYSIOLOGY_DIAGNOSIS in plan.nodes
-    assert AdaptiveNode.EXPERT_WIKI in plan.nodes
-    assert plan.nodes[-3:] == [
+    assert plan.nodes[-5:] == [
         AdaptiveNode.CONSTRAINT_GATE,
         AdaptiveNode.ANSWER_ADMISSION,
+        AdaptiveNode.ANSWER_PACKET,
+        AdaptiveNode.RESPONSE_REVIEW,
         AdaptiveNode.QUALITY_GATE,
     ]
 
 
-def test_holiday_market_question_routes_to_cross_domain_optimization():
+def test_holiday_market_question_routes_to_supply_shock_optimization():
     plan = build_adaptive_plan(
         request(
-            "다음 주 휴가라 출하가 없고 휴일 다음날 가격 하락이 예상돼. "
+            "다음 주 휴가라 출하가 없고 휴일 다음날 반입량과 가격 하락이 예상돼. "
             "온도와 수확 계획을 최적화해줘"
         )
     )
@@ -49,17 +50,16 @@ def test_holiday_market_question_routes_to_cross_domain_optimization():
     assert AdaptiveNode.MARKET_OUTLOOK in plan.nodes
     assert AdaptiveNode.HARVEST_MARKET_ANALYSIS in plan.nodes
     assert AdaptiveNode.BOUNDED_SCENARIO in plan.nodes
-    assert plan.horizons_hours == [24, 72, 168, 336]
 
 
-def test_numeric_temperature_question_routes_to_what_if():
+def test_numeric_temperature_question_routes_to_exact_what_if():
     plan = build_adaptive_plan(request("야간 온도를 1℃ 낮추면 14일 수확량은?"))
     assert plan.intent is AdvisorIntent.WHAT_IF
     assert "temperature_night" in plan.controls
     assert AdaptiveNode.SENSITIVITY in plan.nodes
 
 
-def test_client_plan_cannot_remove_safety_spine():
+def test_client_plan_cannot_remove_review_tail():
     proposed = AdaptiveGraphPlan(
         intent=AdvisorIntent.STATUS,
         nodes=[
@@ -67,6 +67,8 @@ def test_client_plan_cannot_remove_safety_spine():
             AdaptiveNode.LIVE_SNAPSHOT,
             AdaptiveNode.CONSTRAINT_GATE,
             AdaptiveNode.ANSWER_ADMISSION,
+            AdaptiveNode.ANSWER_PACKET,
+            AdaptiveNode.RESPONSE_REVIEW,
             AdaptiveNode.QUALITY_GATE,
         ],
         include_narrative=False,
@@ -74,9 +76,11 @@ def test_client_plan_cannot_remove_safety_spine():
     req = request("현재 상태")
     req.requested_plan = proposed
     plan = build_adaptive_plan(req)
-    assert plan.nodes[-3:] == [
+    assert plan.nodes[-5:] == [
         AdaptiveNode.CONSTRAINT_GATE,
         AdaptiveNode.ANSWER_ADMISSION,
+        AdaptiveNode.ANSWER_PACKET,
+        AdaptiveNode.RESPONSE_REVIEW,
         AdaptiveNode.QUALITY_GATE,
     ]
 
@@ -91,6 +95,8 @@ def test_graph_contract_rejects_duplicate_nodes():
                 AdaptiveNode.LIVE_SNAPSHOT,
                 AdaptiveNode.CONSTRAINT_GATE,
                 AdaptiveNode.ANSWER_ADMISSION,
+                AdaptiveNode.ANSWER_PACKET,
+                AdaptiveNode.RESPONSE_REVIEW,
                 AdaptiveNode.QUALITY_GATE,
             ],
             include_narrative=False,

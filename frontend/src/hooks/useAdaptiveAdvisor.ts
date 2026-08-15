@@ -17,12 +17,13 @@ export type AdaptiveNodeName =
   | 'operations_calendar'
   | 'constraint_gate'
   | 'answer_admission'
+  | 'answer_packet'
   | 'narrate'
   | 'response_review'
   | 'quality_gate';
 
 export type AdaptiveQualityProfile = {
-  schema_version: 'advisor-quality-profile.v1';
+  schema_version: 'advisor-quality-profile.v2';
   capability:
     | 'LIVE_STATUS'
     | 'DIAGNOSTIC'
@@ -35,9 +36,7 @@ export type AdaptiveQualityProfile = {
     | 'MONITORING_FIRST'
     | 'NEEDS_DATA'
     | 'REFUSED';
-  /** Quality of the answer actually delivered after post-render review. */
   score: number;
-  /** Readiness of sensor, model, context, and constraint inputs. */
   readiness_score: number;
   data: {
     freshness: number;
@@ -93,14 +92,15 @@ export type AdaptiveQualityProfile = {
 };
 
 export type AdaptiveAdvisorResult = {
-  schema_version: 'adaptive-advisor-response.v1';
+  schema_version: 'adaptive-advisor-response.v2';
+  run_id: string;
   status: 'success' | 'degraded' | 'refused';
   crop: 'tomato' | 'cucumber';
   greenhouse_id: string;
   question: string;
   snapshot_fingerprint: string;
   plan: {
-    schema_version: 'adaptive-advisor-plan.v1';
+    schema_version: 'adaptive-advisor-plan.v2';
     intent: 'STATUS' | 'DIAGNOSE' | 'WHAT_IF' | 'PLAN' | 'OPTIMIZE';
     nodes: AdaptiveNodeName[];
     controls: string[];
@@ -127,7 +127,29 @@ export type AdaptiveAdvisorResult = {
     within_supported_range?: boolean | null;
     reasons: string[];
   };
+  answer_packet: {
+    causal_drivers: Array<{
+      code: string;
+      label: string;
+      support: number;
+      observations: string[];
+    }>;
+    actions: Array<{
+      rank: number;
+      title: string;
+      operator: string;
+      time_window: string;
+      expected_effect: string;
+      condition?: string | null;
+    }>;
+    uncertainties: string[];
+    market_context: Record<string, unknown>;
+  };
   text: string;
+  machine_payload?: {
+    history_authority?: string;
+    market_model?: string;
+  };
 };
 
 export type AdaptiveAdvisorInput = {
@@ -139,11 +161,32 @@ export type AdaptiveAdvisorInput = {
   include_narrative?: boolean;
 };
 
+export type AdaptiveFeedbackIssue =
+  | 'missing_cause'
+  | 'vague_action'
+  | 'wrong_number'
+  | 'missing_context'
+  | 'too_verbose'
+  | 'wrong_route'
+  | 'other';
+
 type AdaptiveAdvisorState = {
   loading: boolean;
   result: AdaptiveAdvisorResult | null;
   error: string | null;
 };
+
+async function parseResponse(response: Response) {
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(
+      typeof payload?.detail === 'string'
+        ? payload.detail
+        : `Adaptive advisor failed (${response.status})`,
+    );
+  }
+  return payload;
+}
 
 export function useAdaptiveAdvisor() {
   const [state, setState] = useState<AdaptiveAdvisorState>({
@@ -164,20 +207,9 @@ export function useAdaptiveAdvisor() {
           include_narrative: input.include_narrative ?? true,
         }),
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(
-          typeof payload?.detail === 'string'
-            ? payload.detail
-            : `Adaptive advisor failed (${response.status})`,
-        );
-      }
-      setState({
-        loading: false,
-        result: payload as AdaptiveAdvisorResult,
-        error: null,
-      });
-      return payload as AdaptiveAdvisorResult;
+      const payload = await parseResponse(response) as AdaptiveAdvisorResult;
+      setState({ loading: false, result: payload, error: null });
+      return payload;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Adaptive advisor failed';
       setState({ loading: false, result: null, error: message });
@@ -185,9 +217,28 @@ export function useAdaptiveAdvisor() {
     }
   }, []);
 
+  const submitFeedback = useCallback(async (input: {
+    run_id: string;
+    helpful: boolean;
+    issue_codes?: AdaptiveFeedbackIssue[];
+    comment?: string;
+  }) => {
+    const response = await fetch(`${API_URL}/advisor/adaptive/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        run_id: input.run_id,
+        helpful: input.helpful,
+        issue_codes: input.issue_codes ?? [],
+        comment: input.comment ?? null,
+      }),
+    });
+    return parseResponse(response);
+  }, []);
+
   const reset = useCallback(() => {
     setState({ loading: false, result: null, error: null });
   }, []);
 
-  return { ...state, execute, reset };
+  return { ...state, execute, submitFeedback, reset };
 }

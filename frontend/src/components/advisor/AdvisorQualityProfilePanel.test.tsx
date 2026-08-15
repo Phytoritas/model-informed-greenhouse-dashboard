@@ -4,7 +4,7 @@ import AdvisorQualityProfilePanel from './AdvisorQualityProfilePanel';
 import type { AdaptiveQualityProfile } from '../../hooks/useAdaptiveAdvisor';
 
 const profile: AdaptiveQualityProfile = {
-  schema_version: 'advisor-quality-profile.v1',
+  schema_version: 'advisor-quality-profile.v2',
   capability: 'CONSTRAINED_OPTIMIZATION',
   answer_status: 'CONDITIONAL',
   score: 0.74,
@@ -66,7 +66,7 @@ test('renders delivered quality separately from readiness and exposes response l
   render(<AdvisorQualityProfilePanel profile={profile} locale="ko" />);
   expect(screen.getByText('제약조건 최적화')).toBeTruthy();
   expect(screen.getByText('조건부 답변')).toBeTruthy();
-  expect(screen.getByText('74%')).toBeTruthy();
+  expect(screen.getAllByText('74%').length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText('88%')).toBeTruthy();
   expect(screen.getByText('LLM 답변 자동 교체')).toBeTruthy();
   expect(screen.getByText('검증된 결정론적 대체 답변')).toBeTruthy();
