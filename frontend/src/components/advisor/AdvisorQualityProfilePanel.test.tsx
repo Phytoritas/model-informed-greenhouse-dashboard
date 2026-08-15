@@ -42,8 +42,8 @@ const profile: AdaptiveQualityProfile = {
 
 test('renders capability, status, and missing-data dimensions', () => {
   render(<AdvisorQualityProfilePanel profile={profile} locale="ko" />);
-  expect(screen.getByText('제약조건 최적화')).toBeInTheDocument();
-  expect(screen.getByText('조건부 답변')).toBeInTheDocument();
-  expect(screen.getByText('78%')).toBeInTheDocument();
-  expect(screen.getByText(/operations.shift_capacity/)).toBeInTheDocument();
+  expect(screen.getByText('제약조건 최적화')).toBeTruthy();
+  expect(screen.getByText('조건부 답변')).toBeTruthy();
+  expect(screen.getByText('78%')).toBeTruthy();
+  expect(screen.getByText(/operations.shift_capacity/)).toBeTruthy();
 });
