@@ -1,0 +1,36 @@
+name: apply-adaptive-patch
+
+on:
+  push:
+    branches:
+      - "feat/adaptive-advisor-graph-v1"
+    paths:
+      - ".github/adaptive_patch_parts/**"
+      - ".github/workflows/apply-adaptive-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply verified adaptive patch bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d .github/adaptive_patch_parts
+          cat $(find .github/adaptive_patch_parts -type f -name 'part*' | sort) | base64 --decode > /tmp/adaptive_selected.tar.gz
+          echo "83e6054f51eb437c7a02c97715068819d3d6ed510fa765d5594b48f0a78cc4d8  /tmp/adaptive_selected.tar.gz" | sha256sum --check
+          tar -xzf /tmp/adaptive_selected.tar.gz -C .
+          rm -rf .github/adaptive_patch_parts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat(advisor): add server history supply shocks and routing regression"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
