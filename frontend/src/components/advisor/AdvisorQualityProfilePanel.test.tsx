@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { expect, test } from 'vitest';
 import AdvisorQualityProfilePanel from './AdvisorQualityProfilePanel';
 import type { AdaptiveQualityProfile } from '../../hooks/useAdaptiveAdvisor';
 
