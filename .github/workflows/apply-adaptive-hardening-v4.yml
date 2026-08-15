@@ -30,6 +30,38 @@ jobs:
           echo "161e8a5ddbcb679c5213c855826dd25f75d2042a92e7fb9793d98572edc74bb9  /tmp/adaptive_hardening.tar.gz" | sha256sum --check
           tar -xzf /tmp/adaptive_hardening.tar.gz -C .
           python apply_adaptive_hardening.py
+          python - <<'PY'
+          from pathlib import Path
+
+          calibration = Path("tests/test_quality_calibration.py")
+          text = calibration.read_text(encoding="utf-8")
+          old = 'f"cal-{index:03d}"'
+          new = 'f"cal-{index:04d}"'
+          if text.count(old) != 1:
+              raise RuntimeError("quality calibration run id fixture drifted")
+          calibration.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          quality = Path(
+              "src/model_informed_greenhouse_dashboard/backend/app/services/"
+              "adaptive_advisor/quality.py"
+          )
+          text = quality.read_text(encoding="utf-8")
+          old = '''    if constraint_gate.status is ConstraintStatus.FAIL:
+              answer_status = AnswerStatus.REFUSED
+          elif current_coverage < 0.4:
+              answer_status = AnswerStatus.NEEDS_DATA
+          '''
+          new = '''    if constraint_gate.status is ConstraintStatus.FAIL:
+              answer_status = AnswerStatus.REFUSED
+          elif snapshot_resolution.get("primary_source") == "unavailable":
+              answer_status = AnswerStatus.NEEDS_DATA
+          elif current_coverage < 0.4:
+              answer_status = AnswerStatus.NEEDS_DATA
+          '''
+          if text.count(old) != 1:
+              raise RuntimeError("quality unavailable-snapshot status block drifted")
+          quality.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
           rm -f apply_adaptive_hardening.py
           rm -rf .github/adaptive_hardening_parts
           git diff --check
