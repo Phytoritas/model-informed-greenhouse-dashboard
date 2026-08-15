@@ -9,6 +9,7 @@ import type {
   WeatherOutlook,
 } from '../../types';
 import { useAdaptiveAdvisor } from '../../hooks/useAdaptiveAdvisor';
+import { buildAdaptiveHistoryPayload } from '../../utils/adaptiveHistory';
 import { buildDashboardRecentSummary } from '../../utils/recentSummary';
 import AdvisorQualityProfilePanel from './AdvisorQualityProfilePanel';
 
@@ -55,6 +56,7 @@ export default function AdaptiveAdvisorWorkbench({
       : new Date().toISOString();
     return {
       currentData: { ...currentData, datetime: timestamp },
+      history: buildAdaptiveHistoryPayload(currentData, history),
       metrics,
       forecast,
       recentSummary: buildDashboardRecentSummary(currentData, history),
@@ -82,17 +84,17 @@ export default function AdaptiveAdvisorWorkbench({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--sg-accent-blue)]">
-            Adaptive Advisor Graph v1
+            Adaptive Advisor Graph v2
           </p>
           <h2 className="mt-1 text-xl font-bold text-[color:var(--sg-text-strong)]">
             {locale === 'ko'
-              ? '상황에 맞춰 계산 경로와 답변 수준을 바꿉니다'
-              : 'Adaptive calculation paths and answer quality'}
+              ? '상황에 맞춰 계산하고, 답변 자체도 다시 검증합니다'
+              : 'Adaptive calculations with post-answer verification'}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[color:var(--sg-text-muted)]">
             {locale === 'ko'
-              ? '센서, 생리 모델, 전문가 지식, 날씨, 출하 일정, 시장 중 필요한 경로만 실행하고 숫자는 기존 admission gate를 통과한 경우에만 답변합니다.'
-              : 'Runs only the sensor, model, knowledge, weather, operations, and market lanes needed for the question. Numerical advice must pass the existing admission gate.'}
+              ? '전일 동시간 비교, 생리 모델, 전문가 지식, 날씨, 출하 일정, 시장 중 필요한 경로만 실행합니다. 최종 문장의 숫자와 필수 내용도 다시 검사하며, 실패하면 검증된 결정론적 답변으로 자동 교체합니다.'
+              : 'Runs only the required same-time comparison, physiology, model, knowledge, weather, operations, and market lanes. Final numbers and required answer elements are reviewed, with a deterministic fallback on failure.'}
           </p>
         </div>
       </div>
@@ -127,7 +129,7 @@ export default function AdaptiveAdvisorWorkbench({
             className="rounded-xl bg-[color:var(--sg-accent-blue)] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading
-              ? (locale === 'ko' ? '적응형 계산 중...' : 'Running adaptive graph...')
+              ? (locale === 'ko' ? '적응형 계산·검증 중...' : 'Calculating and reviewing...')
               : (locale === 'ko' ? '적응형 분석 실행' : 'Run adaptive analysis')}
           </button>
         </div>
@@ -149,11 +151,18 @@ export default function AdaptiveAdvisorWorkbench({
           <div className="rounded-2xl border border-[color:var(--sg-border-soft)] bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-bold text-[color:var(--sg-text-strong)]">
-                {locale === 'ko' ? '적응형 답변' : 'Adaptive answer'}
+                {locale === 'ko' ? '검증된 적응형 답변' : 'Reviewed adaptive answer'}
               </h3>
-              <span className="rounded-full bg-[color:var(--sg-surface-muted)] px-3 py-1 text-xs font-semibold text-[color:var(--sg-text-muted)]">
-                {result.plan.intent}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {result.quality_profile.response.fallback_used && (
+                  <span className="rounded-full bg-[color:var(--sg-accent-amber-soft)] px-3 py-1 text-xs font-semibold text-[color:var(--sg-accent-amber)]">
+                    {locale === 'ko' ? '안전 대체 답변' : 'Safe fallback'}
+                  </span>
+                )}
+                <span className="rounded-full bg-[color:var(--sg-surface-muted)] px-3 py-1 text-xs font-semibold text-[color:var(--sg-text-muted)]">
+                  {result.plan.intent}
+                </span>
+              </div>
             </div>
             <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[color:var(--sg-text-strong)]">
               {result.text}
@@ -162,7 +171,7 @@ export default function AdaptiveAdvisorWorkbench({
 
           <details className="rounded-2xl border border-[color:var(--sg-border-soft)] bg-white p-4">
             <summary className="cursor-pointer text-sm font-semibold text-[color:var(--sg-text-strong)]">
-              {locale === 'ko' ? '이번 답변의 실행 경로' : 'Execution path for this answer'}
+              {locale === 'ko' ? '이번 답변의 실행·검증 경로' : 'Execution and review path'}
             </summary>
             <ol className="mt-3 grid gap-2 sm:grid-cols-2">
               {result.trace.map((item, index) => (
