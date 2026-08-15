@@ -53,7 +53,8 @@ jobs:
               raise RuntimeError("quality current-coverage status marker drifted")
           position = positions[0]
           snapshot_line = (
-              '    elif snapshot_resolution.get("primary_source") == "unavailable":'
+              '    elif snapshot_resolution.get("primary_source") in '
+              '{"unavailable", "server_stale"}:'
           )
           if snapshot_line not in lines:
               lines[position:position] = [
