@@ -1,4 +1,4 @@
-"""FastAPI routes for the adaptive advisor graph v1 shadow surface."""
+"""FastAPI routes for the adaptive advisor graph shadow surface."""
 
 from __future__ import annotations
 
@@ -32,6 +32,8 @@ async def adaptive_advisor_health() -> dict[str, str]:
         "status": "ready",
         "schema_version": "adaptive-advisor-response.v1",
         "runtime": "bounded-run-specific-graph",
+        "answer_packet": "adaptive-answer-packet.v2",
+        "quality_pipeline": "post-render-reviewed",
     }
 
 
@@ -47,7 +49,7 @@ async def plan_adaptive_advisor(
 async def run_adaptive_advisor(
     request: AdaptiveAdvisorRequest,
 ) -> AdaptiveAdvisorResponse:
-    """Execute the run-specific graph through its immutable safety spine."""
+    """Execute the graph, review the rendered answer, then score delivered quality."""
     try:
         return await execute_adaptive_advisor(request)
     except ValueError as exc:
