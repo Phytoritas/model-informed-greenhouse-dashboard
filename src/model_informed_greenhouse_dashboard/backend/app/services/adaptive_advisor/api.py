@@ -50,7 +50,7 @@ async def adaptive_advisor_health() -> dict:
         "conversation_store": _conversation_store.describe(),
         "market_observations": _market_store.describe(),
         "quality_ledger": _quality_ledger.summary(),
-        "market_model": "holiday-arrival-supply-shock.v1",
+        "market_model": "holiday-arrival-supply-shock.v2",
         "routing_regression": "offline-routing-ridge.v2",
         "numeric_gate": "unit-aware-curated-claims.v1",
         "snapshot_resolution": "server-aware-current-state.v1",
