@@ -1,0 +1,42 @@
+name: connector-source-export
+
+on:
+  push:
+    branches:
+      - "feat/adaptive-advisor-graph-v1"
+    paths:
+      - ".github/workflows/connector-source-export.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export current branch source
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-branch-source-${{ github.sha }}
+          retention-days: 1
+          if-no-files-found: error
+          include-hidden-files: true
+          path: |
+            .env.example
+            .gitattributes
+            .github
+            .gitignore
+            .python-version
+            README.md
+            configs
+            docs
+            frontend
+            poetry.lock
+            poetry.toml
+            pyproject.toml
+            scripts
+            src
+            start_all.bat
+            tests
