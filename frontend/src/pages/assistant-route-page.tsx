@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import AskSearchPage from '../components/phyto/AskSearchPage';
 import AiCompatibilityPanel from '../components/assistant/AiCompatibilityPanel';
+import AdaptiveAdvisorWorkbench from '../components/advisor/AdaptiveAdvisorWorkbench';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { SmartGrowAdvisorySurfaceSummary, SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
@@ -82,6 +83,17 @@ export default function AssistantRoutePage({
             smartGrowLoading={smartGrowLoading}
             smartGrowError={smartGrowError}
             onOpenSearch={onOpenSearch}
+          />
+          <AdaptiveAdvisorWorkbench
+            locale={locale}
+            crop={crop}
+            currentData={currentData}
+            metrics={metrics}
+            forecast={forecast}
+            history={history}
+            producePrices={producePrices}
+            weather={weather}
+            rtrProfile={rtrProfile}
           />
         </div>
       )}
