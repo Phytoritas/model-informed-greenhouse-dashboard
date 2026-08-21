@@ -1,0 +1,29 @@
+{
+  "schema_version": "operations-calendar.v1",
+  "greenhouse_id": "tomato",
+  "timezone": "Asia/Seoul",
+  "revision": 0,
+  "updated_at": "2026-08-15T00:00:00Z",
+  "events": [
+    {
+      "event_id": "summer-holiday-2026",
+      "event_type": "SHIPMENT_BLACKOUT",
+      "start_date": "2026-08-17",
+      "end_date": "2026-08-23",
+      "title": "여름 휴가 출하 중단",
+      "priority": 90,
+      "metadata": {}
+    },
+    {
+      "event_id": "post-holiday-shipment-2026",
+      "event_type": "SHIPMENT_TARGET",
+      "start_date": "2026-08-24",
+      "end_date": "2026-08-24",
+      "title": "휴가 후 집중 출하",
+      "amount": 650,
+      "unit": "kg",
+      "priority": 95,
+      "metadata": {}
+    }
+  ]
+}

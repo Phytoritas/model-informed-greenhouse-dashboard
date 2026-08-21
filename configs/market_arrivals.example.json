@@ -1,0 +1,15 @@
+{
+  "observations": [
+    {
+      "market_id": "kamis-wholesale",
+      "crop": "tomato",
+      "observation_date": "2026-08-10",
+      "arrival_volume_kg": 12500,
+      "wholesale_price_krw_per_kg": 2850,
+      "source": "operator-import",
+      "metadata": {
+        "market_name": "example"
+      }
+    }
+  ]
+}
