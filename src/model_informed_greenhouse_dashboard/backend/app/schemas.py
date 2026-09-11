@@ -11,7 +11,7 @@ class EnvRow(BaseModel):
     datetime: datetime
     T_air_C: float = Field(ge=-20, le=50)
     PAR_umol: float = Field(ge=0, le=3000)
-    CO2_ppm: float = Field(ge=300, le=2000)
+    CO2_ppm: float = Field(gt=0, le=2000)
     RH_percent: float = Field(ge=0, le=100)
     wind_speed_ms: float = Field(ge=0, le=10)
     
@@ -73,9 +73,15 @@ class ForecastSnapshot(BaseModel):
     type: str = Field(default="forecast.snapshot")
     daily: List[Dict[str, Any]] = Field(description="Daily aggregated forecast")
     last: Dict[str, Any] = Field(description="Final state of forecast period")
-    total_harvest_kg: float
-    total_energy_kWh: float
-    total_ETc_mm: float
+    total_harvest_kg: Optional[float] = None
+    total_energy_kWh: Optional[float] = None
+    total_fruit_growth_dry_kg: Optional[float] = None
+    harvest_basis: str = "fresh_mass_unavailable"
+    fruit_growth_basis: str = "dry_matter"
+    energy_basis: str = "not_estimated"
+    total_ETc_mm: Optional[float] = None
+    total_harvested_fruit_dry_kg: Optional[float] = None
+    data_quality: Optional[Dict[str, Any]] = None
 
 
 # ===== Configuration Schemas =====

@@ -1,9 +1,8 @@
-import { Suspense, lazy, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import PageHeader from '../components/common/PageHeader';
-import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import ModelScenarioWorkbench from '../components/dashboard/ModelScenarioWorkbench';
-import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
 import type {
   CropType,
   RtrOptimizationMode,
@@ -13,22 +12,25 @@ import type {
   TemperatureSettings,
   WeatherOutlook,
 } from '../types';
-
-const RTROptimizerPanel = lazy(() => import('../components/RTROptimizerPanel'));
+import type { RTROptimizerStateLike, RTROptimizerUiStateLike } from '../components/RTROptimizerPanel';
 
 interface ScenariosRoutePageProps {
   locale: 'ko' | 'en';
   crop: CropType;
-  currentData: SensorData;
-  history: SensorData[];
+  /**
+   * RTR strategy now lives only on /rtr, so these stay accepted for the current
+   * call site but no longer render a second optimizer surface here.
+   */
+  currentData?: SensorData;
+  history?: SensorData[];
   telemetryStatus?: TelemetryStatus;
-  temperatureSettings: TemperatureSettings;
-  weather: WeatherOutlook | null;
-  weatherLoading: boolean;
-  weatherError: string | null;
-  profile: RtrProfile | null;
-  profileLoading: boolean;
-  profileError: string | null;
+  temperatureSettings?: TemperatureSettings;
+  weather?: WeatherOutlook | null;
+  weatherLoading?: boolean;
+  weatherError?: string | null;
+  profile?: RtrProfile | null;
+  profileLoading?: boolean;
+  profileError?: string | null;
   optimizerEnabled?: boolean;
   defaultMode?: RtrOptimizationMode;
   onRefreshProfiles?: () => void | Promise<void>;
@@ -39,35 +41,24 @@ interface ScenariosRoutePageProps {
 export default function ScenariosRoutePage({
   locale,
   crop,
-  currentData,
-  history,
-  telemetryStatus,
-  temperatureSettings,
-  weather,
-  weatherLoading,
-  weatherError,
-  profile,
-  profileLoading,
-  profileError,
-  optimizerEnabled,
-  defaultMode,
-  onRefreshProfiles,
-  optimizerState,
-  uiState,
 }: ScenariosRoutePageProps) {
   const location = useLocation();
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Scenarios',
-        title: '시나리오 실험실',
-        description: '과정기반모델 What-if와 RTR 시나리오·편미분을 별도 탭에서 실제 백엔드 계산으로 실행합니다.',
-        rtrLoading: 'RTR 시나리오 표면을 불러오는 중입니다...',
+        eyebrow: '시나리오',
+        title: '시나리오 비교',
+        description: '설정을 바꾸면 수량과 에너지가 어떻게 달라지는지 기준안과 비교해 계산합니다.',
+        rtrTitle: 'RTR 전략 비교는 RTR 최적화 화면에서',
+        rtrBody: 'RTR(주야간 평균온도 전략) 기준안·최적안 비교와 민감도는 RTR 최적화 화면 한곳에서 봅니다.',
+        rtrLink: 'RTR 최적화 열기',
       }
     : {
         eyebrow: 'Scenarios',
-        title: 'Scenario Lab',
-        description: 'Run process-model what-if scenarios and RTR scenario/sensitivity surfaces against the real backend.',
-        rtrLoading: 'Loading RTR scenario surface...',
+        title: 'Scenario comparison',
+        description: 'Compare a candidate setting against the baseline and see how yield and energy respond.',
+        rtrTitle: 'RTR strategy comparison lives on the RTR screen',
+        rtrBody: 'Baseline and optimized RTR comparison and its sensitivity views are kept together on the RTR optimization screen.',
+        rtrLink: 'Open RTR optimization',
       };
 
   useEffect(() => {
@@ -100,35 +91,16 @@ export default function ScenariosRoutePage({
         <ModelScenarioWorkbench crop={crop} />
       </section>
       <section id="scenario-rtr" tabIndex={-1} className="min-w-0 scroll-mt-24 focus:outline-none">
-        <Suspense
-          fallback={(
-            <LoadingSkeleton
-              title="RTR Scenario"
-              loadingMessage={copy.rtrLoading}
-              minHeightClassName="min-h-[420px]"
-            />
-          )}
-        >
-          <RTROptimizerPanel
-            key={`scenarios-${crop}`}
-            crop={crop}
-            currentData={currentData}
-            history={history}
-            telemetryStatus={telemetryStatus}
-            temperatureSettings={temperatureSettings}
-            weather={weather}
-            loading={weatherLoading}
-            error={weatherError}
-            profile={profile}
-            profileLoading={profileLoading}
-            profileError={profileError}
-            optimizerEnabled={optimizerEnabled}
-            defaultMode={defaultMode}
-            onRefreshProfiles={onRefreshProfiles}
-            optimizerState={optimizerState}
-            uiState={uiState}
-          />
-        </Suspense>
+        <div className="sg-panel bg-white p-4">
+          <h2 className="text-base font-bold text-[color:var(--sg-text-strong)]">{copy.rtrTitle}</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[color:var(--sg-text-muted)]">{copy.rtrBody}</p>
+          <Link
+            to="/rtr"
+            className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-color-primary)] px-3.5 text-xs font-bold text-white transition hover:bg-[color:var(--sg-color-primary-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] focus-visible:ring-offset-2"
+          >
+            {copy.rtrLink} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
+        </div>
       </section>
     </div>
   );

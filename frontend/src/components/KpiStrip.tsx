@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useLocale } from '../i18n/LocaleProvider';
+import ScientificText from './common/ScientificText';
 import { formatMetricValue } from '../utils/formatValue';
 import type { SensorHealthStatus } from '../utils/sensorStatus';
 import type { SensorFieldState, TelemetryStatus } from '../types';
@@ -78,12 +79,12 @@ function KpiTile({ tile }: { tile: KpiTileData }) {
             </div>
 
             <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-[color:var(--sg-text-muted)]">{tile.label}</p>
+                <p className="text-sm font-medium text-[color:var(--sg-text-muted)]"><ScientificText text={tile.label} /></p>
                 <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                     <span className={`font-bold text-[color:var(--sg-text-strong)] ${isNumericValue ? 'text-2xl sm:text-3xl' : 'text-base sm:text-lg'}`}>
                         {displayValue}
                     </span>
-                    {isNumericValue ? <span className="text-sm text-[color:var(--sg-text-muted)]">{tile.unit}</span> : null}
+                    {isNumericValue ? <ScientificText text={tile.unit} className="scientific-unit text-xs text-[color:var(--sg-text-muted)]" /> : null}
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-start justify-between gap-2 border-t border-[color:var(--sg-outline-soft)] pt-2">
@@ -103,7 +104,7 @@ function KpiTile({ tile }: { tile: KpiTileData }) {
                                     : 'text-[color:var(--sg-text-faint)]'
                         }`}>
                             {TREND_ARROW[tile.trend]}
-                            {tile.trendDetail ? ` ${tile.trendDetail}` : ''}
+                            {tile.trendDetail ? <> <ScientificText text={tile.trendDetail} /></> : null}
                         </span>
                         {tile.lastReceived && (
                             <span className="mt-1 block break-words text-[10px] leading-tight text-[color:var(--sg-text-faint)]">

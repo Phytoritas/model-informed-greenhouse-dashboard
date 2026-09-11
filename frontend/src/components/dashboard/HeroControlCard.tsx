@@ -107,6 +107,7 @@ export default function HeroControlCard({
             lai: 'LAI',
             refreshing: '분석 갱신 중',
             updated: '분석',
+            unknown: '값 없음',
         }
         : {
             title: `Greenhouse 1 · ${cropLabel}`,
@@ -121,15 +122,32 @@ export default function HeroControlCard({
             lai: 'LAI',
             refreshing: 'Refreshing',
             updated: 'Updated',
+            unknown: 'No value',
         };
 
+    // A field the feed never reported shows as unknown. Printing a formatted 0 would
+    // read as a measurement, which is the same defect the action board had.
+    const tileValue = (
+        field: keyof NonNullable<SensorData['fieldAvailability']>,
+        value: number | undefined,
+        unit: string,
+        digits: number,
+    ): string => {
+        const reported = currentData?.fieldAvailability?.[field];
+        const finite = typeof value === 'number' && Number.isFinite(value);
+        if (reported === false || !finite) {
+            return copy.unknown;
+        }
+        return `${formatMetric(value, digits)}${unit}`;
+    };
+
     const previewTiles = [
-        { label: copy.temp, value: `${formatMetric(currentData?.temperature, 1)}°C`, icon: Thermometer },
-        { label: copy.rh, value: `${formatMetric(currentData?.humidity, 0)}%`, icon: Droplets },
-        { label: copy.co2, value: `${formatMetric(currentData?.co2, 0)} ppm`, icon: Wind },
-        { label: copy.vpd, value: `${formatMetric(currentData?.vpd, 2)} kPa`, icon: Gauge },
-        { label: copy.par, value: `${formatMetric(currentData?.light, 0)} µmol`, icon: SunMedium },
-        { label: copy.soilWater, value: `${formatMetric(currentData?.soilMoisture, 1)}%`, icon: Sprout },
+        { label: copy.temp, value: tileValue('temperature', currentData?.temperature, '°C', 1), icon: Thermometer },
+        { label: copy.rh, value: tileValue('humidity', currentData?.humidity, '%', 0), icon: Droplets },
+        { label: copy.co2, value: tileValue('co2', currentData?.co2, ' ppm', 0), icon: Wind },
+        { label: copy.vpd, value: tileValue('vpd', currentData?.vpd, ' kPa', 2), icon: Gauge },
+        { label: copy.par, value: tileValue('light', currentData?.light, ' µmol', 0), icon: SunMedium },
+        { label: copy.soilWater, value: tileValue('soilMoisture', currentData?.soilMoisture, '%', 1), icon: Sprout },
     ];
     const advisorFreshnessLabel = advisorRefreshing
         ? copy.refreshing

@@ -230,6 +230,11 @@ def test_load_rtr_good_windows_parses_string_enabled_flags(tmp_path) -> None:
             "endDate": "2026-04-06",
             "enabled": False,
             "notes": "operator-approved",
+            "houseId": None,
+            "approvalStatus": "heuristic-demo",
+            "approvalSource": None,
+            "approvalReason": None,
+            "evidenceNotes": None,
         }
     ]
     assert payload["crops"]["Cucumber"][0]["enabled"] is True

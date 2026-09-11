@@ -52,6 +52,51 @@ chmod +x scripts/start_all.sh
 - `./scripts/start_all.sh` provides the same workflow for macOS, Linux, WSL, or Git Bash. If execute permissions are unavailable, use `bash scripts/start_all.sh` instead.
 - `.\start_all.bat check` or `./scripts/start_all.sh check` validates the launcher prerequisites without starting servers.
 
+## Agronomy sources for chat
+
+The chat retrieves passages from the local Japanese tomato and cucumber
+`農業技術大系` PDFs, including adjacent passages that may contain application
+conditions. Korean physiology terms are matched to Japanese equivalents. Answers
+connect the principle, conditions and management decision, with the actual source
+title and PDF page index; the PDF index may differ from printed page numbering.
+Source-specific Japanese practices and experimental conditions remain relevant
+when interpreting a number for a local greenhouse.
+
+To add these books to existing knowledge databases, run:
+
+```bash
+poetry run python scripts/index_agronomy_compendia.py extract
+poetry run python scripts/index_agronomy_compendia.py index
+```
+
+Extraction caches readable pages and can resume an interrupted extraction. Indexing
+updates only these two documents in the existing crop databases and, when present,
+the `all` database. The original PDFs and other documents are retained.
+The extractor restores reading order on pages with a clear two-column layout.
+Complex tables and figure labels remain text rather than reconstructed tables;
+ambiguous row, column or legend associations cannot establish a numerical target.
+
+The example environment selects `LLM_PROVIDER=antigravity_oauth`: both chat and
+consulting use `google-antigravity/gemini-3.8-flash` with reasoning effort `low`.
+Run `ocx login google-antigravity` if the account is not already connected, and
+keep the OpenCodeX proxy running at `http://127.0.0.1:10100/v1`. OpenCodeX manages
+OAuth tokens and refresh; no Google token needs to be copied into this project.
+`ANTIGRAVITY_BASE_URL`, `ANTIGRAVITY_MODEL` and `ANTIGRAVITY_REASONING_EFFORT` can
+override these settings. If the proxy requires its own key, set
+`ANTIGRAVITY_PROXY_API_KEY` on the backend.
+
+`LLM_PROVIDER=openai` retains the API-key option: `OPENAI_CHAT_MODEL=gpt-5.4`
+and `OPENAI_CHAT_REASONING_EFFORT=medium` for chat, with `OPENAI_MODEL` for
+consulting. An unset `LLM_PROVIDER` retains this option for existing deployments.
+
+Chat keeps source labels and retrieval details out of the visible conversation.
+`POST /api/advisor/chat` returns `text` and an optional
+`follow_up: {question, options}`. The assistant asks one relevant question when
+more information would change the advice; growers can select a reply or type
+freely. The next request includes the previous question alongside the answer so
+short replies retain their context. Retrieval metadata remains available to
+internal callers.
+
 ## Deploying with the same answer quality (knowledge DB provisioning)
 
 The advisor's answer quality is backed by a SmartGrow knowledge database at
@@ -145,7 +190,7 @@ npm install --prefix frontend
 
 ```bash
 # Backend: AI assistant + KAMIS produce-price keys.
-# The app runs without OPENAI_API_KEY; assistant answers are then unavailable.
+# Assistant answers require the selected provider's connection (OAuth proxy or API key).
 cp .env.example .env
 
 # Frontend: only needed if you want to override API endpoints.

@@ -75,7 +75,7 @@ export function TrendCard({
         {path ? (
           <svg viewBox={`0 0 ${width} ${height}`} role="img" className="h-[54px] w-full overflow-visible">
             <title>{trendLabel}</title>
-            <path d={path} fill="none" stroke={tone === 'critical' ? 'var(--sg-color-primary)' : 'var(--sg-color-success)'} strokeWidth="3" strokeLinecap="round" />
+            <path d={path} fill="none" stroke={tone === 'critical' ? 'var(--sg-accent-danger)' : 'var(--sg-color-success)'} strokeWidth="3" strokeLinecap="round" />
           </svg>
         ) : (
           <div className="flex h-[54px] items-center text-xs text-[color:var(--sg-text-muted)]">No chart data</div>

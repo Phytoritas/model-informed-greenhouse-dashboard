@@ -1,0 +1,303 @@
+/* Assistant workspace: conversation surface, welcome state and tools rail.
+   Message text is sized for sustained Korean reading (15px / 1.85) and the
+   composer stays pinned and reachable at every width. Colors resolve through
+   the installed PHYTO tokens so the surface follows light and dark directly. */
+
+.assistant-conversation {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--sg-outline-soft);
+  border-radius: 14px;
+  background: var(--sg-surface);
+}
+.assistant-conversation-inline { width: 100%; height: 640px; }
+.assistant-conversation-floating {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+  width: min(448px, calc(100vw - 24px));
+  height: min(640px, calc(100dvh - 48px));
+  box-shadow: var(--sg-shadow-card);
+}
+.assistant-conversation-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--sg-outline-soft);
+  color: var(--sg-text-strong);
+  font-size: 15px;
+}
+.assistant-conversation-tools {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--sg-outline-soft);
+  background: var(--sg-surface-muted);
+}
+.assistant-material-link {
+  min-height: 34px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: var(--sg-color-primary-strong);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--sg-color-primary-soft);
+}
+.assistant-prompt {
+  min-height: 34px;
+  border: 1px solid var(--sg-outline-soft);
+  border-radius: 8px;
+  padding: 7px 12px;
+  background: var(--sg-surface-strong);
+  color: var(--sg-text-strong);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: left;
+  transition: border-color 160ms, background 160ms;
+}
+.assistant-prompt:hover, .assistant-material-link:hover { border-color: var(--sg-color-primary); background: var(--sg-color-primary-soft); }
+
+/* ---------- messages ---------- */
+.assistant-message-list {
+  flex: 1;
+  min-height: 120px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 24px 20px;
+  background: var(--sg-surface-muted);
+}
+.assistant-message-list > * + * { margin-top: 16px; }
+.assistant-message {
+  max-width: 92%;
+  min-width: 0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 15px;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+.assistant-message-user {
+  border: 1px solid var(--sg-outline-strong);
+  border-bottom-right-radius: 4px;
+  background: var(--sg-surface-soft);
+  color: var(--sg-text-strong);
+}
+.assistant-message-answer {
+  width: fit-content;
+  max-width: min(100%, 78ch);
+  border: 1px solid var(--sg-outline-soft);
+  border-bottom-left-radius: 4px;
+  background: var(--sg-surface);
+  color: var(--sg-text);
+}
+.assistant-message table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 12px 0;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.assistant-message :is(th, td) {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--sg-outline-soft);
+  text-align: left;
+  vertical-align: top;
+}
+.assistant-message th { font-weight: 600; color: var(--sg-text-strong); background: var(--sg-surface-muted); }
+.assistant-message :is(ul, ol) { padding-left: 1.15em; }
+.assistant-message li + li { margin-top: 4px; }
+.assistant-message > * + * { margin-top: 10px; }
+
+/* ---------- follow-up question and quick replies ---------- */
+/* The question reads as part of the answer, so it keeps the message type scale
+   and is separated only by a hairline. Quick replies wrap normally and stack
+   full width on narrow phones. */
+.assistant-followup {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--sg-outline-soft);
+}
+.assistant-followup-question {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--sg-text-strong);
+  overflow-wrap: break-word;
+}
+.assistant-followup-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.assistant-followup-option {
+  max-width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--sg-color-primary);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--sg-color-primary-soft);
+  color: var(--sg-color-primary-strong);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  transition: background 160ms, border-color 160ms, color 160ms;
+}
+.assistant-followup-option:hover:not(:disabled) {
+  background: var(--sg-color-primary);
+  color: var(--sg-surface);
+}
+.assistant-followup-option:disabled { opacity: .55; cursor: not-allowed; }
+.assistant-followup-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--sg-text-muted);
+}
+
+/* ---------- welcome state ---------- */
+/* Quiet opening screen. Bounded height so the composer and the drawer edge
+   stay visible; it centers within whatever room the message list has. */
+.assistant-empty {
+  display: flex;
+  height: 100%;
+  min-height: 180px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.assistant-empty-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--sg-color-primary-soft);
+  color: var(--sg-color-primary-strong);
+}
+.assistant-empty h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--sg-text-strong);
+}
+.assistant-empty p {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--sg-text-muted);
+}
+
+/* ---------- composer ---------- */
+.assistant-composer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--sg-outline-soft);
+  background: var(--sg-surface);
+}
+.assistant-composer-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  flex: 1;
+  border: 1px solid var(--sg-outline-soft);
+  border-radius: 10px;
+  background: var(--sg-surface-muted);
+  padding: 11px 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--sg-text-strong);
+}
+.assistant-composer-input:focus-visible { border-color: var(--sg-color-primary); }
+.assistant-composer-input::placeholder { color: var(--sg-text-faint); }
+.assistant-composer-send {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--sg-color-primary);
+  color: white;
+  transition: background 160ms;
+}
+.assistant-composer-send:hover { background: var(--sg-color-primary-strong); }
+.assistant-composer-send:disabled { opacity: .5; }
+.assistant-conversation :is(button, input):focus-visible { outline: 2px solid var(--sg-color-primary); outline-offset: 3px; }
+
+/* ---------- assistant page and tools rail ---------- */
+.assistant-workspace-page { display: grid; min-width: 0; gap: 24px; }
+.assistant-workspace-page .assistant-conversation-inline { height: clamp(480px, calc(100dvh - 364px), 700px); }
+.assistant-tools-rail { display: grid; min-width: 0; gap: 16px; align-content: start; }
+.assistant-tools-rail .sg-card-title { font-size: 16px; line-height: 1.45; font-weight: 600; }
+.assistant-tools-rail .sg-card-description { font-size: 13px; line-height: 1.7; color: var(--sg-text-muted); }
+/* Flattened tool rows: one border per row, no nested pill stack. */
+.assistant-toolbox {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--sg-outline-soft);
+  border-radius: 12px;
+  background: var(--sg-surface-strong);
+}
+.assistant-toolbox > * + * { border-top: 1px solid var(--sg-outline-soft); padding-top: 12px; }
+.assistant-toolbox h3 { font-size: 15px; font-weight: 600; line-height: 1.5; color: var(--sg-text-strong); }
+.assistant-toolbox p { font-size: 13px; line-height: 1.7; color: var(--sg-text-muted); }
+.assistant-toolbox button {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--sg-outline-soft);
+  border-radius: 9px;
+  background: var(--sg-surface);
+  color: var(--sg-text-strong);
+  font-size: 14px;
+  font-weight: 500;
+}
+.assistant-toolbox button:hover { background: var(--sg-color-primary-soft); border-color: var(--sg-color-primary); color: var(--sg-color-primary-strong); }
+
+@media (max-width: 639px) {
+  .assistant-conversation-inline { height: 610px; }
+  .assistant-conversation-header, .assistant-conversation-tools, .assistant-composer { padding: 12px 14px; }
+  .assistant-message-list { padding: 16px 14px; }
+  .assistant-message { max-width: 96%; padding: 12px 14px; }
+  /* At 390px a horizontal pill row truncates; one option per row stays tappable. */
+  .assistant-followup-options { flex-direction: column; align-items: stretch; }
+  .assistant-followup-option { width: 100%; border-radius: 12px; min-height: 40px; }
+  /* 16px avoids the iOS focus zoom that would push the composer off screen. */
+  .assistant-composer-input { font-size: 16px; }
+  .assistant-empty { min-height: 150px; padding: 16px 12px; gap: 10px; }
+  .assistant-toolbox { padding: 16px; }
+  .assistant-workspace-page { gap: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-conversation *, .assistant-toolbox * { transition: none; }
+}
+
+[role="dialog"] .assistant-drawer-surface { padding: 0; }
+.assistant-drawer-chat-body { overflow: hidden; }
+.assistant-drawer-chat-body > div,
+.assistant-drawer-chat-body > div > div:first-child { height: 100%; min-height: 0; }
+.assistant-drawer-chat-body .assistant-conversation-inline { height: 100%; min-height: 0; }
+.assistant-drawer-chat-body .assistant-message-list { min-height: 0; }

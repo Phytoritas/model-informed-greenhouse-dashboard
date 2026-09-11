@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
 
+from ..adapters.base import environment_quality, finite_number, model_output_is_valid
 from ..adapters.cucumber import CucumberAdapter
 from ..adapters.tomato import TomatoAdapter
 
@@ -46,6 +47,19 @@ def _branch_worker(adapter_class_name: str,
         
         worker_logger.info(f"✅ Adapter created: {adapter_class_name}")
         
+        # Preserve the branch origin; the first prediction already includes growth.
+        meta = adapter_state.get("_adapter_meta", {})
+        initial = meta.get("last_state") or {}
+        initial_fruit = finite_number(initial.get(
+            "fruit_dry_weight_g_m2",
+            adapter_state.get("W_fr" if adapter_class_name == "tomato" else "fruit_dw"),
+        ))
+        initial_harvest = (
+            finite_number(initial.get(
+                "harvested_fruit_g_m2", adapter_state.get("W_fr_harvested")
+            )) if adapter_class_name == "tomato" else 0.0
+        )
+
         # Restore state
         adapter.load_state(adapter_state)
         adapter.configure(adapter_config)
@@ -53,7 +67,27 @@ def _branch_worker(adapter_class_name: str,
         
         # Sample rows to reduce computation time for forecast
         # For 10-min data: skip=6 -> hourly, skip=36 -> every 6 hours
-        sampled_rows = rows[::forecast_step_interval]
+        if forecast_step_interval < 1:
+            raise ValueError("forecast_step_interval must be positive")
+        rows = sorted(rows, key=lambda row: pd.Timestamp(row["datetime"]))
+        if meta.get("last_datetime"):
+            origin = pd.Timestamp(meta["last_datetime"])
+            rows = [row for row in rows if pd.Timestamp(row["datetime"]) > origin]
+        input_issues = []
+        for row in rows:
+            for issue in environment_quality(row)["issues"]:
+                if issue not in input_issues:
+                    input_issues.append(issue)
+        sampled_rows = [dict(row) for row in rows[::forecast_step_interval]]
+        if sampled_rows and sampled_rows[-1]["datetime"] != rows[-1]["datetime"]:
+            sampled_rows.append(dict(rows[-1]))
+        if sampled_rows and not meta.get("last_datetime"):
+            # Only needed for an unstarted adapter; running branches use timestamps.
+            if len(rows) > 1:
+                first_duration = (
+                    pd.Timestamp(rows[1]["datetime"]) - pd.Timestamp(rows[0]["datetime"])
+                ).total_seconds()
+                sampled_rows[0].setdefault("dt_seconds", first_duration)
         worker_logger.info(f"Forecast: Sampled {len(sampled_rows)} rows from {len(rows)} (interval={forecast_step_interval})")
     except Exception as e:
         worker_logger.error(f"❌ Forecast worker initialization error: {e}", exc_info=True)
@@ -62,87 +96,99 @@ def _branch_worker(adapter_class_name: str,
     # Run batch simulation on sampled data
     results = adapter.run_batch(sampled_rows)
     
-    # Convert to DataFrame for aggregation
-    df = pd.DataFrame(results)
-    if len(df) == 0:
-        return {'daily': [], 'last': {}, 'total_harvest_kg': 0, 'total_energy_kWh': 0, 'total_ETc_mm': 0}
-    
-    df['datetime'] = pd.to_datetime(df['datetime'])
-    df['date'] = df['datetime'].dt.date
-    
-    # Daily aggregation
-    if adapter_class_name == 'tomato':
-        initial_harvest = float(df['harvested_fruit_g_m2'].iloc[0]) if 'harvested_fruit_g_m2' in df else 0.0
-        initial_fruit_dw = float(df['fruit_dry_weight_g_m2'].iloc[0]) if 'fruit_dry_weight_g_m2' in df else 0.0
-        
-        daily = df.groupby('date').agg({
-            'harvested_fruit_g_m2': 'max',  # Cumulative, take max
-            'fruit_dry_weight_g_m2': 'max',
-            'transpiration_g_m2': 'sum',
-            'LAI': 'mean',
-            'active_trusses': 'mean',
-            'T_air_C': ['max', 'min'],
-            'PAR_umol': 'sum'
-        }).reset_index()
-        
-        # Flatten MultiIndex columns
-        daily.columns = ['date', 'harvested_fruit_g_m2', 'fruit_dry_weight_g_m2', 'transpiration_g_m2', 'LAI', 'active_trusses', 'T_air_max', 'T_air_min', 'PAR_total']
-        
-        # Calculate daily deltas for harvest
-        daily['harvest_g_m2'] = daily['harvested_fruit_g_m2'].diff().fillna(daily['harvested_fruit_g_m2'] - initial_harvest)
-        daily['harvest_kg'] = (daily['harvest_g_m2'] * area_m2) / 1000
-        
-        # Fallback: use fruit dry weight growth if harvest stays flat
-        if float(daily['harvest_kg'].abs().sum()) < 1e-6:
-            logger.info("Forecast fallback: using fruit dry weight growth for harvest projection (tomato)")
-            daily['harvest_g_m2'] = daily['fruit_dry_weight_g_m2'].diff().fillna(daily['fruit_dry_weight_g_m2'] - initial_fruit_dw)
-            daily['harvest_kg'] = (daily['harvest_g_m2'] * area_m2) / 1000
-    else:  # cucumber
-        initial_fruit_dw = float(df['fruit_dry_weight_g_m2'].iloc[0]) if 'fruit_dry_weight_g_m2' in df else 0.0
-        
-        daily = df.groupby('date').agg({
-            'fruit_dry_weight_g_m2': 'max',
-            'transpiration_g_m2': 'sum',
-            'LAI': 'mean',
-            'node_count': 'mean',
-            'T_air_C': ['max', 'min'],
-            'PAR_umol': 'sum'
-        }).reset_index()
-        
-        # Flatten MultiIndex columns
-        daily.columns = ['date', 'fruit_dry_weight_g_m2', 'transpiration_g_m2', 'LAI', 'node_count', 'T_air_max', 'T_air_min', 'PAR_total']
-        
-        daily['harvest_g_m2'] = daily['fruit_dry_weight_g_m2'].diff().fillna(daily['fruit_dry_weight_g_m2'] - initial_fruit_dw)
-        daily['harvest_kg'] = (daily['harvest_g_m2'] * area_m2) / 1000
-    
-    # Ensure no negative values due to numerical noise
-    daily['harvest_g_m2'] = daily['harvest_g_m2'].clip(lower=0)
-    daily['harvest_kg'] = daily['harvest_kg'].clip(lower=0)
-    
-    # ETc in mm
-    daily['ETc_mm'] = daily['transpiration_g_m2'] / 1000
-    
-    # Simple energy estimate (placeholder - will be refined by energy service)
-    daily['energy_kWh'] = 0.0  # TODO: integrate with energy estimator
-    
-    # Totals
-    total_harvest_kg = float(daily['harvest_kg'].sum())
-    total_ETc_mm = float(daily['ETc_mm'].sum())
-    total_energy_kWh = float(daily['energy_kWh'].sum())
-    
-    # Convert to dict
-    daily_dict = daily.to_dict(orient='records')
-    for d in daily_dict:
-        d['date'] = str(d['date'])  # Serialize date
-    
+    issues = list(input_issues)
+    if initial and not model_output_is_valid(initial):
+        issues.append({"field": "initial_state", "reason": "model_output_invalid"})
+    if initial_fruit is None or initial_harvest is None:
+        issues.append({"field": "initial_state", "reason": "dry_matter_baseline_missing"})
+    if any(not model_output_is_valid(state) for state in results):
+        issues.append({"field": "model", "reason": "model_output_invalid"})
+    required = ["fruit_dry_weight_g_m2", "transpiration_g_m2", "LAI", "T_air_C", "PAR_umol"]
+    if adapter_class_name == "tomato":
+        required.append("harvested_fruit_g_m2")
+    if any(finite_number(state.get(key)) is None for state in results for key in required):
+        issues.append({"field": "model", "reason": "required_output_missing"})
+
     snapshot = {
-        'daily': daily_dict,
-        'last': results[-1] if results else {},
-        'total_harvest_kg': total_harvest_kg,
-        'total_energy_kWh': total_energy_kWh,
-        'total_ETc_mm': total_ETc_mm,
+        "daily": [],
+        "last": results[-1] if results else {},
+        "total_harvest_kg": None,
+        "total_fruit_growth_dry_kg": None,
+        "total_harvested_fruit_dry_kg": None,
+        "total_energy_kWh": None,
+        "total_ETc_mm": None,
+        "harvest_basis": "fresh_mass_unavailable",
+        "fruit_growth_basis": "dry_matter",
+        "energy_basis": "not_estimated",
+        "source": "model_prediction_from_csv_replay",
+        "data_quality": {
+            "status": "invalid" if issues else "ok",
+            "source": "csv_replay",
+            "issues": issues,
+        },
     }
-    
+    if not results:
+        return snapshot
+
+    df = pd.DataFrame(results)
+    df["datetime"] = pd.to_datetime(df["datetime"])
+    df["date"] = df["datetime"].dt.date
+    valid = not issues
+    previous_total_dm = (
+        initial_fruit + initial_harvest
+        if initial_fruit is not None and initial_harvest is not None else None
+    )
+    previous_harvest_dm = initial_harvest
+    for date, group in df.groupby("date", sort=True):
+        last = group.iloc[-1]
+        ending_fruit = finite_number(last.get("fruit_dry_weight_g_m2"))
+        ending_harvest = (
+            finite_number(last.get("harvested_fruit_g_m2"))
+            if adapter_class_name == "tomato" else 0.0
+        )
+        growth_kg = None
+        harvested_dry_kg = None
+        if valid:
+            # Adding harvested DM accounts for transfers out of standing fruit.
+            ending_total_dm = ending_fruit + ending_harvest
+            growth_kg = (ending_total_dm - previous_total_dm) * area_m2 / 1000.0
+            if adapter_class_name == "tomato":
+                harvested_dry_kg = (ending_harvest - previous_harvest_dm) * area_m2 / 1000.0
+            previous_total_dm = ending_total_dm
+            previous_harvest_dm = ending_harvest
+
+        def aggregate(key: str, method: str) -> float | None:
+            if key not in group:
+                return None
+            values = pd.to_numeric(group[key], errors="coerce")
+            if any(finite_number(value) is None for value in values):
+                return None
+            return finite_number(getattr(values, method)())
+
+        transpiration = aggregate("transpiration_g_m2", "sum") if valid else None
+        daily = {
+            "date": str(date),
+            "harvest_kg": None,
+            "fruit_growth_dry_kg": growth_kg,
+            "harvested_fruit_dry_kg": harvested_dry_kg,
+            "fruit_dry_weight_g_m2": ending_fruit,
+            "transpiration_g_m2": transpiration,
+            "ETc_mm": transpiration / 1000.0 if transpiration is not None else None,
+            "energy_kWh": None,
+            "LAI": aggregate("LAI", "mean") if valid else None,
+            "T_air_max": aggregate("T_air_C", "max"),
+            "T_air_min": aggregate("T_air_C", "min"),
+            "PAR_total": aggregate("PAR_umol", "sum"),
+        }
+        crop_metric = "active_trusses" if adapter_class_name == "tomato" else "node_count"
+        daily[crop_metric] = aggregate(crop_metric, "mean") if valid else None
+        snapshot["daily"].append(daily)
+
+    if valid:
+        snapshot["total_fruit_growth_dry_kg"] = sum(day["fruit_growth_dry_kg"] for day in snapshot["daily"])
+        snapshot["total_ETc_mm"] = sum(day["ETc_mm"] for day in snapshot["daily"])
+        if adapter_class_name == "tomato":
+            snapshot["total_harvested_fruit_dry_kg"] = sum(day["harvested_fruit_dry_kg"] for day in snapshot["daily"])
     return snapshot
 
 
@@ -216,6 +262,9 @@ class BranchForecaster:
     
     def _on_done(self, fut: Future):
         """Callback when forecast completes."""
+        current = _current_futures.get(self.crop_name)
+        if current is not None and current is not fut:
+            return
         if fut.cancelled():
             logger.info("Forecast run was cancelled")
             return
@@ -226,9 +275,12 @@ class BranchForecaster:
                 'type': 'forecast.snapshot',
                 **snapshot
             }
-            logger.info(f"✅ Forecast completed: {snapshot.get('total_harvest_kg', 0):.2f} kg harvest, "
-                       f"{snapshot.get('total_ETc_mm', 0):.2f} mm ETc, "
-                       f"{len(snapshot.get('daily', []))} days")
+            logger.info(
+                "Forecast completed: fruit growth=%s kg dry matter, ETc=%s mm, %s days",
+                snapshot.get("total_fruit_growth_dry_kg"),
+                snapshot.get("total_ETc_mm"),
+                len(snapshot.get("daily", [])),
+            )
             
             logger.info(f"Broadcasting forecast to /ws/forecast with {len(payload.get('daily', []))} daily entries")
             self.broadcast('/ws/forecast', payload)

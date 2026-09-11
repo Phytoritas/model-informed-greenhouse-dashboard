@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, ChevronRight, FileText, Search } from 'lucide-react';
 import type { CropType } from '../../types';
 import { useRagAssistant } from '../../hooks/useRagAssistant';
 import DashboardCard from '../common/DashboardCard';
+import ScientificText from '../common/ScientificText';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -13,19 +14,18 @@ interface AskKnowledgeBoardProps {
     cropLabel: string;
     query: string;
     onQueryChange: (query: string) => void;
-    searchRequest: { query?: string; nonce: number } | null;
+    searchRequest: { query?: string; nonce: number; autoRun?: boolean } | null;
 }
 
-function formatScopeLabel(scope: string | null, locale: 'ko' | 'en', cropLabel: string) {
+function formatScopeLabel(scope: string | null, locale: 'ko' | 'en') {
     if (!scope) {
         return null;
     }
     if (scope === 'all') {
         return locale === 'ko' ? '전체 작물' : 'All crops';
     }
-    if (scope === 'cucumber' || scope === 'tomato') {
-        return cropLabel;
-    }
+    if (scope === 'cucumber') return locale === 'ko' ? '오이' : 'Cucumber';
+    if (scope === 'tomato') return locale === 'ko' ? '토마토' : 'Tomato';
     return scope;
 }
 
@@ -39,9 +39,9 @@ export default function AskKnowledgeBoard({
 }: AskKnowledgeBoardProps) {
     const copy = locale === 'ko'
         ? {
-            eyebrow: '페이지 안에서 자료 찾기',
-            title: '질문 흐름 안에서 바로 자료를 찾습니다',
-            description: '별도 패널을 열지 않고 이 화면에서 바로 검색하고 관련 문서를 읽을 수 있습니다.',
+            eyebrow: '재배 참고 자료',
+            title: '자료 찾기',
+            description: '질문과 관련된 문헌의 본문과 원문 위치를 확인하세요.',
             placeholder: `${cropLabel} 자료를 찾거나 질문 형태로 검색어를 입력하세요`,
             search: '자료 찾기',
             idle: '검색어를 입력하면 이 화면 아래에 바로 관련 자료가 나타납니다.',
@@ -53,11 +53,12 @@ export default function AskKnowledgeBoard({
             count: '결과 수',
             openFrom: '자료 위치',
             toc: '자료 목차',
-            page: '페이지',
-            previous: '이전 페이지',
-            next: '다음 페이지',
+            page: '검색 결과',
+            previous: '이전 결과',
+            next: '다음 결과',
             score: '관련도',
-            pageGuide: '왼쪽 목차를 누르면 해당 자료 페이지로 이동합니다.',
+            pageGuide: '자료를 선택하면 검색된 본문과 원문 위치를 보여줍니다.',
+            unavailable: '자료 검색을 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.',
         }
         : {
             eyebrow: 'Search inside this page',
@@ -74,13 +75,15 @@ export default function AskKnowledgeBoard({
             count: 'Results',
             openFrom: 'Source location',
             toc: 'Table of contents',
-            page: 'Page',
-            previous: 'Previous page',
-            next: 'Next page',
+            page: 'Result',
+            previous: 'Previous result',
+            next: 'Next result',
             score: 'Relevance',
-            pageGuide: 'Select an entry in the table of contents to read it as a page.',
+            pageGuide: 'Select a result to read its excerpt and original source location.',
+            unavailable: 'Reference search is unavailable. Please retry shortly.',
         };
     const [activeIndex, setActiveIndex] = useState(0);
+    const handledRequestRef = useRef<number | null>(null);
     const {
         results,
         loading,
@@ -88,20 +91,32 @@ export default function AskKnowledgeBoard({
         lastQuery,
         returnedCount,
         resolvedScope,
+        queryStatus,
+        databaseStatus,
         runSearch,
         clear,
     } = useRagAssistant();
 
     useEffect(() => {
-        if (!searchRequest?.query?.trim()) {
+        clear();
+        setActiveIndex(0);
+    }, [crop, clear]);
+
+    useEffect(() => {
+        if (!searchRequest?.query?.trim() || searchRequest.autoRun === false || handledRequestRef.current === searchRequest.nonce) {
             return;
         }
-        void runSearch({
-            crop,
-            query: searchRequest.query,
-            limit: 4,
-        });
-    }, [crop, runSearch, searchRequest?.nonce, searchRequest?.query]);
+        // Let StrictMode finish its setup/cleanup replay before consuming the seed.
+        const timer = window.setTimeout(() => {
+            handledRequestRef.current = searchRequest.nonce;
+            void runSearch({
+                crop,
+                query: searchRequest.query,
+                limit: 4,
+            });
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [crop, runSearch, searchRequest?.nonce, searchRequest?.query, searchRequest?.autoRun]);
 
     async function handleSearch() {
         const normalizedQuery = query.trim();
@@ -124,7 +139,7 @@ export default function AskKnowledgeBoard({
         }
     }
 
-    const resolvedScopeLabel = formatScopeLabel(resolvedScope, locale, cropLabel);
+    const resolvedScopeLabel = formatScopeLabel(resolvedScope, locale);
     const activePageIndex = Math.min(activeIndex, Math.max(results.length - 1, 0));
     const activeResult = results[activePageIndex] ?? null;
     const tocEntries = useMemo(
@@ -132,7 +147,7 @@ export default function AskKnowledgeBoard({
             key: `${item.document.relative_path}-${item.score}-${index}`,
             title: item.document.title,
             topic: item.topic_minor ?? item.topic_major ?? item.document.asset_family,
-            score: `${Math.round(item.score * 100)}%`,
+            locator: item.source_locator,
         })),
         [results],
     );
@@ -177,9 +192,9 @@ export default function AskKnowledgeBoard({
                     <div className="sg-panel px-4 py-4 text-sm text-[color:var(--sg-text-muted)]">
                         {copy.loading}
                     </div>
-                ) : error ? (
+                ) : error || queryStatus === 'database_missing' || queryStatus === 'retrieval_unavailable' || databaseStatus === 'missing' ? (
                     <div className="sg-panel border-[color:var(--sg-status-offline-text)]/25 bg-[color:var(--sg-status-offline-bg)] px-4 py-4 text-sm text-[color:var(--sg-status-offline-text)]">
-                        {error}
+                        {copy.unavailable}
                     </div>
                 ) : results.length > 0 && activeResult ? (
                     <div className="space-y-3">
@@ -213,17 +228,17 @@ export default function AskKnowledgeBoard({
                                                 aria-current={selected ? 'page' : undefined}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-[11px] font-semibold text-[color:var(--sg-color-olive)]">
+                                                    <span className="text-xs font-semibold text-[color:var(--sg-color-olive)]">
                                                         {copy.page} {index + 1}
                                                     </span>
                                                     <ChevronRight className="h-3.5 w-3.5" />
                                                 </div>
-                                                <div className="mt-1 line-clamp-2 text-sm font-semibold leading-5">
+                                                <div className="mt-1 line-clamp-2 text-sm font-semibold leading-6">
                                                     {entry.title}
                                                 </div>
                                                 <div className="mt-2 flex flex-wrap gap-1.5">
                                                     <Badge variant="forest">{entry.topic}</Badge>
-                                                    <Badge variant="muted">{entry.score}</Badge>
+                                                    {entry.locator ? <Badge variant="muted">{entry.locator}</Badge> : null}
                                                 </div>
                                             </button>
                                         );
@@ -231,32 +246,32 @@ export default function AskKnowledgeBoard({
                                 </div>
                             </nav>
                             <article
-                                className="sg-panel px-4 py-4 sm:px-5 sm:py-5"
+                                className="sg-panel min-w-0 px-4 py-4 sm:px-5 sm:py-5"
                             >
-                                <div className="flex flex-wrap gap-2">
-                                    <Badge variant="default">{activeResult.document.source_type}</Badge>
-                                    {activeResult.topic_major ? <Badge variant="muted">{activeResult.topic_major}</Badge> : null}
-                                    {activeResult.chunk_type ? <Badge variant="forest">{activeResult.chunk_type}</Badge> : null}
-                                </div>
                                 <div className="mt-4 flex items-start gap-3">
                                     <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-color-sage-soft)] p-2 text-[color:var(--sg-color-olive)]">
                                         <FileText className="h-5 w-5" />
                                     </div>
                                     <div>
                                         <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
-                                            {copy.page} {activePageIndex + 1}
+                                            {activeResult.source_locator || `${copy.page} ${activePageIndex + 1}`}
                                         </div>
-                                        <h3 className="mt-1 text-lg font-semibold leading-tight text-[color:var(--sg-text-strong)]">
+                                        <h3 className="mt-1 text-base font-semibold leading-snug text-[color:var(--sg-text-strong)]">
                                             {activeResult.document.title}
                                         </h3>
                                     </div>
                                 </div>
-                                <p className="mt-4 whitespace-pre-line text-sm leading-7 text-[color:var(--sg-text-muted)]">
-                                    {activeResult.text}
+                                {/* Retrieved passage: same 15px/1.85 as an assistant
+                                    answer, since both are long Korean prose read in
+                                    the same workspace. The text stays verbatim. */}
+                                <p className="mt-4 whitespace-pre-line break-words text-[15px] leading-[1.85] text-[color:var(--sg-text)]">
+                                    <ScientificText text={activeResult.text} />
                                 </p>
-                                <div className="mt-4 grid gap-2 rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-color-ivory)] px-3 py-3 text-xs text-[color:var(--sg-text-muted)] sm:grid-cols-2">
-                                    <div>{copy.openFrom}: {activeResult.document.relative_path}</div>
-                                    <div>{copy.score}: {Math.round(activeResult.score * 100)}%</div>
+                                {/* A long unbroken repository path would otherwise
+                                    push the card past a 390px viewport. */}
+                                <div className="mt-4 grid min-w-0 gap-2 rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-color-ivory)] px-3 py-3 text-[13px] leading-6 text-[color:var(--sg-text-muted)] sm:grid-cols-2">
+                                    <div className="min-w-0 break-words">{copy.openFrom}: {activeResult.document.relative_path}</div>
+                                    {activeResult.source_locator ? <div className="min-w-0 break-words">{activeResult.source_locator}</div> : null}
                                 </div>
                                 <div className="mt-4 flex flex-wrap justify-between gap-2">
                                     <Button

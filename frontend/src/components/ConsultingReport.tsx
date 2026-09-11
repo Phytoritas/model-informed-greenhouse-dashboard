@@ -1,6 +1,7 @@
 import { FileText, Leaf, Sparkles, Waves, Zap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { scientificChildren } from './common/ScientificText';
 import type { AdvancedModelMetrics, CropType, SensorData } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
 import { getReadinessDescriptor } from '../lib/design/readiness';
@@ -214,12 +215,14 @@ const ConsultingReport = ({ analysis, metrics, currentData, crop }: ConsultingRe
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
-                                    h2: ({ ...props }) => <h2 className="mt-4 mb-2 text-base font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
-                                    h3: ({ ...props }) => <h3 className="mt-3 mb-1 text-sm font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
-                                    p: ({ ...props }) => <p className="mb-3" {...props} />,
+                                    h2: ({ children }) => <h2 className="mt-4 mb-2 text-base font-semibold text-[color:var(--sg-text-strong)]">{scientificChildren(children)}</h2>,
+                                    h3: ({ children }) => <h3 className="mt-3 mb-1 text-sm font-semibold text-[color:var(--sg-text-strong)]">{scientificChildren(children)}</h3>,
+                                    p: ({ children }) => <p className="mb-3">{scientificChildren(children)}</p>,
                                     ul: ({ ...props }) => <ul className="mb-3 list-disc space-y-1 pl-5" {...props} />,
                                     ol: ({ ...props }) => <ol className="mb-3 list-decimal space-y-1 pl-5" {...props} />,
-                                    li: ({ ...props }) => <li className="mb-0" {...props} />,
+                                    li: ({ children }) => <li className="mb-0">{scientificChildren(children)}</li>,
+                                    th: ({ children, style }) => <th style={style}>{scientificChildren(children)}</th>,
+                                    td: ({ children, style }) => <td style={style}>{scientificChildren(children)}</td>,
                                     strong: ({ ...props }) => <strong className="font-semibold text-[color:var(--sg-text-strong)]" {...props} />,
                                     code: ({ ...props }) => <code className="rounded-md bg-[color:var(--sg-tint-neutral)] px-1.5 py-0.5 text-[color:var(--sg-text-strong)]" {...props} />,
                                 }}

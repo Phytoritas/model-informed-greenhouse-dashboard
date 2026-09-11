@@ -70,9 +70,9 @@ export default function AskSearchPage({
 
   return (
     <div className="space-y-6">
-      {resolvedPanel === 'assistant-chat' ? (
+      <div hidden={resolvedPanel !== 'assistant-chat'}>
         <ChatAssistant
-          isOpen
+          isOpen={resolvedPanel === 'assistant-chat'}
           layoutMode="inline"
           currentData={currentData}
           metrics={metrics}
@@ -88,7 +88,7 @@ export default function AskSearchPage({
           initialUserQuery={chatRequest}
           onOpenKnowledgeSearch={onOpenSearch}
         />
-      ) : null}
+      </div>
       {resolvedPanel === 'assistant-search' ? (
         <AskKnowledgeBoard
           locale={locale}

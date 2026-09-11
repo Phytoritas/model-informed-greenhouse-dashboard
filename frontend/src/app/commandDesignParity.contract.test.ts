@@ -46,7 +46,12 @@ describe('PRD-001 command design parity contract', () => {
     expect(trendPageSource).toContain('data-command-surface="trend-weather"');
     expect(trendPageSource).toContain('data-command-surface="trend-market"');
     expect(trendPageSource).toContain('data-command-surface="trend-decision"');
-    expect(trendPageSource).toContain("from '../components/ui/section-header'");
+    // Trend keeps named sections while the visible titles live in each panel.
+    // Requiring a second SectionHeader here would reintroduce duplicate headings.
+    for (const id of ['trend-weather-title', 'trend-market-title', 'trend-decision-title']) {
+      expect(trendPageSource).toContain(`aria-labelledby="${id}"`);
+      expect(trendPageSource).toContain(`<h2 id="${id}"`);
+    }
     expect(trendRoutePageSource).toContain('WeatherTrendPanel');
     expect(trendRoutePageSource).toContain('WeatherOutlookPanel');
     expect(trendRoutePageSource).toContain('ProducePricesPanel');
@@ -88,12 +93,13 @@ describe('PRD-001 command design parity contract', () => {
     }
     expect(weatherTrendPanelSource).toContain('MetricCard');
     expect(weatherTrendPanelSource).toContain('StatusChip');
+    expect(weatherTrendPanelSource).toContain('aria-labelledby="weather-trend-title"');
+    expect(weatherTrendPanelSource).toContain('<h2 id="weather-trend-title"');
 
     for (const source of [
       dashboardCardSource,
       weatherOutlookPanelSource,
       producePricesPanelSource,
-      weatherTrendPanelSource,
       sectionHeaderSource,
     ]) {
       expect(source).toContain('sg-eyebrow');

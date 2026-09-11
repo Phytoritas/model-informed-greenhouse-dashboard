@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AdvancedModelMetrics, SensorData } from '../../types';
 
 vi.mock('../ChatAssistant', () => ({
-    default: ({ layoutMode }: { layoutMode?: string }) => (
-        <div>{`ChatAssistant:${layoutMode ?? 'drawer'}`}</div>
+    default: ({ layoutMode, isOpen }: { layoutMode?: string; isOpen?: boolean }) => (
+        <div role="region" aria-label="Chat assistant" data-open={String(isOpen)}>{`ChatAssistant:${layoutMode ?? 'drawer'}`}</div>
     ),
 }));
 
@@ -75,7 +75,8 @@ describe('AskSearchPage', () => {
         );
 
         expect(await screen.findByText('AskKnowledgeBoard:powdery mildew rotation')).toBeTruthy();
-        expect(screen.queryByText('ChatAssistant:inline')).toBeNull();
+        expect(screen.queryByRole('region', { name: 'Chat assistant' })).toBeNull();
+        expect(screen.getByText('ChatAssistant:inline').getAttribute('data-open')).toBe('false');
     });
 
     it('maps legacy history panel to the search surface', () => {
@@ -87,6 +88,21 @@ describe('AskSearchPage', () => {
         );
 
         expect(screen.getByText('AskKnowledgeBoard:empty')).toBeTruthy();
-        expect(screen.queryByText('ChatAssistant:inline')).toBeNull();
+        expect(screen.queryByRole('region', { name: 'Chat assistant' })).toBeNull();
+        expect(screen.getByText('ChatAssistant:inline').getAttribute('data-open')).toBe('false');
+    });
+
+    it('keeps the same chat mounted while the search panel is open', () => {
+        const { rerender } = render(<AskSearchPage {...baseProps} />);
+        const chat = screen.getByRole('region', { name: 'Chat assistant' });
+
+        rerender(<AskSearchPage {...baseProps} activePanel="assistant-search" />);
+        expect(screen.queryByRole('region', { name: 'Chat assistant' })).toBeNull();
+        expect(screen.getByText('ChatAssistant:inline')).toBe(chat);
+        expect(chat.getAttribute('data-open')).toBe('false');
+
+        rerender(<AskSearchPage {...baseProps} activePanel="assistant-chat" />);
+        expect(screen.getByRole('region', { name: 'Chat assistant' })).toBe(chat);
+        expect(chat.getAttribute('data-open')).toBe('true');
     });
 });

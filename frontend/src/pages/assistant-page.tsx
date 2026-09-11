@@ -20,9 +20,9 @@ export default function AssistantPage({
   return (
     <PageCanvas title={title} description="" hideHeader>
       <h2 className="sr-only">{title}</h2>
-      <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,392px)]">
+      <div className="assistant-workspace-page grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
         <div className="min-w-0">{surface}</div>
-        {summaryRail ? <div className="min-w-0">{summaryRail}</div> : null}
+        {summaryRail ? <div className="assistant-tools-rail min-w-0">{summaryRail}</div> : null}
       </div>
     </PageCanvas>
   );

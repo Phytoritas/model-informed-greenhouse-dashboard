@@ -16,12 +16,12 @@ export default function RtrPage({
     ? {
         eyebrow: 'RTR',
         title: 'RTR \uCD5C\uC801\uD654',
-        description: '\uC624\uB298 \uBAA9\uD45C \uC628\uB3C4\uC640 \uBE44\uAD50\uC548\uC744 \uC815\uB9AC\uD569\uB2C8\uB2E4.',
+        description: 'RTR\uC740 \uC8FC\uAC04\u00B7\uC57C\uAC04 \uD3C9\uADE0\uC628\uB3C4 \uC804\uB7B5\uC785\uB2C8\uB2E4. \uC624\uB298 \uBAA9\uD45C \uC628\uB3C4 \uAE30\uC900\uC548\uACFC \uBE44\uAD50\uC548\uC744 \uD55C\uACF3\uC5D0\uC11C \uBD05\uB2C8\uB2E4.',
       }
     : {
         eyebrow: 'RTR',
         title: 'RTR optimization',
-        description: 'Compare the recommended lane against the baseline and scenario set.',
+        description: 'RTR is the day/night mean temperature strategy. Compare the recommended setting against the baseline in one place.',
       };
 
   return (

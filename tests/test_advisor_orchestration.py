@@ -495,7 +495,7 @@ def test_build_advisor_summary_response_keeps_catalog_only_dashboard_on_retrieva
     assert "advisor_retrieval_context" not in captured_dashboard["knowledge"]
 
 
-def test_build_advisor_chat_response_wraps_generate_chat_reply(
+def test_build_advisor_chat_response_wraps_generate_chat_turn(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -505,8 +505,8 @@ def test_build_advisor_chat_response_wraps_generate_chat_reply(
     )
     monkeypatch.setattr(
         advisor_orchestration,
-        "generate_chat_reply",
-        lambda **_: "- chat reply",
+        "generate_chat_turn",
+        lambda **_: {"text": "- chat reply", "follow_up": None},
     )
     monkeypatch.setattr(
         advisor_orchestration,
@@ -686,14 +686,14 @@ def test_build_advisor_chat_response_injects_ready_retrieval_context_only(
         },
     )
 
-    def _fake_generate_chat_reply(**kwargs):
+    def _fake_generate_chat_turn(**kwargs):
         captured_dashboard.update(kwargs["dashboard"])
-        return "- chat reply"
+        return {"text": "- chat reply", "follow_up": None}
 
     monkeypatch.setattr(
         advisor_orchestration,
-        "generate_chat_reply",
-        _fake_generate_chat_reply,
+        "generate_chat_turn",
+        _fake_generate_chat_turn,
     )
 
     payload = advisor_orchestration.build_advisor_chat_response(
@@ -769,14 +769,14 @@ def test_build_advisor_chat_response_keeps_catalog_only_dashboard_on_retrieval_f
         },
     )
 
-    def _fake_generate_chat_reply(**kwargs):
+    def _fake_generate_chat_turn(**kwargs):
         captured_dashboard.update(kwargs["dashboard"])
-        return "- chat reply"
+        return {"text": "- chat reply", "follow_up": None}
 
     monkeypatch.setattr(
         advisor_orchestration,
-        "generate_chat_reply",
-        _fake_generate_chat_reply,
+        "generate_chat_turn",
+        _fake_generate_chat_turn,
     )
 
     payload = advisor_orchestration.build_advisor_chat_response(
@@ -812,14 +812,14 @@ def test_build_advisor_chat_response_falls_back_cleanly_when_retrieval_errors(
         advisor_context_builder.build_chat_advisor_context,
     )
 
-    def _fake_generate_chat_reply(**kwargs):
+    def _fake_generate_chat_turn(**kwargs):
         captured_dashboard.update(kwargs["dashboard"])
-        return "- chat reply"
+        return {"text": "- chat reply", "follow_up": None}
 
     monkeypatch.setattr(
         advisor_orchestration,
-        "generate_chat_reply",
-        _fake_generate_chat_reply,
+        "generate_chat_turn",
+        _fake_generate_chat_turn,
     )
 
     payload = advisor_orchestration.build_advisor_chat_response(
@@ -2644,6 +2644,7 @@ def test_build_advisor_summary_response_exposes_additive_model_runtime_block(
     monkeypatch.setattr(
         advisor_orchestration,
         "generate_consulting",
+        # generate_consulting returns markdown text, not a chat-turn dict.
         lambda **_: structured_reply,
     )
     monkeypatch.setattr(
@@ -2750,8 +2751,8 @@ def test_build_advisor_chat_response_returns_reply_verbatim_with_runtime_interna
     )
     monkeypatch.setattr(
         advisor_orchestration,
-        "generate_chat_reply",
-        lambda **_: structured_reply,
+        "generate_chat_turn",
+        lambda **_: {"text": structured_reply, "follow_up": None},
     )
     monkeypatch.setattr(
         advisor_orchestration,
@@ -2786,24 +2787,16 @@ def test_build_advisor_chat_response_returns_reply_verbatim_with_runtime_interna
     # answer-focus prefix, and no structured card parsing.
     assert payload["text"] == structured_reply
     assert payload["machine_payload"]["display"] is None
-    assert payload["machine_payload"]["model_runtime"]["status"] == "ready"
-    assert (
-        payload["machine_payload"]["model_runtime"]["provenance"]["selected_controls"][0]
-        == "co2_setpoint_day"
-    )
-    # The model runtime (with answer_focus) is still computed and kept internally.
-    answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
-    assert answer_focus["matched_user_request"] is True
-    assert answer_focus["control"] == "co2_setpoint_day"
-    assert answer_focus["matched_delta"] == pytest.approx(100.0)
-    assert answer_focus["effects"]["yield_delta_14d"] == pytest.approx(17.493218)
-    assert answer_focus["effects"]["yield_delta_7d"] != pytest.approx(
-        answer_focus["effects"]["yield_delta_72h"]
-    )
-    assert answer_focus["effects"]["canopy_delta_72h"] > 0
+    runtime = payload["machine_payload"]["model_runtime"]
+    assert runtime["status"] == "unavailable"
+    assert runtime["calculation_basis"] == "uncalibrated_comparison_indices"
+    assert runtime["requested_change"]["control"] == "co2_setpoint_day"
+    assert runtime["requested_change"]["value"] == pytest.approx(100.0)
+    assert runtime["requested_change"]["unit"] == "ppm"
+    assert runtime["effects"] is None
 
 
-def test_build_advisor_chat_response_uses_latest_user_turn_for_answer_focus(
+def test_build_advisor_chat_response_uses_latest_user_turn_for_requested_change(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -2813,8 +2806,8 @@ def test_build_advisor_chat_response_uses_latest_user_turn_for_answer_focus(
     )
     monkeypatch.setattr(
         advisor_orchestration,
-        "generate_chat_reply",
-        lambda **_: "## 핵심 요약\n- 모델 계산값을 확인했습니다.",
+        "generate_chat_turn",
+        lambda **_: {"text": "## 핵심 요약\n- 모델 계산값을 확인했습니다.", "follow_up": None},
     )
     monkeypatch.setattr(
         advisor_orchestration,
@@ -2843,16 +2836,16 @@ def test_build_advisor_chat_response_uses_latest_user_turn_for_answer_focus(
         language="ko",
     )
 
-    answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
-    assert answer_focus["matched_user_request"] is True
-    assert answer_focus["control"] == "rh_target"
-    assert answer_focus["matched_delta"] == pytest.approx(-5.0)
-    # The latest user turn drives the internal answer_focus; the visible text
+    requested = payload["machine_payload"]["model_runtime"]["requested_change"]
+    assert requested["control"] == "rh_target"
+    assert requested["value"] == pytest.approx(-5.0)
+    assert requested["unit"] == "%"
+    # The latest user turn drives the internal requested change; the visible text
     # stays the model's own reply (no machine prefix).
     assert payload["text"] == "## 핵심 요약\n- 모델 계산값을 확인했습니다."
 
 
-def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
+def test_build_advisor_chat_response_preserves_english_requested_change(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -2862,8 +2855,8 @@ def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
     )
     monkeypatch.setattr(
         advisor_orchestration,
-        "generate_chat_reply",
-        lambda **_: "## Summary\n- Model values are ready.",
+        "generate_chat_turn",
+        lambda **_: {"text": "## Summary\n- Model values are ready.", "follow_up": None},
     )
     monkeypatch.setattr(
         advisor_orchestration,
@@ -2888,10 +2881,12 @@ def test_build_advisor_chat_response_localizes_english_answer_focus_summary(
         language="en",
     )
 
-    answer_focus = payload["machine_payload"]["model_runtime"]["answer_focus"]
-    assert "was calculated by the process-model bounded scenario" in answer_focus["summary"]
-    assert "조정은" not in answer_focus["summary"]
-    # answer_focus stays internal; the visible reply is the model's own text.
+    runtime = payload["machine_payload"]["model_runtime"]
+    assert runtime["requested_change"]["question"] == "What happens if I raise CO2 by 100 ppm?"
+    assert runtime["requested_change"]["value"] == 100.0
+    assert runtime["requested_change"]["unit"] == "ppm"
+    assert runtime["effects"] is None
+    # Request metadata stays internal; the visible reply is the model's own text.
     assert payload["text"] == "## Summary\n- Model values are ready."
 
 

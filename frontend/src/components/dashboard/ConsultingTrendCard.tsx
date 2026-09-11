@@ -1,23 +1,27 @@
 import { useMemo } from 'react';
 import {
   Bar,
-  CartesianGrid,
   ComposedChart,
+  Label,
   Line,
-  ReferenceLine,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { ClipboardCheck } from 'lucide-react';
 import { useLocale } from '../../i18n/LocaleProvider';
-import ChartFrame from '../charts/ChartFrame';
+import ChartFrame, { ChartSeriesLegend } from '../charts/ChartFrame';
 import {
-  DASHBOARD_CHART_AXIS_STROKE,
-  DASHBOARD_CHART_GRID_STROKE,
-  DASHBOARD_CHART_LEGEND_CLASSNAME,
-  DASHBOARD_CHART_TICK,
+  chartSeries,
+  DASHBOARD_CHART_AXIS_LABEL,
+  DASHBOARD_CHART_AXIS_PROPS,
+  DASHBOARD_CHART_CURSOR,
+  DASHBOARD_CHART_HEIGHT,
+  DASHBOARD_CHART_TOOLTIP_ITEM_STYLE,
+  DASHBOARD_CHART_TOOLTIP_LABEL_STYLE,
   DASHBOARD_CHART_TOOLTIP_STYLE,
+  seriesBarProps,
+  seriesLineProps,
 } from '../charts/chartStyles';
 import DashboardCard from '../common/DashboardCard';
 import { StatusChip } from '../ui/status-chip';
@@ -38,6 +42,10 @@ function asPercent(value: number | null | undefined): number | null {
   }
   return value <= 1 ? value * 100 : value;
 }
+
+/** Action count uses the first cycle color; priority score uses the fourth. */
+const ACTION_SERIES_INDEX = 0;
+const PRIORITY_SERIES_INDEX = 3;
 
 function formatCount(count: number, locale: 'ko' | 'en'): string {
   if (locale === 'ko') {
@@ -66,8 +74,9 @@ export default function ConsultingTrendCard({
         week: '이번 주',
         actions: '권고량',
         confidence: '신뢰도',
-        confidenceReference: '신뢰도 기준선',
         priority: '우선순위 점수',
+        countUnit: '건',
+        scoreUnit: '점',
         empty: '현재 대기 중인 컨설팅 액션이 없습니다.',
         refreshed: '갱신 중',
         current: '현재',
@@ -82,8 +91,9 @@ export default function ConsultingTrendCard({
         week: 'Week',
         actions: 'Actions',
         confidence: 'Confidence',
-        confidenceReference: 'Confidence reference',
         priority: 'Priority score',
+        countUnit: 'actions',
+        scoreUnit: 'score',
         empty: 'No pending consulting actions.',
         refreshed: 'Refreshing',
         current: 'Current',
@@ -132,37 +142,48 @@ export default function ConsultingTrendCard({
 
       <div
         role="img"
-        aria-label={`${copy.actions}: ${formatCount(totalActions, locale)}. ${confidencePercent !== null ? `${copy.confidenceReference}: ${Math.round(confidencePercent)}%. ` : ''}${copy.priority}.`}
+        aria-label={`${copy.actions}: ${formatCount(totalActions, locale)}. ${copy.priority}. ${confidencePercent !== null ? `${copy.confidence}: ${Math.round(confidencePercent)}%.` : ''}`}
       >
-        <div className={`mb-2 ${DASHBOARD_CHART_LEGEND_CLASSNAME}`}>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-terracotta)]" />
-            {copy.actions}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-primary)]" />
-            {copy.priority}
-          </span>
-          {confidencePercent !== null ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-olive)]" />
-              {copy.confidenceReference}
-            </span>
-          ) : null}
-        </div>
-        <ChartFrame minHeight={170} style={{ height: 170 }}>
+        <ChartSeriesLegend
+          className="mb-2"
+          entries={[
+            { label: `${copy.actions} (${copy.countUnit})`, seriesIndex: ACTION_SERIES_INDEX },
+            { label: `${copy.priority} (${copy.scoreUnit})`, seriesIndex: PRIORITY_SERIES_INDEX },
+          ]}
+        />
+        <ChartFrame minHeight={DASHBOARD_CHART_HEIGHT.compact} style={{ height: DASHBOARD_CHART_HEIGHT.compact }}>
           {({ width, height }) => (
             <ComposedChart
               width={Math.max(width, 1)}
-              height={Math.max(height, 170)}
+              height={Math.max(height, DASHBOARD_CHART_HEIGHT.compact)}
               data={chartData}
-              margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+              margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke={DASHBOARD_CHART_GRID_STROKE} />
-              <XAxis dataKey="horizon" stroke={DASHBOARD_CHART_AXIS_STROKE} tick={DASHBOARD_CHART_TICK} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="left" stroke={DASHBOARD_CHART_AXIS_STROKE} tick={DASHBOARD_CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} width={34} />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke={DASHBOARD_CHART_AXIS_STROKE} tick={DASHBOARD_CHART_TICK} tickLine={false} axisLine={false} width={38} />
+              <XAxis {...DASHBOARD_CHART_AXIS_PROPS} dataKey="horizon" />
+              <YAxis {...DASHBOARD_CHART_AXIS_PROPS} yAxisId="left" allowDecimals={false} width={58}>
+                <Label
+                  value={copy.countUnit}
+                  angle={-90}
+                  position="insideLeft"
+                  style={{ ...DASHBOARD_CHART_AXIS_LABEL, textAnchor: 'middle' }}
+                />
+              </YAxis>
+              <YAxis
+                {...DASHBOARD_CHART_AXIS_PROPS}
+                yAxisId="right"
+                orientation="right"
+                allowDecimals={false}
+                width={58}
+              >
+                <Label
+                  value={copy.scoreUnit}
+                  angle={90}
+                  position="insideRight"
+                  style={{ ...DASHBOARD_CHART_AXIS_LABEL, textAnchor: 'middle' }}
+                />
+              </YAxis>
               <Tooltip
+                cursor={DASHBOARD_CHART_CURSOR}
                 formatter={(value: number, name: string) => {
                   if (name === 'priorityScore') {
                     return [value.toFixed(0), copy.priority];
@@ -170,25 +191,20 @@ export default function ConsultingTrendCard({
                   return [formatCount(value, locale), copy.actions];
                 }}
                 contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
+                labelStyle={DASHBOARD_CHART_TOOLTIP_LABEL_STYLE}
+                itemStyle={DASHBOARD_CHART_TOOLTIP_ITEM_STYLE}
               />
-              <Bar yAxisId="left" dataKey="actionCount" name="actionCount" fill="var(--sg-color-terracotta)" radius={[8, 8, 2, 2]} maxBarSize={32} />
-              <Line yAxisId="left" type="monotone" dataKey="priorityScore" name="priorityScore" stroke="var(--sg-color-primary)" strokeWidth={2.2} dot={false} isAnimationActive={false} />
-              {confidencePercent !== null ? (
-                <ReferenceLine
-                  yAxisId="right"
-                  y={confidencePercent}
-                  stroke="var(--sg-color-olive)"
-                  strokeDasharray="4 4"
-                  strokeWidth={2}
-                  label={{
-                    value: `${copy.confidenceReference} ${Math.round(confidencePercent)}%`,
-                    position: 'insideTopRight',
-                    fill: 'var(--sg-color-olive)',
-                    fontSize: 10,
-                    fontWeight: 650,
-                  }}
-                />
-              ) : null}
+              <Bar {...seriesBarProps(ACTION_SERIES_INDEX)} yAxisId="left" dataKey="actionCount" name="actionCount" />
+              <Line
+                {...seriesLineProps(PRIORITY_SERIES_INDEX)}
+                yAxisId="right"
+                dataKey="priorityScore"
+                name="priorityScore"
+                activeDot={{
+                  ...seriesLineProps(PRIORITY_SERIES_INDEX).activeDot,
+                  fill: chartSeries(PRIORITY_SERIES_INDEX).fill,
+                }}
+              />
             </ComposedChart>
           )}
         </ChartFrame>

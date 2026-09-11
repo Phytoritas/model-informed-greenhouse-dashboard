@@ -1,0 +1,82 @@
+/* Apply the PHYTO palette to surfaces that predate shared color tokens. */
+/* Match base utilities at class boundaries; keep hover states and switch thumbs distinct. */
+[data-theme] :is([class~="bg-white"], [class^="bg-white/"], [class*=" bg-white/"]):not(:where([role="switch"] > span)) {
+  background-color: var(--sg-surface-strong);
+}
+[data-theme] :is([class~="hover:bg-white"], [class^="hover:bg-white/"], [class*=" hover:bg-white/"]):hover {
+  background-color: var(--sg-color-primary-soft);
+}
+:root[data-theme] :is(.sg-advisor-band,.sg-advisor-inset,.sg-advisor-inset-soft,.sg-advisor-note,
+  .sg-field-shell,.sg-warm-panel,.sg-warm-subpanel,.sg-button-secondary) {
+  background: var(--sg-surface-strong);
+}
+:root[data-theme] :is(.sg-advisor-pill,.sg-field-input,.sg-control-input) { background: var(--sg-surface-soft); }
+:root[data-theme] [class~="text-[color:var(--sg-color-primary)]"] { color: var(--sg-color-primary-strong); }
+:root[data-theme] [class~="bg-[color:var(--sg-color-primary)]"][class~="text-white"],
+:root[data-theme] .assistant-composer-send,
+:root[data-theme] .sg-button-primary { color: #242422; }
+:root[data-theme="light"] :is([class~="bg-[color:var(--sg-color-primary)]"][class~="text-white"], .assistant-composer-send):hover {
+  color: #f9f8f5;
+}
+:root[data-theme] .knu-scene-viewport { background: var(--sg-scene-background); }
+:root[data-theme] :is(.knu-scene-sensor-card,.knu-scene-legend,.knu-scene-inset-heading,.knu-scene-inset-source,
+  .knu-scene-inset-open,.knu-scene-camera,.knu-scene-notice) {
+  background: var(--sg-surface-strong);
+  border-color: var(--sg-outline-soft);
+  color: var(--sg-text-strong);
+}
+:root[data-theme] .knu-scene-layers button { background: var(--sg-surface-strong); }
+:root[data-theme] .knu-scene-layers button[aria-pressed="true"] { background: var(--sg-color-primary-soft); color: var(--sg-color-primary-strong); }
+:root[data-theme] :is(.knu-scene-camera button,.knu-scene-caption,.knu-scene-inset-source,.knu-scene-legend small,
+  .knu-scene-legend p,.knu-scene-legend strong span,.knu-scene-sun small,.knu-scene-range,.knu-scene-sensor-card small) { color: var(--sg-text-faint); }
+:root[data-theme="dark"] .knu-scene-caption { border-color: var(--sg-outline-soft); }
+:root[data-theme="dark"] [role="dialog"] { background-color: rgba(0,0,0,.45); }
+:root[data-theme="dark"] :is(.bg-red-50,.bg-rose-50) { background-color: var(--sg-accent-rose-soft); }
+:root[data-theme="dark"] :is(.text-red-800,.text-red-700,.text-rose-800) { color: var(--sg-accent-danger); }
+:root[data-theme="dark"] :is(.bg-amber-50,.bg-orange-50) { background-color: var(--sg-accent-amber-soft); }
+:root[data-theme="dark"] :is(.text-amber-800,.text-amber-700,.text-orange-800) { color: var(--sg-accent-amber); }
+:root[data-theme="dark"] :is(.bg-green-50,.bg-emerald-50) { background-color: var(--sg-status-live-bg); }
+:root[data-theme="dark"] :is(.text-green-800,.text-emerald-800) { color: var(--sg-status-live-text); }
+/* Chart text follows the same reading contrast as the surrounding interface. */
+:root[data-theme] .recharts-cartesian-axis-tick text,
+:root[data-theme] .recharts-cartesian-axis-tick-value,
+:root[data-theme] .recharts-label { fill: var(--sg-text-muted) !important; }
+:root[data-theme] .recharts-cartesian-axis-line,
+:root[data-theme] .recharts-cartesian-axis-tick-line { stroke: var(--sg-text-faint); }
+:root[data-theme] .recharts-default-tooltip {
+  background: var(--sg-surface-strong) !important;
+  border-color: var(--sg-outline-soft) !important;
+  color: var(--sg-text-strong) !important;
+}
+:root[data-theme] .recharts-default-tooltip :is(.recharts-tooltip-label,.recharts-tooltip-item) {
+  color: var(--sg-text-strong) !important;
+}
+
+/* Adapt the existing four warm hues to each canvas. The BioRender data series,
+   dash patterns and marker shapes stay intact; legends, dots and bars share the
+   same mapping, including both the fill and outline variants of each hue. */
+:root {
+  --sg-chart-series-0: #c6422e;
+  --sg-chart-series-1: #756935;
+  --sg-chart-series-2: #97551b;
+  --sg-chart-series-3: #5b402d;
+}
+:root[data-theme="dark"] {
+  --sg-chart-series-0: #ff9875;
+  --sg-chart-series-1: #d5df8e;
+  --sg-chart-series-2: #ffc36d;
+  --sg-chart-series-3: #d3ac91;
+}
+:root[data-theme] :is(.recharts-surface,.sg-chart-legend) :is([stroke="#E35336" i],[stroke="#983523" i]) { stroke: var(--sg-chart-series-0); }
+:root[data-theme] :is(.recharts-surface,.sg-chart-legend) :is([stroke="#E2D19B" i],[stroke="#9C927A" i]) { stroke: var(--sg-chart-series-1); }
+:root[data-theme] :is(.recharts-surface,.sg-chart-legend) :is([stroke="#F4A460" i],[stroke="#A5662D" i]) { stroke: var(--sg-chart-series-2); }
+:root[data-theme] :is(.recharts-surface,.sg-chart-legend) :is([stroke="#A0522D" i],[stroke="#66331D" i]) { stroke: var(--sg-chart-series-3); }
+:root[data-theme] :is(.recharts-surface,.sg-chart-legend) :is([fill="#E35336" i],[fill="#983523" i]) { fill: var(--sg-chart-series-0); }
+:root[data-theme] :is(.recharts-surface,.sg-chart-legend) :is([fill="#E2D19B" i],[fill="#9C927A" i]) { fill: var(--sg-chart-series-1); }
+:root[data-theme] :is(.recharts-surface,.sg-chart-legend) :is([fill="#F4A460" i],[fill="#A5662D" i]) { fill: var(--sg-chart-series-2); }
+:root[data-theme] :is(.recharts-surface,.sg-chart-legend) :is([fill="#A0522D" i],[fill="#66331D" i]) { fill: var(--sg-chart-series-3); }
+
+:root[data-theme] :focus-visible {
+  outline-color: var(--sg-color-primary-strong);
+  --tw-ring-color: var(--sg-color-primary-strong);
+}

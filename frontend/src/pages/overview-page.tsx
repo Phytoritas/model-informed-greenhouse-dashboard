@@ -5,31 +5,30 @@ import PageCanvas from '../components/layout/PageCanvas';
 import { ToggleGroup } from '../components/ui/toggle-group';
 import { useLocale } from '../i18n/LocaleProvider';
 import { cn } from '../utils/cn';
+import '../styles/overview-workspace.css';
 
 interface OverviewPageProps {
-  topNavigation: ReactNode;
-  heroDecisionBrief: ReactNode;
-  liveMetricStrip: ReactNode;
-  todayActionBoard: ReactNode;
-  scenarioOptimizerPreview: ReactNode;
-  environmentDatasetPanel?: ReactNode;
-  weatherMarketKnowledgeBridge: ReactNode;
-  finalCta: ReactNode;
-  footer: ReactNode;
+  topNavigation?: ReactNode;
+  /** Compact page context: site, demo badge, simulated time, crop selector. */
+  pageHeader?: ReactNode;
+  metricRow: ReactNode;
+  /** Greenhouse view. Owned by the 3D lane and injected by the app root. */
+  scene?: ReactNode;
+  /** The single decision surface for this screen. */
+  decisionBoard: ReactNode;
+  chartRow?: ReactNode;
   dashboardTab?: ReactNode;
   watchTab?: ReactNode;
   activeTabId?: string;
+  replayNotice?: ReactNode;
 }
 
 const OVERVIEW_SECTION_BY_ACTION: Record<string, string> = {
   'overview-core': 'overview-core',
   'overview-dashboard': 'overview-dashboard',
   'overview-watch': 'overview-watch',
-  'scenario-optimizer': 'scenario-optimizer',
   'live-overview': 'live-overview',
   'today-action-board': 'today-action-board',
-  contact: 'overview-footer',
-  'overview-footer': 'overview-footer',
 };
 
 const OVERVIEW_TAB_IDS = ['overview-core', 'overview-dashboard', 'overview-watch'] as const;
@@ -43,31 +42,29 @@ function normalizeOverviewTab(tabId: string | undefined): OverviewTabId {
 
 export default function OverviewPage({
   topNavigation,
-  heroDecisionBrief,
-  liveMetricStrip,
-  todayActionBoard,
-  scenarioOptimizerPreview,
-  environmentDatasetPanel,
-  weatherMarketKnowledgeBridge,
-  finalCta,
-  footer,
+  pageHeader,
+  metricRow,
+  scene,
+  decisionBoard,
+  chartRow,
   dashboardTab,
   watchTab,
   activeTabId,
+  replayNotice,
 }: OverviewPageProps) {
   const location = useLocation();
   const { locale } = useLocale();
   const activeTab = normalizeOverviewTab(activeTabId);
   const tabs = locale === 'ko'
     ? [
-        { id: 'overview-core' as const, label: 'Command', description: '오늘 의사결정 요약' },
-        { id: 'overview-dashboard' as const, label: 'Dashboard', description: '전체 지표와 추세' },
-        { id: 'overview-watch' as const, label: 'Watch', description: '경보와 런타임 상태' },
+        { id: 'overview-core' as const, label: '오늘의 온실', description: '지금 상태와 할 일' },
+        { id: 'overview-dashboard' as const, label: '지표·추세', description: '자세한 값과 그래프' },
+        { id: 'overview-watch' as const, label: '경보·상태', description: '경보와 시뮬레이션 상태' },
       ]
     : [
-        { id: 'overview-core' as const, label: 'Command', description: 'Decision brief' },
-        { id: 'overview-dashboard' as const, label: 'Dashboard', description: 'Metrics and trends' },
-        { id: 'overview-watch' as const, label: 'Watch', description: 'Alerts and runtime state' },
+        { id: 'overview-core' as const, label: 'Today', description: 'Current state and next checks' },
+        { id: 'overview-dashboard' as const, label: 'Metrics', description: 'Detailed values and charts' },
+        { id: 'overview-watch' as const, label: 'Alerts', description: 'Alerts and simulation status' },
       ];
 
   useEffect(() => {
@@ -104,9 +101,10 @@ export default function OverviewPage({
     <PageCanvas title="PhytoSync" description="" hideHeader>
       <main className="overview-browser-shell">
         <div className="overview-browser-frame">
-          <div className="overview-frame-body">
+          <div className="overview-frame-body overview-workspace">
             {topNavigation}
-            <ToggleGroup className="overview-tab-strip" role="tablist" aria-label={locale === 'ko' ? 'Overview 탭' : 'Overview tabs'}>
+            {pageHeader}
+            <ToggleGroup className="overview-tab-strip" role="tablist" aria-label={locale === 'ko' ? '온실 화면 탭' : 'Overview tabs'}>
               {tabs.map((tab) => (
                 <a
                   key={tab.id}
@@ -114,7 +112,8 @@ export default function OverviewPage({
                   href={`#${tab.id}`}
                   role="tab"
                   aria-selected={activeTab === tab.id}
-                  aria-controls={`${tab.id}-panel`}
+                  // Core renders a wrapper panel; the other two render the section itself.
+                  aria-controls={tab.id === 'overview-core' ? 'overview-core-panel' : tab.id}
                   className={cn('overview-tab-link', activeTab === tab.id && 'overview-tab-link-active')}
                 >
                   <span>{tab.label}</span>
@@ -124,19 +123,20 @@ export default function OverviewPage({
             </ToggleGroup>
             {activeTab === 'overview-core' ? (
               <div id="overview-core-panel" role="tabpanel" aria-labelledby="overview-core-tab" className="overview-tab-panel">
-                {heroDecisionBrief}
-                {liveMetricStrip}
-                {todayActionBoard}
-                {scenarioOptimizerPreview}
-                {environmentDatasetPanel}
-                {weatherMarketKnowledgeBridge}
-                {finalCta}
-                {footer}
+                <section id="overview-core" tabIndex={-1} className="scroll-mt-24 space-y-3">
+                  {metricRow}
+                  {replayNotice}
+                  <div className={cn('overview-decision-layout', !scene && 'overview-decision-layout-solo')}>
+                    {scene ? <div className="overview-scene-column">{scene}</div> : null}
+                    <div className="overview-decision-column">{decisionBoard}</div>
+                  </div>
+                  {chartRow}
+                </section>
               </div>
             ) : null}
             {activeTab === 'overview-dashboard' ? (
               <section id="overview-dashboard" tabIndex={-1} role="tabpanel" className="overview-tab-panel scroll-mt-24" aria-labelledby="overview-dashboard-tab">
-                {dashboardTab ?? liveMetricStrip}
+                {dashboardTab ?? metricRow}
               </section>
             ) : null}
             {activeTab === 'overview-watch' ? (

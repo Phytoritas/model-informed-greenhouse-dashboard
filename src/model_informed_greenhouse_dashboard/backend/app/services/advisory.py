@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections import Counter
+from functools import lru_cache
 from itertools import product
+from pathlib import Path
 from typing import Any
 
+from .nutrient_solver import SOLVER_ION_ORDER, solve_stock_tanks
 from .workbook_normalization import (
     export_nutrient_reference_rows,
     export_pesticide_reference_rows,
@@ -520,6 +524,74 @@ _NUTRIENT_ANALYTE_ALIASES = {
     "silicon": "si",
     "ec": "ec",
 }
+
+# A recipe row publishes macro targets in mmol/L and micro targets in µmol/L. Every
+# arithmetic path that mixes a target with a mmol/L water analysis has to carry that
+# unit with the number, so the reported unit always matches the reported value.
+_UNIT_FACTORS_TO_MMOL_PER_L: dict[str, float] = {
+    "mmol/l": 1.0,
+    "mmoll": 1.0,
+    "mmol/liter": 1.0,
+    "mmol.l-1": 1.0,
+    "umol/l": 1e-3,
+    "umoll": 1e-3,
+    "umol/liter": 1e-3,
+    "umol.l-1": 1e-3,
+}
+_BALANCE_STATUS_TOLERANCE = 0.01
+
+#: The published stock-tank basis: tanks A and B of 1000 L each at a concentration
+#: factor of 100, feeding 100,000 L of working solution.
+_STOCK_TANK_BASIS_VOLUME_L = 1000.0
+_STOCK_TANK_BASIS_RATIO = 100.0
+_EUROFINS_CONFIG_FILENAME = "nutrient_recipes_eurofins.json"
+_CALCIUM_NITRATE_FORMULA_RANKING = (
+    "ca(no3)2.4h2o",
+    "5[ca(no3)2.2h2o]nh4no3",
+    "ca(no3)2",
+)
+_SOLVER_FORWARDED_OPTIONS = ("kno3_tank_a_fraction",)
+_PRESCRIPTION_OPTION_KEYS = _SOLVER_FORWARDED_OPTIONS + ("calcium_source_formula",)
+_GUARDRAIL_ION_KEYS = (("cl", "cl_max"), ("hco3", "hco3_max"), ("na", "na_max"))
+
+
+def _normalize_unit_key(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    text = text.replace("\u00b5", "u").replace("\u03bc", "u")
+    return text.replace(" ", "").replace("_", "")
+
+
+def _unit_factor_to_mmol_per_l(value: Any) -> float | None:
+    """Return the multiplier that turns one unit of *value* into mmol/L, or None."""
+    return _UNIT_FACTORS_TO_MMOL_PER_L.get(_normalize_unit_key(value))
+
+
+def _round_reported(value: float | None, digits: int = 9) -> float | None:
+    return None if value is None else round(value, digits)
+
+
+def _formula_lookup_key(value: Any) -> str:
+    """Mirror the solver's formula key so product names resolve the same way."""
+    text = str(value or "").strip().lower()
+    for separator in ("\u00b7", "\u2022", "\u2219", "\u30fb", "*"):
+        text = text.replace(separator, ".")
+    return "".join(character for character in text if not character.isspace())
+
+
+@lru_cache(maxsize=1)
+def _load_nutrient_source_config() -> dict[str, Any]:
+    """Load the primary-source provenance record that backs the recipe numbers."""
+    path = Path(__file__).resolve().parents[5] / "configs" / _EUROFINS_CONFIG_FILENAME
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"unavailable": f"{_EUROFINS_CONFIG_FILENAME} was not found at {path}."}
+    except (OSError, ValueError) as exc:
+        return {"unavailable": f"{_EUROFINS_CONFIG_FILENAME} could not be read: {exc}"}
+    if not isinstance(payload, dict):
+        return {"unavailable": f"{_EUROFINS_CONFIG_FILENAME} does not hold a JSON object."}
+    return payload
+
 
 _STOCK_TANK_DRAFT_MODE = "single_fertilizer_stoichiometric"
 _STOCK_TANK_DRAFT_DISCLAIMER = (
@@ -1761,30 +1833,19 @@ def _build_stock_tank_prep(
     balance_rows: list[dict[str, Any]] = []
     candidate_map: dict[str, list[dict[str, Any]]] = {}
     unsupported_analytes: list[dict[str, str]] = []
-    for nutrient_key, target_mmol_l in effective_recipe_targets.items():
-        if target_mmol_l is None:
+    recipe_units = dict(recipe.get("nutrient_units") or {})
+    # A recipe that publishes no unit map at all is read as mmol/L, the way this
+    # function always read it, and the fallback is declared in balance_basis.
+    units_published = bool(recipe_units)
+    analyte_units: dict[str, Any] = {}
+    for nutrient_key, target_value in effective_recipe_targets.items():
+        if target_value is None:
             continue
 
-        source_mmol_l, source_origin = _resolve_source_reference_value(
-            nutrient_key,
-            submitted_measurements=source_water_measurements,
-            baseline_index=baseline_index,
-        )
-        supplemental_need_mmol_l = target_mmol_l - source_mmol_l
-        batch_delta_mmol = (
-            supplemental_need_mmol_l * working_solution_volume_l
-            if working_solution_volume_l is not None
-            else None
-        )
-        if supplemental_need_mmol_l > 0.01:
-            status = "needs-supplement"
-        elif supplemental_need_mmol_l < -0.01:
-            status = "source-exceeds-target"
-        else:
-            status = "near-target"
-
         display_name = _NUTRIENT_ANALYTE_LABELS.get(nutrient_key, nutrient_key)
-        recipe_target_mmol_l = recipe["nutrient_targets"].get(nutrient_key)
+        reported_unit = recipe_units.get(nutrient_key) if units_published else "mmol/L"
+        analyte_units[nutrient_key] = reported_unit
+        recipe_target_value = recipe["nutrient_targets"].get(nutrient_key)
         target_adjustment = next(
             (
                 row
@@ -1793,17 +1854,83 @@ def _build_stock_tank_prep(
             ),
             None,
         )
+        target_origin = (
+            target_adjustment["target_origin"] if target_adjustment else "recipe-default"
+        )
+        unit_factor = _unit_factor_to_mmol_per_l(reported_unit)
+        if unit_factor is None:
+            # No usable unit means no arithmetic: a target whose unit is unknown is
+            # never mixed with the mmol/L source-water analysis.
+            balance_rows.append(
+                {
+                    "nutrient": display_name,
+                    "canonical_key": nutrient_key,
+                    "unit": reported_unit,
+                    "recipe_target": recipe_target_value,
+                    "target_value": target_value,
+                    "source_value": None,
+                    "supplemental_need": None,
+                    "recipe_target_mmol_l": None,
+                    "target_mmol_l": None,
+                    "target_origin": target_origin,
+                    "source_mmol_l": None,
+                    "source_origin": "unit-unresolved",
+                    "supplemental_need_mmol_l": None,
+                    "batch_delta_mmol": None,
+                    "status": "unit-unresolved",
+                }
+            )
+            unsupported_analytes.append(
+                {
+                    "nutrient": display_name,
+                    "canonical_key": nutrient_key,
+                    "reason": (
+                        "The recipe row supplies no recognized concentration unit for this "
+                        "analyte, so its balance against the mmol/L source-water analysis "
+                        "was not calculated."
+                    ),
+                }
+            )
+            continue
+
+        source_mmol_l, source_origin = _resolve_source_reference_value(
+            nutrient_key,
+            submitted_measurements=source_water_measurements,
+            baseline_index=baseline_index,
+        )
+        # Source water is analysed in mmol/L; the target may be µmol/L. Convert once,
+        # then report each number beside the unit it is actually expressed in.
+        target_mmol_l = float(target_value) * unit_factor
+        recipe_target_mmol_l = (
+            None if recipe_target_value is None else float(recipe_target_value) * unit_factor
+        )
+        supplemental_need_mmol_l = target_mmol_l - source_mmol_l
+        source_value = _round_reported(source_mmol_l / unit_factor)
+        supplemental_need_value = _round_reported(supplemental_need_mmol_l / unit_factor)
+        batch_delta_mmol = (
+            supplemental_need_mmol_l * working_solution_volume_l
+            if working_solution_volume_l is not None
+            else None
+        )
+        if supplemental_need_value > _BALANCE_STATUS_TOLERANCE:
+            status = "needs-supplement"
+        elif supplemental_need_value < -_BALANCE_STATUS_TOLERANCE:
+            status = "source-exceeds-target"
+        else:
+            status = "near-target"
+
         balance_rows.append(
             {
                 "nutrient": display_name,
                 "canonical_key": nutrient_key,
+                "unit": reported_unit,
+                "recipe_target": recipe_target_value,
+                "target_value": target_value,
+                "source_value": source_value,
+                "supplemental_need": supplemental_need_value,
                 "recipe_target_mmol_l": recipe_target_mmol_l,
                 "target_mmol_l": target_mmol_l,
-                "target_origin": (
-                    target_adjustment["target_origin"]
-                    if target_adjustment
-                    else "recipe-default"
-                ),
+                "target_origin": target_origin,
                 "source_mmol_l": source_mmol_l,
                 "source_origin": source_origin,
                 "supplemental_need_mmol_l": supplemental_need_mmol_l,
@@ -1864,6 +1991,26 @@ def _build_stock_tank_prep(
                 _NUTRIENT_ANALYTE_LABELS[key] for key in _STOCK_TANK_DRAFT_ELIGIBLE_ANALYTES
             ],
             "draft_unit_contract": dict(_STOCK_TANK_DRAFT_UNIT_CONTRACT),
+            "analyte_units": {
+                _NUTRIENT_ANALYTE_LABELS.get(key, key): unit
+                for key, unit in analyte_units.items()
+            },
+            "unit_policy": {
+                "target_unit_source": (
+                    "recipe nutrient_units" if units_published else "assumed mmol/L"
+                ),
+                "source_water_unit": "mmol/L",
+                "note": (
+                    "Every balance row carries the unit its recipe publishes. The mmol/L "
+                    "fields are converted from that unit, so a µmol/L analyte reads as "
+                    "1/1000 of its reported value instead of being labelled mmol/L."
+                ),
+                "unresolved_unit_analytes": [
+                    row["nutrient"]
+                    for row in balance_rows
+                    if row["status"] == "unit-unresolved"
+                ],
+            },
             "working_solution_volume_l": working_solution_volume_l,
             "stock_ratio": stock_ratio,
             "stock_solution_volume_l": (
@@ -2165,6 +2312,7 @@ def recommend_nutrient_recipe(
             "medium": selected_recipe["medium"],
             "stage": selected_recipe["stage"],
             "ec_target": selected_recipe["ec_target"],
+            "nutrient_units": selected_recipe.get("nutrient_units", {}),
             "nutrient_targets": {
                 "n_no3": selected_recipe["n_no3"],
                 "n_nh4": selected_recipe["n_nh4"],
@@ -2225,7 +2373,8 @@ def recommend_nutrient_recipe(
         "calculator_defaults": reference_rows["calculator_defaults"],
         "drain_feedback_defaults": reference_rows["drain_feedback_defaults"],
         "limitations": [
-            "현재는 양액 레시피 기준 조회까지만 제공합니다. 최종 원액 탱크 계산은 아직 포함되지 않습니다.",
+            "이 응답은 레시피 기준 조회입니다. 원액 탱크 배합량은 recommend_stock_tank_prescription"
+            "(POST /api/nutrients/prescription)이 A·B 탱크 각 1000 L, 100배 기준으로 계산합니다.",
             "실제 적용 전에는 원수·배액 분석과 레시피 경계값을 함께 확인해 주세요.",
         ],
     }
@@ -2358,7 +2507,614 @@ def recommend_nutrient_correction(
             "stock_tank_prep": stock_tank_prep,
         },
         "limitations": [
-            "현재는 양액 보정 초안과 제한된 범위의 배액 피드백, 단일 비료 기준 초안까지만 제공합니다. 최종 원액 탱크 계산은 아직 포함되지 않습니다.",
+            "이 응답은 양액 보정 초안과 제한된 범위의 배액 피드백, 단일 비료 기준 초안입니다. 확정 원액 탱크 "
+            "배합량은 recommend_stock_tank_prescription(POST /api/nutrients/prescription)에서 계산합니다.",
             "수동 보정을 적용하기 전에는 실제 원수·배액 분석값과 워크북 경계값을 함께 확인해 주세요.",
+        ],
+    }
+
+
+def _stage_config_key(stage: Any) -> str:
+    return _normalize_text(stage).lower().replace(" ", "_").replace("-", "_")
+
+
+def _positive_float(value: Any) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
+def _prescription_target_units(recipe: dict[str, Any]) -> dict[str, str]:
+    """Unit per solver ion, taking the guardrail unit for the water-only ions."""
+    published = dict(recipe.get("nutrient_units") or {})
+    units = {ion: published[ion] for ion in SOLVER_ION_ORDER if published.get(ion)}
+    for ion, guardrail_key in _GUARDRAIL_ION_KEYS:
+        if ion not in units and published.get(guardrail_key):
+            units[ion] = published[guardrail_key]
+    return units
+
+
+def _prescription_source_water(
+    *,
+    submitted_mmol_l: dict[str, float] | None,
+    baseline_rows: list[dict[str, Any]],
+) -> tuple[dict[str, float], dict[str, str], str]:
+    """Source-water analysis in mmol/L per solver ion, with the origin of each value."""
+    solver_ions = set(SOLVER_ION_ORDER)
+    values: dict[str, float] = {}
+    origin: dict[str, str] = {}
+
+    for row in baseline_rows or ():
+        canonical_key = _canonical_nutrient_analyte_key(row.get("analyte"))
+        if canonical_key not in solver_ions or row.get("mmol_l") is None:
+            continue
+        values[canonical_key] = float(row["mmol_l"])
+        origin[canonical_key] = "workbook_baseline"
+
+    for analyte_name, observed in (submitted_mmol_l or {}).items():
+        canonical_key = _canonical_nutrient_analyte_key(analyte_name)
+        if canonical_key not in solver_ions or observed is None:
+            continue
+        values[canonical_key] = float(observed)
+        origin[canonical_key] = "submitted"
+
+    if submitted_mmol_l:
+        mode = "submitted"
+    elif values:
+        mode = "workbook_baseline"
+    else:
+        mode = "none"
+    return values, origin, mode
+
+
+def _resolve_chloride_target(
+    *,
+    crop: str,
+    recipe: dict[str, Any],
+    crop_config: dict[str, Any],
+) -> dict[str, Any]:
+    """Chloride is a real feed target the workbook recipe sheet does not carry.
+
+    추천레시피_DB publishes Cl only as the Cl_max guardrail, so a chloride target is
+    read from the reference file when the workbook row has none. A blank cell in the
+    reference file stays blank; no chloride target is invented for it.
+    """
+    guardrail_unit = (recipe.get("nutrient_units") or {}).get("cl_max")
+    resolution: dict[str, Any] = {
+        "target": None,
+        "unit": "mmol/L",
+        "origin": "absent",
+        "workbook_has_cl_target": recipe["nutrient_targets"].get("cl") is not None,
+        "workbook_guardrail_cl_max": recipe["guardrails"].get("cl_max"),
+        "workbook_guardrail_unit": guardrail_unit,
+        "note": (
+            "워크북 추천레시피_DB에는 Cl 목표 열이 없고 Cl_max 상한만 있습니다. Cl_max는 "
+            "목표가 아니라 배합 후 확인해야 할 상한입니다."
+        ),
+    }
+
+    if resolution["workbook_has_cl_target"]:
+        resolution["target"] = recipe["nutrient_targets"]["cl"]
+        resolution["unit"] = (recipe.get("nutrient_units") or {}).get("cl") or "mmol/L"
+        resolution["origin"] = "workbook_recipe_row"
+        return resolution
+
+    feed_solution = crop_config.get("feed_solution") or {}
+    reference_chloride = feed_solution.get("cl") if isinstance(feed_solution, dict) else None
+    if reference_chloride is None:
+        resolution["note"] = (
+            "참고자료의 feed_solution.cl이 빈칸이라 염화물 목표를 만들지 않았습니다. 워크북 "
+            "추천레시피_DB에도 Cl 목표 열이 없으며, Cl_max는 목표가 아니라 배합 후 확인해야 할 "
+            "상한입니다."
+        )
+        return resolution
+
+    resolution["target"] = reference_chloride
+    resolution["origin"] = "reference_file"
+    resolution["reference_locator"] = crop_config.get("locator")
+    resolution["reference_path"] = f"configs/{_EUROFINS_CONFIG_FILENAME} crops.{crop}.feed_solution.cl"
+    resolution["note"] = (
+        "워크북 추천레시피_DB에는 Cl 목표 열이 없어 이 처방의 염화물 목표는 참고자료 "
+        f"configs/{_EUROFINS_CONFIG_FILENAME}의 crops.{crop}.feed_solution.cl에서 가져왔습니다. "
+        "워크북의 Cl_max는 목표가 아니라 배합 후 확인해야 할 상한입니다."
+    )
+    return resolution
+
+
+def _relevant_source_inconsistencies(config: dict[str, Any], crop: str) -> list[str]:
+    """Source inconsistencies that touch this crop or any stock-tank decision."""
+    entries = config.get("known_source_inconsistencies") or []
+    crop_token = _normalize_text(crop).lower()
+    selected: list[str] = []
+    for entry in entries:
+        text = str(entry).lower()
+        if (crop_token and crop_token in text) or "chelate" in text or "tank" in text:
+            selected.append(str(entry))
+    return selected
+
+
+def _build_prescription_provenance(
+    *,
+    crop: str,
+    resolved_stage: str,
+    resolved_medium: str,
+    chloride_resolution: dict[str, Any],
+) -> dict[str, Any]:
+    """Primary-source provenance for the numbers this prescription rests on."""
+    config = _load_nutrient_source_config()
+    if config.get("unavailable"):
+        return {
+            "status": "unavailable",
+            "detail": config["unavailable"],
+            "chloride_target": chloride_resolution,
+        }
+
+    crop_config = (config.get("crops") or {}).get(crop) or {}
+    stage_key = _stage_config_key(resolved_stage)
+    adjustments = crop_config.get("adjustments") or {}
+    stage_adjustment = adjustments.get(stage_key)
+    return {
+        "status": "available",
+        "basis": config.get("basis"),
+        "source": dict(config.get("source") or {}),
+        "units": dict(config.get("units") or {}),
+        "crop_locator": crop_config.get("locator"),
+        "crop_display_name": crop_config.get("display_name"),
+        "species": crop_config.get("species"),
+        "substrate": crop_config.get("substrate"),
+        "stage_adjustment": {
+            "resolved_stage": resolved_stage,
+            "resolved_medium": resolved_medium,
+            "config_key": stage_key,
+            "published_adjustment": stage_adjustment,
+            "available_stage_keys": sorted(adjustments),
+            "applied_by": (
+                "워크북 추천레시피_DB 행이 이미 기준 조성 + 해당 단계 조정값으로 저장되어 있습니다. "
+                "여기 실린 조정값은 그 행에 반영된 원자료의 인쇄값입니다."
+            ),
+            "notes": dict(crop_config.get("adjustment_notes") or {}),
+        },
+        "feed_solution_reference": dict(crop_config.get("feed_solution") or {}),
+        "worked_stock_example": dict(crop_config.get("worked_stock_example") or {}),
+        "stock_tank_rules": dict(config.get("stock_tank_rules") or {}),
+        "acid_and_bicarbonate": dict(config.get("acid_and_bicarbonate") or {}),
+        "chloride_target": chloride_resolution,
+        "known_source_inconsistencies": _relevant_source_inconsistencies(config, crop),
+    }
+
+
+def _prescription_guardrail_review(
+    *,
+    prescription: dict[str, Any],
+    recipe: dict[str, Any],
+    target_units: dict[str, str],
+) -> list[dict[str, Any]]:
+    achieved = prescription.get("achieved_working_solution") or {}
+    published_units = dict(recipe.get("nutrient_units") or {})
+    rows: list[dict[str, Any]] = []
+    for ion, guardrail_key in _GUARDRAIL_ION_KEYS:
+        guardrail_max = recipe["guardrails"].get(guardrail_key)
+        if guardrail_max is None:
+            continue
+        entry = achieved.get(ion) or {}
+        projected = entry.get("value")
+        rows.append(
+            {
+                "analyte": _NUTRIENT_ANALYTE_LABELS.get(ion, ion),
+                "canonical_key": ion,
+                "unit": target_units.get(ion) or published_units.get(guardrail_key) or "mmol/L",
+                "guardrail_max": guardrail_max,
+                "projected_value": projected,
+                "status": (
+                    "not-evaluated"
+                    if projected is None
+                    else "above-guardrail"
+                    if float(projected) > float(guardrail_max)
+                    else "within-guardrail"
+                ),
+                "basis": "원수 + 비료 기여를 합한 작업 양액 예상값",
+            }
+        )
+    return rows
+
+
+def recommend_stock_tank_prescription(
+    *,
+    crop: str,
+    stage: str | None = None,
+    medium: str | None = None,
+    source_water_mmol_l: dict[str, float] | None = None,
+    drain_water_mmol_l: dict[str, float] | None = None,
+    stock_tank_volume_l: float | None = None,
+    stock_ratio: float | None = None,
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Size the A and B stock tanks for a resolved workbook recipe.
+
+    The recipe is resolved through recommend_nutrient_recipe, so stage and medium
+    matching stay identical to the lookup surface. Targets, their units, the workbook
+    fertilizer catalog and the tank volumes go to solve_stock_tanks, which owns the
+    allocation. Provenance for the numbers comes from the primary-source record in
+    configs/nutrient_recipes_eurofins.json.
+    """
+    reference_rows = export_nutrient_reference_rows(crop)
+    recipe_payload = recommend_nutrient_recipe(crop=crop, stage=stage, medium=medium)
+    recipe = recipe_payload["recipe"]
+    resolved_stage = recipe_payload["resolved"]["stage"]
+    resolved_medium = recipe_payload["resolved"]["medium"]
+
+    _validate_water_measurement_inputs(source_water_mmol_l, analysis_kind="source_water")
+    _validate_water_measurement_inputs(drain_water_mmol_l, analysis_kind="drain_water")
+
+    option_map = dict(options or {})
+    unsupported_options = sorted(set(option_map) - set(_PRESCRIPTION_OPTION_KEYS))
+    if unsupported_options:
+        raise ValueError(
+            "Unsupported prescription options: "
+            + ", ".join(unsupported_options)
+            + ". Supported options are "
+            + ", ".join(_PRESCRIPTION_OPTION_KEYS)
+            + "."
+        )
+
+    config = _load_nutrient_source_config()
+    crop_config = (config.get("crops") or {}).get(crop) or {}
+    worked_example = crop_config.get("worked_stock_example") or {}
+    basis_volume_l = _positive_float(worked_example.get("stock_tank_volume_l")) or _STOCK_TANK_BASIS_VOLUME_L
+    basis_ratio = _positive_float(worked_example.get("stock_ratio")) or _STOCK_TANK_BASIS_RATIO
+
+    calculator_defaults = dict(recipe_payload["calculator_defaults"])
+    workbook_ratio = _positive_float(calculator_defaults.get("stock_ratio"))
+    workbook_working_volume_l = _positive_float(calculator_defaults.get("working_solution_volume_l"))
+
+    if stock_tank_volume_l is not None and _positive_float(stock_tank_volume_l) is None:
+        raise ValueError("stock_tank_volume_l must be greater than 0.")
+    if stock_ratio is not None and _positive_float(stock_ratio) is None:
+        raise ValueError("stock_ratio must be greater than 0.")
+
+    effective_ratio = (
+        float(stock_ratio) if stock_ratio is not None else (workbook_ratio or basis_ratio)
+    )
+    effective_volume_l = (
+        float(stock_tank_volume_l) if stock_tank_volume_l is not None else basis_volume_l
+    )
+    implied_stock_tank_volume_l = (
+        workbook_working_volume_l / (workbook_ratio or effective_ratio)
+        if workbook_working_volume_l is not None
+        else None
+    )
+    basis_agrees = (
+        implied_stock_tank_volume_l is not None
+        and abs(implied_stock_tank_volume_l - effective_volume_l) <= 1e-6
+    )
+
+    warnings: list[str] = []
+    if stock_tank_volume_l is None and implied_stock_tank_volume_l is not None and not basis_agrees:
+        warnings.append(
+            "워크북 '"
+            + str(calculator_defaults.get("sheet_name") or "처방전 계산")
+            + f"' 시트는 작업 양액 {workbook_working_volume_l:g} L를 "
+            + f"{(workbook_ratio or effective_ratio):g}배로 두어 원액 탱크 "
+            + f"{implied_stock_tank_volume_l:g} L를 뜻합니다. 이 처방은 원자료에 published된 탱크 기준인 "
+            + f"탱크당 {effective_volume_l:g} L, {effective_ratio:g}배로 계산했습니다. 시트 기준으로 보려면 "
+            + f"stock_tank_volume_l={implied_stock_tank_volume_l:g}로 다시 요청하세요."
+        )
+
+    target_units = _prescription_target_units(recipe)
+    solver_targets: dict[str, Any] = {
+        ion: value
+        for ion, value in recipe["nutrient_targets"].items()
+        if value is not None and ion in set(SOLVER_ION_ORDER)
+    }
+
+    chloride_resolution = _resolve_chloride_target(
+        crop=crop, recipe=recipe, crop_config=crop_config
+    )
+    if chloride_resolution["target"] is not None:
+        solver_targets["cl"] = chloride_resolution["target"]
+        target_units.setdefault("cl", chloride_resolution["unit"] or "mmol/L")
+
+    sulfate_policy: dict[str, Any] = {
+        "mode": "workbook_s_target",
+        "s_target_supplied": solver_targets.get("s") is not None,
+        "s_target": solver_targets.get("s"),
+        "unit": target_units.get("s"),
+        "synthesized_s_target_mmol_l": None,
+        "unbudgeted_sulfate": None,
+        "note": "S 목표가 레시피에 있으므로 황산은 목표 범위 안에서 배분했습니다.",
+    }
+    if solver_targets.get("s") is None and solver_targets.get("mg") is not None:
+        magnesium_factor = _unit_factor_to_mmol_per_l(target_units.get("mg")) or 1.0
+        sulfate_unit = target_units.get("s") or "mmol/L"
+        sulfate_factor = _unit_factor_to_mmol_per_l(sulfate_unit) or 1.0
+        magnesium_target_mmol_l = float(solver_targets["mg"]) * magnesium_factor
+        synthesized_target = _round_reported(magnesium_target_mmol_l / sulfate_factor)
+        solver_targets["s"] = synthesized_target
+        target_units.setdefault("s", sulfate_unit)
+        sulfate_policy = {
+            "mode": "mgso4_preferred_without_published_s_target",
+            "s_target_supplied": False,
+            "s_target": synthesized_target,
+            "unit": sulfate_unit,
+            "synthesized_s_target_mmol_l": _round_reported(magnesium_target_mmol_l),
+            "unbudgeted_sulfate": None,
+            "note": (
+                "이 레시피에는 S 목표가 없습니다. 마그네슘은 관행대로 황산마그네슘으로 넣고, 그때 "
+                "함께 들어가는 황산은 목표에 없는 추가분으로 표시합니다. 질산마그네슘으로 바꿔 질산을 "
+                "늘리는 방식은 쓰지 않았습니다."
+            ),
+        }
+        warnings.append(
+            "S 목표가 없는 레시피라 마그네슘을 황산마그네슘으로 넣었고, 그만큼의 황산("
+            + f"{synthesized_target:g} {sulfate_unit})은 목표에 없는 추가분입니다."
+        )
+
+    water_mmol_l, water_origin, water_mode = _prescription_source_water(
+        submitted_mmol_l=source_water_mmol_l,
+        baseline_rows=recipe_payload["source_water_baseline"],
+    )
+    solver_source_water: dict[str, float] = {}
+    unconvertible_water: list[dict[str, Any]] = []
+    for ion, mmol_value in water_mmol_l.items():
+        factor = _unit_factor_to_mmol_per_l(target_units.get(ion))
+        if factor is None:
+            unconvertible_water.append(
+                {
+                    "analyte": _NUTRIENT_ANALYTE_LABELS.get(ion, ion),
+                    "canonical_key": ion,
+                    "source_water_mmol_l": mmol_value,
+                    "reason": (
+                        "이 이온에는 레시피가 제시한 단위가 없어 원수 분석값을 목표 단위로 옮기지 "
+                        "않았습니다."
+                    ),
+                }
+            )
+            continue
+        solver_source_water[ion] = _round_reported(mmol_value / factor)
+
+    fertilizers = [dict(row) for row in reference_rows["fertilizers"]]
+    calcium_formula_keys = set(_CALCIUM_NITRATE_FORMULA_RANKING)
+    available_calcium = [
+        row for row in fertilizers if _formula_lookup_key(row.get("formula")) in calcium_formula_keys
+    ]
+    calcium_source: dict[str, Any] = {
+        "mode": "solver_default_ranking",
+        "ranking": list(_CALCIUM_NITRATE_FORMULA_RANKING),
+        "available_formulas": [row.get("formula") for row in available_calcium],
+        "requested_formula": option_map.get("calcium_source_formula"),
+        "excluded_formulas": [],
+        "note": (
+            "기본값은 솔버가 가진 순위 그대로 질산칼슘 4수염을 먼저 씁니다. 농가 '처방전 계산' 시트의 "
+            "선택과 같습니다."
+        ),
+    }
+    requested_calcium = option_map.get("calcium_source_formula")
+    if requested_calcium:
+        wanted_key = _formula_lookup_key(requested_calcium)
+        if wanted_key not in calcium_formula_keys:
+            raise ValueError(
+                "calcium_source_formula must name one of: "
+                + ", ".join(_CALCIUM_NITRATE_FORMULA_RANKING)
+                + "."
+            )
+        if wanted_key not in {_formula_lookup_key(row.get("formula")) for row in available_calcium}:
+            raise LookupError(
+                f"The workbook fertilizer catalog has no row for calcium source '{requested_calcium}'."
+            )
+        calcium_source["excluded_formulas"] = [
+            row.get("formula")
+            for row in available_calcium
+            if _formula_lookup_key(row.get("formula")) != wanted_key
+        ]
+        fertilizers = [
+            row
+            for row in fertilizers
+            if _formula_lookup_key(row.get("formula")) == wanted_key
+            or _formula_lookup_key(row.get("formula")) not in calcium_formula_keys
+        ]
+        calcium_source["mode"] = "caller_selected"
+        calcium_source["note"] = (
+            "요청한 칼슘 원료만 남기고 다른 질산칼슘 제품을 후보에서 제외한 뒤 계산했습니다."
+        )
+
+    solver_options = {
+        key: value for key, value in option_map.items() if key in _SOLVER_FORWARDED_OPTIONS
+    }
+    prescription = solve_stock_tanks(
+        targets=solver_targets,
+        target_units=target_units,
+        source_water=solver_source_water or None,
+        fertilizers=fertilizers,
+        stock_tank_volume_l=effective_volume_l,
+        stock_ratio=effective_ratio,
+        options=solver_options,
+    )
+    warnings.extend(str(entry) for entry in prescription.get("warnings") or ())
+
+    achieved_sulfate = (prescription.get("achieved_working_solution") or {}).get("s") or {}
+    if sulfate_policy["mode"] == "mgso4_preferred_without_published_s_target":
+        sulfate_policy["unbudgeted_sulfate"] = {
+            "value": achieved_sulfate.get("from_fertilizer"),
+            "unit": achieved_sulfate.get("unit") or sulfate_policy["unit"],
+            "status": "unbudgeted_addition",
+        }
+
+    magnesium_nitrate_steps = [
+        step
+        for step in prescription.get("allocation_steps") or ()
+        if step.get("role") == "mg_nitrate" and float(step.get("grams") or 0.0) > 0.0
+    ]
+    magnesium_policy = {
+        "preferred_source": "mg_sulfate",
+        "magnesium_nitrate_used": bool(magnesium_nitrate_steps),
+        "magnesium_nitrate_grams": _round_reported(
+            sum(float(step.get("grams") or 0.0) for step in magnesium_nitrate_steps), 3
+        ),
+        "steps": magnesium_nitrate_steps,
+        "note": (
+            "황산 예산이 마그네슘을 덮지 못해 남은 마그네슘이 질산마그네슘으로 들어갔습니다. 그만큼 "
+            "질산이 함께 늘어납니다."
+            if magnesium_nitrate_steps
+            else "마그네슘은 전량 황산마그네슘으로 들어갔습니다."
+        ),
+    }
+
+    nitrate = dict(prescription.get("nitrate_reconciliation") or {})
+    nitrate_policy = {
+        "status": nitrate.get("status"),
+        "unit": nitrate.get("unit"),
+        "target": nitrate.get("target"),
+        "source_water": nitrate.get("source_water"),
+        "supplied_by_fertilizer": nitrate.get("supplied_by_fertilizer"),
+        "difference": nitrate.get("difference"),
+        "cause": nitrate.get("cause"),
+        "suggested_swaps": nitrate.get("suggested_swaps") or [],
+        "note": (
+            "질산이 모자라면 부족분과 교체 후보를 그대로 보고하고 임의의 질산 공급원을 만들지 "
+            "않습니다. 실제 농가에서 중탄산 중화에 쓰는 질산(HNO3)은 질산 공급원이지만 워크북 "
+            "비료_DB에 없어 이 계산에 포함되지 않았습니다."
+        ),
+    }
+    if nitrate.get("status") == "deficit":
+        warnings.append(
+            "질산이 목표에 미치지 못합니다. 부족분은 교체 후보와 함께 보고하며, 워크북 비료_DB에 없는 "
+            "질산(HNO3)은 계산에 넣지 않았습니다."
+        )
+
+    guardrails = {
+        "cl": recipe["guardrails"].get("cl_max"),
+        "hco3": recipe["guardrails"].get("hco3_max"),
+        "na": recipe["guardrails"].get("na_max"),
+    }
+    guardrail_review = _prescription_guardrail_review(
+        prescription=prescription, recipe=recipe, target_units=target_units
+    )
+    for row in guardrail_review:
+        if row["status"] == "above-guardrail":
+            warnings.append(
+                f"{row['analyte']} 예상값 {row['projected_value']} {row['unit']}는 워크북 상한 "
+                f"{row['guardrail_max']} {row['unit']}를 넘습니다."
+            )
+
+    if water_mode == "submitted":
+        water_statement = (
+            "제출된 원수 분석값을 사용했습니다(제출 항목: "
+            + ", ".join(sorted(source_water_mmol_l or {}))
+            + "). 나머지 항목은 워크북 '원수 분석' 시트 값을 사용했습니다."
+        )
+    elif water_mode == "workbook_baseline":
+        water_statement = (
+            "제출된 원수 분석이 없어 워크북 '원수 분석' 시트의 기준값으로 계산했습니다. 농가에 적용하기 "
+            "전에 실제 원수 분석값으로 다시 계산해 주세요."
+        )
+    else:
+        water_statement = (
+            "원수 분석값이 전혀 없어 원수 성분을 0으로 두고 계산했습니다. 이 상태의 결과는 농가 "
+            "처방으로 쓸 수 없습니다."
+        )
+
+    source_water_basis = {
+        "mode": water_mode,
+        "statement": water_statement,
+        "submitted_analytes": sorted((source_water_mmol_l or {}).keys()),
+        "workbook_sheet": "원수 분석",
+        "analytes_mmol_l": water_mmol_l,
+        "analytes_in_target_units": solver_source_water,
+        "origin_by_analyte": water_origin,
+        "unconvertible_analytes": unconvertible_water,
+    }
+
+    drain_reviews = _evaluate_water_measurements(
+        drain_water_mmol_l or {},
+        analysis_kind="drain_water",
+        baseline_index=_water_reference_index(recipe_payload["drain_water_baseline"]),
+        guardrails=guardrails,
+    )
+    drain_water_context = {
+        "submitted_analytes": sorted((drain_water_mmol_l or {}).keys()),
+        "review": drain_reviews,
+        "applied_to_targets": False,
+        "note": (
+            "배액 분석은 이 배합량의 목표 조성에 자동 반영하지 않았습니다. 원자료가 이온별 보정계수를 "
+            "싣지 않았기 때문이며, 범위를 제한한 배액 피드백은 recommend_nutrient_correction에 있습니다."
+        ),
+    }
+
+    return {
+        "family": "nutrient_prescription",
+        "crop": recipe_payload["crop"],
+        "requested": {"stage": stage, "medium": medium},
+        "resolved": recipe_payload["resolved"],
+        "available_stages": recipe_payload["available_stages"],
+        "available_mediums": recipe_payload["available_mediums"],
+        "recipe": recipe,
+        "targets": {
+            "values": solver_targets,
+            "units": target_units,
+            "chloride_target": chloride_resolution,
+        },
+        "stock_tank_basis": {
+            "stock_tank_volume_l": effective_volume_l,
+            "stock_ratio": effective_ratio,
+            "tanks": ["A", "B"],
+            "working_solution_volume_l": prescription["working_solution_volume_l"],
+            "statement": (
+                f"A·B 탱크 각 {effective_volume_l:g} L를 {effective_ratio:g}배로 채워 작업 양액 "
+                f"{prescription['working_solution_volume_l']:g} L를 만드는 기준입니다."
+            ),
+            "requested": {
+                "stock_tank_volume_l": stock_tank_volume_l,
+                "stock_ratio": stock_ratio,
+            },
+            "published_basis": {
+                "stock_tank_volume_l": basis_volume_l,
+                "stock_ratio": basis_ratio,
+                "locator": worked_example.get("locator"),
+            },
+            "calculator_defaults": calculator_defaults,
+            "implied_stock_tank_volume_l": implied_stock_tank_volume_l,
+            "agrees_with_calculator_defaults": basis_agrees,
+            "resolved_from": {
+                "stock_tank_volume_l": (
+                    "caller" if stock_tank_volume_l is not None else "published_stock_tank_basis"
+                ),
+                "stock_ratio": (
+                    "caller"
+                    if stock_ratio is not None
+                    else "calculator_defaults"
+                    if workbook_ratio is not None
+                    else "published_stock_tank_basis"
+                ),
+            },
+        },
+        "source_water_basis": source_water_basis,
+        "drain_water_context": drain_water_context,
+        "guardrail_review": guardrail_review,
+        "sulfate_policy": sulfate_policy,
+        "magnesium_policy": magnesium_policy,
+        "nitrate_policy": nitrate_policy,
+        "options": {
+            "requested": dict(option_map),
+            "forwarded_to_solver": solver_options,
+            "solver_effective": dict(prescription.get("options") or {}),
+            "calcium_source": calcium_source,
+        },
+        "prescription": prescription,
+        "provenance": _build_prescription_provenance(
+            crop=crop,
+            resolved_stage=resolved_stage,
+            resolved_medium=resolved_medium,
+            chloride_resolution=chloride_resolution,
+        ),
+        "warnings": warnings,
+        "limitations": [
+            water_statement,
+            "이 값은 A·B 원액 탱크에 넣는 비료 무게입니다. 작업 양액에 직접 넣는 양이 아닙니다.",
+            "EC는 계산하지 않습니다. 이온별 전기전도도 계수를 입력받지 않으므로 EC를 만들어내지 않습니다.",
+            "pH 조정용 산과 중탄산 중화는 워크북 비료_DB에 없어 이 배합량에 포함되지 않았습니다.",
         ],
     }

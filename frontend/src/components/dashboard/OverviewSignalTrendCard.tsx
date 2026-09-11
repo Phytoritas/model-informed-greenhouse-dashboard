@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import {
-  CartesianGrid,
   Line,
   LineChart,
   ReferenceLine,
@@ -9,16 +8,27 @@ import {
   YAxis,
 } from 'recharts';
 import { useLocale } from '../../i18n/LocaleProvider';
-import { formatLocaleDateTime, formatLocaleTime } from '../../i18n/locale';
+import { formatLocaleDateTime } from '../../i18n/locale';
 import type { OverviewSignalsPayload } from '../../types';
 import { normalizeOverviewSourceSinkBalance } from '../../utils/sourceSinkBalance';
-import ChartFrame from '../charts/ChartFrame';
+import ChartFrame, { ChartSeriesLegend } from '../charts/ChartFrame';
+import ScientificText from '../common/ScientificText';
 import {
+  buildTimeAxisPlan,
+  chartSeries,
+  DASHBOARD_CHART_ANNOTATION,
+  DASHBOARD_CHART_AXIS_PROPS,
   DASHBOARD_CHART_AXIS_STROKE,
-  DASHBOARD_CHART_GRID_STROKE,
+  DASHBOARD_CHART_CURSOR,
+  DASHBOARD_CHART_HEIGHT,
   DASHBOARD_CHART_LEGEND_CLASSNAME,
-  DASHBOARD_CHART_TICK,
+  DASHBOARD_CHART_RULE_STROKE,
+  DASHBOARD_CHART_TOOLTIP_ITEM_STYLE,
+  DASHBOARD_CHART_TOOLTIP_LABEL_STYLE,
   DASHBOARD_CHART_TOOLTIP_STYLE,
+  formatTimeAxisLabel,
+  formatTimeAxisTick,
+  seriesLineProps,
 } from '../charts/chartStyles';
 import DashboardCard from '../common/DashboardCard';
 
@@ -32,6 +42,8 @@ interface OverviewSignalTrendCardProps {
     timestamp: number;
     value: number;
   }>;
+  /** Replay cursor shared with the 3D twin; null keeps the live view. */
+  selectedTimestamp?: number | null;
 }
 
 interface ChartPoint {
@@ -44,6 +56,10 @@ interface CombinedChartPoint {
   irradiance: number | null;
   sourceSinkBalance: number | null;
 }
+
+/** Irradiance uses the first cycle color; the balance index uses the fourth. */
+const IRRADIANCE_SERIES_INDEX = 0;
+const BALANCE_SERIES_INDEX = 3;
 
 function buildChartPoints<T extends { time: string }>(
   points: T[],
@@ -113,6 +129,7 @@ export default function OverviewSignalTrendCard({
   refreshedAt = null,
   fillHeight = true,
   liveSourceSinkSeries = [],
+  selectedTimestamp = null,
 }: OverviewSignalTrendCardProps) {
   const { locale } = useLocale();
   const irradianceSeries = useMemo(
@@ -132,6 +149,11 @@ export default function OverviewSignalTrendCard({
     () => buildCombinedSeries(irradianceSeries, sourceSinkSeries),
     [irradianceSeries, sourceSinkSeries],
   );
+  const axisPlan = useMemo(
+    () => buildTimeAxisPlan(combinedSeries.map((point) => point.timestamp)),
+    [combinedSeries],
+  );
+  const multiDay = axisPlan?.multiDay ?? false;
 
   const copy = locale === 'ko'
     ? {
@@ -142,11 +164,13 @@ export default function OverviewSignalTrendCard({
       balance: '소스-싱크 균형 지수',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
       balanceUnit: signals?.source_sink.unit ?? '정규 지수',
+      axisLeft: '왼쪽 축',
+      axisRight: '오른쪽 축',
       loading: '실제 3일 추세를 불러오는 중입니다.',
       error: error ?? '실제 추세를 불러오지 못했습니다.',
       empty: '표시할 실제 추세가 아직 없습니다.',
       modelMissing: '모델 스냅샷 이력이 아직 없어 소스-싱크 추세를 표시할 수 없습니다.',
-      mergedTitle: '온실 내부 일사량과 소스-싱크를 한 차트에서 봅니다.',
+      axisNote: '두 지표는 단위가 달라 왼쪽·오른쪽 축을 따로 사용합니다.',
       updated: '화면 갱신',
       staleWarning: '최근 갱신 요청이 지연되어 마지막 성공 값을 유지하고 있습니다.',
     }
@@ -158,11 +182,13 @@ export default function OverviewSignalTrendCard({
       balance: 'Source-sink balance',
       irradianceUnit: signals?.irradiance.unit ?? 'W/m²',
       balanceUnit: signals?.source_sink.unit ?? 'normalized index',
+      axisLeft: 'Left axis',
+      axisRight: 'Right axis',
       loading: 'Loading the live 3-day trend.',
       error: error ?? 'Failed to load the live trend.',
       empty: 'No live trend is available yet.',
       modelMissing: 'Model snapshot history is not available yet for the source-sink trend.',
-      mergedTitle: 'Greenhouse irradiance and source-sink are shown in one chart.',
+      axisNote: 'The two signals use different units, so each keeps its own labeled axis.',
       updated: 'Refreshed',
       staleWarning: 'The latest refresh is delayed, so the last successful trend is still shown.',
     };
@@ -170,8 +196,10 @@ export default function OverviewSignalTrendCard({
 
   const hasIrradiance = irradianceSeries.length >= 2;
   const hasSourceSink = sourceSinkSeries.length >= 2;
+  const hasCursor = typeof selectedTimestamp === 'number' && Number.isFinite(selectedTimestamp);
   const cardClassName = fillHeight ? 'sg-panel h-full min-w-0 bg-white' : 'sg-panel min-w-0 bg-white';
   const chartCardClassName = fillHeight ? 'sg-panel h-full min-w-0 bg-white !p-4' : 'sg-panel min-w-0 bg-white !p-4';
+  const chartHeight = DASHBOARD_CHART_HEIGHT.compact;
 
   if (loading && !signals) {
     return (
@@ -226,21 +254,28 @@ export default function OverviewSignalTrendCard({
       contentClassName="flex flex-col gap-2"
       className={chartCardClassName}
     >
-      <div className="sg-panel min-w-0 bg-[color:var(--sg-surface-soft)] px-2.5 py-2.5">
-        <div className={`mb-2 flex flex-wrap items-center justify-between gap-2 ${DASHBOARD_CHART_LEGEND_CLASSNAME}`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <span>{copy.mergedTitle}</span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-terracotta)]" />
-              {copy.irradiance}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-primary)]" />
-              {copy.balance}
-            </span>
-          </div>
+      <div className="min-w-0 rounded-[var(--sg-radius-sm)] bg-white px-2.5 py-2.5">
+        {/* Both units read horizontally here, tagged left/right, instead of as
+            rotated axis titles that ate plot width on each side. */}
+        <p className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs text-[color:var(--sg-text-muted)]">
+          <span className="inline-flex items-baseline gap-1">
+            {copy.axisLeft}
+            <ScientificText text={copy.irradianceUnit} className="scientific-unit" />
+          </span>
+          <span className="inline-flex items-baseline gap-1">
+            {copy.axisRight}
+            <ScientificText text={copy.balanceUnit} className="scientific-unit" />
+          </span>
+        </p>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <ChartSeriesLegend
+            entries={[
+              { label: copy.irradiance, seriesIndex: IRRADIANCE_SERIES_INDEX },
+              { label: copy.balance, seriesIndex: BALANCE_SERIES_INDEX },
+            ]}
+          />
           {irradianceUpdatedAt ? (
-            <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-[color:var(--sg-text-faint)] shadow-[var(--sg-shadow-card)]">
+            <span className={`${DASHBOARD_CHART_LEGEND_CLASSNAME} text-[color:var(--sg-text-faint)]`}>
               {copy.updated} {formatLocaleDateTime(locale, irradianceUpdatedAt, {
                 month: '2-digit',
                 day: '2-digit',
@@ -250,52 +285,59 @@ export default function OverviewSignalTrendCard({
             </span>
           ) : null}
         </div>
+        <p className="mb-2 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">{copy.axisNote}</p>
         {error && signals ? (
-          <div className="mb-2 rounded-[var(--sg-radius-xs)] bg-white px-2.5 py-2 text-[11px] font-medium leading-4 text-[color:var(--sg-text-muted)]">
+          <div className="mb-2 rounded-[var(--sg-radius-xs)] bg-[color:var(--sg-surface-soft)] px-2.5 py-2 text-[11px] font-medium leading-4 text-[color:var(--sg-text-muted)]">
             {copy.staleWarning}
           </div>
         ) : null}
         {hasIrradiance ? (
-          <ChartFrame minHeight={192} style={{ height: 192 }}>
+          <ChartFrame minHeight={chartHeight} style={{ height: chartHeight }}>
             {({ width, height }) => (
               <LineChart
                 width={Math.max(width, 1)}
-                height={Math.max(height, 192)}
+                height={Math.max(height, chartHeight)}
                 data={combinedSeries}
-                margin={{ top: 8, right: 16, left: -12, bottom: 0 }}
+                margin={{ top: 8, right: 8, left: 4, bottom: 4 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke={DASHBOARD_CHART_GRID_STROKE} />
                 <XAxis
+                  {...DASHBOARD_CHART_AXIS_PROPS}
                   dataKey="timestamp"
-                  tickFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit' })}
-                  stroke={DASHBOARD_CHART_AXIS_STROKE}
-                  tick={DASHBOARD_CHART_TICK}
-                  tickLine={false}
-                  axisLine={false}
-                  minTickGap={24}
+                  type="number"
+                  scale="time"
+                  domain={axisPlan ? axisPlan.domain : ['dataMin', 'dataMax']}
+                  ticks={axisPlan?.ticks}
+                  tickFormatter={(value: number) => formatTimeAxisTick(locale, Number(value), multiDay)}
+                  minTickGap={16}
                 />
+                <YAxis {...DASHBOARD_CHART_AXIS_PROPS} yAxisId="irradiance" width={46} />
                 <YAxis
-                  yAxisId="left"
-                  stroke={DASHBOARD_CHART_AXIS_STROKE}
-                  tick={DASHBOARD_CHART_TICK}
-                  tickLine={false}
-                  axisLine={false}
-                  width={46}
-                />
-                <YAxis
-                  yAxisId="right"
+                  {...DASHBOARD_CHART_AXIS_PROPS}
+                  yAxisId="balance"
                   orientation="right"
-                  stroke={DASHBOARD_CHART_AXIS_STROKE}
-                  tick={DASHBOARD_CHART_TICK}
-                  tickLine={false}
-                  axisLine={false}
                   width={46}
                   domain={[-1, 1]}
                   ticks={[-1, -0.5, 0, 0.5, 1]}
                 />
-                <ReferenceLine yAxisId="right" y={0} stroke={DASHBOARD_CHART_AXIS_STROKE} strokeDasharray="4 4" />
+                <ReferenceLine yAxisId="balance" y={0} stroke={DASHBOARD_CHART_RULE_STROKE} strokeDasharray="4 4" />
+                {hasCursor ? (
+                  <ReferenceLine
+                    yAxisId="irradiance"
+                    x={selectedTimestamp as number}
+                    stroke={DASHBOARD_CHART_AXIS_STROKE}
+                    strokeDasharray="4 4"
+                    strokeWidth={1.2}
+                    ifOverflow="extendDomain"
+                    label={{
+                      value: formatTimeAxisLabel(locale, selectedTimestamp as number),
+                      position: 'top',
+                      ...DASHBOARD_CHART_ANNOTATION,
+                    }}
+                  />
+                ) : null}
                 <Tooltip
-                  labelFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  cursor={DASHBOARD_CHART_CURSOR}
+                  labelFormatter={(value: number) => formatTimeAxisLabel(locale, Number(value))}
                   formatter={(value: number, name: string) => {
                     if (name === 'irradiance') {
                       return [`${value.toFixed(1)} ${copy.irradianceUnit}`, copy.irradiance];
@@ -303,39 +345,39 @@ export default function OverviewSignalTrendCard({
                     return [`${value.toFixed(3)} ${copy.balanceUnit}`, copy.balance];
                   }}
                   contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
+                  labelStyle={DASHBOARD_CHART_TOOLTIP_LABEL_STYLE}
+                  itemStyle={DASHBOARD_CHART_TOOLTIP_ITEM_STYLE}
                 />
                 <Line
-                  yAxisId="left"
-                  type="monotone"
+                  {...seriesLineProps(IRRADIANCE_SERIES_INDEX)}
+                  yAxisId="irradiance"
                   dataKey="irradiance"
                   name="irradiance"
-                  connectNulls
-                  stroke="var(--sg-color-terracotta)"
-                  strokeWidth={2.2}
-                  dot={false}
-                  isAnimationActive={false}
+                  activeDot={{
+                    ...seriesLineProps(IRRADIANCE_SERIES_INDEX).activeDot,
+                    fill: chartSeries(IRRADIANCE_SERIES_INDEX).fill,
+                  }}
                 />
                 <Line
-                  yAxisId="right"
-                  type="monotone"
+                  {...seriesLineProps(BALANCE_SERIES_INDEX)}
+                  yAxisId="balance"
                   dataKey="sourceSinkBalance"
                   name="sourceSinkBalance"
-                  connectNulls
-                  stroke="var(--sg-color-primary)"
-                  strokeWidth={2.2}
-                  dot={false}
-                  isAnimationActive={false}
+                  activeDot={{
+                    ...seriesLineProps(BALANCE_SERIES_INDEX).activeDot,
+                    fill: chartSeries(BALANCE_SERIES_INDEX).fill,
+                  }}
                 />
               </LineChart>
             )}
           </ChartFrame>
         ) : (
-          <div className="rounded-[var(--sg-radius-xs)] bg-white px-2.5 py-3 text-[13px] text-[color:var(--sg-text-muted)]">
+          <div className="rounded-[var(--sg-radius-xs)] bg-[color:var(--sg-surface-soft)] px-2.5 py-3 text-[13px] text-[color:var(--sg-text-muted)]">
             {copy.empty}
           </div>
         )}
         {!hasSourceSink ? (
-          <div className="mt-2 rounded-[var(--sg-radius-xs)] bg-white px-2.5 py-2.5 text-[12px] leading-4 text-[color:var(--sg-text-muted)]">
+          <div className="mt-2 rounded-[var(--sg-radius-xs)] bg-[color:var(--sg-surface-soft)] px-2.5 py-2.5 text-[12px] leading-4 text-[color:var(--sg-text-muted)]">
             {copy.modelMissing}
           </div>
         ) : null}

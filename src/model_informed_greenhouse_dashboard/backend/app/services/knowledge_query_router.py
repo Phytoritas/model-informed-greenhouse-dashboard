@@ -8,7 +8,7 @@ from collections import Counter
 from typing import Any, Mapping
 
 
-_TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣_+-]+")
+_TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣\u3040-\u30ff\u3400-\u9fff_+-]+")
 
 _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
     "general_chat": {
@@ -147,6 +147,11 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "tank",
             "stock",
             "formula",
+            "레시피",
+            "조성",
+            "배합",
+            "養液",
+            "培養液",
             "양액",
             "비료",
             "배액",
@@ -155,7 +160,10 @@ _PROFILE_DEFINITIONS: dict[str, dict[str, Any]] = {
             "보정",
             "급액",
         },
-        "search_filters": {"asset_families": ["nutrient_workbook"], "source_types": ["xlsx"]},
+        # Nutrient recipes and their conditions also live in reference PDFs.
+        # Inferred intent must not turn a workbook's absence into corpus absence.
+        # Explicit workbook filters are still honored by _merge_search_filters.
+        "search_filters": {"source_types": ["pdf", "xlsx", "markdown"]},
         "boosts": {
             "asset_families": ["nutrient_workbook"],
             "source_types": ["xlsx"],
@@ -277,6 +285,66 @@ _ANALYTE_EXPANSIONS = {
     "nh4": "ammonium",
 }
 
+# These are spelling/translation equivalents of caller words, not the broad
+# intent expansions below. Only caller concepts can establish passage relevance.
+_CALLER_TERM_VARIANTS = {
+    "nutrient": ("nutrient", "nutrient solution", "양액", "배양액", "養液", "培養液"),
+    "recipe": ("recipe", "formula", "formulation", "레시피", "조성", "조성비", "조성표", "배합", "배합표", "처방", "組成", "配合", "処方"),
+    "vpd": ("vpd", "수증기압차", "증기압차", "수증기압포차", "포차", "飽差", "飽和水蒸気圧差"),
+    "stomatal": ("stomatal", "stomata", "기공", "気孔"),
+    "transpiration": ("transpiration", "증산", "蒸散"),
+    "photosynthesis": ("photosynthesis", "광합성", "光合成"),
+    "temperature": ("temperature", "온도", "温度", "気温", "葉温"),
+    "humidity": ("humidity", "습도", "湿度"),
+    "ventilation": ("ventilation", "환기", "換気"),
+    "co2": ("co2", "carbon_dioxide", "이산화탄소", "二酸化炭素", "炭酸ガス"),
+    "night": ("night", "nighttime", "야간", "밤", "夜間", "夜温", "暗期"),
+    "day": ("day", "daytime", "주간", "낮", "日中", "昼間", "明期"),
+    "light": ("light", "광량", "광도", "일사", "광환경", "日射", "光強度", "光環境"),
+    "irrigation": ("irrigation", "관수", "潅水", "灌水", "かん水"),
+    "root": ("root", "roots", "뿌리", "근권", "根系", "根域", "根圏"),
+    "fruit_set": ("fruit_set", "착과", "着果", "着花"),
+    "fruit_growth": ("fruit_growth", "과실비대", "과실 비대", "果実肥大"),
+    "source_sink": ("source_sink", "source-sink", "소스싱크", "소스 싱크", "ソース", "シンク", "同化産物", "동화산물"),
+    "dry_matter": ("dry_matter", "건물생산", "건물 생산", "건물분배", "건물 분배", "乾物生産", "乾物分配"),
+    "respiration": ("respiration", "호흡", "呼吸"),
+    "condensation": ("condensation", "결로", "結露"),
+    "cultivation": ("cultivation", "growing", "재배", "재배방법", "재배법", "재배요령"),
+    "method": ("method", "방법", "guide"),
+    "management": ("management", "관리"),
+    "calcium": ("calcium", "ca", "칼슘"),
+    "magnesium": ("magnesium", "mg", "마그네슘"),
+    "potassium": ("potassium", "k", "칼륨"),
+    "ec": ("ec", "conductivity", "전기전도도"),
+    "nitrate": ("nitrate", "no3"),
+    "ammonium": ("ammonium", "nh4"),
+}
+_CALLER_CANONICAL_TERMS = {
+    variant: canonical
+    for canonical, variants in _CALLER_TERM_VARIANTS.items()
+    for variant in variants
+}
+_GENERIC_CALLER_TERMS = frozenset({
+    "cultivation", "method", "management", "greenhouse", "온실", "스마트",
+    "manual", "매뉴얼", "crop", "작물", "control", "environment", "환경",
+    "농업기술대계", "農業技術大系", "compendium", "agronomy", "기반", "바탕",
+    "현재", "지금", "단계", "경계", "조건", "조건을", "정리해줘", "정리해주세요",
+})
+_CROP_TERMS = frozenset({"tomato", "tomatoes", "cucumber", "cucumbers", "토마토", "오이"})
+_QUERY_STOPWORDS = frozenset({
+    "a", "an", "the", "is", "are", "was", "were", "be", "to", "of", "in", "on",
+    "for", "with", "at", "and", "or", "it", "its", "that", "this", "they", "them",
+    "i", "my", "we", "our", "you", "your", "do", "does", "did", "can", "could",
+    "should", "would", "what", "how", "why", "when", "then", "so", "about", "if",
+    "please", "tell", "explain", "change", "changes", "high", "higher", "low", "lower",
+    "그럼", "그러면", "그렇다면", "그건", "그걸", "그때", "그거", "이때", "이", "그",
+    "경우", "좀", "더", "왜", "어떻게", "무엇", "뭐야", "뭔가요", "인가요", "알려줘",
+    "알려주세요", "설명해줘", "설명해주세요", "대해", "대한", "되나요", "하나요",
+    "높으면", "높을", "높은", "낮으면", "낮을", "낮은", "변해", "변하나요", "잘",
+    "높아질", "때", "달라지는지", "바탕으로", "기반으로", "해", "원리", "원리와",
+    "판단", "판단을", "관계", "관계는", "연결돼", "연결해서",
+})
+
 #: Substrings that are re-emitted as standalone tokens when they appear inside a
 #: longer word.
 #:
@@ -291,6 +359,7 @@ _ANALYTE_EXPANSIONS = {
 #: Keep this list ordered coarse-to-fine within a family so that both the compound
 #: and its head are emitted (e.g. "생리장해" yields both "생리" and "장해").
 _KOREAN_COMPOUND_TERMS = (
+    "농업기술대계",
     "오이",
     "토마토",
     "재배방법",
@@ -329,6 +398,39 @@ _KOREAN_COMPOUND_TERMS = (
     "엽면적",
     "수관",
     "장해",
+    "온도",
+    "습도",
+    "환기",
+    "난방",
+    "냉방",
+    "결로",
+    "이산화탄소",
+    "수증기압차",
+    "증기압차",
+    "수증기압포차",
+    "포차",
+    "야간",
+    "밤",
+    "주간",
+    "낮",
+    "양액",
+    "레시피",
+    "조성",
+    "조성비",
+    "조성표",
+    "배합",
+    "배합표",
+    "비료",
+    "배액",
+    "원수",
+    "처방",
+    "보정",
+    "급액",
+    "수확",
+    "시장",
+    "가격",
+    "출하",
+    "등급",
 )
 
 
@@ -348,6 +450,9 @@ def _normalize_tokens(text: str) -> list[str]:
 
     for token in _TOKEN_PATTERN.findall(normalized_text):
         add_token(token)
+        # Preserve VPD/EC/CO2 when a Korean particle follows the Latin symbol.
+        for latin_term in re.findall(r"[a-z][a-z0-9_+-]*", token):
+            add_token(latin_term)
         for compound in _KOREAN_COMPOUND_TERMS:
             if compound in token:
                 add_token(compound)
@@ -357,7 +462,45 @@ def _normalize_tokens(text: str) -> list[str]:
         if compound in compact_text:
             add_token(compound)
 
+    for variant in _CALLER_CANONICAL_TERMS:
+        if not re.fullmatch(r"[a-z0-9_+-]+", variant) and variant.replace(" ", "") in compact_text:
+            add_token(variant)
+
     return tokens
+
+
+def _caller_terms(tokens: list[str]) -> list[str]:
+    terms: list[str] = []
+    for token in tokens:
+        if token in _QUERY_STOPWORDS or token in _CROP_TERMS or token.isdigit():
+            continue
+        # Prefer the extracted keyword over its particle-bearing surface form.
+        if any(other != token and other in token for other in tokens if (
+            other in _KOREAN_COMPOUND_TERMS or other in _CALLER_CANONICAL_TERMS
+        )):
+            continue
+        canonical = _CALLER_CANONICAL_TERMS.get(token, token)
+        if canonical not in terms:
+            terms.append(canonical)
+    specific = [term for term in terms if term not in _GENERIC_CALLER_TERMS]
+    return (specific or terms)[:12]
+
+
+def caller_term_variants(term: str) -> tuple[str, ...]:
+    return _CALLER_TERM_VARIANTS.get(term, (term,))
+
+
+def caller_relevance_hits(text: str, terms: list[str]) -> int:
+    normalized = _normalize_text(text)
+    return sum(
+        any(
+            re.search(r"(?<![a-z0-9])" + re.escape(variant) + r"(?![a-z0-9])", normalized)
+            if re.fullmatch(r"[a-z0-9_+-]+", variant)
+            else variant in normalized
+            for variant in caller_term_variants(term)
+        )
+        for term in terms
+    )
 
 
 def _normalize_filters(filters: dict[str, Any] | None) -> dict[str, Any]:
@@ -412,7 +555,10 @@ def _merge_search_filters(
         explicit_filters.get("asset_families"),
         default_filters.get("asset_families"),
     )
-    merged["topic_major"] = explicit_filters.get("topic_major") or default_filters.get("topic_major")
+    # Inferred topics rank passages; document-level labels must not exclude a
+    # matching passage (e.g. VPD physiology inside a management-labelled guide).
+    # User-selected topics remain strict filters.
+    merged["topic_major"] = explicit_filters.get("topic_major")
     merged["topic_minor"] = explicit_filters.get("topic_minor") or default_filters.get("topic_minor")
     return {key: value for key, value in merged.items() if value}
 
@@ -445,10 +591,25 @@ def _detect_intent(tokens: list[str], explicit_filters: dict[str, Any]) -> str:
             continue
         scores[intent] += len(token_set & profile["keywords"])
 
-    best_intent, best_score = scores.most_common(1)[0] if scores else ("general_chat", 0)
+    best_score = max(scores.values(), default=0)
     if best_score <= 0:
         return "general_chat"
-    return best_intent
+    tied = [intent for intent, score in scores.items() if score == best_score]
+    if len(tied) == 1:
+        return tied[0]
+
+    # Korean and English both name the subject before its modifiers, so an even
+    # keyword count is settled by whichever profile the caller reached first:
+    # "마디 증가 속도는 온도에 따라" asks how internodes grow under a temperature
+    # driver, not how to steer the climate. Equal positions keep profile order.
+    def first_keyword_position(intent: str) -> int:
+        keywords = _PROFILE_DEFINITIONS[intent]["keywords"]
+        return next(
+            (index for index, token in enumerate(tokens) if token in keywords),
+            len(tokens),
+        )
+
+    return min(tied, key=first_keyword_position)
 
 
 def _detect_sub_intent(intent: str, tokens: list[str]) -> str | None:
@@ -469,7 +630,13 @@ def _build_query_terms(tokens: list[str], profile: Mapping[str, Any]) -> tuple[l
             seen.add(normalized)
             query_terms.append(normalized)
 
+    # Reserve space for the caller's concepts before broad intent expansion or
+    # particle-bearing surface forms, especially a condition in a follow-up.
+    for term in _caller_terms(tokens):
+        add_term(term)
     for token in tokens:
+        if token in _QUERY_STOPWORDS or token in _CROP_TERMS:
+            continue
         add_term(token)
         if token in _ANALYTE_EXPANSIONS:
             add_term(_ANALYTE_EXPANSIONS[token])
@@ -521,7 +688,7 @@ def _apply_sub_intent_profile(
             boosts["topic_minors"] = ["drain_water", "source_water", "nutrient_recipe"]
         else:
             boosts["topic_majors"] = ["nutrient_recipe"]
-            boosts["topic_minors"] = ["nutrient_recipe"]
+            boosts["topic_minors"] = ["nutrient_recipe", "recipe"]
         return adjusted
 
     if intent == "environment_control" and sub_intent == "current_state_diagnosis":
@@ -550,6 +717,7 @@ def route_knowledge_query(
         "search_filters": search_filters,
         "explicit_filters": explicit_filters,
         "query_terms": query_terms,
+        "caller_terms": _caller_terms(tokens),
         "expanded_terms": expanded_terms,
         "boosts": profile.get("boosts", {}),
     }
@@ -585,7 +753,7 @@ def routed_relevance_bonus(
     if intent == "nutrient_recipe" and sub_intent != "product_recommendation":
         if topic_minor == "fertilizer":
             bonus -= 6.0
-        if topic_minor == "nutrient_recipe":
+        if topic_minor in {"nutrient_recipe", "recipe"}:
             bonus += 4.0
     if intent == "disease_pest" and sub_intent == "cycle_recommendation":
         if topic_minor == "pesticide_product":

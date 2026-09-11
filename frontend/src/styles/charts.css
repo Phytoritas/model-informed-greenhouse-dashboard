@@ -1,7 +1,7 @@
 @layer components {
   .sg-chart-frame {
     position: relative;
-    min-height: 260px;
+    min-height: 240px;
   }
 
   .sg-chart-surface .recharts-wrapper,
@@ -9,19 +9,38 @@
     transition: opacity 140ms ease;
   }
 
+  /*
+   * The BioRender chart theme turns gridlines off, so any grid a chart still
+   * renders stays hidden rather than competing with the data.
+   */
   .sg-chart-surface .recharts-cartesian-grid-horizontal line,
   .sg-chart-surface .recharts-cartesian-grid-vertical line {
-    stroke: rgba(82, 97, 113, 0.12);
+    display: none;
+  }
+
+  /*
+   * Arial-first with a Korean fallback, matching the token file. Charts render
+   * to SVG, so the family is set on the surface rather than inherited from the
+   * app's display font.
+   */
+  .sg-chart-surface .recharts-wrapper text,
+  .recharts-wrapper text {
+    font-family: Arial, "Helvetica Neue", Helvetica, "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  }
+
+  /* Numerals stay tabular so tick columns do not jitter as values change. */
+  .recharts-cartesian-axis-tick-value {
+    font-variant-numeric: tabular-nums;
   }
 
   .sg-chart-surface .recharts-tooltip-wrapper {
-    filter: drop-shadow(0 16px 32px rgba(11, 28, 48, 0.14));
+    filter: drop-shadow(0 12px 28px rgba(23, 23, 23, 0.12));
   }
 
   .sg-chart-surface .recharts-default-tooltip {
     border: 0 !important;
-    border-radius: 18px !important;
-    background: rgba(255, 255, 255, 0.96) !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
     box-shadow: var(--sg-shadow-card) !important;
   }
 }

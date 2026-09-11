@@ -3,8 +3,6 @@ import type { SensorFieldAvailability } from '../types';
 
 interface DataKey {
     key: string;
-    name: string;
-    color: string;
 }
 
 type ChartPrimitive = number | string | null | undefined;

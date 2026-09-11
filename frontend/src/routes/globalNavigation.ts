@@ -11,17 +11,24 @@ export type GlobalNavigationKey =
 export interface GlobalNavigationItem {
   key: GlobalNavigationKey;
   label: string;
+  /** Concise Korean task label shown when the app locale is Korean. */
+  labelKo: string;
   path: string;
+  /** Contact stays routable from the landing footer but is not a workspace tab. */
+  visibleInNav: boolean;
 }
 
 export const GLOBAL_NAVIGATION_ITEMS: readonly GlobalNavigationItem[] = [
-  { key: 'home', label: 'HOME', path: '/overview' },
-  { key: 'dashboard', label: 'DASHBOARD', path: '/control' },
-  { key: 'insights', label: 'INSIGHTS', path: '/trend' },
-  { key: 'scenarios', label: 'SCENARIOS', path: '/scenarios' },
-  { key: 'knowledge', label: 'KNOWLEDGE', path: '/assistant' },
-  { key: 'contact', label: 'CONTACT', path: '/contact' },
+  { key: 'home', label: 'HOME', labelKo: '홈', path: '/overview', visibleInNav: true },
+  { key: 'dashboard', label: 'DASHBOARD', labelKo: '온실 환경', path: '/control', visibleInNav: true },
+  { key: 'insights', label: 'INSIGHTS', labelKo: '날씨와 시세', path: '/trend', visibleInNav: true },
+  { key: 'scenarios', label: 'SCENARIOS', labelKo: '시나리오', path: '/scenarios', visibleInNav: true },
+  { key: 'knowledge', label: 'KNOWLEDGE', labelKo: '질문 도우미', path: '/assistant', visibleInNav: true },
+  { key: 'contact', label: 'CONTACT', labelKo: '문의', path: '/contact', visibleInNav: false },
 ] as const;
+
+export const VISIBLE_GLOBAL_NAVIGATION_ITEMS: readonly GlobalNavigationItem[] =
+  GLOBAL_NAVIGATION_ITEMS.filter((item) => item.visibleInNav);
 
 const DASHBOARD_SUBNAV_SECTION_KEYS = [
   'control',

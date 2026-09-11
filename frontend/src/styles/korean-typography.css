@@ -19,9 +19,9 @@ html[lang="ko"] .sg-card-description {
 }
 
 html[lang="ko"] .sg-card-title {
-  line-height: 1.22;
+  line-height: 1.4;
 }
 
 html[lang="ko"] .sg-eyebrow {
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
 }

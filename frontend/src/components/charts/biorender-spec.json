@@ -1,0 +1,66 @@
+{
+  "theme": "biorender_graph",
+  "source": "plotkit-publication-graphs_phytoritas-legacy-kit/themes/biorender_graph_tokens.yaml",
+  "note": "Token subset adapted for interactive Recharts. Print-only tokens (dpi, mm widths, hatch, rounded bar radius_pt) are intentionally omitted.",
+  "fonts": {
+    "family": "Arial, 'Helvetica Neue', Helvetica, 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif",
+    "tickSize": 12,
+    "tickWeight": 400,
+    "labelSize": 12,
+    "labelWeight": 700,
+    "legendSize": 12,
+    "legendWeight": 500,
+    "annotationSize": 11,
+    "textColor": "#171717"
+  },
+  "axes": {
+    "spineColor": "#293039",
+    "spineWidth": 1.44,
+    "visibleSpines": ["left", "bottom"],
+    "tickColor": "#293039",
+    "tickLabelColor": "#3d454e",
+    "tickLength": 6,
+    "tickPad": 5,
+    "labelPad": 8,
+    "gridEnabled": false,
+    "ruleColor": "rgba(41, 48, 57, 0.28)"
+  },
+  "lines": {
+    "width": 2,
+    "widthThick": 2.4,
+    "markerSize": 5,
+    "markerEdgeWidth": 1,
+    "interpolation": "linear"
+  },
+  "bars": {
+    "width": 0.58,
+    "edgeWidth": 1.2,
+    "cornerRadius": 3,
+    "maxSize": 34
+  },
+  "legend": {
+    "placement": "outside-top",
+    "frameOn": false,
+    "swatchWidth": 26,
+    "swatchHeight": 12
+  },
+  "layout": {
+    "background": "#FFFFFF",
+    "heights": { "compact": 240, "standard": 264, "tall": 300 },
+    "margin": { "top": 8, "right": 16, "bottom": 4, "left": 4 }
+  },
+  "palette": {
+    "cycle": ["#E35336", "#E2D19B", "#F4A460", "#A0522D"],
+    "outlineCycle": ["#983523", "#9C927A", "#A5662D", "#66331D"],
+    "dashCycle": ["", "6 3", "2 3", "10 3 2 3"],
+    "markerCycle": ["circle", "square", "triangle", "diamond"],
+    "semantic": {
+      "control": "#E35336",
+      "comparison": "#F4A460",
+      "healthy": "#A0522D",
+      "neutral": "#94989C",
+      "adverse": "#E35336",
+      "risk": "#A0522D"
+    }
+  }
+}

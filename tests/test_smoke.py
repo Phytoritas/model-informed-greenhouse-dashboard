@@ -96,8 +96,11 @@ def test_status_marks_completed_replays_as_completed() -> None:
     class DummySimulator:
         def __init__(self) -> None:
             self.running = True
-            self.idx = 9
             self.df_env = [object()] * 10
+            # Simulator.idx is the NEXT unprocessed row (simulator.py:72, and
+            # step_from_index sets idx = i + 1), so a finished replay sits at
+            # len(df_env), not at the last row's index.
+            self.idx = len(self.df_env)
 
     backend_main.app_state["tomato"]["simulator"] = DummySimulator()
     client = TestClient(get_app())
@@ -243,7 +246,10 @@ def test_ops_config_update_can_target_single_crop() -> None:
 def test_ai_consult_degrades_gracefully_without_openai_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("SMARTGROW_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY_RUNTIME", raising=False)
     client = TestClient(get_app())
 
     response = client.post(
@@ -311,7 +317,10 @@ def test_ai_consult_injects_crop_scoped_knowledge_context(
 def test_ai_chat_degrades_gracefully_without_openai_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("SMARTGROW_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY_RUNTIME", raising=False)
     client = TestClient(get_app())
 
     response = client.post(

@@ -1,6 +1,5 @@
 import type { PlannedAdvisorTabPayload } from '../../hooks/useSmartGrowAdvisor';
 import { useLocale } from '../../i18n/LocaleProvider';
-import { getLocalizedTokenLabel } from '../../utils/displayCopy';
 import AdvisorActionCard from './AdvisorActionCard';
 import AdvisorConfidenceBadge from './AdvisorConfidenceBadge';
 
@@ -34,10 +33,6 @@ const AdvisorPendingTabPanel = ({
             failed: '실행 실패',
             idleDescription: '이 기능은 화면 준비가 먼저 끝났고, 실제 계산 연결은 아직 마무리 중입니다. 준비 범위를 확인하면 지금 바로 쓸 수 있는 부분을 볼 수 있습니다.',
             currentBoundary: '현재 준비 범위',
-            tabKey: '탭',
-            catalogVersion: '기준 버전',
-            existingTabs: '현재 사용 가능 탭',
-            available: '사용 가능',
         }
         : {
             plannedDomain: 'Preparing panel',
@@ -48,10 +43,6 @@ const AdvisorPendingTabPanel = ({
             failed: 'Execution failed',
             idleDescription: 'This panel is visible now, but some linked calculations are still being finished. Check what is ready before using it.',
             currentBoundary: 'Current ready scope',
-            tabKey: 'Tab key',
-            catalogVersion: 'Catalog version',
-            existingTabs: 'Existing advisor tabs',
-            available: 'Available',
         };
 
     return (
@@ -100,34 +91,10 @@ const AdvisorPendingTabPanel = ({
                 ) : null}
                 {status !== 'error' && result ? (
                     <div className="space-y-4">
-                        <div className="flex flex-wrap gap-2">
-                            <AdvisorConfidenceBadge label={getLocalizedTokenLabel(result.status, locale)} tone="warning" />
-                            {result.available_tabs.map((tab) => (
-                                <AdvisorConfidenceBadge
-                                    key={tab}
-                                    label={`${copy.available}: ${getLocalizedTokenLabel(tab, locale)}`}
-                                    tone="success"
-                                />
-                            ))}
-                            {result.machine_payload.missing_data.map((item) => (
-                                <AdvisorConfidenceBadge
-                                    key={item}
-                                    label={getLocalizedTokenLabel(item, locale)}
-                                    tone="neutral"
-                                />
-                            ))}
-                        </div>
                         <AdvisorActionCard
                             title={copy.currentBoundary}
                             subtitle={result.message}
-                        >
-                            <div className="space-y-2 text-sm text-[color:var(--sg-text-muted)]">
-                                <div>{copy.tabKey}: {result.tab_name}</div>
-                                <div>
-                                    {copy.existingTabs}: {result.available_tabs.join(', ') || '-'}
-                                </div>
-                            </div>
-                        </AdvisorActionCard>
+                        />
                     </div>
                 ) : null}
             </div>

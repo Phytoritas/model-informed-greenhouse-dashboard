@@ -1,25 +1,33 @@
 import { useMemo } from 'react';
 import {
-  CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { useLocale } from '../../i18n/LocaleProvider';
-import { formatLocaleTime } from '../../i18n/locale';
 import type { CropType, RtrProfile, SensorData } from '../../types';
 import { buildRTRLiveSnapshot } from '../../utils/rtr';
-import ChartFrame from '../charts/ChartFrame';
+import ChartFrame, { ChartSeriesLegend } from '../charts/ChartFrame';
 import {
+  buildTimeAxisPlan,
+  chartSeries,
+  DASHBOARD_CHART_ANNOTATION,
+  DASHBOARD_CHART_AXIS_PROPS,
   DASHBOARD_CHART_AXIS_STROKE,
-  DASHBOARD_CHART_GRID_STROKE,
-  DASHBOARD_CHART_LEGEND_CLASSNAME,
-  DASHBOARD_CHART_TICK,
+  DASHBOARD_CHART_CURSOR,
+  DASHBOARD_CHART_HEIGHT,
+  DASHBOARD_CHART_TOOLTIP_ITEM_STYLE,
+  DASHBOARD_CHART_TOOLTIP_LABEL_STYLE,
   DASHBOARD_CHART_TOOLTIP_STYLE,
+  formatTimeAxisLabel,
+  formatTimeAxisTick,
+  seriesLineProps,
 } from '../charts/chartStyles';
 import DashboardCard from '../common/DashboardCard';
+import ScientificText from '../common/ScientificText';
 
 interface RtrTrendCardProps {
   crop: CropType;
@@ -27,6 +35,8 @@ interface RtrTrendCardProps {
   history: SensorData[];
   profile?: RtrProfile | null;
   variant?: 'default' | 'chart-slot';
+  /** Replay cursor shared with the 3D twin; null keeps the live view. */
+  selectedTimestamp?: number | null;
 }
 
 interface RtrTrendPoint {
@@ -37,7 +47,10 @@ interface RtrTrendPoint {
 
 const THREE_DAYS_MS = 72 * 60 * 60 * 1000;
 const MAX_POINTS = 72;
-const RTR_TREND_CARD_HEIGHT_CLASS = 'sg-panel h-[312px] min-w-0 overflow-hidden bg-white !p-4';
+const RTR_TREND_CARD_HEIGHT_CLASS = 'sg-panel min-w-0 bg-white !p-4';
+/** Measured mean uses the first cycle color; the RTR target uses the fourth. */
+const ACTUAL_SERIES_INDEX = 0;
+const TARGET_SERIES_INDEX = 3;
 
 function downsampleSeries<T>(series: T[], maxPoints: number): T[] {
   if (series.length <= maxPoints) {
@@ -81,16 +94,26 @@ export default function RtrTrendCard({
   history,
   profile = null,
   variant = 'default',
+  selectedTimestamp = null,
 }: RtrTrendCardProps) {
   const { locale } = useLocale();
+  // In the chart board this is one cell among the time-series charts: no card
+  // border of its own, and the shared 14px card title instead of a local size
+  // override that fought the global heading scale.
   const cardClassName = variant === 'chart-slot'
-    ? 'sg-panel h-full min-h-[268px] min-w-0 overflow-hidden bg-white !p-4'
+    ? 'flex h-full min-w-0 flex-col !rounded-none !border-0 bg-[color:var(--sg-surface-strong)] p-3 !shadow-none'
     : RTR_TREND_CARD_HEIGHT_CLASS;
-  const chartHeight = variant === 'chart-slot' ? 176 : 176;
+  const chartHeight = variant === 'chart-slot' ? 168 : DASHBOARD_CHART_HEIGHT.compact;
   const trendSeries = useMemo(
     () => buildRtrTrendSeries(crop, currentData, history, profile),
     [crop, currentData, history, profile],
   );
+  const axisPlan = useMemo(
+    () => buildTimeAxisPlan(trendSeries.map((point) => point.timestamp)),
+    [trendSeries],
+  );
+  const multiDay = axisPlan?.multiDay ?? false;
+  const hasCursor = typeof selectedTimestamp === 'number' && Number.isFinite(selectedTimestamp);
 
   const copy = locale === 'ko'
     ? {
@@ -108,15 +131,23 @@ export default function RtrTrendCard({
       waiting: 'RTR trendline is being prepared.',
     };
 
+  const slotHeader = variant === 'chart-slot' ? (
+    <div className="mb-2 min-h-[42px]">
+      <h3 className="truncate text-sm font-semibold leading-5 text-[color:var(--sg-text-strong)]" title={copy.title}>{copy.title}</h3>
+      <ScientificText text="°C" className="scientific-unit mt-0.5 block text-xs text-[color:var(--sg-text-muted)]" />
+    </div>
+  ) : null;
+
   if (trendSeries.length < 2) {
     return (
       <DashboardCard
         className={cardClassName}
-        eyebrow={copy.eyebrow}
-        title={copy.title}
+        eyebrow={variant === 'chart-slot' ? undefined : copy.eyebrow}
+        title={variant === 'chart-slot' ? undefined : copy.title}
         description=""
       >
-        <div className="sg-panel bg-white px-4 py-5 text-sm text-[color:var(--sg-text-muted)]">
+        {slotHeader}
+        <div className="px-1 py-5 text-sm text-[color:var(--sg-text-muted)]">
           {copy.waiting}
         </div>
       </DashboardCard>
@@ -126,20 +157,19 @@ export default function RtrTrendCard({
   return (
     <DashboardCard
       className={cardClassName}
-      eyebrow={copy.eyebrow}
-      title={copy.title}
+      eyebrow={variant === 'chart-slot' ? undefined : copy.eyebrow}
+      title={variant === 'chart-slot' ? undefined : copy.title}
       description=""
-      contentClassName="flex flex-col gap-2"
+      contentClassName={variant === 'chart-slot' ? 'flex flex-col' : 'flex flex-col gap-2'}
     >
-      <div className={DASHBOARD_CHART_LEGEND_CLASSNAME}>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-olive)]" />
-          {copy.actual}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-4 rounded-full bg-[color:var(--sg-color-terracotta)]" />
-          {copy.target}
-        </span>
+      {slotHeader ?? <ScientificText text="°C" className="scientific-unit -mt-1 block text-xs text-[color:var(--sg-text-muted)]" />}
+      <div className={variant === 'chart-slot' ? 'mb-2 min-h-6' : undefined}>
+        <ChartSeriesLegend
+        entries={[
+          { label: copy.actual, seriesIndex: ACTUAL_SERIES_INDEX },
+          { label: copy.target, seriesIndex: TARGET_SERIES_INDEX },
+        ]}
+        />
       </div>
 
       <ChartFrame minHeight={chartHeight} style={{ height: chartHeight }}>
@@ -148,45 +178,65 @@ export default function RtrTrendCard({
             width={Math.max(width, 1)}
             height={Math.max(height, chartHeight)}
             data={trendSeries}
-            margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
+            margin={variant === 'chart-slot' ? { top: 4, right: 10, left: 0, bottom: 0 } : { top: 8, right: 12, left: 4, bottom: 4 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke={DASHBOARD_CHART_GRID_STROKE} />
             <XAxis
+              {...DASHBOARD_CHART_AXIS_PROPS}
               dataKey="timestamp"
-              tickFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit' })}
-              stroke={DASHBOARD_CHART_AXIS_STROKE}
-              tick={DASHBOARD_CHART_TICK}
-              tickLine={false}
-              axisLine={false}
-              minTickGap={26}
+              type="number"
+              scale="time"
+              domain={axisPlan ? axisPlan.domain : ['dataMin', 'dataMax']}
+              ticks={axisPlan?.ticks}
+              tickFormatter={(value: number) => formatTimeAxisTick(locale, Number(value), multiDay)}
+              minTickGap={16}
             />
             <YAxis
-              stroke={DASHBOARD_CHART_AXIS_STROKE}
-              tick={DASHBOARD_CHART_TICK}
-              tickLine={false}
-              axisLine={false}
+              {...DASHBOARD_CHART_AXIS_PROPS}
+              width={44}
               domain={['auto', 'auto']}
             />
+            {hasCursor ? (
+              <ReferenceLine
+                x={selectedTimestamp as number}
+                stroke={DASHBOARD_CHART_AXIS_STROKE}
+                strokeDasharray="4 4"
+                strokeWidth={1.2}
+                ifOverflow="extendDomain"
+                label={{
+                  value: formatTimeAxisLabel(locale, selectedTimestamp as number),
+                  position: 'top',
+                  ...DASHBOARD_CHART_ANNOTATION,
+                }}
+              />
+            ) : null}
             <Tooltip
-              labelFormatter={(value: number) => formatLocaleTime(locale, value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-              formatter={(value: number) => `${value.toFixed(2)}°C`}
+              cursor={DASHBOARD_CHART_CURSOR}
+              labelFormatter={(value: number) => formatTimeAxisLabel(locale, Number(value))}
+              formatter={(value: number, name: string) => [
+                `${value.toFixed(2)} °C`,
+                name === 'actualTempC' ? copy.actual : copy.target,
+              ]}
               contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
+              labelStyle={DASHBOARD_CHART_TOOLTIP_LABEL_STYLE}
+              itemStyle={DASHBOARD_CHART_TOOLTIP_ITEM_STYLE}
             />
             <Line
-              type="monotone"
+              {...seriesLineProps(ACTUAL_SERIES_INDEX)}
               dataKey="actualTempC"
-              stroke="var(--sg-color-olive)"
-              strokeWidth={2.2}
-              dot={false}
-              isAnimationActive={false}
+              name="actualTempC"
+              activeDot={{
+                ...seriesLineProps(ACTUAL_SERIES_INDEX).activeDot,
+                fill: chartSeries(ACTUAL_SERIES_INDEX).fill,
+              }}
             />
             <Line
-              type="monotone"
+              {...seriesLineProps(TARGET_SERIES_INDEX)}
               dataKey="targetTempC"
-              stroke="var(--sg-color-terracotta)"
-              strokeWidth={2}
-              dot={false}
-              isAnimationActive={false}
+              name="targetTempC"
+              activeDot={{
+                ...seriesLineProps(TARGET_SERIES_INDEX).activeDot,
+                fill: chartSeries(TARGET_SERIES_INDEX).fill,
+              }}
             />
           </LineChart>
         )}

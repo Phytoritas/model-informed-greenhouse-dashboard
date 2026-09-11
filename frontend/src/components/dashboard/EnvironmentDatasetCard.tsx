@@ -14,6 +14,7 @@ import { cn } from '../../utils/cn';
 interface EnvironmentDatasetCardProps {
   locale: AppLocale;
   crop: CropType;
+  /** Accepted for the existing call sites; the raw status word is no longer shown here. */
   telemetryStatus?: TelemetryStatus;
 }
 
@@ -43,7 +44,6 @@ function formatDay(iso: string | null): string | null {
 export default function EnvironmentDatasetCard({
   locale,
   crop,
-  telemetryStatus,
 }: EnvironmentDatasetCardProps) {
   const datasets = useEnvironmentDatasets();
   const runtime = useSimulationRuntimeControls(crop);
@@ -68,9 +68,9 @@ export default function EnvironmentDatasetCard({
 
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Environment dataset',
-        title: '환경 데이터셋 선택',
-        description: '시뮬레이션을 돌릴 환경 CSV를 고르고, 필요하면 내 데이터를 넣으세요.',
+        eyebrow: '환경 데이터',
+        title: '시뮬레이션 환경 데이터 선택',
+        description: '시뮬레이션에 사용할 환경 데이터를 고르고, 필요하면 내 CSV를 넣으세요. 시뮬레이션 시작도 여기에서 합니다.',
         countLabel: (n: number) => `${n}개`,
         loading: '데이터셋을 불러오는 중…',
         empty: '표시할 데이터셋이 없습니다. CSV를 넣어 시작하세요.',
@@ -88,9 +88,9 @@ export default function EnvironmentDatasetCard({
         started: '시뮬레이션을 시작했습니다.',
       }
     : {
-        eyebrow: 'Environment dataset',
+        eyebrow: 'Environment data',
         title: 'Choose environment dataset',
-        description: 'Pick the environment CSV to simulate on, and insert your own if needed.',
+        description: 'Pick the environment data for the simulation, insert your own CSV if needed, and start the simulation here.',
         countLabel: (n: number) => `${n} available`,
         loading: 'Loading datasets…',
         empty: 'No datasets to show. Insert a CSV to begin.',
@@ -260,9 +260,6 @@ export default function EnvironmentDatasetCard({
             <Trash2 className="h-4 w-4" aria-hidden="true" />
             {copy.delete}
           </Button>
-        ) : null}
-        {telemetryStatus === 'live' ? (
-          <StatusChip tone="growth" className="ml-auto">{telemetryStatus}</StatusChip>
         ) : null}
       </div>
 

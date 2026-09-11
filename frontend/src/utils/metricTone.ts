@@ -28,7 +28,7 @@ export function metricToneForTile(tile: KpiTileData): MetricTone {
 export const metricToneSurfaceClass: Record<MetricTone, string> = {
   growth: 'bg-white',
   stable: 'bg-[color:var(--sg-color-sage-soft)]',
-  warning: 'bg-[color:var(--sg-surface-warm)]',
-  critical: 'bg-[color:var(--sg-color-primary-soft)]',
+  warning: 'bg-[color:var(--sg-accent-amber-soft)]',
+  critical: 'bg-[color:var(--sg-accent-rose-soft)]',
   muted: 'bg-[color:var(--sg-surface-muted)]',
 };

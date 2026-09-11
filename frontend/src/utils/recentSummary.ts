@@ -23,6 +23,7 @@ function hasMeaningfulCurrentData(data?: SensorData | null): data is SensorData 
 
   return DEFAULT_KEYS.some((key) => {
     if (key === 'timestamp') return false;
+    if (data.fieldAvailability?.[key as keyof NonNullable<SensorData['fieldAvailability']>] === false) return false;
     const value = data[key];
     return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) > 1e-9;
   });
@@ -97,17 +98,19 @@ export function buildRecentSeriesSummary(
   const durationMs = Math.max(0, end_ts - start_ts);
   const duration_min = durationMs / 60000;
   const avg_dt_min = n > 1 ? duration_min / (n - 1) : 0;
-  const durationHours = durationMs / 3600000;
 
   const variables: Record<string, VariableSummary> = {};
 
   for (const key of keys) {
     if (key === 'timestamp') continue;
-    const values = points
-      .map(p => (typeof p[key] === 'number' ? (p[key] as number) : NaN))
-      .filter(v => Number.isFinite(v));
+    const availablePoints = points.filter(p =>
+      p.fieldAvailability?.[key as keyof NonNullable<SensorData['fieldAvailability']>] !== false
+      && typeof p[key] === 'number' && Number.isFinite(p[key]),
+    );
+    const values = availablePoints.map(p => p[key] as number);
     if (values.length === 0) continue;
-    variables[String(key)] = summarizeVariable(values, durationHours);
+    const availableDurationHours = Math.max(0, availablePoints.at(-1)!.timestamp - availablePoints[0].timestamp) / 3600000;
+    variables[String(key)] = summarizeVariable(values, availableDurationHours);
   }
 
   return {

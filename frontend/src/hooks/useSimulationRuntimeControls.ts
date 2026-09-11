@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_URL } from '../config';
 import type { CropType } from '../types';
 
@@ -18,6 +18,17 @@ type RuntimeRequestState = {
 };
 
 export type SimulationRuntimeControlState = Record<SimulationRuntimeAction, RuntimeRequestState>;
+
+export interface SimulationRuntimeStatus {
+  status: string;
+  running: boolean;
+  paused: boolean;
+  simulatedAt: string | null;
+  dataSource: string | null;
+  step: number | null;
+  progress: number | null;
+  pace: number | null;
+}
 
 const TIME_STEP_OPTIONS = ['auto', '1s', '1min', '10min', '1h'] as const;
 export type SimulationRuntimeTimeStep = typeof TIME_STEP_OPTIONS[number];
@@ -170,12 +181,68 @@ async function parseRuntimeResponse(response: Response): Promise<Record<string, 
 
 export function useSimulationRuntimeControls(crop: CropType) {
   const [state, setState] = useState<SimulationRuntimeControlState>(() => createInitialState());
+  const [status, setStatus] = useState<SimulationRuntimeStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [latestAction, setLatestAction] = useState<SimulationRuntimeAction | null>(null);
+  const sessionRef = useRef(0);
+  const statusInFlight = useRef(false);
+  const cropKey = cropToApiKey(crop);
+
+  const refreshStatus = useCallback(async () => {
+    if (statusInFlight.current) return;
+    const session = sessionRef.current;
+    statusInFlight.current = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 5000);
+    try {
+      const response = await fetch(`${API_URL}/status`, { signal: controller.signal });
+      if (!response.ok) throw new Error('시뮬레이션 상태를 확인하지 못했습니다.');
+      const payload = await response.json();
+      if (session !== sessionRef.current) return;
+      const current = payload?.greenhouses?.[cropKey];
+      if (!current) throw new Error('선택한 작물의 상태가 없습니다.');
+      setStatus({
+        status: current.status ?? 'unknown',
+        running: current.running === true || current.status === 'active',
+        paused: current.paused === true || current.status === 'paused',
+        simulatedAt: typeof current.simulated_at === 'string' ? current.simulated_at : null,
+        dataSource: typeof current.csv_filename === 'string' ? current.csv_filename : null,
+        step: typeof current.idx === 'number' ? current.idx : null,
+        progress: typeof current.progress === 'number' ? current.progress : null,
+        pace: typeof current.sim_seconds_per_real_second === 'number' ? current.sim_seconds_per_real_second : null,
+      });
+      setStatusError(null);
+    } catch (error) {
+      if (session === sessionRef.current) {
+        setStatusError(error instanceof Error && error.name !== 'AbortError' ? error.message : '상태 확인이 지연되고 있습니다. 다시 확인하세요.');
+      }
+    } finally {
+      window.clearTimeout(timeout);
+      if (session === sessionRef.current) { statusInFlight.current = false; setStatusLoading(false); }
+    }
+  }, [cropKey]);
+
+  useEffect(() => {
+    sessionRef.current += 1;
+    statusInFlight.current = false;
+    setStatus(null);
+    setStatusLoading(true);
+    setStatusError(null);
+    setState(createInitialState());
+    setLatestAction(null);
+    void refreshStatus();
+    const timer = window.setInterval(() => { void refreshStatus(); }, 3000);
+    return () => { sessionRef.current += 1; statusInFlight.current = false; window.clearInterval(timer); };
+  }, [refreshStatus]);
 
   const execute = useCallback(async (
     action: SimulationRuntimeAction,
     path: string,
     init?: RequestInit,
   ) => {
+    const session = sessionRef.current;
+    setLatestAction(action);
     setState((current) => ({
       ...current,
       [action]: {
@@ -185,6 +252,8 @@ export function useSimulationRuntimeControls(crop: CropType) {
       },
     }));
 
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12000);
     try {
       const response = await fetch(`${API_URL}${path}`, {
         method: 'POST',
@@ -193,8 +262,10 @@ export function useSimulationRuntimeControls(crop: CropType) {
           ...(init?.headers ?? {}),
         },
         ...init,
+        signal: controller.signal,
       });
       const payload = await parseRuntimeResponse(response);
+      if (session !== sessionRef.current) return payload;
       setState((current) => ({
         ...current,
         [action]: {
@@ -203,8 +274,10 @@ export function useSimulationRuntimeControls(crop: CropType) {
           result: payload,
         },
       }));
+      await refreshStatus();
       return payload;
     } catch (error) {
+      if (session !== sessionRef.current) return null;
       const message = error instanceof Error ? error.message : 'Request failed.';
       setState((current) => ({
         ...current,
@@ -215,10 +288,10 @@ export function useSimulationRuntimeControls(crop: CropType) {
         },
       }));
       return null;
+    } finally {
+      window.clearTimeout(timeout);
     }
-  }, []);
-
-  const cropKey = cropToApiKey(crop);
+  }, [refreshStatus]);
 
   const start = useCallback((timeStep: SimulationRuntimeTimeStep, csvFilename?: string) => execute('start', '/start', {
     body: JSON.stringify({
@@ -230,7 +303,7 @@ export function useSimulationRuntimeControls(crop: CropType) {
   }), [crop, cropKey, execute]);
 
   const step = useCallback(() => execute('step', `/step?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
-  const run = useCallback(() => execute('run', '/run'), [execute]);
+  const run = useCallback(() => execute('run', `/run?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
   const pause = useCallback(() => execute('pause', `/pause?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
   const resume = useCallback(() => execute('resume', `/resume?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
   const stop = useCallback(() => execute('stop', `/stop?crop=${encodeURIComponent(cropKey)}`), [cropKey, execute]);
@@ -241,6 +314,11 @@ export function useSimulationRuntimeControls(crop: CropType) {
 
   return {
     state,
+    status,
+    statusLoading,
+    statusError,
+    latestAction,
+    refreshStatus,
     start,
     step,
     run,

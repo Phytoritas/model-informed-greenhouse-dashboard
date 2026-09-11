@@ -87,7 +87,8 @@ def test_query_knowledge_database_routes_unfiltered_pesticide_and_nutrient_queri
 
     assert nutrient_payload["routing"]["intent"] == "nutrient_recipe"
     assert nutrient_payload["routing"]["sub_intent"] == "drain_feedback"
-    assert nutrient_payload["applied_filters"]["asset_families"] == ["nutrient_workbook"]
+    assert "asset_families" not in nutrient_payload["applied_filters"]
+    assert nutrient_payload["applied_filters"]["source_types"] == ["pdf", "xlsx", "markdown"]
     assert nutrient_payload["results"][0]["document"]["asset_family"] == "nutrient_workbook"
 
 
@@ -102,7 +103,14 @@ def test_query_knowledge_database_routes_environment_queries_to_pdf_and_csv(
     )
 
     assert payload["routing"]["intent"] == "environment_control"
-    assert payload["applied_filters"]["topic_major"] == "environment"
+    # An inferred topic ranks passages instead of excluding them, so a humidity
+    # passage living inside a management-labelled guide stays reachable; only a
+    # caller-supplied topic narrows the search.
+    assert "topic_major" not in payload["applied_filters"]
+    assert payload["routing"]["rerank_profile"] == "environment"
+    assert route_knowledge_query("vpd humidity control")["boosts"]["topic_majors"] == [
+        "environment",
+    ]
     # `markdown` is in the allowlist so a governed curated-wiki source stays
     # reachable; `xlsx` must stay out so environment queries never drift into the
     # pesticide/nutrient workbooks.
@@ -144,7 +152,11 @@ def test_query_knowledge_database_routes_cucumber_cultivation_terms_away_from_pe
     route = route_knowledge_query("오이재배방법")
     assert route["intent"] == "cultivation_work"
     assert route["search_filters"]["source_types"] == ["pdf", "markdown"]
-    assert {"오이", "재배", "방법"}.issubset(set(route["query_terms"]))
+    # The compound still decomposes into its parts, but the crop name stays out:
+    # it scopes the database rather than discriminating between passages, and as
+    # a search term it would let any cucumber passage count as a match.
+    assert {"재배방법", "재배", "방법"}.issubset(set(route["query_terms"]))
+    assert "오이" not in route["query_terms"]
 
     payload = knowledge_database.query_knowledge_database(
         crop="cucumber",

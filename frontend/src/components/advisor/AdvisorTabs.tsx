@@ -1404,19 +1404,6 @@ const AdvisorTabs = ({
                             <span className="sg-advisor-pill">
                                 {completedCount}/{ADVISOR_TAB_REGISTRY.length}
                             </span>
-                            <span className="sg-advisor-pill">
-                                delegate: /api{activeTabEntry.endpoint}
-                            </span>
-                            {activeTabEntry.exactEndpoint ? (
-                                <span className="sg-advisor-pill">
-                                    exact: {activeTabEntry.exactEndpoint}
-                                </span>
-                            ) : null}
-                            {activeTabEntry.publicEndpoint ? (
-                                <span className="sg-advisor-pill">
-                                    public: {activeTabEntry.publicEndpoint}
-                                </span>
-                            ) : null}
                         </div>
                     </div>
                     <div className="space-y-3">

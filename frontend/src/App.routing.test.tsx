@@ -1,12 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LocaleProvider } from './i18n/LocaleProvider'
 import { LOCALE_STORAGE_KEY } from './i18n/locale'
 import type { ModelRuntimeConstraintViolation } from './hooks/useSmartGrowAdvisor'
 import type { MetricHistoryPoint } from './types'
-import { deriveSourceSinkBalance } from './utils/derivedRuntimeMetrics'
 
 const greenhouseState = {
   currentData: {
@@ -73,6 +72,7 @@ const greenhouseState = {
   metricHistory: [] as MetricHistoryPoint[],
   forecast: [],
   controls: {
+    settingsState: 'ready' as const,
     settings: {
       heatingMinTemp: 18,
       coolingTargetTemp: 24,
@@ -102,7 +102,7 @@ const greenhouseState = {
     vpd: Date.now(),
     stomatalConductance: Date.now(),
   },
-  setTempSettings: vi.fn(),
+  setTempSettings: vi.fn().mockResolvedValue(true),
   growthDay: 14,
   startDateLabel: '2026-04-01',
   currentDateLabel: '2026-04-09',
@@ -416,30 +416,6 @@ vi.mock('./components/shell/WorkspaceTopNav', () => ({
   },
 }))
 
-vi.mock('./components/dashboard/HeroControlCard', () => ({
-  default: ({
-    onOpenAdvisor,
-    sourceSinkBalance,
-    canopyAssimilation,
-    lai,
-    importantIssue,
-  }: {
-    onOpenAdvisor?: () => void
-    sourceSinkBalance?: number | null
-    canopyAssimilation?: number | null
-    lai?: number | null
-    importantIssue?: string | null
-  }) => (
-    <div>
-      <div>HeroControlCard</div>
-      <div data-testid="hero-source-sink">{String(sourceSinkBalance ?? '')}</div>
-      <div data-testid="hero-canopy">{String(canopyAssimilation ?? '')}</div>
-      <div data-testid="hero-lai">{String(lai ?? '')}</div>
-      <div data-testid="hero-important-issue">{importantIssue ?? ''}</div>
-      <button type="button" onClick={onOpenAdvisor}>Open advisor lane</button>
-    </div>
-  ),
-}))
 vi.mock('./components/dashboard/LiveMetricStrip', () => ({ default: () => <div>LiveMetricStrip</div> }))
 vi.mock('./components/dashboard/AlertRail', () => ({
   default: ({
@@ -533,6 +509,19 @@ vi.mock('./components/status/ConfidenceBadge', () => ({ default: () => <div>Conf
 vi.mock('./features/common/LoadingSkeleton', () => ({ default: ({ title }: { title?: string }) => <div>{title ?? 'LoadingSkeleton'}</div> }))
 vi.mock('./components/Charts', () => ({ default: () => <div>Charts</div> }))
 vi.mock('./components/ForecastPanel', () => ({ default: () => <div>ForecastPanel</div> }))
+vi.mock('./components/greenhouse3d/GreenhouseScene', () => ({
+  default: ({ currentData, metrics }: {
+    currentData: { photosynthesis: number; temperature: number }
+    metrics: { growth: { lai: number } }
+  }) => (
+    <div>
+      <div>GreenhouseScene</div>
+      <div data-testid="scene-canopy">{currentData.photosynthesis}</div>
+      <div data-testid="scene-lai">{metrics.growth.lai}</div>
+      <div data-testid="scene-temperature">{currentData.temperature}</div>
+    </div>
+  ),
+}))
 vi.mock('./components/ConsultingReport', () => ({ default: () => <div>ConsultingReport</div> }))
 vi.mock('./components/SmartGrowSurfacePanel', () => ({
   default: ({
@@ -696,8 +685,22 @@ function jsonResponse(payload: Record<string, unknown>, ok = true) {
 }
 
 function stubSettingsAndRuntimeFetch() {
+  let paused = false
+  let pace = Number(window.localStorage.getItem('sg-sim-pace') ?? 600)
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
+
+    if (url.includes('/status')) {
+      return jsonResponse({ greenhouses: { cucumber: {
+        status: paused ? 'paused' : 'active', running: true, paused,
+        simulated_at: '2026-04-09T09:00:00Z', csv_filename: 'Cucumber_Env.CSV',
+        idx: 14, progress: 0.25, sim_seconds_per_real_second: pace,
+      } } })
+    }
+
+    if (url.includes('/datasets')) {
+      return jsonResponse({ status: 'success', required_columns: [], datasets: [] })
+    }
 
     if (url.includes('/settings')) {
       return jsonResponse({
@@ -709,14 +712,17 @@ function stubSettingsAndRuntimeFetch() {
     }
 
     if (url.includes('/speed')) {
+      pace = JSON.parse(String(init?.body)).sim_seconds_per_real_second
       return jsonResponse({ status: 'speed-ok', body: init?.body ?? null })
     }
 
     if (url.includes('/pause')) {
+      paused = true
       return jsonResponse({ status: 'pause-ok' })
     }
 
     if (url.includes('/resume')) {
+      paused = false
       return jsonResponse({ status: 'resume-ok' })
     }
 
@@ -804,24 +810,16 @@ describe('App routed shell', () => {
 
     try {
       renderApp('/overview')
-      await waitForElementToBeRemoved(() => screen.queryByText('화면을 불러오는 중입니다.'), { timeout: 15000 })
-
-      const expectedSourceSinkBalance = deriveSourceSinkBalance({
-        crop: 'Cucumber',
-        currentData: greenhouseState.currentData as Parameters<typeof deriveSourceSinkBalance>[0]['currentData'],
-        metrics: greenhouseState.modelMetrics as Parameters<typeof deriveSourceSinkBalance>[0]['metrics'],
-      })
-
-      expect(await screen.findByTestId('hero-source-sink', {}, { timeout: 15000 })).toBeTruthy()
-      expect(screen.getByTestId('hero-source-sink').textContent).toBe(String(expectedSourceSinkBalance))
-      expect(screen.getByTestId('hero-canopy').textContent).toBe(String(greenhouseState.currentData.photosynthesis))
-      expect(screen.getByTestId('hero-lai').textContent).toBe(String(greenhouseState.modelMetrics.growth.lai))
+      expect(await screen.findByTestId('scene-canopy', {}, { timeout: 15000 })).toBeTruthy()
+      expect(screen.getByTestId('scene-canopy').textContent).toBe(String(greenhouseState.currentData.photosynthesis))
+      expect(screen.getByTestId('scene-lai').textContent).toBe(String(greenhouseState.modelMetrics.growth.lai))
+      expect(screen.getByTestId('scene-temperature').textContent).toBe(String(greenhouseState.currentData.temperature))
     } finally {
       advisorState.aiModelRuntime.state_snapshot = originalSnapshot
     }
   }, 20000)
 
-  it('uses simulation timestamps for the live source-sink overlay series', async () => {
+  it('uses the explicit live balance and simulation timestamp for the source-sink overlay', async () => {
     const originalMetricHistory = greenhouseState.metricHistory
     const simulationTimestamp = Date.parse('2021-02-23T08:00:00Z')
     const wallClockTimestamp = Date.parse('2026-04-09T09:15:00+09:00')
@@ -848,13 +846,14 @@ describe('App routed shell', () => {
       const liveSeries = JSON.parse(screen.getByTestId('overview-live-source-sink-series').textContent ?? '[]') as Array<{ timestamp: number; value: number }>
       expect(liveSeries.length).toBeGreaterThan(0)
       expect(liveSeries[liveSeries.length - 1]?.timestamp).toBe(simulationTimestamp)
+      expect(liveSeries[liveSeries.length - 1]?.value).toBe(0.37)
       expect(liveSeries.some((point) => point.timestamp === wallClockTimestamp)).toBe(false)
     } finally {
       greenhouseState.metricHistory = originalMetricHistory
     }
   })
 
-  it('renders overview as a standalone reference landing surface', async () => {
+  it('renders overview as a standalone greenhouse decision surface', async () => {
     renderApp('/overview')
 
     expect(screen.queryByTestId('app-topbar')).toBeNull()
@@ -863,18 +862,17 @@ describe('App routed shell', () => {
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'PhytoSync global navigation' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('href')).toBe('/control')
-    expect(screen.getByRole('link', { name: 'View Dashboard' }).getAttribute('href')).toBe('/control')
     expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'KNU greenhouse', level: 1 })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Ask Assistant' }))
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
   })
 
-  it('redirects the root route into the standalone overview landing', async () => {
+  it('redirects the root route into the standalone greenhouse overview', async () => {
     renderApp('/')
 
-    expect(await screen.findByRole('heading', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'KNU greenhouse', level: 1 })).toBeTruthy()
     expect(screen.queryByTestId('app-topbar')).toBeNull()
     expect(screen.queryByTestId('app-sidebar')).toBeNull()
   })
@@ -990,10 +988,10 @@ describe('App routed shell', () => {
     expect(screen.getByRole('link', { name: 'INSIGHTS' }).getAttribute('href')).toBe('/trend')
     expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios')
     expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant')
-    expect(screen.getByRole('link', { name: 'CONTACT' }).getAttribute('href')).toBe('/contact')
-    expect(screen.getByRole('region', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'CONTACT' })).toBeNull()
     expect(screen.getByRole('region', { name: 'Live decision metrics' })).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Actions worth checking today' })).toBeTruthy()
+    expect(screen.getAllByRole('region', { name: 'What to check now' })).toHaveLength(1)
+    expect(screen.queryByText('Join growers who rely on PhytoSync every day.')).toBeNull()
   })
 
   it('verify_src001_s0002_r001_a01 renders the same global navigation on routed workspace screens', async () => {
@@ -1005,7 +1003,7 @@ describe('App routed shell', () => {
     expect(globalNav.textContent).toContain('INSIGHTS')
     expect(globalNav.textContent).toContain('SCENARIOS')
     expect(globalNav.textContent).toContain('KNOWLEDGE')
-    expect(globalNav.textContent).toContain('CONTACT')
+    expect(globalNav.textContent).not.toContain('CONTACT')
     expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('button', { name: 'Control' }).getAttribute('aria-current')).toBe('step')
   })
@@ -1098,7 +1096,7 @@ describe('App routed shell', () => {
       const alertText = screen.getByTestId('alert-rail-items').textContent ?? ''
 
       expect(alertText).toContain('습도 회복 하한 위험')
-      expect(alertText).toContain('습도 목표를 낮추면 상대습도가 회복 하한 아래로 떨어질 수 있어요.')
+      expect(alertText).toContain('습도 목표를 낮추면 상대습도가 회복 하한 아래로 떨어질 수 있어요. 현재 설정을 확인해 주세요.')
       expect(alertText).toContain('습도 병해 위험')
       expect(alertText).not.toContain('rh_target')
       expect(alertText).not.toContain('humidity_floor_risk')
@@ -1133,59 +1131,35 @@ describe('App routed shell', () => {
     }
   })
 
-  it('uses friendly runtime constraint copy in the overview hero screen-reader issue text', async () => {
-    const originalViolations = advisorState.aiModelRuntime.constraint_checks.violated_constraints
-    const originalRisks = advisorState.aiDisplay.risks
-    advisorState.aiDisplay.risks = []
-    advisorState.aiModelRuntime.constraint_checks.violated_constraints = [{
-      code: 'humidity_floor_risk',
-      control: 'rh_target',
-      severity: 'medium',
-      message: 'Resulting RH falls below the bounded recovery floor.',
-    }]
-
-    try {
-      renderApp('/overview', 'ko')
-
-      const heroIssue = await screen.findByTestId('hero-important-issue')
-      expect(heroIssue.textContent).toBe('습도 목표를 낮추면 상대습도가 회복 하한 아래로 떨어질 수 있어요. 현재 설정을 확인해 주세요.')
-      expect(heroIssue.textContent).not.toContain('humidity_floor_risk')
-      expect(heroIssue.textContent).not.toContain('bounded recovery floor')
-    } finally {
-      advisorState.aiDisplay.risks = originalRisks
-      advisorState.aiModelRuntime.constraint_checks.violated_constraints = originalViolations
-    }
-  })
-
   it('verify_src001_s0004_r001_a01 moves SimulationRuntimePanel from /control to /settings', async () => {
     stubSettingsAndRuntimeFetch()
 
     renderApp('/control')
 
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: 'Live Climate & Controls' })).toBeNull()
-    expect(screen.queryByText('Simulation Runtime')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Run simulation' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
 
     expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy()
-    expect(await screen.findByRole('heading', { name: 'Live Climate & Controls' })).toBeTruthy()
-    expect(screen.getByText('Simulation Runtime')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Run simulation' })).toBeTruthy()
+    expect(screen.queryByText('Simulation Runtime')).toBeNull()
   })
 
   it('verify_src001_s0004_r002_a01 keeps settings runtime pace presets, pause/resume, and sg-sim-pace persistence working', async () => {
-    const fetchMock = stubSettingsAndRuntimeFetch()
     window.localStorage.setItem('sg-sim-pace', '60')
+    const fetchMock = stubSettingsAndRuntimeFetch()
 
     renderApp('/settings')
 
-    expect(await screen.findByRole('heading', { name: 'Live Climate & Controls' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Run simulation' })).toBeTruthy()
 
     for (const label of ['10 s/s', '20 s/s', '30 s/s', '60 s/s', '600 s/s', '6000 s/s']) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     }
     expect(screen.getByRole('button', { name: '60 s/s' }).getAttribute('aria-pressed')).toBe('true')
 
+    await waitFor(() => expect((screen.getByRole('button', { name: '6000 s/s' }) as HTMLButtonElement).disabled).toBe(false))
     fireEvent.click(screen.getByRole('button', { name: '6000 s/s' }))
 
     await waitFor(() => {
@@ -1198,9 +1172,11 @@ describe('App routed shell', () => {
     expect(speedBody.sim_seconds_per_real_second).toBe(6000)
     expect(window.localStorage.getItem('sg-sim-pace')).toBe('6000')
 
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Pause' }) as HTMLButtonElement).disabled).toBe(false))
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/pause'))).toBe(true)
+      expect((screen.getByRole('button', { name: 'Resume' }) as HTMLButtonElement).disabled).toBe(false)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
@@ -1215,7 +1191,7 @@ describe('App routed shell', () => {
     expect(await screen.findByText('RTROptimizerPanel')).toBeTruthy()
     expect(screen.getByText('ControlPanel')).toBeTruthy()
     expect(screen.queryByText('AlertRail')).toBeNull()
-    expect(screen.queryByRole('heading', { name: 'Live Climate & Controls' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Run simulation' })).toBeNull()
 
     const bodyText = document.body.textContent ?? ''
     expect(bodyText.indexOf('RTROptimizerPanel')).toBeLessThan(bodyText.indexOf('ControlPanel'))
@@ -1327,13 +1303,11 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('decision-snapshot-props').textContent).toContain('overview:null')
   })
 
-  it('keeps crop-work as a dedicated page and dedups TodayBoard to its canonical HOME Watch tab', async () => {
+  it('keeps crop-work as a dedicated page without a duplicate overview decision feed', async () => {
     renderApp('/crop-work')
 
     expect(screen.getByTestId('topbar-title').textContent).toBe('Crop Work')
     expect(await screen.findByText('CropDetails')).toBeTruthy()
-    // R19 dedup: TodayBoard's canonical home is the HOME Watch tab only, so it no longer
-    // renders on /crop-work (its data survives on HOME Watch — WatchTab.prd004.test.tsx).
     expect(screen.queryByText('TodayBoard')).toBeNull()
     expect(screen.getByRole('link', { name: 'DASHBOARD' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('button', { name: 'Crop Work' }).getAttribute('aria-current')).toBe('step')
@@ -1368,10 +1342,10 @@ describe('App routed shell', () => {
     expect(screen.getByTestId('topbar-title').textContent).toBe(heading)
   })
 
-  it('redirects the legacy overview path to the standalone overview landing', async () => {
+  it('redirects the legacy overview path to the standalone greenhouse overview', async () => {
     renderApp('/overview/legacy')
 
-    expect(await screen.findByRole('heading', { name: 'AI decision platform for smart greenhouses.' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'KNU greenhouse', level: 1 })).toBeTruthy()
     expect(screen.queryByTestId('topbar-title')).toBeNull()
     expect(screen.getByRole('button', { name: 'Open assistant fab' })).toBeTruthy()
   })
@@ -1432,7 +1406,7 @@ describe('App routed shell', () => {
 
     expect(screen.queryByTestId('topbar-title')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open advisor lane' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'See values' })[0])
 
     expect(await screen.findByText('AssistantDrawer:assistant-chat')).toBeTruthy()
     expect(screen.queryByText('AdvisorTabs')).toBeNull()

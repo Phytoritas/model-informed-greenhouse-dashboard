@@ -9,18 +9,23 @@ import hashlib
 import json
 import logging
 import re
-from typing import Any, Optional
+from time import perf_counter
+from typing import Any, Callable, Optional
+
+from .chat_case_state import build_chat_case_state
 
 from .advisor_context_builder import (
     build_chat_advisor_context,
     build_summary_advisor_context,
     build_tab_advisor_context,
+    is_runtime_status_query,
 )
 from .answer_admission import grounding_decision
 from .advisory_api import (
     build_nutrient_correction_response,
     build_nutrient_recommendation_response,
     build_pesticide_recommendation_response,
+    build_stock_tank_prescription_response,
 )
 from .decision import DecisionSupport
 from .knowledge_catalog import build_knowledge_catalog
@@ -35,7 +40,7 @@ from .model_runtime.scenario_runner import (
 from .model_runtime.sensitivity_engine import compute_local_sensitivities
 from .openai_service import (
     build_advisory_display_payload,
-    generate_chat_reply,
+    generate_chat_turn,
     generate_consulting,
 )
 
@@ -5132,13 +5137,9 @@ def prime_advisor_chat_runtime(
     dashboard: Optional[dict[str, Any]] = None,
     language: str = "ko",
 ) -> dict[str, Any]:
-    """Warm the model-runtime emulation cache for the current dashboard state so
-    the first chat question is instant.
+    """Warm the legacy scenario cache for runtime consumers, without an LLM call.
 
-    This computes the same ``_build_model_runtime_payload`` chat runtime that
-    ``build_advisor_chat_response`` uses — over the identical dashboard — so it
-    shares the exact state fingerprint and the cached emulation is reused. It
-    makes no LLM call and returns only a small status.
+    Ordinary chat answers do not require this full sensitivity fan.
     """
     payload = _build_model_runtime_payload(
         crop=crop,
@@ -5196,6 +5197,156 @@ def _inject_pesticide_recommendation_context(
     return dashboard_payload
 
 
+def _build_chat_nutrient_prescription_context(
+    *, crop: str, question: str | None
+) -> dict[str, Any] | None:
+    """Deterministic A/B stock-tank prescription for a free-form nutrient question.
+
+    Returns None when the question is not a nutrient-recipe question, so the normal
+    chat path is untouched for everything else. Source water comes from the workbook
+    analysis sheet the prescription entry point already reads.
+    """
+    if not question:
+        return None
+    route = route_knowledge_query(question)
+    if route.get("intent") != "nutrient_recipe":
+        return None
+    try:
+        payload = build_stock_tank_prescription_response(crop=crop)
+    except Exception:
+        return None
+    if payload.get("status") not in {"success", "ok"}:
+        return None
+    return payload
+
+
+def _nutrient_prescription_chat_evidence(payload: dict[str, Any]) -> dict[str, Any]:
+    """Bound the prescription to the numbers the reply has to carry unchanged."""
+    def _weighing_precision(row: dict[str, Any]) -> dict[str, Any]:
+        """Round to what a farm scale can weigh.
+
+        The reply is instructed to repeat these numbers without re-rounding, so
+        the rounding has to happen here. A six-decimal kilogram is not a
+        weighable quantity; anything under a kilogram is reported in grams.
+        """
+        grams = row.get("grams")
+        if not isinstance(grams, (int, float)):
+            return {"kilograms": row.get("kilograms"), "grams": grams}
+        if grams >= 1000:
+            return {"kilograms": round(float(grams) / 1000.0, 2), "grams": round(float(grams))}
+        return {"kilograms": None, "grams": round(float(grams), 1)}
+
+    def _rounded(value: Any, digits: int) -> Any:
+        return round(float(value), digits) if isinstance(value, (int, float)) else value
+
+    def _split_note(row: dict[str, Any], totals: dict[str, float]) -> dict[str, Any]:
+        """Say that a tank entry is one share of a salt divided between tanks."""
+        share = row.get("share_of_dose")
+        if not isinstance(share, (int, float)) or share >= 1:
+            return {}
+        key = str(row.get("formula") or row.get("fertilizer_name"))
+        total_grams = totals.get(key)
+        return {
+            "divided_between_tanks": True,
+            "share_of_this_fertilizer": round(float(share), 4),
+            "total_for_both_tanks_kilograms": (
+                round(total_grams / 1000.0, 2) if total_grams is not None else None
+            ),
+        }
+
+    prescription = _coerce_dict(payload.get("prescription"))
+    tanks = _coerce_dict(prescription.get("tanks"))
+    provenance = _coerce_dict(payload.get("provenance"))
+    source = _coerce_dict(provenance.get("source"))
+
+    # One salt may be divided across both tanks. Listed twice without saying so,
+    # it reads like a duplicate or a doubled dose, so carry the split explicitly.
+    split_totals: dict[str, float] = {}
+    for bucket_name in ("A", "B", "unassigned"):
+        for row in _coerce_dict(tanks.get(bucket_name)).get("fertilizers") or []:
+            share = row.get("share_of_dose")
+            grams = row.get("grams")
+            if isinstance(share, (int, float)) and share < 1 and isinstance(grams, (int, float)):
+                key = str(row.get("formula") or row.get("fertilizer_name"))
+                split_totals[key] = split_totals.get(key, 0.0) + float(grams)
+
+    tank_masses: dict[str, Any] = {}
+    for tank_name in ("A", "B", "unassigned"):
+        bucket = _coerce_dict(tanks.get(tank_name))
+        rows = bucket.get("fertilizers") or []
+        if not rows and tank_name == "unassigned":
+            continue
+        tank_masses[tank_name] = {
+            "total_kilograms": _rounded(bucket.get("total_kilograms"), 2),
+            "total_grams": _rounded(bucket.get("total_grams"), 0),
+            "fertilizers": [
+                {
+                    "fertilizer_name": row.get("fertilizer_name"),
+                    "formula": row.get("formula"),
+                    **_weighing_precision(row),
+                    **_split_note(row, split_totals),
+                    "driving_ion": row.get("driving_ion"),
+                    "source_row": row.get("source_row"),
+                }
+                for row in rows
+            ],
+        }
+
+    return {
+        "crop": payload.get("crop"),
+        "resolved": payload.get("resolved"),
+        "available_stages": payload.get("available_stages"),
+        "stock_basis": _coerce_dict(payload.get("stock_tank_basis")).get("statement"),
+        "stock_tank_volume_l": _coerce_dict(payload.get("stock_tank_basis")).get(
+            "stock_tank_volume_l"
+        ),
+        "stock_ratio": _coerce_dict(payload.get("stock_tank_basis")).get("stock_ratio"),
+        "working_solution_volume_l": _coerce_dict(payload.get("stock_tank_basis")).get(
+            "working_solution_volume_l"
+        ),
+        "tank_masses": tank_masses,
+        "targets": _coerce_dict(payload.get("targets")),
+        "residuals": prescription.get("residuals"),
+        "unfulfilled": prescription.get("unfulfilled"),
+        "source_water": {
+            "mode": _coerce_dict(payload.get("source_water_basis")).get("mode"),
+            "statement": _coerce_dict(payload.get("source_water_basis")).get("statement"),
+        },
+        "drain_water": payload.get("drain_water_context"),
+        "guardrail_review": payload.get("guardrail_review"),
+        "nitrate_policy": payload.get("nitrate_policy"),
+        "sulfate_policy": payload.get("sulfate_policy"),
+        "magnesium_policy": payload.get("magnesium_policy"),
+        "calcium_source": _coerce_dict(payload.get("options")).get("calcium_source"),
+        "citation": source.get("citation"),
+        "crop_locator": provenance.get("crop_locator"),
+        "stage_adjustment": _coerce_dict(provenance.get("stage_adjustment")),
+        "known_source_inconsistencies": provenance.get("known_source_inconsistencies"),
+        "warnings": payload.get("warnings"),
+        "limitations": payload.get("limitations"),
+    }
+
+
+def _inject_nutrient_prescription_context(
+    dashboard: dict[str, Any],
+    prescription_payload: dict[str, Any],
+) -> dict[str, Any]:
+    dashboard_payload = deepcopy(dashboard)
+    knowledge_payload = dict(dashboard_payload.get("knowledge") or {})
+    knowledge_payload["deterministic_nutrient_prescription"] = {
+        "source": "recommend_stock_tank_prescription",
+        "note": (
+            "탱크별 비료 무게는 이 결정론 결과의 숫자와 단위를 그대로 옮기세요. 다시 계산하거나 "
+            "반올림을 바꾸지 말고, A·B 탱크 각 1000 L를 100배로 채우는 기준임을 함께 말하세요. "
+            "어떤 원수 분석을 썼는지(또는 쓰지 않았는지) 반드시 밝히고, EC는 이 결과에 없으니 "
+            "EC 값을 지어내지 마세요."
+        ),
+        "prescription": _nutrient_prescription_chat_evidence(prescription_payload),
+    }
+    dashboard_payload["knowledge"] = knowledge_payload
+    return dashboard_payload
+
+
 def _last_user_chat_message(messages: list[dict[str, str]] | None) -> str | None:
     for message in reversed(messages or []):
         if str(message.get("role") or "user").strip().lower() != "user":
@@ -5206,13 +5357,143 @@ def _last_user_chat_message(messages: list[dict[str, str]] | None) -> str | None
     return None
 
 
+def _chat_model_runtime_context(
+    messages: list[dict[str, str]],
+) -> dict[str, Any]:
+    """Preserve the requested change without presenting heuristic effects as physics.
+
+    The scenario runner uses hand-weighted effects and a synthesized snapshot.
+    It cannot establish farm yield, cost, disease probability, or a calibrated
+    physical response, so chat must not run its full control/recommendation fan.
+    Existing valid physical outputs remain in the dashboard context.
+    """
+    question = (_last_user_chat_message(messages) or "").lower()
+    change_pattern = (
+        r"올리|올려|올릴|높이|높여|높일|내리|내려|내릴|낮추|낮춰|줄이|줄여|줄일|"
+        r"바꾸|바꿔|변경|조정|늘리|늘려|increase|decrease|raise|reduce|lower|higher|warmer|cooler|what\s*if"
+    )
+    number_pattern = r"([+-]?\d+(?:\.\d+)?)\s*(ppm|피피엠|℃|°\s*c|c\b|도|%p?|퍼센트)"
+    matches = list(re.finditer(number_pattern, question, flags=re.IGNORECASE))
+    previous_users = [
+        str(message.get("content") or "").lower()
+        for message in messages if message.get("role", "user") == "user"
+    ][:-1]
+    previous = previous_users[-1] if previous_users else ""
+    follow_up = bool(re.search(r"그럼|그러면|그렇다면|대신|그것|그건|\bthen\b|\binstead\b", question))
+    change_text = question
+    if not re.search(change_pattern, question):
+        if not (follow_up and matches and re.search(change_pattern, previous)):
+            return {"status": "not_requested"}
+        change_text = previous
+
+    requested: dict[str, Any] = {"question": _last_user_chat_message(messages)}
+    baseline_only = len(matches) == 1 and (
+        re.match(r"\s*(?:인데|이고|입니다|에서|일\s*때)", question[matches[0].end():])
+        or re.search(r"\bat\s*$", question[:matches[0].start()])
+    )
+    if len(matches) == 1 and not baseline_only:
+        match = matches[0]
+        value = _coerce_float(match.group(1))
+        unit = match.group(2).lower().replace(" ", "")
+        if unit in {"ppm", "피피엠"}:
+            unit, control = "ppm", "co2_setpoint_day"
+        elif unit in {"℃", "°c", "c", "도"}:
+            unit = "°C"
+            time_context = question if re.search(r"야간|밤|night|주간|낮|day", question) else previous
+            control = "temperature_night" if re.search(r"야간|밤|night", time_context) else "temperature_day"
+        else:
+            unit = "%p" if unit == "%p" else "%"
+            control_context = question if re.search(r"습도|humidity|\brh\b|스크린|커튼|차광|screen", question) else previous
+            control = "screen_close" if re.search(r"스크린|커튼|차광|screen", control_context) else "rh_target"
+        mode = "target" if (
+            re.match(r"\s*(?:으로|로)", question[match.end():])
+            or re.search(r"\bto\s*$", question[:match.start()])
+        ) else "delta"
+        if mode == "delta" and value is not None and re.search(
+            r"내리|내려|내릴|낮추|낮춰|줄이|줄여|줄일|decrease|reduce|lower|cooler", change_text,
+        ):
+            value = -abs(value)
+        requested.update({
+            "control": control,
+            "value": value,
+            "unit": unit,
+            "mode": mode,
+        })
+    return {
+        "status": "unavailable",
+        "reason": "uncalibrated_scenario",
+        "calculation_basis": "uncalibrated_comparison_indices",
+        "requested_change": requested,
+        "effects": None,
+    }
+
+
+def _chat_retrieval_metadata(retrieval_context: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+    """Return retrieved source locations, not a claim-level citation guarantee."""
+    status = retrieval_context.get("status")
+    if status == "skipped":
+        return "not_requested", []
+    if status in {"retrieval_unavailable", "database_missing"}:
+        return "retrieval_unavailable", []
+    cards = _coerce_dict(retrieval_context.get("llm_context")).get("evidence_cards") or []
+    usable_cards = [
+        card for card in cards[:12]
+        if isinstance(card, dict)
+        and str(card.get("evidence_excerpt") or card.get("excerpt") or "").strip()
+    ] if isinstance(cards, list) else []
+    if status != "ready" or not usable_cards:
+        return "no_matches", []
+    sources: list[dict[str, Any]] = []
+    for card in usable_cards:
+        source = {key: card.get(key) for key in ("title", "source_locator", "document_id", "chunk_id")}
+        for key in ("source_id", "source_context", "evidence_role"):
+            if card.get(key) is not None:
+                source[key] = card[key]
+        if any(value is not None for value in source.values()) and source not in sources:
+            sources.append(source)
+    return "ready", sources
+
+
+def _chat_runtime_status_reply(dashboard: dict[str, Any], language: str) -> str:
+    runtime = _coerce_dict(dashboard.get("simulation_runtime"))
+    english = language.lower().startswith("en")
+    replies = {
+        "active": ("시뮬레이션이 재생 중입니다.", "The simulation is playing."),
+        "paused": ("시뮬레이션이 일시정지 상태입니다.", "The simulation is paused."),
+        "stopped": ("시뮬레이션이 정지되어 있습니다.", "The simulation is stopped."),
+        "idle": ("아직 시뮬레이션을 시작하지 않았습니다.", "The simulation has not started yet."),
+        "completed": ("시뮬레이션 재생이 끝났습니다.", "Simulation playback is complete."),
+        "stalled": ("시뮬레이션 실행이 지연되고 있습니다.", "Simulation playback is stalled."),
+        "error": ("시뮬레이션에 실행 오류가 있습니다.", "The simulation has a runtime error."),
+    }
+    pair = replies.get(runtime.get("status"))
+    if pair is None:
+        return "The current execution state is unavailable." if english else "현재 실행 상태를 확인할 수 없습니다."
+    reply = pair[1 if english else 0]
+    try:
+        observed = datetime.fromisoformat(str(runtime.get("simulated_at") or "").replace("Z", "+00:00"))
+    except ValueError:
+        observed = None
+    if observed:
+        stamp = observed.strftime("%Y-%m-%d %H:%M:%S")
+        if observed.utcoffset() is not None:
+            offset = observed.strftime("%z")
+            stamp += f" (UTC{offset[:3]}:{offset[3:]})"
+        reply += f" Last replay time: {stamp}." if english else f" 마지막 재생 시각은 {stamp}입니다."
+    if runtime.get("last_model_status") in {"failed", "unconverged", "invalid"}:
+        reply += " The last calculation was not valid." if english else " 마지막 계산은 정상적으로 완료되지 않았습니다."
+    return reply
+
+
 def build_advisor_chat_response(
     *,
     crop: str,
     messages: list[dict[str, str]],
     dashboard: Optional[dict[str, Any]] = None,
     language: str = "ko",
+    on_event: Callable[[dict], None] | None = None,
 ) -> dict[str, Any]:
+    started = perf_counter()
     dashboard_payload = dashboard or {}
     catalog_payload = build_knowledge_catalog(crop)
     advisory_surfaces = catalog_payload.get("advisory_surfaces", {})
@@ -5236,52 +5517,132 @@ def build_advisor_chat_response(
             },
         }
 
+    retrieval_started = perf_counter()
     retrieval_context = build_chat_advisor_context(
         crop=crop,
         messages=messages,
     )
-    model_runtime = _build_model_runtime_payload(
-        crop=crop,
-        dashboard=dashboard_payload,
-        tab_name="chat",
-        messages=messages,
-        language=language,
+    retrieval_ms = (perf_counter() - retrieval_started) * 1000
+    grounded_status, sources = _chat_retrieval_metadata(retrieval_context)
+    resolved_crop = _coerce_dict(retrieval_context.get("llm_context")).get("resolved_crop")
+    if resolved_crop not in {"tomato", "cucumber"}:
+        named_crops = [
+            name for name, pattern in (("tomato", r"토마토|\btomato(?:es)?\b"), ("cucumber", r"오이|\bcucumbers?\b"))
+            if re.search(pattern, last_user or "", flags=re.IGNORECASE)
+        ]
+        resolved_crop = named_crops[0] if len(named_crops) == 1 else crop
+    model_runtime = _chat_model_runtime_context(messages)
+    # Caller-supplied evidence from an earlier turn cannot survive a new miss.
+    fresh_dashboard = dict(dashboard_payload)
+    case_state = build_chat_case_state(crop=crop, messages=messages)
+    fresh_dashboard["chat_case_state"] = case_state
+    fresh_dashboard["chat_crop_scope"] = {
+        "dashboard_crop": crop,
+        "question_crop": resolved_crop,
+        "dashboard_applies": resolved_crop == crop,
+    }
+    fresh_dashboard["knowledge"] = {
+        key: value for key, value in _coerce_dict(dashboard_payload.get("knowledge")).items()
+        if key
+        not in {
+            "advisor_retrieval_context",
+            "deterministic_pesticide",
+            "deterministic_nutrient_prescription",
+            "grounding_decision",
+        }
+    }
+    grounding_context = retrieval_context
+    if grounded_status == "no_matches" and retrieval_context.get("status") == "ready":
+        grounding_context = {**retrieval_context, "status": "no_matches"}
+    retrieval_dashboard = (
+        fresh_dashboard if grounding_context.get("status") == "skipped"
+        else _inject_advisor_retrieval_context(fresh_dashboard, grounding_context)
     )
-    llm_dashboard = _inject_model_runtime_context(
-        _inject_advisor_retrieval_context(dashboard_payload, retrieval_context),
-        model_runtime,
-    )
+    wiki = _coerce_dict(retrieval_context.get("llm_context")).get("condition_wiki")
+    if wiki:
+        # A raw-source miss does not erase a usable edited page. Its availability
+        # is independent of the raw-passage grounding status.
+        knowledge = retrieval_dashboard.setdefault("knowledge", {})
+        knowledge.setdefault("advisor_retrieval_context", {})["condition_wiki"] = wiki
+    llm_dashboard = _inject_model_runtime_context(retrieval_dashboard, model_runtime)
     # A free-form pesticide question (not a PHI number, which was refused above) must
     # be answered from the deterministic recommender — registration status, MoA,
     # rotation, manual-review gate — not free-written. The tab path already uses it;
     # chat bypassed it. Inject its result so the model narrates a governed answer.
-    pesticide_context = _build_chat_pesticide_context(crop=crop, question=last_user)
+    pesticide_context = _build_chat_pesticide_context(crop=resolved_crop, question=last_user)
     if pesticide_context is not None:
         llm_dashboard = _inject_pesticide_recommendation_context(
             llm_dashboard, pesticide_context
         )
 
-    # Natural conversation: return the model's reply verbatim, with no machine
-    # answer-focus prefix and no structured card parsing. The model_runtime and
-    # retrieval context stay in machine_payload for internal use, but the visible
-    # answer is the free-form text only.
-    text = generate_chat_reply(
-        crop=crop,
-        messages=messages,
-        dashboard=llm_dashboard,
-        language=language,
+    # A nutrient prescription question is arithmetic the model must never do. The
+    # solver sizes the A/B tanks from the workbook recipe and fertilizer rows; the
+    # reply narrates those masses instead of writing its own.
+    nutrient_prescription_context = _build_chat_nutrient_prescription_context(
+        crop=resolved_crop, question=last_user
     )
+    if nutrient_prescription_context is not None:
+        llm_dashboard = _inject_nutrient_prescription_context(
+            llm_dashboard, nutrient_prescription_context
+        )
+
+    # Retrieval metadata stays available internally; the conversation carries
+    # only the answer and a conditional follow-up question.
+    follow_up = None
+    generation_started = perf_counter()
+    first_text_ms = None
+
+    def receive_text(delta: str):
+        nonlocal first_text_ms
+        if first_text_ms is None:
+            first_text_ms = (perf_counter() - started) * 1000
+        if on_event is not None:
+            on_event({"type": "delta", "text": delta})
+
+    if on_event is not None:
+        on_event({"type": "status", "phase": "generating"})
+    # Retrieval reports "skipped" both for a runtime-status question and for an
+    # empty query, so the status alone does not identify a status question. Ask
+    # the question itself before answering with replay state instead of the model.
+    if (
+        retrieval_context.get("status") == "skipped"
+        and last_user
+        and is_runtime_status_query(last_user)
+    ):
+        status_dashboard = dashboard_payload if resolved_crop == crop else {}
+        text = _chat_runtime_status_reply(status_dashboard, language)
+    else:
+        stream_options = {"on_text": receive_text} if on_event is not None else {}
+        turn = generate_chat_turn(
+            crop=crop,
+            messages=messages,
+            dashboard=llm_dashboard,
+            language=language,
+            **stream_options,
+        )
+        text = turn["text"]
+        follow_up = turn["follow_up"]
 
     return {
         "status": "success",
         "family": "advisor_chat",
         "crop": crop,
         "text": text,
+        "follow_up": follow_up,
+        "grounded_status": grounded_status,
+        "sources": sources,
+        "timings": {
+            "retrieval_ms": round(retrieval_ms, 2),
+            "generation_ms": round((perf_counter() - generation_started) * 1000, 2),
+            "first_text_ms": round(first_text_ms, 2) if first_text_ms is not None else None,
+            "total_ms": round((perf_counter() - started) * 1000, 2),
+        },
         "machine_payload": {
             "domains": _infer_domains(dashboard_payload, advisory_surfaces),
             "context_completeness": _context_completeness(dashboard_payload),
             "missing_data": _collect_missing_data_flags(dashboard_payload),
             "retrieval_context": retrieval_context.get("summary", {}),
+            "chat_case_state": case_state,
             "model_runtime": model_runtime,
             "display": None,
             "internal_provenance": _build_internal_provenance(

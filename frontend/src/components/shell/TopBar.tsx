@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Globe2, MessageCircle, Settings } from 'lucide-react';
+import { Bell, Search, Settings } from 'lucide-react';
 import type { AppLocale } from '../../i18n/locale';
 import type { CropType } from '../../types';
 import TelemetryFreshnessChip from '../status/TelemetryFreshnessChip';
@@ -24,10 +24,8 @@ interface TopBarProps {
 }
 
 /**
- * Slim one-row workspace utility bar rendered below the shared GlobalTopNav
- * header: the current page title, a compact search pill, and the control
- * cluster (telemetry, locale, crop, alerts, assistant, settings). The brand
- * mark lives in GlobalTopNav, so this row stays title-first.
+ * Page context and utilities below the global task navigation. The shared
+ * navigation and floating control provide the assistant entry points.
  */
 export default function TopBar({
   locale,
@@ -35,13 +33,12 @@ export default function TopBar({
   telemetryStatus,
   telemetryDetail,
   pageTitle,
+  pageDescription,
   onLocaleChange,
   onCropChange,
-  onAssistantToggle,
   onOpenAlerts,
   onSearchSubmit,
   onOpenSettings,
-  assistantOpen,
   getCropLabel,
 }: TopBarProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,16 +72,16 @@ export default function TopBar({
   };
 
   return (
-    <header>
-      <div className="w-full min-w-0">
-        <div className="sg-panel flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[22px] px-4 py-2.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <h1 className="truncate text-sm font-bold text-[color:var(--sg-text-strong)]">
+    <header className="workspace-toolbar">
+      <div className="workspace-toolbar-heading">
+          <div className="min-w-0">
+            <h1 className="workspace-toolbar-title">
               {resolvedPageTitle}
             </h1>
+            {pageDescription ? <p className="workspace-toolbar-description">{pageDescription}</p> : null}
           </div>
-
-          <div className="order-last w-full basis-full xl:order-none xl:ml-2 xl:w-auto xl:max-w-[400px] xl:flex-1 xl:basis-auto">
+          <div className="workspace-toolbar-search">
+            <Search className="h-4 w-4 shrink-0 text-[color:var(--sg-text-faint)]" aria-hidden="true" />
             <Input
               aria-label={copy.search}
               placeholder={copy.search}
@@ -96,40 +93,41 @@ export default function TopBar({
                   handleSearchSubmit();
                 }
               }}
-              className="h-9 rounded-full !border !border-[color:var(--sg-outline-soft)] !bg-[color:var(--sg-surface-muted)] px-4 text-sm text-[color:var(--sg-text-strong)] placeholder:text-[color:var(--sg-text-faint)]"
+              className="h-11 min-w-0 !border-0 !bg-transparent !shadow-none px-0 text-sm text-[color:var(--sg-text-strong)] placeholder:text-[color:var(--sg-text-faint)]"
             />
           </div>
-
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+      </div>
+          <div className="workspace-toolbar-controls">
             <TelemetryFreshnessChip status={telemetryStatus} detail={telemetryDetail} />
-            <div className="inline-flex items-center gap-1 rounded-full border border-[color:var(--sg-outline-soft)] bg-white px-1.5 py-1 text-xs font-medium text-[color:var(--sg-text-muted)]">
-              <Globe2 className="h-3.5 w-3.5" aria-hidden="true" />
+            <div className="workspace-toggle" role="group" aria-label={copy.language}>
               <span className="sr-only">{copy.language}</span>
               {(['ko', 'en'] as AppLocale[]).map((candidate) => (
                 <button
                   key={candidate}
                   type="button"
                   onClick={() => onLocaleChange(candidate)}
-                  className={`rounded-full px-2.5 py-0.5 transition ${
+                  aria-pressed={locale === candidate}
+                  className={`workspace-toggle-button ${
                     locale === candidate
-                      ? 'bg-[color:var(--sg-text-strong)] text-white'
-                      : 'text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
+                      ? 'workspace-toggle-button-active'
+                      : ''
                   }`}
                 >
                   {candidate === 'ko' ? '한국어' : 'EN'}
                 </button>
               ))}
             </div>
-            <div className="inline-flex items-center gap-1 rounded-full border border-[color:var(--sg-outline-soft)] bg-white px-1.5 py-1">
+            <div className="workspace-toggle" role="group" aria-label={locale === 'ko' ? '작물 선택' : 'Select crop'}>
               {(['Cucumber', 'Tomato'] as CropType[]).map((crop) => (
                 <button
                   key={crop}
                   type="button"
                   onClick={() => onCropChange(crop)}
-                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                  aria-pressed={selectedCrop === crop}
+                  className={`workspace-toggle-button ${
                     selectedCrop === crop
-                      ? 'bg-[color:var(--sg-color-primary)] text-white'
-                      : 'text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
+                      ? 'workspace-toggle-button-active'
+                      : ''
                   }`}
                 >
                   {getCropLabel(crop, locale)}
@@ -139,34 +137,22 @@ export default function TopBar({
             <button
               type="button"
               onClick={onOpenAlerts}
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-text-strong)] transition hover:bg-[color:var(--sg-color-primary-soft)]"
+              className="workspace-icon-button"
               aria-label={copy.alerts}
             >
               <Bell className="h-4 w-4" aria-hidden="true" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[color:var(--sg-accent-danger)]" />
             </button>
-            <Button
-              onClick={onAssistantToggle}
-              variant={assistantOpen ? 'primary' : 'secondary'}
-              size="sm"
-              className="rounded-full"
-            >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              {copy.assistant}
-            </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               aria-label={copy.settings}
               onClick={onOpenSettings}
-              className="h-9 w-9 rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-text-strong)] hover:bg-[color:var(--sg-color-primary-soft)]"
+              className="workspace-icon-button"
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
-        </div>
-      </div>
     </header>
   );
 }

@@ -5,6 +5,17 @@ import pytest
 from model_informed_greenhouse_dashboard.backend.app.services import openai_service as ai_service
 
 
+@pytest.fixture(autouse=True)
+def isolated_provider_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    for name in (
+        *ai_service._OPENAI_API_KEY_CANDIDATES,
+        "ANTIGRAVITY_BASE_URL", "ANTIGRAVITY_MODEL", "ANTIGRAVITY_REASONING_EFFORT",
+        "ANTIGRAVITY_PROXY_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
 class _FakeResponses:
     def __init__(self) -> None:
         self.calls: list[dict] = []
@@ -21,6 +32,77 @@ class _FakeOpenAI:
 
 class _FakeAuthError(Exception):
     pass
+
+
+class TestAntigravityOAuth:
+    @pytest.mark.parametrize("entrypoint", ["chat", "consulting", "adaptive"])
+    def test_public_helpers_use_oauth_model_and_preserve_input(self, monkeypatch, entrypoint):
+        from model_informed_greenhouse_dashboard.backend.app.services.adaptive_advisor.narrator import (
+            build_adaptive_narrative_response,
+        )
+
+        fake_client = _FakeOpenAI()
+        client_options = {}
+
+        def fake_openai(**kwargs):
+            client_options.update(kwargs)
+            return fake_client
+
+        monkeypatch.setenv("LLM_PROVIDER", "antigravity_oauth")
+        monkeypatch.setenv("OPENAI_API_KEY", "unrelated-openai-key")
+        monkeypatch.setenv("OPENAI_MODEL", "legacy-consult-model")
+        monkeypatch.setenv("OPENAI_CHAT_MODEL", "legacy-chat-model")
+        monkeypatch.setenv("OPENAI_CHAT_REASONING_EFFORT", "xhigh")
+        monkeypatch.setattr(ai_service, "OpenAI", fake_openai)
+        messages = [{"role": "user", "content": "관측 자료가 없으면 무엇을 확인하나요?"}]
+
+        if entrypoint == "chat":
+            answer = ai_service.generate_chat_reply(crop="tomato", messages=messages)
+        elif entrypoint == "consulting":
+            answer = ai_service.generate_consulting(crop="tomato", dashboard={})
+        else:
+            answer = build_adaptive_narrative_response(
+                crop="tomato", messages=messages, answer_packet={"question": messages[0]["content"]},
+            )["text"]
+
+        assert answer == "stubbed response"
+        assert client_options == {"base_url": "http://127.0.0.1:10100/v1", "api_key": "local-oauth"}
+        call = fake_client.responses.calls[-1]
+        assert call["model"] == "google-antigravity/gemini-3.8-flash"
+        assert call["reasoning"] == {"effort": "low"}
+        assert call["instructions"]
+        if entrypoint == "consulting":
+            assert isinstance(call["input"], str) and "Crop: tomato" in call["input"]
+        else:
+            assert call["input"][-1] == messages[0]
+
+    def test_oauth_configuration_is_resolved_at_call_time(self, monkeypatch):
+        fake_client = _FakeOpenAI()
+        client_options = {}
+
+        def fake_openai(**kwargs):
+            client_options.update(kwargs)
+            return fake_client
+
+        monkeypatch.setenv("LLM_PROVIDER", "antigravity_oauth")
+        monkeypatch.setattr(ai_service, "OpenAI", fake_openai)
+        ai_service.generate_chat_reply(crop="tomato", messages=[])
+        monkeypatch.setenv("ANTIGRAVITY_BASE_URL", " http://127.0.0.1:10200/v1 ")
+        monkeypatch.setenv("ANTIGRAVITY_PROXY_API_KEY", "local-proxy-key")
+        monkeypatch.setenv("ANTIGRAVITY_REASONING_EFFORT", " HIGH ")
+        ai_service.generate_chat_reply(crop="tomato", messages=[])
+        assert fake_client.responses.calls[-1]["reasoning"] == {"effort": "high"}
+        assert client_options == {"base_url": "http://127.0.0.1:10200/v1", "api_key": "local-proxy-key"}
+
+    def test_auth_failure_identifies_oauth(self, monkeypatch):
+        def fail_client():
+            raise _FakeAuthError("401")
+
+        monkeypatch.setenv("LLM_PROVIDER", "antigravity_oauth")
+        monkeypatch.setattr(ai_service, "AuthenticationError", _FakeAuthError)
+        monkeypatch.setattr(ai_service, "_client", fail_client)
+        with pytest.raises(RuntimeError, match="Antigravity OAuth authentication failed"):
+            ai_service.generate_chat_reply(crop="tomato", messages=[])
 
 
 def test_openai_helper_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -45,6 +127,7 @@ def test_openai_helper_uses_responses_output_text(monkeypatch: pytest.MonkeyPatc
     assert result == "stubbed response"
     assert fake_client.responses.calls
     assert fake_client.responses.calls[0]["model"] == "gpt-5.4-mini"
+    assert "reasoning" not in fake_client.responses.calls[0]
     assert "Crop: tomato" in fake_client.responses.calls[0]["input"]
 
 
@@ -118,7 +201,7 @@ def test_openai_helper_surfaces_invalid_key(monkeypatch: pytest.MonkeyPatch) -> 
         )
 
 
-def test_openai_helper_includes_knowledge_context_when_present(
+def test_openai_helper_omits_unretrieved_catalog_titles_from_chat(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_client = _FakeOpenAI()
@@ -143,11 +226,11 @@ def test_openai_helper_includes_knowledge_context_when_present(
 
     assert fake_client.responses.calls
     first_message = fake_client.responses.calls[0]["input"][0]["content"]
-    assert "Cucumber agronomy compendium" in first_message
-    assert "Nutrient recipe workbook" in first_message
+    assert "Cucumber agronomy compendium" not in first_message
+    assert "Nutrient recipe workbook" not in first_message
 
 
-def test_openai_helper_mentions_precision_runtime_contract_when_present(
+def test_openai_helper_omits_uncalibrated_precision_effects_from_chat(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_client = _FakeOpenAI()
@@ -179,28 +262,19 @@ def test_openai_helper_mentions_precision_runtime_contract_when_present(
     )
 
     prompt = fake_client.responses.calls[0]["input"][0]["content"]
-    # The model runtime is the context the reply's numbers must come from.
-    assert "answer_focus" in prompt
-    assert "control_precision_matrix" in prompt
+    # The legacy scenario fan supplies comparison indices, not physical effects.
+    assert "answer_focus" not in prompt
+    assert "control_precision_matrix" not in prompt
+    assert "17.493" not in prompt and "0.56" not in prompt
+    assert "uncalibrated_comparison_indices" in prompt
     assert "model_runtime" in prompt
-    # Numeric-integrity guardrails. Before 2026-07-17 this prompt instead forbade
-    # citing sources and structuring the answer, which suppressed exactly the
-    # quantitative register the advisor exists to provide.
-    assert "그대로 가져와야" in prompt, "numbers must be taken from the model verbatim"
+    assert "의미와 단위를 유지한 표시용 반올림" in prompt
     assert "외삽하지" in prompt, "a small step must not be extrapolated to a larger one"
     assert "추정하지" in prompt, "missing/unreliable values must be surfaced, not estimated"
 
 
-def test_chat_system_prompt_requires_the_expert_register(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The prompt must demand units and a validity range, and must not gag the model.
-
-    Regression guard for commit 74c3fb1, which optimized the conversational register
-    and paid for it in substance: it told the model never to mention sources and to
-    "just speak as if you already knew", which is a prompt-level ban on the expert
-    answer the user was asking for.
-    """
+def test_chat_system_prompt_connects_principles_conditions_and_management() -> None:
+    """Management answers may be structured while simple definitions stay compact."""
     prompt = ai_service._chat_system_prompt("tomato", "ko")
 
     # Required: the quantitative register.
@@ -209,8 +283,12 @@ def test_chat_system_prompt_requires_the_expert_register(
     assert "모른다" in prompt
     assert "만들어내지" in prompt
 
-    # Still conversational — the natural-chat UX is not the defect.
-    assert "리포트 구조" in prompt
+    assert "조건에 따른 판단" in prompt
+    assert "관리와 확인할 반응" in prompt
+    assert "확인 질문 하나만" in prompt
+    assert "단순 개념 질문은 짧은 설명이면 충분" in prompt
+    assert "source_id" in prompt
+    assert "앞서 답한" in prompt
 
     # Forbidden: the gag clauses that caused the regression.
     assert "절대 언급하지 마세요" not in prompt

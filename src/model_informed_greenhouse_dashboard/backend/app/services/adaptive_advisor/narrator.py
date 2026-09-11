@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..openai_service import DEFAULT_MODEL, _chat_system_prompt, _generate_text
+from ..openai_service import _chat_system_prompt, _generate_text, _generation_settings
 
 
 def build_adaptive_narrative_response(
@@ -15,13 +15,14 @@ def build_adaptive_narrative_response(
     dashboard: dict[str, Any] | None = None,
     language: str = "ko",
     answer_packet: dict[str, Any] | None = None,
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     **_: Any,
 ) -> dict[str, Any]:
     """Narrate one authoritative packet without re-running retrieval or models."""
     packet = answer_packet or {}
     if not packet:
         raise ValueError("adaptive narration requires an answer_packet")
+    selected_model, reasoning_effort = _generation_settings(model, chat=False)
 
     if language == "ko":
         contract = (
@@ -68,6 +69,7 @@ def build_adaptive_narrative_response(
     text = _generate_text(
         instructions=_chat_system_prompt(crop, language),
         input_data=input_messages,
-        model=model,
+        model=selected_model,
+        reasoning_effort=reasoning_effort,
     )
     return {"status": "success", "text": text, "source": "adaptive_answer_packet"}

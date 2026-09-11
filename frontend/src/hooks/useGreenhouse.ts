@@ -17,7 +17,6 @@ import {
     DEFAULT_SIMULATION_PACE,
     readStoredSimulationPace,
 } from './useSimulationRuntimeControls';
-import { useAreaUnit } from '../context/AreaUnitContext';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
 
@@ -42,6 +41,8 @@ type BackendFlux = {
 };
 
 type BackendState = {
+    simulation_status?: string;
+    data_quality?: SensorData['dataQuality'];
     datetime?: string;
     T_air_C?: number;
     T_canopy_C?: number;
@@ -69,6 +70,7 @@ type BackendKpi = {
     daily_fruit_growth_g_m2?: number;
     daily_harvest_kg?: number;
     yield_confidence?: number;
+    harvest_basis?: string;
 };
 
 type BackendEnergy = {
@@ -85,6 +87,7 @@ type BackendPayload = {
     state?: BackendState;
     kpi?: BackendKpi;
     energy?: BackendEnergy;
+    data_quality?: SensorData['dataQuality'];
 };
 
 type ForecastSocketPayload = ForecastData | {
@@ -94,6 +97,13 @@ type ForecastSocketPayload = ForecastData | {
     total_harvest_kg?: unknown;
     total_ETc_mm?: unknown;
     total_energy_kWh?: unknown;
+    total_fruit_growth_dry_kg?: number | null;
+    total_harvested_dry_kg?: number | null;
+    total_harvested_fruit_dry_kg?: number | null;
+    data_quality?: SensorData['dataQuality'];
+    harvest_basis?: string;
+    fruit_growth_basis?: string;
+    energy_basis?: string;
     message?: string;
 };
 
@@ -125,6 +135,13 @@ const DEFAULT_SENSOR_FIELD_AVAILABILITY: SensorFieldAvailability = {
     light: false,
     vpd: false,
     stomatalConductance: false,
+    soilMoisture: false,
+    canopyTemp: false,
+    transpiration: false,
+    photosynthesis: false,
+    energyUsage: false,
+    hFlux: false,
+    leFlux: false,
 };
 
 const DEFAULT_SENSOR_FIELD_TIMESTAMPS: SensorFieldTimestamps = {
@@ -218,16 +235,26 @@ function normalizeForecastPayload(payload: ForecastSocketPayload): ForecastData 
         type: 'forecast.snapshot',
         daily: payload.daily as ForecastData['daily'],
         last: payload.last,
-        total_harvest_kg: typeof payload.total_harvest_kg === 'number' ? payload.total_harvest_kg : 0,
-        total_ETc_mm: typeof payload.total_ETc_mm === 'number' ? payload.total_ETc_mm : 0,
-        total_energy_kWh: typeof payload.total_energy_kWh === 'number' ? payload.total_energy_kWh : 0,
+        total_harvest_kg: typeof payload.total_harvest_kg === 'number' ? payload.total_harvest_kg : null,
+        total_ETc_mm: typeof payload.total_ETc_mm === 'number' ? payload.total_ETc_mm : null,
+        total_energy_kWh: typeof payload.total_energy_kWh === 'number' ? payload.total_energy_kWh : null,
+        total_fruit_growth_dry_kg: payload.total_fruit_growth_dry_kg,
+        total_harvested_dry_kg: payload.total_harvested_dry_kg,
+        total_harvested_fruit_dry_kg: payload.total_harvested_fruit_dry_kg,
+        data_quality: payload.data_quality,
+        harvest_basis: payload.harvest_basis,
+        fruit_growth_basis: payload.fruit_growth_basis,
+        energy_basis: payload.energy_basis,
+        refreshed_at: new Date().toISOString(),
+        refresh_error: null,
     };
 }
 
 export const useGreenhouse = () => {
     const { locale } = useLocale();
-    const { areaByCrop } = useAreaUnit();
     const [selectedCrop, setSelectedCrop] = useState<CropType>('Cucumber');
+    const selectedCropRef = useRef(selectedCrop);
+    selectedCropRef.current = selectedCrop;
     const settingsByCropRef = useRef<Record<CropType, TemperatureSettings>>({
         Tomato: { ...DEFAULT_TEMP_SETTINGS_BY_CROP.Tomato },
         Cucumber: { ...DEFAULT_TEMP_SETTINGS_BY_CROP.Cucumber },
@@ -254,6 +281,8 @@ export const useGreenhouse = () => {
         heating: false,
         shading: false,
         settings: settingsByCropRef.current.Cucumber,
+        settingsState: 'loading',
+        settingsError: null,
     });
     const wsRef = useRef<WebSocket | null>(null);
     const [startTimestampByCrop, setStartTimestampByCrop] = useState<Record<CropType, number | null>>({
@@ -323,11 +352,7 @@ export const useGreenhouse = () => {
         Tomato: null,
         Cucumber: null,
     });
-    const areaByCropRef = useRef(areaByCrop);
 
-    useEffect(() => {
-        areaByCropRef.current = areaByCrop;
-    }, [areaByCrop]);
     const lastFlushAtRef = useRef<Record<CropType, number>>({
         Tomato: 0,
         Cucumber: 0,
@@ -422,39 +447,9 @@ export const useGreenhouse = () => {
 
             const statusData = await statusRes.json();
             const cropStatus = statusData?.greenhouses?.[cropKey];
-            const totalRows = typeof cropStatus?.total_rows === 'number' ? cropStatus.total_rows : 0;
-            const idx = typeof cropStatus?.idx === 'number' ? cropStatus.idx : -1;
-            const isPaused = cropStatus?.status === 'paused' || cropStatus?.paused === true;
-            const isExhausted =
-                cropStatus?.at_end === true ||
-                cropStatus?.status === 'completed' ||
-                (totalRows > 0 && idx >= totalRows - 1) ||
-                (typeof cropStatus?.progress === 'number' && cropStatus.progress >= 99.9);
-            const needsRestart =
-                !isPaused &&
-                (
-                    !cropStatus ||
-                    cropStatus.status === 'idle' ||
-                    cropStatus.status === 'stopped' ||
-                    cropStatus.status === 'completed' ||
-                    cropStatus.status === 'stalled' ||
-                    cropStatus.status === 'error' ||
-                    cropStatus.status === 'failed' ||
-                    cropStatus.status === 'unknown' ||
-                    cropStatus.status === 'success' ||
-                    cropStatus.status === undefined ||
-                    cropStatus.status === null ||
-                    cropStatus?.task_alive === false ||
-                    isExhausted
-                );
-
-            if (isPaused) {
-                console.log(`Simulation for ${cropType} is paused; skipping auto-restart.`);
-                return;
-            }
-
-            if (!needsRestart) {
-                console.log(`Simulation for ${cropType} already active.`);
+            // A stopped/completed/error replay requires an explicit user action. Only a
+            // never-started crop may start automatically; recovery must preserve the dataset.
+            if (cropStatus?.status !== 'idle') {
                 return;
             }
 
@@ -474,7 +469,7 @@ export const useGreenhouse = () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         crop: cropKey,
-                        csv_filename: cropType === 'Tomato' ? 'Tomato_Env.CSV' : 'Cucumber_Env.CSV',
+                        csv_filename: cropStatus.csv_filename || (cropType === 'Tomato' ? 'Tomato_Env.CSV' : 'Cucumber_Env.CSV'),
                         time_step: '10min',
                     }),
                 },
@@ -512,6 +507,9 @@ export const useGreenhouse = () => {
         fieldTimestamps: SensorFieldTimestamps;
     } => {
         const now = Date.now();
+        const dataQuality = payload.data_quality ?? payload.state?.data_quality;
+        const invalidInput = dataQuality?.status === 'invalid';
+        const invalidModel = invalidInput || ['failed', 'unconverged', 'invalid_input'].includes(payload.state?.simulation_status ?? '');
 
         // Map Environment Data
         // Backend sends: T_air_C, RH_percent, CO2_ppm, PAR_umol, VPD_kPa
@@ -579,12 +577,19 @@ export const useGreenhouse = () => {
         const previousFieldTimestamps =
             previousSensor?.fieldTimestamps ?? DEFAULT_SENSOR_FIELD_TIMESTAMPS;
         const fieldAvailability: SensorFieldAvailability = {
-            temperature: temperature.available,
-            humidity: humidity.available,
-            co2: co2.available,
-            light: light.available,
-            vpd: vpd.available,
-            stomatalConductance: stomatalConductance.available,
+            temperature: temperature.available && !invalidInput,
+            humidity: humidity.available && !invalidInput,
+            co2: co2.available && !invalidInput,
+            light: light.available && !invalidInput,
+            vpd: vpd.available && !invalidInput,
+            stomatalConductance: stomatalConductance.available && !invalidModel,
+            soilMoisture: soilMoisture.available && !invalidInput,
+            canopyTemp: canopyTemp.available && !invalidModel,
+            transpiration: transpiration.available && !invalidModel,
+            photosynthesis: photosynthesis.available && !invalidModel,
+            energyUsage: energyUsage.available && !invalidInput,
+            hFlux: hFlux.available && !invalidModel,
+            leFlux: leFlux.available && !invalidModel,
         };
         const fieldTimestamps: SensorFieldTimestamps = {
             temperature: temperature.available ? now : previousFieldTimestamps.temperature,
@@ -615,6 +620,8 @@ export const useGreenhouse = () => {
             energyUsage: energyUsage.value,
             fieldAvailability,
             fieldTimestamps,
+            dataQuality,
+            simulationStatus: payload.state?.simulation_status,
         };
 
         // Calculate Biomass from State (g/m2)
@@ -626,16 +633,11 @@ export const useGreenhouse = () => {
             (state.fruit_dry_weight_g_m2 || 0)
         );
 
-        const canonicalAreaM2 = Math.max(areaByCropRef.current[cropType].canonicalAreaM2, 1.0);
-
         // Calculate Growth Rate (g/m²/d)
-        let growthRate = 0;
-        if (payload.kpi?.daily_fruit_growth_g_m2) {
-            growthRate = payload.kpi.daily_fruit_growth_g_m2;
-        } else if (payload.kpi?.daily_harvest_kg) {
-            // Convert total kg to g/m² using the canonical greenhouse area from shared area settings.
-            growthRate = (payload.kpi.daily_harvest_kg * 1000) / canonicalAreaM2;
-        }
+        const growthRate = typeof payload.kpi?.daily_fruit_growth_g_m2 === 'number'
+            && Number.isFinite(payload.kpi.daily_fruit_growth_g_m2)
+            ? payload.kpi.daily_fruit_growth_g_m2
+            : 0;
 
         // Map Metrics
         const metrics: AdvancedModelMetrics = {
@@ -649,9 +651,10 @@ export const useGreenhouse = () => {
                 nodeCount: state.node_count
             },
             yield: {
-                predictedWeekly: (payload.kpi?.daily_harvest_kg || 0) * 7, // Simple projection
-                confidence: payload.kpi?.yield_confidence || 85,
-                harvestableFruits: state.n_fruits || state.truss_count || 0
+                predictedWeekly: 0,
+                predictionAvailable: false,
+                confidence: payload.kpi?.yield_confidence ?? 0,
+                harvestableFruits: state.n_fruits ?? 0
             },
             energy: {
                 consumption: payload.energy?.P_elec_kW || 0,
@@ -665,15 +668,16 @@ export const useGreenhouse = () => {
 
         const metricPoint: MetricHistoryPoint = {
             timestamp: ts,
+            metrics,
             receivedAtTimestamp: now,
             lai: metrics.growth.lai,
             biomass: metrics.growth.biomass,
             growthRate: metrics.growth.growthRate,
             activeTrusses: metrics.growth.activeTrusses,
             nodeCount: metrics.growth.nodeCount,
-            sourceCapacity: typeof state.source_capacity === 'number' ? state.source_capacity : undefined,
-            sinkDemand: typeof state.sink_demand === 'number' ? state.sink_demand : undefined,
-            sourceSinkBalance: typeof state.source_sink_balance === 'number' ? state.source_sink_balance : undefined,
+            sourceCapacity: !invalidModel && typeof state.source_capacity === 'number' ? state.source_capacity : undefined,
+            sinkDemand: !invalidModel && typeof state.sink_demand === 'number' ? state.sink_demand : undefined,
+            sourceSinkBalance: !invalidModel && typeof state.source_sink_balance === 'number' ? state.source_sink_balance : undefined,
             photosynthesis: sensor.photosynthesis,
             predictedWeeklyYield: metrics.yield.predictedWeekly,
             harvestableFruits: metrics.yield.harvestableFruits,
@@ -788,6 +792,12 @@ export const useGreenhouse = () => {
                     cropAtConnection,
                     previousSensor,
                 );
+                if (previousSensor && sensor.timestamp < previousSensor.timestamp) {
+                    liveState.historyByCrop[cropAtConnection] = [];
+                    liveState.metricHistoryByCrop[cropAtConnection] = [];
+                    liveState.startTimestampByCrop[cropAtConnection] = null;
+                    setForecastByCrop(prev => ({ ...prev, [cropAtConnection]: null }));
+                }
                 liveState.currentDataByCrop[cropAtConnection] = sensor;
                 liveState.modelMetricsByCrop[cropAtConnection] = metrics;
                 liveState.sensorFieldAvailabilityByCrop[cropAtConnection] = fieldAvailability;
@@ -892,6 +902,13 @@ export const useGreenhouse = () => {
         ws.onmessage = (event) => {
             try {
                 const payload = JSON.parse(event.data) as ForecastSocketPayload;
+                if (payload.type === 'forecast.error') {
+                    setForecastByCrop(prev => ({ ...prev, [cropAtConnection]: {
+                        ...(prev[cropAtConnection] ?? { daily: [], total_harvest_kg: null, total_ETc_mm: null, total_energy_kWh: null }),
+                        refresh_error: locale === 'ko' ? '예측을 갱신하지 못했습니다.' : 'Forecast could not be refreshed.',
+                    } }));
+                    return;
+                }
                 const forecastSnapshot = normalizeForecastPayload(payload);
                 if (!forecastSnapshot) {
                     return;
@@ -918,7 +935,7 @@ export const useGreenhouse = () => {
                 ws.close();
             }
         };
-    }, [selectedCrop]);
+    }, [selectedCrop, locale]);
 
     useEffect(() => {
         const timer = window.setInterval(() => {
@@ -974,6 +991,8 @@ export const useGreenhouse = () => {
             heating: false,
             shading: false,
             settings: settingsByCropRef.current[selectedCrop],
+            settingsState: 'loading',
+            settingsError: null,
         });
     }, [selectedCrop]);
 
@@ -993,6 +1012,26 @@ export const useGreenhouse = () => {
             }
         };
         fetchSettings();
+        let cancelled = false;
+        const initialSettings = settingsByCropRef.current[selectedCrop];
+        void (async () => {
+            try {
+                const response = await fetchWithTimeout(`${API_URL}/config/ops?crop=${cropKey}`, undefined, STATUS_REQUEST_TIMEOUT_MS);
+                if (!response.ok) throw new Error('설정 불러오기 실패');
+                const ops = await response.json();
+                if (!Number.isFinite(ops.heating_set_C) || !Number.isFinite(ops.cooling_set_C)) throw new Error('설정 응답을 확인할 수 없습니다.');
+                if (cancelled || initialSettings !== settingsByCropRef.current[selectedCrop]) return;
+                const settings: TemperatureSettings = {
+                    heating: ops.heating_set_C, cooling: ops.cooling_set_C,
+                    pBand: ops.p_band_C, co2Target: ops.co2_target_ppm, drainTarget: ops.drain_target_fraction,
+                };
+                settingsByCropRef.current[selectedCrop] = settings;
+                setControls(prev => ({ ...prev, settings, settingsState: 'ready', settingsError: null }));
+            } catch {
+                if (!cancelled) setControls(prev => ({ ...prev, settingsState: 'error', settingsError: '현재 설정을 불러오지 못했습니다. 연결 상태를 확인하세요.' }));
+            }
+        })();
+        return () => { cancelled = true; };
     }, [selectedCrop]);
 
     // Start simulation for the selected crop on mount and crop changes.
@@ -1011,12 +1050,14 @@ export const useGreenhouse = () => {
     }, []);
 
     const setTempSettings = useCallback(async (newSettings: TemperatureSettings) => {
-        const cropKey = selectedCrop.toLowerCase();
-        settingsByCropRef.current[selectedCrop] = newSettings;
-        setControls(prev => ({ ...prev, settings: newSettings }));
+        const cropAtRequest = selectedCrop;
+        const cropKey = cropAtRequest.toLowerCase();
+        if (newSettings.heating >= newSettings.cooling) {
+            throw new Error(locale === 'ko' ? '난방 기준은 냉방 기준보다 낮아야 합니다.' : 'Heating must be below cooling.');
+        }
 
         try {
-            const res = await fetch(`${API_URL}/config/ops?crop=${cropKey}`, {
+            const res = await fetchWithTimeout(`${API_URL}/config/ops?crop=${cropKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1026,14 +1067,18 @@ export const useGreenhouse = () => {
                     co2_target_ppm: newSettings.co2Target ?? settingsByCropRef.current[selectedCrop].co2Target ?? 800,
                     drain_target_fraction: newSettings.drainTarget ?? settingsByCropRef.current[selectedCrop].drainTarget ?? 0.3,
                 })
-            });
+            }, START_REQUEST_TIMEOUT_MS);
             if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
+                throw new Error(locale === 'ko' ? '설정을 적용하지 못했습니다. 연결 상태를 확인하고 다시 시도하세요.' : 'Settings were not applied. Check the connection and retry.');
             }
+            settingsByCropRef.current[cropAtRequest] = newSettings;
+            setControls(prev => cropAtRequest === selectedCropRef.current
+                ? { ...prev, settings: newSettings, settingsState: 'ready', settingsError: null }
+                : prev);
         } catch (err) {
-            console.error("Failed to update ops config:", err);
+            throw err instanceof Error ? err : new Error('Settings were not applied.');
         }
-    }, [selectedCrop]);
+    }, [selectedCrop, locale]);
 
     // Initial default data to prevent crash before WS connects
     const defaultData: SensorData = {
@@ -1065,7 +1110,8 @@ export const useGreenhouse = () => {
 
         try {
             const cropKey = cropType.toLowerCase();
-            const res = await fetch(`${API_URL}/forecast/${cropKey}`);
+            const res = await fetchWithTimeout(`${API_URL}/forecast/${cropKey}`, undefined, START_REQUEST_TIMEOUT_MS);
+            if (!res.ok) throw new Error('예측 갱신 실패: 연결 상태를 확인하세요.');
             if (res.ok) {
                 const data = await res.json();
                 if (forecastRequestIdRef.current[cropType] !== requestId) {
@@ -1073,11 +1119,16 @@ export const useGreenhouse = () => {
                 }
                 setForecastByCrop(prev => ({
                     ...prev,
-                    [cropType]: data,
+                    [cropType]: { ...data, refreshed_at: new Date().toISOString(), refresh_error: null },
                 }));
             }
         } catch (err) {
-            console.error("Failed to fetch forecast:", err);
+            if (forecastRequestIdRef.current[cropType] !== requestId) return;
+            const refreshError = err instanceof Error && err.name !== 'AbortError' ? err.message : '예측 응답이 지연되고 있습니다.';
+            setForecastByCrop(prev => ({ ...prev, [cropType]: {
+                ...(prev[cropType] ?? { daily: [], total_harvest_kg: null, total_ETc_mm: null, total_energy_kWh: null }),
+                refresh_error: refreshError,
+            } }));
         }
     }, [selectedCrop]);
 
@@ -1128,7 +1179,9 @@ export const useGreenhouse = () => {
             ...selectedMetrics,
             yield: {
                 ...selectedMetrics.yield,
-                predictedWeekly: forecast?.total_harvest_kg ?? selectedMetrics.yield.predictedWeekly
+                predictedWeekly: forecast?.total_harvest_kg ?? 0,
+                predictionAvailable: typeof forecast?.total_harvest_kg === 'number',
+                dryMatterGrowthKg: forecast?.total_fruit_growth_dry_kg ?? null,
             }
         },
         history,

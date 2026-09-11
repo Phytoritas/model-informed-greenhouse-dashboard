@@ -7,6 +7,8 @@ import {
   Sun,
   Activity,
   Leaf,
+  Play,
+  Pause,
 } from 'lucide-react';
 import type { AlertRailItem } from './components/dashboard/AlertRail';
 import type {
@@ -57,8 +59,6 @@ import {
   shouldRefreshAdvisorSummary,
   type AdvisorAutoRefreshState,
 } from './utils/advisorAutoRefresh';
-import { deriveSourceSinkBalance } from './utils/derivedRuntimeMetrics';
-import { localizeSmartGrowSurfaceNames } from './utils/smartGrowSurfaceNames';
 import type { KpiTileData } from './components/KpiStrip';
 import {
   buildDataStateSummary,
@@ -106,6 +106,7 @@ const ContactRoutePage = lazy(() => import('./pages/contact-route-page'));
 const ControlRoutePage = lazy(() => import('./pages/control-route-page'));
 const CropWorkRoutePage = lazy(() => import('./pages/crop-work-route-page'));
 const OverviewRoutePage = lazy(() => import('./pages/overview-route-page'));
+const GreenhouseScene = lazy(() => import('./components/greenhouse3d/GreenhouseScene'));
 const ResourcesRoutePage = lazy(() => import('./pages/resources-route-page'));
 const RtrRoutePage = lazy(() => import('./pages/rtr-route-page'));
 const ScenariosRoutePage = lazy(() => import('./pages/scenarios-route-page'));
@@ -323,7 +324,6 @@ function App() {
     forecast,
     controls,
     toggleControl,
-    setControlValue,
     selectedCrop,
     setSelectedCrop,
     telemetry,
@@ -374,6 +374,8 @@ function App() {
   const [assistantDrawerOpen, setAssistantDrawerOpen] = useState(false);
   const [assistantDrawerPanel, setAssistantDrawerPanel] = useState<AssistantPanelId>('assistant-chat');
   const [telemetryClock, setTelemetryClock] = useState(() => Date.now());
+  const [selectedSceneTimestamp, setSelectedSceneTimestamp] = useState<number | null>(null);
+  const [scenePlaying, setScenePlaying] = useState(false);
   const [sectionTabSelections, setSectionTabSelections] = useState<Record<string, string>>({});
   const lastAutoAnalysisRef = useRef<Record<CropType, AdvisorAutoRefreshState>>({
     Tomato: createEmptyAdvisorAutoRefreshState(),
@@ -386,6 +388,45 @@ function App() {
   const deferredHistory = useDeferredValue(history);
   const deferredForecast = useDeferredValue(forecast);
   const deferredModelMetrics = useDeferredValue(modelMetrics);
+  // Keep the environment and plant state from the same simulation step.
+  const sceneFrames = useMemo(() => {
+    const metricsByTimestamp = new Map(metricHistory.map(point => [point.timestamp, point.metrics]));
+    return history.flatMap(sensor => {
+      const metrics = metricsByTimestamp.get(sensor.timestamp)
+        ?? (sensor.timestamp === currentData.timestamp ? modelMetrics : undefined);
+      return metrics ? [{ sensor, metrics }] : [];
+    });
+  }, [currentData.timestamp, history, metricHistory, modelMetrics]);
+  const selectedSceneFrame = selectedSceneTimestamp === null
+    ? undefined
+    : sceneFrames.find(frame => frame.sensor.timestamp === selectedSceneTimestamp);
+  const sceneTimestamp = selectedSceneFrame?.sensor.timestamp ?? null;
+  const scenePlaybackRef = useRef({ frames: sceneFrames, timestamp: sceneTimestamp });
+  useEffect(() => {
+    scenePlaybackRef.current = { frames: sceneFrames, timestamp: sceneTimestamp };
+  }, [sceneFrames, sceneTimestamp]);
+  useEffect(() => {
+    setSelectedSceneTimestamp(null);
+    setScenePlaying(false);
+  }, [selectedCrop]);
+  useEffect(() => {
+    if (selectedSceneTimestamp !== null && !selectedSceneFrame) setSelectedSceneTimestamp(null);
+  }, [selectedSceneFrame, selectedSceneTimestamp]);
+  useEffect(() => {
+    if (!scenePlaying) return;
+    const timer = window.setInterval(() => {
+      const { frames, timestamp } = scenePlaybackRef.current;
+      const index = frames.findIndex(frame => frame.sensor.timestamp === timestamp);
+      const next = frames[index + 1];
+      if (!next) {
+        setScenePlaying(false);
+        return;
+      }
+      setSelectedSceneTimestamp(next.sensor.timestamp);
+      if (index + 1 === frames.length - 1) setScenePlaying(false);
+    }, 900);
+    return () => window.clearInterval(timer);
+  }, [scenePlaying]);
   const primaryRoutes = useMemo(() => buildPrimaryRoutes(locale), [locale]);
   const activePrimaryRouteKey = useMemo(() => getPrimaryRouteKey(location.pathname), [location.pathname]);
   const activeGlobalNavigationKey = useMemo(
@@ -669,7 +710,7 @@ function App() {
       ? {
         fallbackSummary: '오늘 제어 우선순위와 모델 기반 추천을 한 화면에서 정리했습니다.',
         telemetryStale: '센서 갱신이 지연되어 추천안은 보수적으로 보는 것이 좋습니다.',
-        telemetryOffline: '실시간 텔레메트리가 끊겨 수동 확인이 필요합니다.',
+        telemetryOffline: '데이터 연결이 끊겼습니다. 재연결 후 상태를 확인하세요.',
         optimizerReady: '온실 환경 비교안과 추천 온도를 바로 비교할 수 있습니다.',
         optimizerBlocked: '추천 제어안은 평소 설정 비교로만 보여줍니다.',
         commandTrayTitle: '오늘 운영 방향',
@@ -718,8 +759,8 @@ function App() {
         optimizerBlocked: 'Recommendations are currently limited to baseline behavior.',
         commandTrayTitle: 'Today operating focus',
         commandTrayDescription: 'Jump directly into the workspace that matters most for the next decision.',
-        jumpAdvisor: 'Open growth lane',
-        jumpRtr: 'Open control lane',
+        jumpAdvisor: 'Review crop growth',
+        jumpRtr: 'Compare climate settings',
         jumpKnowledge: 'Search materials',
         jumpAlerts: 'Review alerts',
         jumpWeather: 'Weather and resources',
@@ -732,7 +773,7 @@ function App() {
         knowledge: 'Materials & Ask',
         commandDesc: 'Today status, actions, and key controls',
         advisorDesc: 'Growth, work, nutrient, and protection decisions',
-        rtrDesc: 'HVAC, vent, screen, and compare lanes',
+        rtrDesc: 'Heating, cooling, ventilation, and screen settings',
         cropDesc: 'Growth, work pressure, and harvest trend',
         resourcesDesc: 'Energy, water, prices, and operating cost',
         alertsDesc: 'Risks, blockers, and response flow',
@@ -998,7 +1039,7 @@ function App() {
 
   // Trigger analysis
   const handleAnalyze = useCallback(async (): Promise<'success' | 'failed' | 'skipped'> => {
-    if (!hasTelemetryData || isAnalyzing) {
+    if (!hasTelemetryData || isAnalyzing || telemetry.status !== 'live' || currentData.dataQuality?.status === 'invalid' || ['failed', 'unconverged', 'invalid_input'].includes(currentData.simulationStatus ?? '')) {
       return 'skipped';
     }
 
@@ -1010,22 +1051,7 @@ function App() {
       deferredForecast,
       producePrices,
       weather,
-      rtrProfilesPayload?.profiles[selectedCrop] ?? null,
-      (recommendations) => {
-        const normalizedRecommendations = recommendations.map((recommendation) => recommendation.toLowerCase());
-        if (normalizedRecommendations.some((recommendation) => recommendation.includes('vent') || recommendation.includes('환기'))) {
-          setControlValue('ventilation', true);
-        }
-        if (normalizedRecommendations.some((recommendation) => recommendation.includes('irrig') || recommendation.includes('관수'))) {
-          setControlValue('irrigation', true);
-        }
-        if (normalizedRecommendations.some((recommendation) => recommendation.includes('heat') || recommendation.includes('난방'))) {
-          setControlValue('heating', true);
-        }
-        if (normalizedRecommendations.some((recommendation) => recommendation.includes('shade') || recommendation.includes('차광'))) {
-          setControlValue('shading', true);
-        }
-      });
+      rtrProfilesPayload?.profiles[selectedCrop] ?? null);
     return didAnalyze ? 'success' : 'failed';
   }, [
     analyzeData,
@@ -1038,7 +1064,7 @@ function App() {
     producePrices,
     rtrProfilesPayload,
     selectedCrop,
-    setControlValue,
+    telemetry.status,
     weather,
   ]);
 
@@ -1125,29 +1151,8 @@ function App() {
           ? heroCopy.optimizerReady
           : heroCopy.optimizerBlocked;
 
-  const localizedAdvisorySurfaceNames = smartGrowSummary
-    ? localizeSmartGrowSurfaceNames(smartGrowSummary.advisorySurfaceNames, locale)
-    : [];
-
-  const smartGrowHeroSummary = smartGrowSummary
-    ? localizedAdvisorySurfaceNames.length > 0
-      ? (
-          locale === 'ko'
-            ? `바로 열 수 있는 도구 ${localizedAdvisorySurfaceNames.join(', ')}를 운영 판단과 연결할 수 있습니다.`
-            : `Open ${localizedAdvisorySurfaceNames.join(', ')} directly from the operating flow.`
-        )
-      : smartGrowSummary.pendingParsers.length > 0
-        ? (
-            locale === 'ko'
-              ? `추가 파서 준비 항목: ${smartGrowSummary.pendingParsers.join(', ')}`
-              : `Pending parser setup: ${smartGrowSummary.pendingParsers.join(', ')}`
-          )
-        : null
-    : null;
-
   const heroSummary = aiDisplay?.summary
     ?? aiModelRuntime?.summary
-    ?? smartGrowHeroSummary
     ?? heroCopy.fallbackSummary;
 
   const runtimeImportantIssue = runtimeViolations[0]
@@ -1165,11 +1170,6 @@ function App() {
     heroCopy.jumpKnowledge,
   ].filter((value): value is string => Boolean(value)))).slice(0, 3);
 
-  const derivedSourceSinkBalance = deriveSourceSinkBalance({
-    crop: selectedCrop,
-    currentData,
-    metrics: modelMetrics,
-  });
   const latestMetricHistoryPoint = metricHistory[metricHistory.length - 1];
   const liveSourceSinkBalance = useMemo(() => {
     const explicitBalance = latestMetricHistoryPoint?.sourceSinkBalance;
@@ -1186,8 +1186,8 @@ function App() {
     ) {
       return (sourceCapacity - sinkDemand) / Math.max(1, Math.abs(sourceCapacity) + Math.abs(sinkDemand));
     }
-    return derivedSourceSinkBalance;
-  }, [derivedSourceSinkBalance, latestMetricHistoryPoint]);
+    return null;
+  }, [latestMetricHistoryPoint]);
   const liveSourceSinkSeries = useMemo(() => {
     const series = metricHistory
       .map((metricPoint) => {
@@ -1216,42 +1216,7 @@ function App() {
             value: (sourceCapacity - sinkDemand) / Math.max(1, Math.abs(sourceCapacity) + Math.abs(sinkDemand)),
           };
         }
-        const pointMetrics = {
-          ...modelMetrics,
-          growth: {
-            ...modelMetrics.growth,
-            lai: metricPoint.lai,
-            biomass: metricPoint.biomass,
-            growthRate: metricPoint.growthRate,
-            activeTrusses: metricPoint.activeTrusses ?? modelMetrics.growth.activeTrusses,
-            nodeCount: metricPoint.nodeCount ?? modelMetrics.growth.nodeCount,
-          },
-          yield: {
-            ...modelMetrics.yield,
-            predictedWeekly: metricPoint.predictedWeeklyYield,
-            harvestableFruits: metricPoint.harvestableFruits,
-          },
-          energy: {
-            ...modelMetrics.energy,
-            consumption: metricPoint.energyConsumption,
-            loadKw: metricPoint.energyLoadKw,
-            efficiency: metricPoint.energyEfficiency,
-          },
-        };
-
-        return {
-          timestamp: simulationTimestamp,
-          value: deriveSourceSinkBalance({
-            crop: selectedCrop,
-            currentData: {
-              ...currentData,
-              timestamp: metricPoint.timestamp,
-              receivedAtTimestamp: metricPoint.receivedAtTimestamp,
-              photosynthesis: metricPoint.photosynthesis ?? currentData.photosynthesis,
-            },
-            metrics: pointMetrics,
-          }),
-        };
+        return null;
       })
       .filter((point): point is { timestamp: number; value: number } => point !== null)
       .sort((left, right) => left.timestamp - right.timestamp);
@@ -1261,7 +1226,7 @@ function App() {
     }
 
     const currentTimestamp = Number(currentData.timestamp);
-    if (!Number.isFinite(currentTimestamp)) {
+    if (!Number.isFinite(currentTimestamp) || liveSourceSinkBalance === null) {
       return [];
     }
 
@@ -1269,14 +1234,14 @@ function App() {
       timestamp: currentTimestamp,
       value: liveSourceSinkBalance,
     }];
-  }, [currentData, liveSourceSinkBalance, metricHistory, modelMetrics, selectedCrop]);
+  }, [currentData.timestamp, liveSourceSinkBalance, metricHistory]);
 
   const alertItems: AlertRailItem[] = [
     ...(telemetry.status === 'offline'
       ? [{
           id: 'telemetry-offline',
           severity: 'critical' as const,
-          title: locale === 'ko' ? '텔레메트리 연결 끊김' : 'Telemetry offline',
+          title: locale === 'ko' ? '데이터 연결 끊김' : 'Data connection lost',
           body: heroCopy.telemetryOffline,
         }]
       : telemetry.status === 'stale' || telemetry.status === 'delayed'
@@ -1372,8 +1337,8 @@ function App() {
       eyebrow={locale === 'ko' ? '작물 어드바이저' : 'Crop advisor'}
       title={locale === 'ko' ? '생육·환경·작업 판단' : 'Growth, Environment, and Work'}
       description={locale === 'ko'
-        ? '생육, 환경, 농작업 탭을 실제 어드바이저 API와 연결해 확인합니다.'
-        : 'Review growth, environment, and work tabs through the live advisor API.'}
+        ? '환경과 생육 상태를 함께 보고 오늘 필요한 작업을 정합니다.'
+        : 'Review the environment and crop growth to plan today’s work.'}
       initialTab={growthAdvisorInitialTab}
       onClose={() => navigate('/crop-work')}
     />
@@ -1385,8 +1350,8 @@ function App() {
       eyebrow={locale === 'ko' ? '양액 어드바이저' : 'Nutrient advisor'}
       title={locale === 'ko' ? '양액 레시피와 보정' : 'Nutrient Recipe and Correction'}
       description={locale === 'ko'
-        ? '양액 레시피와 배액 기반 보정 초안을 실제 어드바이저 API로 실행합니다.'
-        : 'Run nutrient recipe and drain-feedback correction through the live advisor API.'}
+        ? '양액 조성과 배액 상태를 비교해 보정할 항목을 확인합니다.'
+        : 'Compare nutrient composition and drainage to review adjustments.'}
       initialTab="nutrient"
       initialCorrectionToolOpen={location.hash === '#correction'}
       onClose={() => navigate('/resources')}
@@ -1399,8 +1364,8 @@ function App() {
       eyebrow={locale === 'ko' ? '방제 어드바이저' : 'Protection advisor'}
       title={locale === 'ko' ? '병해충·농약 검토' : 'Pest and Pesticide Review'}
       description={locale === 'ko'
-        ? '등록 우선 농약 후보와 교호 사용 순서를 실제 어드바이저 API로 확인합니다.'
-        : 'Review registered-first pesticide candidates and rotation order through the live advisor API.'}
+        ? '등록 여부와 교호 사용 순서를 확인해 방제 후보를 검토합니다.'
+        : 'Review pesticide registration and rotation before selecting a treatment.'}
       initialTab="pesticide"
       onClose={() => navigate('/alerts')}
     />
@@ -1412,8 +1377,8 @@ function App() {
       eyebrow={locale === 'ko' ? '수확·시세 어드바이저' : 'Harvest and market advisor'}
       title={locale === 'ko' ? '수확과 시세 판단' : 'Harvest and Market Decisions'}
       description={locale === 'ko'
-        ? '수확 흐름과 시세 문맥을 실제 어드바이저 API로 함께 확인합니다.'
-        : 'Review harvest flow and market context through the live advisor API.'}
+        ? '수확 기록과 시장 가격을 함께 비교합니다.'
+        : 'Compare harvest records with market prices.'}
       initialTab="harvest_market"
       onClose={() => navigate('/crop-work')}
     />
@@ -1517,9 +1482,79 @@ function App() {
     />
   );
 
+  const greenhouseScene = (
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-[color:var(--sg-outline-soft)] bg-white">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[color:var(--sg-outline-soft)] px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-bold text-[color:var(--sg-text-strong)]">{locale === 'ko' ? '온실 공간 보기' : 'Greenhouse scene'}</h2>
+          <p className="mt-0.5 text-xs text-[color:var(--sg-text-muted)]">
+            {sceneFrames.length
+              ? new Date(selectedSceneFrame?.sensor.timestamp ?? currentData.timestamp).toLocaleString(locale === 'ko' ? 'ko-KR' : 'en-GB', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' KST'
+              : (locale === 'ko' ? '시뮬레이션 데이터 대기 중' : 'Waiting for simulation data')}
+            {sceneTimestamp !== null ? (locale === 'ko' ? ' · 과거 시점' : ' · Replay') : ''}
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={sceneFrames.length < 2}
+          aria-label={scenePlaying ? (locale === 'ko' ? '시간 재생 일시정지' : 'Pause timeline') : (locale === 'ko' ? '시간 재생' : 'Play timeline')}
+          onClick={() => {
+            if (!scenePlaying && (sceneTimestamp === null || sceneTimestamp === sceneFrames.at(-1)?.sensor.timestamp)) {
+              setSelectedSceneTimestamp(sceneFrames[0]?.sensor.timestamp ?? null);
+            }
+            setScenePlaying(value => !value);
+          }}
+          className="rounded-lg border border-[color:var(--sg-outline-soft)] p-2 text-[color:var(--sg-color-primary)] disabled:opacity-40"
+        >
+          {scenePlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        </button>
+        <input
+          type="range"
+          aria-label={locale === 'ko' ? '장면과 그래프 시간' : 'Scene and chart time'}
+          min={0}
+          max={Math.max(sceneFrames.length - 1, 0)}
+          step={1}
+          value={sceneTimestamp === null ? Math.max(sceneFrames.length - 1, 0) : Math.max(sceneFrames.findIndex(frame => frame.sensor.timestamp === sceneTimestamp), 0)}
+          disabled={sceneFrames.length < 2}
+          onChange={event => {
+            setScenePlaying(false);
+            setSelectedSceneTimestamp(sceneFrames[Number(event.target.value)]?.sensor.timestamp ?? null);
+          }}
+          className="min-w-24 flex-1 accent-[color:var(--sg-color-primary)]"
+        />
+        <button type="button" onClick={() => { setScenePlaying(false); setSelectedSceneTimestamp(null); }} className="rounded-lg bg-[color:var(--sg-color-primary-soft)] px-3 py-2 text-xs font-semibold text-[color:var(--sg-color-primary)]">
+          {locale === 'ko' ? '최신 시점' : 'Latest'}
+        </button>
+      </div>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <GreenhouseScene
+          crop={selectedCrop}
+          currentData={selectedSceneFrame?.sensor ?? (history.length ? currentData : { ...currentData, timestamp: 0 })}
+          metrics={selectedSceneFrame?.metrics ?? modelMetrics}
+          history={sceneFrames.map(frame => frame.sensor)}
+          selectedTimestamp={sceneTimestamp}
+          onTimestampChange={timestamp => { setScenePlaying(false); setSelectedSceneTimestamp(timestamp); }}
+        />
+      </Suspense>
+    </div>
+  );
+
   const overviewRouteElement = (
     <Suspense fallback={<RouteLoadingFallback />}>
       <OverviewRoutePage
+        scene={greenhouseScene}
+        selectedTimestamp={sceneTimestamp}
+        siteName={locale === 'ko' ? '경북대 온실' : 'KNU greenhouse'}
+        siteCoordinates={{ latitude: 35.89563490480227, longitude: 128.61344881397602 }}
+        cropSelector={(
+          <div role="group" aria-label={locale === 'ko' ? '작물 선택' : 'Select crop'} className="inline-flex rounded-xl border border-[color:var(--sg-outline-soft)] bg-white p-1">
+            {(['Tomato', 'Cucumber'] as const).map(crop => (
+              <button key={crop} type="button" aria-pressed={selectedCrop === crop} onClick={() => setSelectedCrop(crop)} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${selectedCrop === crop ? 'bg-[color:var(--sg-color-primary)] text-white' : 'text-[color:var(--sg-text-muted)] hover:bg-[color:var(--sg-color-primary-soft)]'}`}>
+                {getCropLabel(crop, locale)}
+              </button>
+            ))}
+          </div>
+        )}
         locale={locale}
         crop={selectedCrop}
         telemetryStatus={telemetry.status}
@@ -1576,7 +1611,10 @@ function App() {
 
   if (shouldRenderStandaloneOverview) {
     return (
-      <div className="min-h-screen bg-[color:var(--sg-bg)] px-4 py-4 font-sans text-[color:var(--sg-text)] sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-[color:var(--sg-bg)] px-3 py-3 font-sans text-[color:var(--sg-text)] sm:px-6 sm:py-5">
+        <div className="mx-auto mb-4 max-w-[1600px]">
+          <GlobalTopNav activeKey={activeGlobalNavigationKey} onOpenAssistant={handleChatToggle} onNavigate={handleGlobalNavigationSelect} />
+        </div>
         <Routes>
           <Route path="/" element={<Navigate to="/overview" replace />} />
           <Route path="/overview" element={overviewRouteElement} />

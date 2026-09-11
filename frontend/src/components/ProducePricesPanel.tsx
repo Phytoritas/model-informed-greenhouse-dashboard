@@ -7,8 +7,6 @@ import {
     Sprout,
 } from 'lucide-react';
 import {
-    CartesianGrid,
-    Legend,
     Line,
     LineChart,
     ReferenceLine,
@@ -26,7 +24,19 @@ import type {
     ProducePricesPayload,
 } from '../types';
 import { getProduceDisplayName } from '../utils/displayCopy';
-import ChartFrame from './charts/ChartFrame';
+import ChartFrame, { ChartSeriesLegend } from './charts/ChartFrame';
+import {
+    chartSeries,
+    DASHBOARD_CHART_ANNOTATION,
+    DASHBOARD_CHART_AXIS_PROPS,
+    DASHBOARD_CHART_CURSOR,
+    DASHBOARD_CHART_HEIGHT,
+    DASHBOARD_CHART_RULE_STROKE,
+    DASHBOARD_CHART_TOOLTIP_ITEM_STYLE,
+    DASHBOARD_CHART_TOOLTIP_LABEL_STYLE,
+    DASHBOARD_CHART_TOOLTIP_STYLE,
+    seriesLineProps,
+} from './charts/chartStyles';
 import DashboardCard from './common/DashboardCard';
 import { StatusChip, type StatusChipTone } from './ui/status-chip';
 
@@ -82,6 +92,15 @@ const formatSurveyDay = (locale: AppLocale, date: string): string => {
 
 const formatShortDate = (locale: AppLocale, date: string): string =>
     formatLocaleDate(locale, `${date}T00:00:00`, { month: 'short', day: 'numeric' });
+
+/**
+ * Every price series shares one KRW axis, so the four lines are separated by
+ * the theme's dash and marker cycle rather than by unit.
+ */
+const ACTUAL_SERIES_INDEX = 0;
+const NORMAL_3Y_SERIES_INDEX = 3;
+const NORMAL_5Y_SERIES_INDEX = 2;
+const NORMAL_10Y_SERIES_INDEX = 1;
 
 const coverageRangeLabel = (
     points: ProducePricesPayload['trend']['series'][number]['points'],
@@ -222,7 +241,7 @@ const ComparisonChip = ({
     locale: AppLocale;
 }) => (
     <div className="rounded-[var(--sg-radius-md)] bg-white/82 px-3 py-3 shadow-[var(--sg-shadow-card)]">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{label}</div>
+        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">{label}</div>
         <div className="sg-data-number mt-2 font-semibold text-[color:var(--sg-text-strong)]">{formatKrw(locale, price)}</div>
     </div>
 );
@@ -253,7 +272,7 @@ const PriceChangeChip = ({
         <StatusChip
             tone={tone}
             icon={<Icon className="h-3.5 w-3.5" aria-hidden="true" />}
-            className="justify-between gap-2 px-2.5 py-1.5 text-[11px]"
+            className="justify-between gap-2 px-2.5 py-1.5 text-xs"
         >
             <span>{label}</span>
             <span className="sg-data-number font-bold">{formatSignedPercent(percent)}</span>
@@ -303,14 +322,14 @@ const ProducePriceCard = ({
                     <div className="mt-1 text-sm font-bold text-[color:var(--sg-text-strong)]">
                         {getProduceDisplayName(item.display_name, locale)}
                     </div>
-                    <div className="mt-1 text-[11px] text-[color:var(--sg-text-muted)]">
+                    <div className="mt-1 text-xs text-[color:var(--sg-text-muted)]">
                         {sourceProvider} · {item.unit} · {copy.reference} {item.latest_day}
                     </div>
                 </div>
                 <StatusChip
                     tone={direction.tone}
                     icon={<direction.Icon className="h-3.5 w-3.5" aria-hidden="true" />}
-                    className="shrink-0 px-2.5 py-1.5 text-[11px]"
+                    className="shrink-0 px-2.5 py-1.5 text-xs"
                 >
                     <span>{direction.label}</span>
                 </StatusChip>
@@ -326,7 +345,7 @@ const ProducePriceCard = ({
                 </div>
             </div>
 
-            <div className="mt-auto grid grid-cols-2 gap-2 pt-3 text-[11px] text-[color:var(--sg-text-muted)]">
+            <div className="mt-auto grid grid-cols-2 gap-2 pt-3 text-xs text-[color:var(--sg-text-muted)]">
                 <ComparisonChip
                     label={copy.previousDay}
                     price={item.previous_day_price_krw}
@@ -410,11 +429,11 @@ const TrendChart = ({
                         <LineChartIcon className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />
                         <span>{copy.title}</span>
                     </div>
-                    <p className="mt-1 text-[11px] leading-relaxed text-[color:var(--sg-text-muted)]">
+                    <p className="mt-1 text-xs leading-relaxed text-[color:var(--sg-text-muted)]">
                         {copy.description}
                     </p>
                 </div>
-                <div className="rounded-[var(--sg-radius-lg)] bg-white/88 px-3 py-2 text-right text-[11px] text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
+                <div className="rounded-[var(--sg-radius-lg)] bg-white/88 px-3 py-2 text-right text-xs text-[color:var(--sg-text-muted)] shadow-[var(--sg-shadow-card)]">
                     <div>{copy.reference}</div>
                     <div className="mt-1 font-semibold text-[color:var(--sg-text-strong)]">
                         {formatSurveyDay(locale, prices.trend.reference_date)}
@@ -439,30 +458,39 @@ const TrendChart = ({
                 ))}
             </div>
 
-            <ChartFrame className="mt-4 h-72 lg:h-[22rem]" minHeight={256}>
+            <ChartSeriesLegend
+                className="mt-4"
+                entries={[
+                    { label: copy.actual, seriesIndex: ACTUAL_SERIES_INDEX },
+                    { label: copy.normal3, seriesIndex: NORMAL_3Y_SERIES_INDEX },
+                    { label: copy.normal5, seriesIndex: NORMAL_5Y_SERIES_INDEX },
+                    { label: copy.normal10, seriesIndex: NORMAL_10Y_SERIES_INDEX },
+                ]}
+            />
+            <ChartFrame className="mt-2" minHeight={DASHBOARD_CHART_HEIGHT.tall} style={{ height: DASHBOARD_CHART_HEIGHT.tall }}>
                 {({ width, height }) => (
-                    <LineChart width={Math.max(width, 1)} height={Math.max(height, 256)} data={selectedSeries.points} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--sg-outline-soft)" />
+                    <LineChart
+                        width={Math.max(width, 1)}
+                        height={Math.max(height, DASHBOARD_CHART_HEIGHT.tall)}
+                        data={selectedSeries.points}
+                        margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
+                    >
                         <XAxis
+                            {...DASHBOARD_CHART_AXIS_PROPS}
                             dataKey="date"
                             tickFormatter={(value) => formatShortDate(locale, String(value))}
-                            stroke="var(--sg-text-faint)"
-                            tick={{ fontSize: 11 }}
                             minTickGap={16}
                         />
                         <YAxis
-                            stroke="var(--sg-text-faint)"
-                            tick={{ fontSize: 11 }}
+                            {...DASHBOARD_CHART_AXIS_PROPS}
                             tickFormatter={(value: number) => formatCompactKrw(locale, value)}
-                            width={72}
+                            width={78}
                         />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: 'var(--sg-surface-raised)',
-                                border: '1px solid var(--sg-outline-soft)',
-                                borderRadius: 'var(--sg-radius-md)',
-                                boxShadow: 'var(--sg-shadow-card)',
-                            }}
+                            contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
+                            labelStyle={DASHBOARD_CHART_TOOLTIP_LABEL_STYLE}
+                            itemStyle={DASHBOARD_CHART_TOOLTIP_ITEM_STYLE}
+                            cursor={DASHBOARD_CHART_CURSOR}
                             labelFormatter={(value) => formatSurveyDay(locale, String(value))}
                             formatter={(value, name, item) => {
                                 if (typeof value !== 'number') {
@@ -483,61 +511,42 @@ const TrendChart = ({
                                 return [formatKrw(locale, value), name];
                             }}
                         />
-                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
                         <ReferenceLine
                             x={prices.trend.reference_date}
-                            stroke="var(--sg-text-faint)"
+                            stroke={DASHBOARD_CHART_RULE_STROKE}
                             strokeDasharray="4 4"
-                            label={{ value: copy.ref, position: 'top', fill: 'var(--sg-text-faint)', fontSize: 11 }}
+                            label={{ value: copy.ref, position: 'top', ...DASHBOARD_CHART_ANNOTATION }}
                         />
                         <Line
-                            type="monotone"
+                            {...seriesLineProps(ACTUAL_SERIES_INDEX)}
                             dataKey="actual_price_krw"
                             name={copy.actual}
-                            stroke="var(--sg-color-primary)"
-                            strokeWidth={3}
-                            dot={false}
-                            activeDot={{ r: 4 }}
-                            connectNulls={false}
+                            strokeWidth={2.4}
+                            activeDot={{ ...seriesLineProps(ACTUAL_SERIES_INDEX).activeDot, fill: chartSeries(ACTUAL_SERIES_INDEX).fill }}
                         />
                         <Line
-                            type="monotone"
+                            {...seriesLineProps(NORMAL_3Y_SERIES_INDEX)}
                             dataKey="normal_3y_price_krw"
                             name={copy.normal3}
-                            stroke="var(--sg-accent-forest)"
-                            strokeWidth={2}
-                            strokeDasharray="4 4"
-                            dot={false}
-                            activeDot={{ r: 3 }}
-                            connectNulls={false}
+                            activeDot={{ ...seriesLineProps(NORMAL_3Y_SERIES_INDEX).activeDot, fill: chartSeries(NORMAL_3Y_SERIES_INDEX).fill }}
                         />
                         <Line
-                            type="monotone"
+                            {...seriesLineProps(NORMAL_5Y_SERIES_INDEX)}
                             dataKey="normal_5y_price_krw"
                             name={copy.normal5}
-                            stroke="var(--sg-accent-amber)"
-                            strokeWidth={2}
-                            strokeDasharray="6 4"
-                            dot={false}
-                            activeDot={{ r: 3 }}
-                            connectNulls={false}
+                            activeDot={{ ...seriesLineProps(NORMAL_5Y_SERIES_INDEX).activeDot, fill: chartSeries(NORMAL_5Y_SERIES_INDEX).fill }}
                         />
                         <Line
-                            type="monotone"
+                            {...seriesLineProps(NORMAL_10Y_SERIES_INDEX)}
                             dataKey="normal_10y_price_krw"
                             name={copy.normal10}
-                            stroke="var(--sg-accent-earth)"
-                            strokeWidth={2}
-                            strokeDasharray="8 4"
-                            dot={false}
-                            activeDot={{ r: 3 }}
-                            connectNulls={false}
+                            activeDot={{ ...seriesLineProps(NORMAL_10Y_SERIES_INDEX).activeDot, fill: chartSeries(NORMAL_10Y_SERIES_INDEX).fill }}
                         />
                     </LineChart>
                 )}
             </ChartFrame>
 
-            <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-[color:var(--sg-text-muted)] sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-[color:var(--sg-text-muted)] sm:grid-cols-2">
                 <div className="rounded-[var(--sg-radius-md)] bg-white/88 px-3 py-3 shadow-[var(--sg-shadow-card)]">
                     <div className="font-medium text-[color:var(--sg-text-strong)]">{copy.seriesWindow}</div>
                     <div className="mt-1">
@@ -553,7 +562,7 @@ const TrendChart = ({
             </div>
 
             {unavailableSeries.length > 0 ? (
-                <div className="mt-3 rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-amber)] px-3 py-3 text-[11px] text-[color:var(--sg-accent-amber)]">
+                <div className="mt-3 rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-amber)] px-3 py-3 text-xs text-[color:var(--sg-accent-amber)]">
                     {copy.unavailablePrefix} {unavailableSeries.map((series) => getProduceDisplayName(series.display_name, locale)).join(', ')}. {copy.unavailableSuffix}
                 </div>
             ) : null}
@@ -676,7 +685,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                             key={marketKey}
                                             type="button"
                                             onClick={() => setSelectedMarket(marketKey)}
-                                            className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
+                                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                                                 marketKey === activeMarketKey
                                                     ? 'bg-[color:var(--sg-accent-forest)] text-white shadow-[var(--sg-shadow-card)]'
                                                     : 'text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]'
@@ -687,7 +696,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                                     ))}
                                 </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[color:var(--sg-text-muted)]">
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--sg-text-muted)]">
                                 <span>
                                     {copy.surveyBasis}
                                     {' '}
@@ -724,7 +733,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                             {buildProduceSummary(prices, activeMarket, locale)}
                         </p>
                         {sourceHealth?.degraded ? (
-                            <div className="mt-2 rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-amber)] px-3 py-2 text-[11px] leading-relaxed text-[color:var(--sg-accent-amber)]">
+                            <div className="mt-2 rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-amber)] px-3 py-2 text-xs leading-relaxed text-[color:var(--sg-accent-amber)]">
                                 {sourceHealth.detail}
                             </div>
                         ) : null}
@@ -753,7 +762,7 @@ const ProducePricesPanel = ({ prices, loading, error }: ProducePricesPanelProps)
                         </div>
 
                         {activeMarketKey !== prices.trend.market_key ? (
-                            <div className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-[11px] text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
+                            <div className="rounded-[var(--sg-radius-lg)] bg-[color:var(--sg-tint-blue)] px-4 py-3 text-xs text-[color:var(--sg-accent-blue)] shadow-[var(--sg-shadow-card)]">
                                 <div className="font-semibold">{copy.trendNoteTitle}</div>
                                 <div className="mt-1 leading-relaxed">{copy.trendNote}</div>
                             </div>

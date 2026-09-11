@@ -1,16 +1,47 @@
 import { Calendar, Droplets, Leaf, Zap } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, Tooltip, XAxis, YAxis } from 'recharts';
 import type { CropType, ForecastData } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
 import { UNIT_LABELS, getCropLabel, getForecastTitle } from '../utils/displayCopy';
 import DashboardCard from './common/DashboardCard';
+import ScientificText from './common/ScientificText';
 import ChartFrame from './charts/ChartFrame';
+import { DASHBOARD_CHART_AXIS_PROPS, DASHBOARD_CHART_MARGIN, DASHBOARD_CHART_TOOLTIP_STYLE, seriesBarProps } from './charts/chartStyles';
 import { StatusChip } from './ui/status-chip';
 
 interface ForecastPanelProps {
     forecast: ForecastData | null;
     crop: CropType;
 }
+
+type HarvestBasis = 'fresh' | 'dry' | 'none';
+
+function isFiniteNumber(value: number | null | undefined): value is number {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** Read a named physical quantity without substituting another mass balance. */
+function readOptionalNumber(source: unknown, keys: readonly string[]): number | null {
+    if (!source || typeof source !== 'object') {
+        return null;
+    }
+    const record = source as Record<string, unknown>;
+    for (const key of keys) {
+        const value = record[key];
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value;
+        }
+    }
+    return null;
+}
+
+const TOTAL_DRY_KEYS = [
+    'total_fruit_growth_dry_kg',
+] as const;
+
+const DAILY_DRY_KEYS = [
+    'fruit_growth_dry_kg',
+] as const;
 
 function ForecastMetricTile({
     icon: Icon,
@@ -40,15 +71,15 @@ function ForecastMetricTile({
         >
             <div className="flex items-center gap-1.5">
                 <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                <span className="text-xs font-semibold leading-5 text-[color:var(--sg-text-muted)]">
                     {label}
                 </span>
             </div>
-            <div className="mt-1 flex items-baseline gap-1.5 text-[color:var(--sg-text-strong)]">
+            <div className="mt-1 flex flex-wrap items-baseline gap-1.5 text-[color:var(--sg-text-strong)]">
                 <span className="sg-data-number text-lg font-bold leading-none">{value}</span>
-                <span className="text-[11px] font-medium text-[color:var(--sg-text-muted)]">{unit}</span>
+                {unit ? <ScientificText text={unit} className="scientific-unit text-xs font-medium text-[color:var(--sg-text-muted)]" /> : null}
             </div>
-            <p className="mt-1 text-[11px] leading-4 text-[color:var(--sg-text-muted)]">
+            <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">
                 {body}
             </p>
         </article>
@@ -81,6 +112,21 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
             harvestYield: '일별 수확량',
             cropTranspiration: '일별 증산량',
             noDataBody: '예측이 아직 준비되지 않았습니다.',
+            dryYield: '7일 과실 건물 증가량(모델)',
+            dryYieldBody: '생과 수확량이 확정되지 않아 모델이 계산한 과실 건물중 증가량을 표시합니다.',
+            dryLead: '생과 수확량 미확정',
+            dryLeadDescription: '아직 생과 기준 수확량이 확정되지 않아, 과실 건물 증가량으로 이번 주 생산 흐름을 읽습니다.',
+            unknownYield: '수확 예측 없음',
+            unknownYieldBody: '수확량과 과실 건물 증가량 모두 계산되지 않았습니다.',
+            energyUnknown: '계산 안 됨',
+            energyUnknownBody: '에너지 사용량은 이번 예측에서 계산되지 않았습니다.',
+            dryHarvestSeries: '일별 과실 건물 증가량',
+            transpirationUnknownBody: '증산량은 이번 예측에서 계산되지 않았습니다.',
+            refreshFailed: '예측 갱신 실패',
+            staleResult: '아래 값은 마지막으로 성공한 예측이며 최신 상태가 아닙니다.',
+            unavailable: '예측을 사용할 수 없습니다',
+            unavailableBody: '이번 예측 데이터가 비어 있거나 유효하지 않아 값을 표시하지 않습니다.',
+            refreshedAt: '마지막 갱신',
         }
         : {
             eyebrow: 'Growth outlook',
@@ -104,7 +150,29 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
             harvestYield: 'Daily harvest',
             cropTranspiration: 'Daily transpiration',
             noDataBody: 'Forecast data is not available yet.',
+            dryYield: '7-day fruit dry-matter gain (model)',
+            dryYieldBody: 'Fresh harvest is not resolved, so the model’s fruit dry-mass gain is shown instead.',
+            dryLead: 'Fresh harvest not resolved',
+            dryLeadDescription: 'Fresh-weight harvest is not resolved yet, so read this week from modelled fruit dry-matter gain.',
+            unknownYield: 'No harvest projection',
+            unknownYieldBody: 'Neither fresh harvest nor fruit dry-matter gain was computed.',
+            energyUnknown: 'Not computed',
+            energyUnknownBody: 'Energy use was not computed for this forecast.',
+            dryHarvestSeries: 'Daily fruit dry-matter gain',
+            transpirationUnknownBody: 'Transpiration was not computed for this forecast.',
+            refreshFailed: 'Forecast refresh failed',
+            staleResult: 'The values below come from the last successful forecast and are not current.',
+            unavailable: 'Forecast unavailable',
+            unavailableBody: 'This forecast payload is empty or invalid, so no values are shown.',
+            refreshedAt: 'Last refreshed',
         };
+
+    const refreshError = forecast && typeof forecast.refresh_error === 'string' && forecast.refresh_error.trim()
+        ? forecast.refresh_error.trim()
+        : null;
+    const refreshedAt = forecast && typeof forecast.refreshed_at === 'string' && forecast.refreshed_at.trim()
+        ? forecast.refreshed_at.trim()
+        : null;
 
     if (!forecast || !forecast.daily || forecast.daily.length === 0) {
         return (
@@ -120,15 +188,82 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
                 >
                     <Calendar className="mx-auto h-10 w-10 text-[color:var(--sg-text-faint)]" />
-                    <p className="mt-4 text-sm font-medium text-[color:var(--sg-text-strong)]">{copy.waiting}</p>
-                    <p className="mt-2 text-xs text-[color:var(--sg-text-muted)]">{copy.noDataBody}</p>
+                    <p className="mt-4 text-sm font-medium text-[color:var(--sg-text-strong)]">
+                        {refreshError ? copy.unavailable : copy.waiting}
+                    </p>
+                    <p className="mt-2 text-xs text-[color:var(--sg-text-muted)]">
+                        {refreshError ? copy.unavailableBody : copy.noDataBody}
+                    </p>
+                    {refreshError ? (
+                        <p
+                            role="alert"
+                            className="mx-auto mt-3 max-w-[520px] rounded-[var(--sg-radius-sm)] bg-[color:var(--sg-status-offline-bg)] px-3 py-2 text-xs font-semibold text-[color:var(--sg-status-offline-text)]"
+                        >
+                            {copy.refreshFailed}: {refreshError}
+                        </p>
+                    ) : null}
                 </div>
             </DashboardCard>
         );
     }
 
-    const hasHarvest = (forecast.total_harvest_kg ?? 0) > 0.001;
-    const leadNarrative = hasHarvest ? copy.leadWithHarvest : copy.leadWithoutHarvest;
+    const freshTotal = isFiniteNumber(forecast.total_harvest_kg) ? forecast.total_harvest_kg : null;
+    const dryTotal = readOptionalNumber(forecast, TOTAL_DRY_KEYS);
+    const energyTotal = isFiniteNumber(forecast.total_energy_kWh) ? forecast.total_energy_kWh : null;
+    const transpirationTotal = isFiniteNumber(forecast.total_ETc_mm) ? forecast.total_ETc_mm : null;
+    const dailyDryKey = DAILY_DRY_KEYS.find((key) => forecast.daily.some(
+        (day) => readOptionalNumber(day, [key]) !== null,
+    )) ?? DAILY_DRY_KEYS[0];
+
+    const harvestBasis: HarvestBasis = freshTotal !== null
+        ? 'fresh'
+        : dryTotal !== null
+            ? 'dry'
+            : 'none';
+    const hasHarvest = freshTotal !== null && freshTotal > 0.001;
+
+    let yieldTileLabel = copy.yield;
+    let yieldTileBody = copy.unknownYieldBody;
+    let yieldTileValue = copy.unknownYield;
+    let yieldTileUnit = '';
+    let leadValue = copy.unknownYield;
+    let leadNarrative = copy.unknownYieldBody;
+
+    if (freshTotal !== null) {
+        yieldTileBody = copy.yieldBody;
+        yieldTileValue = freshTotal.toFixed(1);
+        yieldTileUnit = UNIT_LABELS.weeklyYield;
+        leadValue = hasHarvest ? `${freshTotal.toFixed(1)} ${UNIT_LABELS.weeklyYield}` : copy.noHarvest;
+        leadNarrative = hasHarvest ? copy.leadWithHarvest : copy.noHarvestDescription;
+    } else if (dryTotal !== null) {
+        yieldTileLabel = copy.dryYield;
+        yieldTileBody = copy.dryYieldBody;
+        yieldTileValue = dryTotal.toFixed(2);
+        yieldTileUnit = UNIT_LABELS.weeklyYield;
+        leadValue = `${dryTotal.toFixed(2)} ${UNIT_LABELS.weeklyYield} · ${copy.dryLead}`;
+        leadNarrative = copy.dryLeadDescription;
+    }
+
+    const energyValue = energyTotal !== null ? energyTotal.toFixed(1) : copy.energyUnknown;
+    const energyUnit = energyTotal !== null ? UNIT_LABELS.energyUse : '';
+    const energyBody = energyTotal !== null ? copy.energyBody : copy.energyUnknownBody;
+    const energySummary = energyTotal !== null
+        ? `${energyTotal.toFixed(1)} ${UNIT_LABELS.energyUse}`
+        : `${copy.energyUse} ${copy.energyUnknown}`;
+
+    const transpirationValue = transpirationTotal !== null
+        ? transpirationTotal.toFixed(1)
+        : copy.energyUnknown;
+    const transpirationUnit = transpirationTotal !== null ? UNIT_LABELS.transpirationDepth : '';
+    const transpirationBody = transpirationTotal !== null
+        ? copy.transpirationBody
+        : copy.transpirationUnknownBody;
+    const transpirationSummary = transpirationTotal !== null
+        ? `${transpirationTotal.toFixed(1)} ${UNIT_LABELS.transpirationDepth}`
+        : `${copy.transpiration} ${copy.energyUnknown}`;
+
+    const harvestSeriesKey = harvestBasis === 'dry' ? dailyDryKey : 'harvest_kg';
+    const harvestSeriesName = harvestBasis === 'dry' ? copy.dryHarvestSeries : copy.harvestYield;
 
     return (
         <DashboardCard
@@ -143,6 +278,20 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
             )}
         >
             <div className="flex flex-col gap-3">
+                {refreshError ? (
+                    <section
+                        role="alert"
+                        className="rounded-[var(--sg-radius-lg)] border border-[color:var(--sg-status-offline-text)]/30 bg-[color:var(--sg-status-offline-bg)] px-4 py-3"
+                    >
+                        <p className="text-sm font-bold text-[color:var(--sg-status-offline-text)]">
+                            {copy.refreshFailed}: {refreshError}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[color:var(--sg-status-offline-text)]">
+                            {copy.staleResult}
+                            {refreshedAt ? ` (${copy.refreshedAt}: ${refreshedAt})` : ''}
+                        </p>
+                    </section>
+                ) : null}
                 <section
                     className="rounded-[var(--sg-radius-lg)] bg-white/78 px-4 py-3"
                     style={{ boxShadow: 'var(--sg-shadow-card)' }}
@@ -151,41 +300,41 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
                             <span className="sg-eyebrow">{copy.leadTitle}</span>
                             <span className="sg-data-number text-lg font-bold leading-none text-[color:var(--sg-text-strong)]">
-                                {hasHarvest ? `${forecast.total_harvest_kg.toFixed(1)} kg` : copy.noHarvest}
+                                {leadValue}
                             </span>
                         </div>
-                        <div className="text-right text-[11px] text-[color:var(--sg-text-muted)]">
-                            {getForecastTitle(crop, locale)} · {forecast.total_ETc_mm.toFixed(1)} {UNIT_LABELS.transpirationDepth} · {forecast.total_energy_kWh.toFixed(1)} {UNIT_LABELS.energyUse}
+                        <div className="text-xs leading-5 text-[color:var(--sg-text-muted)] sm:text-right">
+                            {getForecastTitle(crop, locale)} · {transpirationSummary} · {energySummary}
                         </div>
                     </div>
                     <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-muted)]">
-                        {hasHarvest ? leadNarrative : copy.noHarvestDescription}
+                        {leadNarrative}
                     </p>
                 </section>
 
                 <div className="grid gap-2 md:grid-cols-3">
                     <ForecastMetricTile
                         icon={Leaf}
-                        label={copy.yield}
-                        value={forecast.total_harvest_kg.toFixed(1)}
-                        unit={UNIT_LABELS.weeklyYield}
-                        body={copy.yieldBody}
+                        label={yieldTileLabel}
+                        value={yieldTileValue}
+                        unit={yieldTileUnit}
+                        body={yieldTileBody}
                         tone="green"
                     />
                     <ForecastMetricTile
                         icon={Droplets}
                         label={copy.transpiration}
-                        value={forecast.total_ETc_mm.toFixed(1)}
-                        unit={UNIT_LABELS.transpirationDepth}
-                        body={copy.transpirationBody}
+                        value={transpirationValue}
+                        unit={transpirationUnit}
+                        body={transpirationBody}
                         tone="blue"
                     />
                     <ForecastMetricTile
                         icon={Zap}
                         label={copy.energyUse}
-                        value={forecast.total_energy_kWh.toFixed(1)}
-                        unit={UNIT_LABELS.energyUse}
-                        body={copy.energyBody}
+                        value={energyValue}
+                        unit={energyUnit}
+                        body={energyBody}
                         tone="amber"
                     />
                 </div>
@@ -202,59 +351,50 @@ const ForecastPanel = ({ forecast, crop }: ForecastPanelProps) => {
                             </p>
                         </div>
                         <StatusChip tone="growth">
-                            {forecast.daily.length} day view
+                            {forecast.daily.length} {copy.forecastDays}
                         </StatusChip>
                     </div>
 
-                    <div className="mt-3">
-                        <ChartFrame className="h-72 w-full" minHeight={288}>
+                    <div className="mt-3 grid min-w-0 gap-4 lg:grid-cols-2">
+                      {[
+                        { key: harvestSeriesKey, name: harvestSeriesName, unit: harvestBasis === 'dry' ? 'kg DW' : 'kg', series: 0 },
+                        { key: 'ETc_mm', name: copy.cropTranspiration, unit: 'mm', series: 1 },
+                      ].map(series => (
+                        <div key={series.key} className="min-w-0">
+                        <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{series.name}</h4>
+                        <ScientificText text={series.unit} className="scientific-unit mb-2 mt-1 block text-xs text-[color:var(--sg-text-muted)]" />
+                        <ChartFrame className="h-64 w-full" minHeight={256}>
                             {({ width, height }) => (
                                 <BarChart
                                     width={Math.max(width, 1)}
-                                    height={Math.max(height, 288)}
+                                    height={Math.max(height, 256)}
                                     data={forecast.daily}
-                                    margin={{ top: 10, right: 10, left: -18, bottom: 0 }}
+                                    margin={DASHBOARD_CHART_MARGIN}
                                 >
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--sg-outline-soft)" />
                                     <XAxis
+                                        {...DASHBOARD_CHART_AXIS_PROPS}
                                         dataKey="date"
-                                        tick={{ fontSize: 12, fill: 'var(--sg-text-faint)' }}
-                                        axisLine={false}
-                                        tickLine={false}
                                         tickFormatter={(value: string) => value.split('-').slice(1).join('/')}
                                     />
-                                    <YAxis
-                                        tick={{ fontSize: 12, fill: 'var(--sg-text-faint)' }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
+                                    <YAxis {...DASHBOARD_CHART_AXIS_PROPS} width={44} />
                                     <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: 'var(--sg-surface-raised)',
-                                            borderRadius: 'var(--sg-radius-lg)',
-                                            border: '1px solid var(--sg-outline-soft)',
-                                            boxShadow: 'var(--sg-shadow-soft)',
-                                        }}
+                                        contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
                                         cursor={{ fill: 'var(--sg-color-sage-soft)' }}
-                                        formatter={(value: number, name: string) => [value.toFixed(1), name]}
+                                        formatter={(value: number, name: string) => [
+                                            typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)} ${series.unit}` : '-',
+                                            name,
+                                        ]}
                                     />
                                     <Bar
-                                        dataKey="harvest_kg"
-                                        name={copy.harvestYield}
-                                        fill="var(--sg-color-success)"
-                                        radius={[6, 6, 0, 0]}
-                                        maxBarSize={40}
-                                    />
-                                    <Bar
-                                        dataKey="ETc_mm"
-                                        name={copy.cropTranspiration}
-                                        fill="var(--sg-accent-blue)"
-                                        radius={[6, 6, 0, 0]}
-                                        maxBarSize={40}
+                                        dataKey={series.key}
+                                        name={series.name}
+                                        {...seriesBarProps(series.series)}
                                     />
                                 </BarChart>
                             )}
                         </ChartFrame>
+                        </div>
+                      ))}
                     </div>
                 </section>
             </div>

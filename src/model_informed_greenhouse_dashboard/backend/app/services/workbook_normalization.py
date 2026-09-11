@@ -26,14 +26,61 @@ _PESTICIDE_MASTER_TOKENS = ("분류", "대상 작물", "주요 성분명")
 _PESTICIDE_ROTATION_TOKENS = ("분류", "추천 제품", "원본 행")
 _PESTICIDE_MOA_TOKENS = ("코드군", "대표 성분", "원본 행")
 _NUTRIENT_RECIPE_TOKENS = ("Crop", "Medium", "Stage")
+_RECIPE_VALUE_HEADERS = {
+    "ec_target": "EC",
+    "n_no3": "N-NO3",
+    "n_nh4": "N-NH4",
+    "p": "P",
+    "k": "K",
+    "ca": "Ca",
+    "mg": "Mg",
+    "s": "S",
+    "fe": "Fe",
+    "mn": "Mn",
+    "zn": "Zn",
+    "b": "B",
+    "cu": "Cu",
+    "mo": "Mo",
+    "cl_max": "Cl_max",
+    "hco3_max": "HCO3_max",
+    "na_max": "Na_max",
+}
+_RECIPE_MICRONUTRIENTS = {"fe", "mn", "zn", "b", "cu", "mo"}
 _WATER_ANALYSIS_TOKENS = ("구분", "항목", "입력값")
 _FERTILIZER_TOKENS = ("비료명", "화학식", "권장 탱크")
 _KOREAN_MOA_PREFIXES = "가나다라마바사아자차카타파하"
 
+# 비료_DB nutrient columns must be matched on the exact header body, not by
+# substring: the global _lookup() resolves "B" against the earlier
+# "권장 탱크(A/B)" column and returns the tank letter instead of the boron
+# stoichiometry. These are resolved with _recipe_lookup(), which compares
+# header bodies after stripping a trailing "(unit)" suffix.
+_FERTILIZER_MOLAR_HEADERS = {
+    "n_no3": "N-NO3",
+    "n_nh4": "N-NH4",
+    "p": "P",
+    "k": "K",
+    "ca": "Ca",
+    "mg": "Mg",
+    "s": "S",
+    "cl": "Cl",
+    "mn": "Mn",
+    "zn": "Zn",
+    "b": "B",
+    "cu": "Cu",
+    "mo": "Mo",
+}
+# Iron is published as a product mass fraction ("Fe함량(질량비)", 0.13 for a 13%
+# chelate), so its header body is not a bare element symbol and its value is not
+# a mol-per-mol coefficient.
+_FERTILIZER_FE_HEADERS = ("Fe함량(질량비)", "Fe")
+_FERTILIZER_MOLAR_SEMANTICS = "mol_per_mol"
+_FERTILIZER_MASS_FRACTION_SEMANTICS = "mass_fraction"
+
 
 def clear_workbook_preview_cache() -> None:
     """Clear workbook parsing and preview caches."""
-    _read_workbook_rows.cache_clear()
+    _read_workbook_rows_cached.cache_clear()
     _build_pesticide_preview.cache_clear()
     _build_nutrient_preview.cache_clear()
 
@@ -178,8 +225,20 @@ def _load_sheet_targets(archive: ZipFile) -> list[tuple[str, str]]:
     return sheet_targets
 
 
-@lru_cache(maxsize=4)
 def _read_workbook_rows(path_str: str) -> dict[str, tuple[dict[str, Any], ...]]:
+    try:
+        stat = Path(path_str).stat()
+    except FileNotFoundError:
+        return {}
+    return _read_workbook_rows_cached(path_str, stat.st_mtime_ns, stat.st_size)
+
+
+@lru_cache(maxsize=4)
+def _read_workbook_rows_cached(
+    path_str: str,
+    _mtime_ns: int,
+    _size: int,
+) -> dict[str, tuple[dict[str, Any], ...]]:
     path = Path(path_str)
     if not path.exists():
         return {}
@@ -630,12 +689,71 @@ def _normalize_stage(value: str) -> str:
     return _normalize_text(value)
 
 
+def _recipe_header_key(value: str) -> str:
+    header = re.sub(r"\s*\([^()]*\)\s*$", "", _normalize_text(value)).strip().lower()
+    return "ec" if header == "ec(" else header
+
+
+def _recipe_lookup(record: dict[str, Any], header: str) -> str:
+    header_key = _recipe_header_key(header)
+    for key, value in record.items():
+        if not key.startswith("__") and _recipe_header_key(key) == header_key:
+            return _normalize_text(value)
+    return ""
+
+
+def _recipe_nutrient_units(sheet_rows: tuple[dict[str, Any], ...]) -> dict[str, str]:
+    header_row = next(
+        (row for row in sheet_rows if _row_has_tokens(row["values"], _NUTRIENT_RECIPE_TOKENS)),
+        None,
+    )
+    if header_row is None:
+        return {}
+
+    banner = " ".join(
+        value
+        for row in sheet_rows
+        if row["row_index"] < header_row["row_index"]
+        for value in row["values"]
+    )
+    concentration_unit = r"(mmol/L|[µμu]mol/L|mg/L|ppm)\b"
+    default_match = re.search(
+        rf"(?:단위|다량원소|macronutrients?|units?)\s*[:：]\s*{concentration_unit}",
+        banner,
+        re.IGNORECASE,
+    )
+    micro_match = re.search(
+        rf"(?:미량원소|micronutrients?)\s*[:：]\s*{concentration_unit}",
+        banner,
+        re.IGNORECASE,
+    )
+    default_unit = default_match.group(1) if default_match else ""
+    micro_unit = micro_match.group(1) if micro_match else default_unit
+    headers = {_recipe_header_key(value): value for value in header_row["values"] if value}
+    units: dict[str, str] = {}
+    for field, header in _RECIPE_VALUE_HEADERS.items():
+        source_header = headers.get(_recipe_header_key(header))
+        if source_header is None:
+            continue
+        explicit_unit = re.search(r"\(([^()]+)\)\s*$", source_header)
+        if explicit_unit:
+            unit = _normalize_text(explicit_unit.group(1))
+        elif field == "ec_target":
+            continue
+        else:
+            unit = micro_unit if field in _RECIPE_MICRONUTRIENTS else default_unit
+        if unit:
+            units[field] = unit.replace("μ", "µ").replace("umol/L", "µmol/L")
+    return units
+
+
 def _parse_recipe_rows(sheet_rows: tuple[dict[str, Any], ...]) -> list[dict[str, Any]]:
     recipes: list[dict[str, Any]] = []
+    nutrient_units = _recipe_nutrient_units(sheet_rows)
     for record in _sheet_records(sheet_rows, _NUTRIENT_RECIPE_TOKENS):
-        crop = _normalize_crop_scope(_lookup(record, "Crop"), fallback="unknown")
-        medium = _lookup(record, "Medium")
-        stage = _normalize_stage(_lookup(record, "Stage"))
+        crop = _normalize_crop_scope(_recipe_lookup(record, "Crop"), fallback="unknown")
+        medium = _recipe_lookup(record, "Medium")
+        stage = _normalize_stage(_recipe_lookup(record, "Stage"))
         if crop == "unknown" or not medium or not stage:
             continue
 
@@ -644,25 +762,13 @@ def _parse_recipe_rows(sheet_rows: tuple[dict[str, Any], ...]) -> list[dict[str,
                 "crop": crop,
                 "medium": medium,
                 "stage": stage,
-                "ec_target": _safe_float(_lookup(record, "EC(")),
-                "n_no3": _safe_float(_lookup(record, "N-NO3")),
-                "n_nh4": _safe_float(_lookup(record, "N-NH4")),
-                "p": _safe_float(_lookup(record, "P")),
-                "k": _safe_float(_lookup(record, "K")),
-                "ca": _safe_float(_lookup(record, "Ca")),
-                "mg": _safe_float(_lookup(record, "Mg")),
-                "s": _safe_float(_lookup(record, "S")),
-                "fe": _safe_float(_lookup(record, "Fe")),
-                "mn": _safe_float(_lookup(record, "Mn")),
-                "zn": _safe_float(_lookup(record, "Zn")),
-                "b": _safe_float(_lookup(record, "B")),
-                "cu": _safe_float(_lookup(record, "Cu")),
-                "mo": _safe_float(_lookup(record, "Mo")),
-                "cl_max": _safe_float(_lookup(record, "Cl_max")),
-                "hco3_max": _safe_float(_lookup(record, "HCO3_max")),
-                "na_max": _safe_float(_lookup(record, "Na_max")),
-                "source_key": _lookup(record, "Key"),
-                "source_note": _lookup(record, "Source"),
+                **{
+                    field: _safe_float(_recipe_lookup(record, header))
+                    for field, header in _RECIPE_VALUE_HEADERS.items()
+                },
+                "nutrient_units": dict(nutrient_units),
+                "source_key": _recipe_lookup(record, "Key"),
+                "source_note": _recipe_lookup(record, "Source"),
                 "source_sheet": "추천레시피_DB",
                 "source_row": record["__source_row"],
             }
@@ -712,28 +818,43 @@ def _parse_fertilizer_rows(sheet_rows: tuple[dict[str, Any], ...]) -> list[dict[
                 "formula": formula,
                 "molecular_weight": _safe_float(_lookup(record, "분자량")),
                 "tank_assignment": _lookup(record, "권장 탱크"),
-                "nutrient_contribution_per_mol": {
-                    "n_no3": _safe_float(_lookup(record, "N-NO3")),
-                    "n_nh4": _safe_float(_lookup(record, "N-NH4")),
-                    "p": _safe_float(_lookup(record, "P")),
-                    "k": _safe_float(_lookup(record, "K")),
-                    "ca": _safe_float(_lookup(record, "Ca")),
-                    "mg": _safe_float(_lookup(record, "Mg")),
-                    "s": _safe_float(_lookup(record, "S")),
-                    "cl": _safe_float(_lookup(record, "Cl")),
-                    "mn": _safe_float(_lookup(record, "Mn")),
-                    "zn": _safe_float(_lookup(record, "Zn")),
-                    "b": _safe_float(_lookup(record, "B")),
-                    "cu": _safe_float(_lookup(record, "Cu")),
-                    "mo": _safe_float(_lookup(record, "Mo")),
-                    "fe": _safe_float(_lookup(record, "Fe")),
-                },
+                "nutrient_contribution_per_mol": _fertilizer_contributions(record),
+                "nutrient_contribution_semantics": _fertilizer_contribution_semantics(),
                 "source_sheet": "비료_DB",
                 "source_row": record["__source_row"],
             }
         )
 
     return fertilizers
+
+
+def _fertilizer_contributions(record: dict[str, Any]) -> dict[str, float | None]:
+    """Return one 비료_DB row nutrient coefficient map keyed by analyte.
+
+    Every entry except "fe" is a mol-per-mol stoichiometric coefficient, while
+    "fe" carries the product mass fraction published by the workbook. Callers
+    that need to tell the two apart should read the sibling semantics map from
+    _fertilizer_contribution_semantics().
+    """
+    contributions: dict[str, float | None] = {
+        key: _safe_float(_recipe_lookup(record, header))
+        for key, header in _FERTILIZER_MOLAR_HEADERS.items()
+    }
+
+    iron_value = ""
+    for header in _FERTILIZER_FE_HEADERS:
+        iron_value = _recipe_lookup(record, header)
+        if iron_value:
+            break
+    contributions["fe"] = _safe_float(iron_value)
+
+    return contributions
+
+
+def _fertilizer_contribution_semantics() -> dict[str, str]:
+    semantics = dict.fromkeys(_FERTILIZER_MOLAR_HEADERS, _FERTILIZER_MOLAR_SEMANTICS)
+    semantics["fe"] = _FERTILIZER_MASS_FRACTION_SEMANTICS
+    return semantics
 
 
 def _value_after_token(values: tuple[str, ...], token: str) -> str:

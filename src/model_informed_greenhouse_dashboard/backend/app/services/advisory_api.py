@@ -11,6 +11,7 @@ from .advisory import (
     recommend_nutrient_correction,
     recommend_nutrient_recipe,
     recommend_pesticides,
+    recommend_stock_tank_prescription,
 )
 
 logger = logging.getLogger(__name__)
@@ -125,4 +126,44 @@ def build_nutrient_correction_response(
         raise HTTPException(
             status_code=500,
             detail="Nutrient correction failed.",
+        ) from exc
+
+
+def build_stock_tank_prescription_response(
+    *,
+    crop: str,
+    stage: str | None = None,
+    medium: str | None = None,
+    source_water_mmol_l: dict[str, float] | None = None,
+    drain_water_mmol_l: dict[str, float] | None = None,
+    stock_tank_volume_l: float | None = None,
+    stock_ratio: float | None = None,
+    options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    try:
+        validated_crop = validate_advisory_crop(crop)
+        return {
+            "status": "success",
+            **recommend_stock_tank_prescription(
+                crop=validated_crop,
+                stage=stage,
+                medium=medium,
+                source_water_mmol_l=source_water_mmol_l,
+                drain_water_mmol_l=drain_water_mmol_l,
+                stock_tank_volume_l=stock_tank_volume_l,
+                stock_ratio=stock_ratio,
+                options=options,
+            ),
+        }
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("Stock tank prescription failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Stock tank prescription failed.",
         ) from exc

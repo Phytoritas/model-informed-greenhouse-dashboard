@@ -57,11 +57,11 @@ export default function WorkspaceTopNav({
   }
 
   return (
-    <div className="mb-2 mt-1 grid gap-2">
-      <nav
+    <div className="workspace-context-nav">
+      {items.length > 1 ? <nav
         aria-label={locale === 'ko' ? '카테고리 서브탭 내비게이션' : 'Category subtab navigation'}
         data-testid="workspace-top-nav"
-        className="overview-tab-strip"
+        className="workspace-category-tabs"
       >
         {items.map((item) => {
           const active = item.key === activeWorkspace;
@@ -72,18 +72,18 @@ export default function WorkspaceTopNav({
               onClick={() => onSelect(item.key)}
               aria-current={active ? 'step' : undefined}
               title={item.description}
-              className={cn('overview-tab-link', active && 'overview-tab-link-active')}
+              className={cn('workspace-context-tab', active && 'workspace-context-tab-active')}
             >
               <span>{item.label}</span>
             </button>
           );
         })}
-      </nav>
+      </nav> : null}
       {actions.length > 0 && onSelectAction ? (
         <nav
           aria-label={locale === 'ko' ? '패널 액션 내비게이션' : 'Panel action navigation'}
           data-testid="workspace-top-nav-actions"
-          className="flex flex-wrap items-center gap-1.5"
+          className="workspace-panel-tabs"
         >
           {actions.map((action) => {
             const active = activeActionId === action.id;
@@ -95,10 +95,8 @@ export default function WorkspaceTopNav({
                 aria-pressed={active}
                 data-active={active}
                 className={cn(
-                  'rounded-full border px-3 py-1 text-[0.68rem] font-bold transition',
-                  active
-                    ? 'border-[color:var(--sg-color-primary)] bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary)]'
-                    : 'border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-text-muted)] hover:text-[color:var(--sg-text-strong)]',
+                  'workspace-panel-tab',
+                  active && 'workspace-panel-tab-active',
                 )}
               >
                 {action.label}

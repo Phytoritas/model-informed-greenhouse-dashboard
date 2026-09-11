@@ -96,7 +96,7 @@ const RTRCalibrationWorkspace = ({
             managerApproved: '매니저 승인',
             consultantApproved: '컨설턴트 승인',
             internalReview: '내부 검토',
-            heuristicDemo: '데모/가설',
+            heuristicDemo: '가설 기반 예시',
         }
         : {
             title: 'RTR calibration workspace',
@@ -140,7 +140,7 @@ const RTRCalibrationWorkspace = ({
             managerApproved: 'Manager approved',
             consultantApproved: 'Consultant approved',
             internalReview: 'Internal review',
-            heuristicDemo: 'Heuristic demo',
+            heuristicDemo: 'Heuristic example',
         };
 
     const previewProfile = previewResponse?.preview_profile ?? null;

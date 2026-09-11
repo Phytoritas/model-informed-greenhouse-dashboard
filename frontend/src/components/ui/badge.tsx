@@ -12,7 +12,7 @@ const badgeVariants = cva(
                 blue: 'bg-[color:var(--sg-accent-blue-soft)] text-[color:var(--sg-accent-blue)]',
                 amber: 'bg-[color:var(--sg-accent-amber-soft)] text-[color:var(--sg-accent-amber)]',
                 violet: 'bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary-strong)]',
-                danger: 'bg-[color:var(--sg-color-primary-soft)] text-[color:var(--sg-color-primary-strong)]',
+                danger: 'bg-[color:var(--sg-accent-rose-soft)] text-[color:var(--sg-accent-danger)]',
                 muted: 'bg-[color:var(--sg-surface-muted)] text-[color:var(--sg-text-muted)]',
             },
         },

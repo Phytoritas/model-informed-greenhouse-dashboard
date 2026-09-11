@@ -1,61 +1,86 @@
 import { memo, Profiler, useMemo, type ReactNode } from 'react';
-import { Droplets, Sun, Thermometer, Wind, Zap } from 'lucide-react';
+import { Droplets, Leaf, Sun, Thermometer, Wind, Zap } from 'lucide-react';
 import type { SensorData } from '../types';
 import { useLocale } from '../i18n/LocaleProvider';
 import { formatLocaleTime } from '../i18n/locale';
 import { useDashboardPerfMetrics } from '../hooks/useDashboardPerfMetrics';
-import TimeSeriesChart from './TimeSeriesChart';
+import TimeSeriesChart, { type TimeSeriesDataKey } from './TimeSeriesChart';
 
 interface ChartsProps {
     data: SensorData[];
     variant?: 'default' | 'overview';
     extraChartSlot?: ReactNode;
+    /** Replay cursor shared with the 3D twin; null keeps the live view. */
+    selectedTimestamp?: number | null;
 }
 
-const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProps) => {
+interface ChartCard {
+    key: string;
+    title: string;
+    /**
+     * The single unit for this card. Series are grouped so that one card never
+     * mixes units on one axis.
+     */
+    unitLabel: string;
+    dataKeys: TimeSeriesDataKey[];
+    icon: ReactNode;
+}
+
+/**
+ * Plot height for the single-screen grid. Short enough that every chart plus a
+ * supplied comparison fits one tab without scrolling through topic tabs, tall
+ * enough to keep the time axis and the trend shape readable. The overview value
+ * matches the chart-slot plot height in RtrTrendCard so a supplied comparison
+ * card lines up with the grid row it sits in.
+ */
+const GRID_CHART_HEIGHT = { overview: 168, default: 176 } as const;
+
+const Charts = ({
+    data,
+    variant = 'default',
+    extraChartSlot = null,
+    selectedTimestamp = null,
+}: ChartsProps) => {
     const { locale } = useLocale();
     const onRender = useDashboardPerfMetrics('chart-section');
+
     const copy = useMemo(() => (
         locale === 'ko'
             ? {
-                eyebrow: 'Dashboard trends',
-                title: '실시간 환경 분석',
-                description: '온실 환경, 생리 반응, 에너지 흐름을 실시간 추세로 확인합니다.',
+                eyebrow: '환경·생육 추세',
+                title: '환경·생육 변화',
+                description: '같은 시점의 환경과 작물 반응을 비교합니다.',
                 lastUpdate: '마지막 갱신',
+                chartsLabel: '환경·생육 차트',
                 airCanopyTemperature: '기온과 군락 온도',
-                airTemperature: '기온 (°C)',
-                canopyTemperature: '군락 온도 (°C)',
-                vpdTranspiration: '수분부족분과 증산',
-                vpd: '수분부족분 (VPD, kPa)',
-                transpiration: '증산 속도 (mm H₂O h⁻¹)',
-                photosynthesisResponse: '광합성과 기공 반응',
-                stomatalConductance: '기공전도도 (mol H₂O m⁻² s⁻¹)',
-                grossPhotosynthesis: '총광합성 (µmol m⁻² s⁻¹)',
+                airTemperature: '기온',
+                canopyTemperature: '군락 온도',
+                vpd: '수증기압차(VPD)',
+                stomatalConductance: '기공전도도',
+                grossPhotosynthesis: '총광합성',
+                transpiration: '증산',
                 energyBalance: '에너지 수지',
-                sensibleHeat: '현열 플럭스 H (W m⁻²)',
-                latentHeat: '잠열 플럭스 LE (W m⁻²)',
+                sensibleHeat: '현열 플럭스 H',
+                latentHeat: '잠열 플럭스 LE',
                 electricalDemand: '전력 수요',
-                electricalDemandLine: '전력 수요 (kW)',
             }
             : {
-                eyebrow: 'Dashboard trends',
-                title: 'Real-time Environmental Analysis',
-                description: 'Greenhouse climate, physiology, and energy flows as live trends.',
+                eyebrow: 'Climate and crop trend',
+                title: 'Climate and crop change',
+                description: 'Compare climate and plant response at the same moment.',
                 lastUpdate: 'Last update',
+                chartsLabel: 'Climate and crop charts',
                 airCanopyTemperature: 'Air and canopy temperature',
-                airTemperature: 'Air temperature (°C)',
-                canopyTemperature: 'Canopy temperature (°C)',
-                vpdTranspiration: 'Vapor pressure deficit and transpiration',
-                vpd: 'Vapor pressure deficit (kPa)',
-                transpiration: 'Transpiration rate (mm H₂O h⁻¹)',
-                photosynthesisResponse: 'Photosynthesis and stomatal response',
-                stomatalConductance: 'Stomatal conductance (mol H₂O m⁻² s⁻¹)',
-                grossPhotosynthesis: 'Gross photosynthesis (µmol m⁻² s⁻¹)',
+                airTemperature: 'Air temperature',
+                canopyTemperature: 'Canopy temperature',
+                vpd: 'Vapor pressure deficit',
+                stomatalConductance: 'Stomatal conductance',
+                grossPhotosynthesis: 'Gross photosynthesis',
+                transpiration: 'Transpiration',
                 energyBalance: 'Energy balance',
-                sensibleHeat: 'Sensible heat flux H (W m⁻²)',
-                latentHeat: 'Latent heat flux LE (W m⁻²)',
+                sensibleHeat: 'Sensible heat flux H',
+                latentHeat: 'Latent heat flux LE',
                 electricalDemand: 'Electrical demand',
-                electricalDemandLine: 'Electrical demand (kW)',
             }
     ), [locale]);
 
@@ -63,82 +88,101 @@ const Charts = ({ data, variant = 'default', extraChartSlot = null }: ChartsProp
     const lastUpdate = lastTs
         ? formatLocaleTime(locale, lastTs, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         : '—';
-    const chartCards = useMemo(() => [
+
+    // One flat reading order — climate, then plant response, then energy — so the
+    // former tab grouping survives as sequence instead of hidden panels.
+    const cards = useMemo<ChartCard[]>(() => [
         {
             key: 'air-canopy',
             title: copy.airCanopyTemperature,
+            unitLabel: '°C',
             dataKeys: [
-                { key: 'temperature', name: copy.airTemperature, color: 'var(--sg-color-terracotta)' },
-                { key: 'canopyTemp', name: copy.canopyTemperature, color: 'var(--sg-accent-amber)' },
+                { key: 'temperature', name: copy.airTemperature, seriesIndex: 0 },
+                { key: 'canopyTemp', name: copy.canopyTemperature, seriesIndex: 3 },
             ],
-            icon: <Thermometer className="h-4 w-4 text-[color:var(--sg-color-terracotta)]" />,
+            icon: <Thermometer className="h-4 w-4" aria-hidden="true" />,
         },
         {
-            key: 'vpd-transpiration',
-            title: copy.vpdTranspiration,
-            dataKeys: [
-                { key: 'vpd', name: copy.vpd, color: 'var(--sg-color-primary)' },
-                { key: 'transpiration', name: copy.transpiration, color: 'var(--sg-accent-earth)' },
-            ],
-            icon: <Droplets className="h-4 w-4 text-[color:var(--sg-accent-earth)]" />,
+            key: 'vpd',
+            title: copy.vpd,
+            unitLabel: 'kPa',
+            dataKeys: [{ key: 'vpd', name: copy.vpd, seriesIndex: 0 }],
+            icon: <Droplets className="h-4 w-4" aria-hidden="true" />,
+        },
+        {
+            key: 'stomatal-conductance',
+            title: copy.stomatalConductance,
+            unitLabel: 'mol H₂O m⁻² s⁻¹',
+            dataKeys: [{ key: 'stomatalConductance', name: copy.stomatalConductance, seriesIndex: 0 }],
+            icon: <Wind className="h-4 w-4" aria-hidden="true" />,
         },
         {
             key: 'photosynthesis',
-            title: copy.photosynthesisResponse,
-            dataKeys: [
-                { key: 'stomatalConductance', name: copy.stomatalConductance, color: 'var(--sg-color-olive)' },
-                { key: 'photosynthesis', name: copy.grossPhotosynthesis, color: 'var(--sg-accent-forest)' },
-            ],
-            icon: <Wind className="h-4 w-4 text-[color:var(--sg-color-olive)]" />,
+            title: copy.grossPhotosynthesis,
+            unitLabel: 'µmol m⁻² s⁻¹',
+            dataKeys: [{ key: 'photosynthesis', name: copy.grossPhotosynthesis, seriesIndex: 3 }],
+            icon: <Leaf className="h-4 w-4" aria-hidden="true" />,
+        },
+        {
+            key: 'transpiration',
+            title: copy.transpiration,
+            unitLabel: 'mm H₂O h⁻¹',
+            dataKeys: [{ key: 'transpiration', name: copy.transpiration, seriesIndex: 2 }],
+            icon: <Droplets className="h-4 w-4" aria-hidden="true" />,
         },
         {
             key: 'energy-balance',
             title: copy.energyBalance,
+            unitLabel: 'W m⁻²',
             dataKeys: [
-                { key: 'hFlux', name: copy.sensibleHeat, color: 'var(--sg-accent-rose)' },
-                { key: 'leFlux', name: copy.latentHeat, color: 'var(--sg-accent-blue)' },
+                { key: 'hFlux', name: copy.sensibleHeat, seriesIndex: 0 },
+                { key: 'leFlux', name: copy.latentHeat, seriesIndex: 3 },
             ],
-            icon: <Sun className="h-4 w-4 text-[color:var(--sg-accent-amber)]" />,
+            icon: <Sun className="h-4 w-4" aria-hidden="true" />,
         },
         {
             key: 'electrical-demand',
             title: copy.electricalDemand,
-            dataKeys: [
-                { key: 'energyUsage', name: copy.electricalDemandLine, color: 'var(--sg-accent-amber)' },
-            ],
-            icon: <Zap className="h-4 w-4 text-[color:var(--sg-accent-violet)]" />,
+            unitLabel: 'kW',
+            dataKeys: [{ key: 'energyUsage', name: copy.electricalDemand, seriesIndex: 2 }],
+            icon: <Zap className="h-4 w-4" aria-hidden="true" />,
         },
     ], [copy]);
-    const visibleChartCards = chartCards;
-    const chartHeight = variant === 'overview' ? 176 : 200;
-    const gridClassName = variant === 'overview'
-        ? 'grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2'
-        : 'grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2';
+
+    const chartHeight = variant === 'overview'
+        ? GRID_CHART_HEIGHT.overview
+        : GRID_CHART_HEIGHT.default;
+    // A hairline gap over the outline color turns the cells into one board with
+    // dividers instead of separate floating cards. Four columns only past 1536px,
+    // where three columns leave each plot wider than its time axis needs.
+    const gridClassName = 'sg-chart-board grid min-w-0 grid-cols-1 gap-px overflow-hidden md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
 
     return (
         <Profiler id="chart-section" onRender={onRender}>
-            <section className="min-w-0 space-y-3" aria-labelledby="overview-dashboard-charts-title" data-testid="overview-dashboard-charts">
-                <div className="sg-panel flex min-w-0 flex-col gap-2 bg-[color:var(--sg-surface-raised)] p-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="min-w-0">
-                        <p className="sg-eyebrow">{copy.eyebrow}</p>
-                        <h3 id="overview-dashboard-charts-title" className="mt-1 text-base font-bold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
-                        <p className="mt-0.5 max-w-2xl text-[0.7rem] leading-4 text-[color:var(--sg-text-muted)]">{copy.description}</p>
-                    </div>
-                    <div className="shrink-0 text-xs font-semibold text-[color:var(--sg-text-faint)]">
-                        {copy.lastUpdate}: {lastUpdate}
-                    </div>
+            <section className="min-w-0" aria-labelledby="overview-dashboard-charts-title" data-testid="overview-dashboard-charts">
+                {/* One title line for the whole board; the cards below carry no
+                    repeated eyebrow, so the section header is the only heading. */}
+                <div className="mb-3 flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h3 id="overview-dashboard-charts-title" className="text-base font-bold text-[color:var(--sg-text-strong)]">{copy.title}</h3>
+                    <p className="text-xs text-[color:var(--sg-text-muted)]">
+                        {copy.description} · {copy.lastUpdate} {lastUpdate}
+                    </p>
                 </div>
 
-                <div className={gridClassName}>
-                    {visibleChartCards.map((card) => (
+                <div role="group" aria-label={copy.chartsLabel} className={gridClassName} data-testid="chart-grid">
+                    {cards.map((card) => (
                         <TimeSeriesChart
                             key={card.key}
                             title={card.title}
                             data={data}
                             dataKeys={card.dataKeys}
+                            unitLabel={card.unitLabel}
                             icon={card.icon}
                             height={chartHeight}
                             eyebrow={copy.eyebrow}
+                            compact
+                            seamless
+                            selectedTimestamp={selectedTimestamp}
                         />
                     ))}
                     {extraChartSlot}

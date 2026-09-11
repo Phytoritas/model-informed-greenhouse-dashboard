@@ -15,7 +15,8 @@ import type {
 import type { PromptAdvisorTabKey } from '../components/advisor/advisorTabRegistry';
 
 interface AdvisorLaneRoutePageProps {
-  locale: AppLocale;
+  /** Accepted by the existing call sites; this page renders locale-aware children. */
+  locale?: AppLocale;
   eyebrow: string;
   title: string;
   description: string;
@@ -35,7 +36,6 @@ interface AdvisorLaneRoutePageProps {
 }
 
 export default function AdvisorLaneRoutePage({
-  locale,
   eyebrow,
   title,
   description,
@@ -79,11 +79,6 @@ export default function AdvisorLaneRoutePage({
           <div className="min-w-0 space-y-6">{secondarySurface}</div>
         ) : null}
       </div>
-      <p className="max-w-[680px] text-sm leading-7 text-[color:var(--sg-text-muted)]">
-        {locale === 'ko'
-          ? '이 페이지는 한 번에 한 lane만 보여주도록 유지합니다.'
-          : 'This page keeps one advisor lane in focus instead of stacking multiple stories.'}
-      </p>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_URL } from '../config';
 import type { CropType } from '../types';
 
@@ -78,6 +78,11 @@ export function useRagAssistant() {
     const [resolvedScope, setResolvedScope] = useState<string | null>(null);
     const [appliedFilters, setAppliedFilters] = useState<RagAssistantFilters>({});
     const [routing, setRouting] = useState<RagAssistantRoutingPayload | null>(null);
+
+    useEffect(() => () => {
+        requestVersionRef.current += 1;
+        controllerRef.current?.abort();
+    }, []);
 
     const runSearch = useCallback(async ({
         crop,

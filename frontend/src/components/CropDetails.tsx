@@ -3,20 +3,12 @@ import { Sprout, Activity, Droplets, Leaf, CheckCircle } from 'lucide-react';
 import type { SensorData, AdvancedModelMetrics, CropType } from '../types';
 import { API_URL } from '../config';
 import { useLocale } from '../i18n/LocaleProvider';
-import { getReadinessDescriptor, type ReadinessTone } from '../lib/design/readiness';
 import { UNIT_LABELS, getCropLabel, getCropStatusLabel } from '../utils/displayCopy';
 import { formatMetricValue } from '../utils/formatValue';
 import DashboardCard from './common/DashboardCard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { MetricCard, type MetricTone } from './ui/metric-card';
-
-const READINESS_METRIC_TONE: Record<ReadinessTone, MetricTone> = {
-    success: 'growth',
-    info: 'stable',
-    warning: 'warning',
-    neutral: 'muted',
-};
+import { MetricCard } from './ui/metric-card';
 
 interface CropDetailsProps {
     crop: CropType;
@@ -31,7 +23,6 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
             managementEyebrow: 'Crop Operations',
             managementTitle: `${getCropLabel(crop, locale)} 관리 및 작업`,
             managementDescription: '작물 설정을 조정하고 전정 작업을 기록합니다.',
-            growthTrendChip: '생장 진행',
             hideSettings: '설정 숨기기',
             showSettings: '설정 보기',
             fruitsPerTruss: '화방당 과실 수',
@@ -48,9 +39,15 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
             dailyBiomassGrowth: '일일 생장량',
             biomassTrend: '건물 생산량 추세',
             yieldPotential: '수확 잠재력',
-            confidence: '반영 상태',
             transpiration: '증산',
             canopyActivity: '캐노피 활동',
+            dryMatterYield: '과실 건물 증가량(모델)',
+            dryMatterCaption: '모델이 계산한 과실 건물중 증가량입니다.',
+            yieldUnavailable: '계산 안 됨',
+            yieldUnavailableCaption: '생과 수확량 예측이 아직 계산되지 않았습니다.',
+            freshYieldCaption: '모델이 계산한 주간 생과 수확 예측입니다.',
+            dataCheck: '데이터 확인 필요',
+            dataCheckCaption: '입력 데이터 또는 모델 계산이 유효하지 않아 값을 표시하지 않습니다.',
             updateSuccess: '설정을 업데이트했습니다.',
             updateFailure: '설정 업데이트에 실패했습니다.',
             pruneSuccess: '전정 기준을 초기화했습니다.',
@@ -60,7 +57,6 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
             managementEyebrow: 'Crop Operations',
             managementTitle: `${crop} Management & Operations`,
             managementDescription: 'Adjust crop configuration and record pruning operations.',
-            growthTrendChip: 'Growing',
             hideSettings: 'Hide Settings',
             showSettings: 'Show Settings',
             fruitsPerTruss: 'Fruits per Truss',
@@ -77,9 +73,15 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
             dailyBiomassGrowth: 'Daily biomass growth',
             biomassTrend: 'Biomass accumulation trend',
             yieldPotential: 'Yield Potential',
-            confidence: 'Readiness',
             transpiration: 'Transpiration',
             canopyActivity: 'Canopy Activity',
+            dryMatterYield: 'Fruit dry-matter gain (model)',
+            dryMatterCaption: 'Modelled gain in fruit dry mass.',
+            yieldUnavailable: 'Not computed',
+            yieldUnavailableCaption: 'A fresh-weight harvest prediction is not available yet.',
+            freshYieldCaption: 'Modelled weekly fresh-harvest prediction.',
+            dataCheck: 'Data check needed',
+            dataCheckCaption: 'Input data or the model run is not valid, so values are withheld.',
             updateSuccess: 'Configuration updated successfully!',
             updateFailure: 'Failed to update configuration.',
             pruneSuccess: 'Pruning baseline reset successfully.',
@@ -94,10 +96,61 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
     const [pruningThreshold, setPruningThreshold] = useState(18);
     const [targetLeafCount, setTargetLeafCount] = useState(15);
     const [pruneLoading, setPruneLoading] = useState(false);
-    const readiness = getReadinessDescriptor(metrics.yield.confidence, locale);
     const growthStatusValue = crop === 'Tomato'
         ? metrics.growth.activeTrusses
         : metrics.growth.nodeCount;
+
+    // A failed or non-converged run still returns numbers, so those numbers must
+    // not be presented as measured crop state.
+    const simulationStatus = (currentData.simulationStatus ?? '').toLowerCase();
+    const modelStateInvalid = currentData.dataQuality?.status === 'invalid'
+        || ['failed', 'unconverged', 'invalid_input'].includes(simulationStatus);
+
+    const freshYieldKg = !modelStateInvalid
+        && metrics.yield.predictionAvailable !== false
+        && typeof metrics.yield.predictedWeekly === 'number'
+        && Number.isFinite(metrics.yield.predictedWeekly)
+        ? metrics.yield.predictedWeekly
+        : null;
+    const dryMatterKg = !modelStateInvalid
+        && typeof metrics.yield.dryMatterGrowthKg === 'number'
+        && Number.isFinite(metrics.yield.dryMatterGrowthKg)
+        ? metrics.yield.dryMatterGrowthKg
+        : null;
+
+    const formatModelValue = (value: number | null | undefined, digits: number): string => (
+        !modelStateInvalid && typeof value === 'number' && Number.isFinite(value)
+            ? value.toFixed(digits)
+            : '-'
+    );
+
+    const yieldCard = modelStateInvalid
+        ? {
+            label: copy.yieldPotential,
+            value: copy.dataCheck,
+            unit: '',
+            detail: copy.dataCheckCaption,
+        }
+        : freshYieldKg !== null
+        ? {
+            label: copy.yieldPotential,
+            value: freshYieldKg.toFixed(1),
+            unit: UNIT_LABELS.weeklyYield,
+            detail: copy.freshYieldCaption,
+        }
+        : dryMatterKg !== null
+            ? {
+                label: copy.dryMatterYield,
+                value: dryMatterKg.toFixed(2),
+                unit: UNIT_LABELS.weeklyYield,
+                detail: copy.dryMatterCaption,
+            }
+            : {
+                label: copy.yieldPotential,
+                value: copy.yieldUnavailable,
+                unit: '',
+                detail: copy.yieldUnavailableCaption,
+            };
 
     // Fetch config on mount or crop change
     useEffect(() => {
@@ -241,41 +294,39 @@ const CropDetails = ({ crop, currentData, metrics }: CropDetailsProps) => {
                 <MetricCard
                     icon={Sprout}
                     label={crop === 'Tomato' ? copy.trussStatus : copy.growthStatus}
-                    value={String(growthStatusValue ?? '-')}
+                    value={modelStateInvalid ? '-' : String(growthStatusValue ?? '-')}
                     unit={getCropStatusLabel(crop, locale)}
                     tone="stable"
                     trend="stable"
-                    trendLabel={`LAI ${metrics.growth.lai.toFixed(2)}`}
+                    trendLabel={`LAI ${formatModelValue(metrics.growth.lai, 2)}`}
                     detail={`${copy.leafAreaIndex} ${UNIT_LABELS.leafAreaIndex}`}
                 />
                 <MetricCard
                     icon={Activity}
                     label={copy.dailyBiomassGrowth}
-                    value={metrics.growth.growthRate.toFixed(1)}
+                    value={formatModelValue(metrics.growth.growthRate, 1)}
                     unit={UNIT_LABELS.biomassGrowthRate}
-                    tone="growth"
-                    trend="up"
-                    trendLabel={copy.growthTrendChip}
-                    detail={copy.biomassTrend}
+                    tone={modelStateInvalid ? 'muted' : 'growth'}
+                    trend="stable"
+                    detail={modelStateInvalid ? copy.dataCheckCaption : copy.biomassTrend}
                 />
                 <MetricCard
                     icon={Leaf}
-                    label={copy.yieldPotential}
-                    value={metrics.yield.predictedWeekly.toFixed(1)}
-                    unit={UNIT_LABELS.weeklyYield}
-                    tone={READINESS_METRIC_TONE[readiness.tone]}
-                    trend={readiness.tone === 'success' ? 'up' : 'stable'}
-                    trendLabel={readiness.label}
-                    detail={readiness.lead}
+                    label={yieldCard.label}
+                    value={yieldCard.value}
+                    unit={yieldCard.unit}
+                    tone={freshYieldKg !== null ? 'growth' : 'muted'}
+                    trend="stable"
+                    detail={yieldCard.detail}
                 />
                 <MetricCard
                     icon={Droplets}
                     label={copy.transpiration}
-                    value={formatMetricValue(currentData.transpiration)}
+                    value={modelStateInvalid ? '-' : formatMetricValue(currentData.transpiration)}
                     unit={UNIT_LABELS.transpirationRate}
                     tone="stable"
                     trend="stable"
-                    trendLabel={copy.canopyActivity}
+                    detail={modelStateInvalid ? copy.dataCheckCaption : copy.canopyActivity}
                 />
             </div>
         </div>

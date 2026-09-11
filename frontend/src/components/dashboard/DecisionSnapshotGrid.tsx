@@ -10,9 +10,10 @@ import type {
   SensorData,
   WeatherOutlook,
 } from '../../types';
-import { getWeatherLabel } from '../../utils/displayCopy';
+import { UNIT_LABELS, getWeatherLabel } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import DashboardCard from '../common/DashboardCard';
+import ScientificText from '../common/ScientificText';
 import { StatusChip, type StatusChipTone } from '../ui/status-chip';
 
 interface DecisionSnapshotGridProps {
@@ -170,11 +171,11 @@ function BridgeDecisionCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-bold text-[color:var(--sg-text-strong)]">{title}</div>
-          <div className="mt-2 flex items-end gap-2">
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="sg-data-number text-2xl font-bold leading-none text-[color:var(--sg-text-strong)]">
               {value}
             </span>
-            <span className="pb-0.5 text-xs font-semibold text-[color:var(--sg-text-muted)]">{unit}</span>
+            <ScientificText text={unit} className="scientific-unit text-xs font-semibold text-[color:var(--sg-text-muted)]" />
           </div>
         </div>
         <div
@@ -188,9 +189,9 @@ function BridgeDecisionCard({
       <dl className="grid grid-cols-2 gap-2 border-t border-[color:var(--sg-outline-soft)] pt-2">
         {detailRows.map(([label, rowValue]) => (
           <div key={label} className="min-w-0 rounded-[var(--sg-radius-xs)] bg-white/72 px-2 py-1.5">
-            <dt className="truncate text-[10px] font-semibold text-[color:var(--sg-text-faint)]">{label}</dt>
-            <dd className="sg-data-number mt-1 truncate text-xs font-bold text-[color:var(--sg-text-strong)]">
-              {rowValue}
+            <dt className="text-xs font-semibold leading-5 text-[color:var(--sg-text-muted)]">{label}</dt>
+            <dd className="sg-data-number mt-1 text-xs font-bold leading-5 text-[color:var(--sg-text-strong)]">
+              <ScientificText text={rowValue} />
             </dd>
           </div>
         ))}
@@ -238,10 +239,10 @@ export default function DecisionSnapshotGrid({
         marketSupport: '도매가격 기준',
         energySupport: '실시간 에너지 사용량 기준',
         cropSupport: '광합성 중심 생육 흐름',
-        radiationUnit: 'W/m²',
+        radiationUnit: UNIT_LABELS.radiativeFlux,
         marketUnit: '원',
         energyUnit: 'kW',
-        cropUnit: 'µmol/m²/s',
+        cropUnit: UNIT_LABELS.photonFlux,
         latest: '최신',
         points: '포인트',
         range: '범위',
@@ -277,10 +278,10 @@ export default function DecisionSnapshotGrid({
         marketSupport: 'Wholesale basis',
         energySupport: 'Based on live energy use',
         cropSupport: 'Photosynthesis-led crop trend',
-        radiationUnit: 'W/m²',
+        radiationUnit: UNIT_LABELS.radiativeFlux,
         marketUnit: 'KRW',
         energyUnit: 'kW',
-        cropUnit: 'µmol/m²/s',
+        cropUnit: UNIT_LABELS.photonFlux,
         latest: 'Latest',
         points: 'Points',
         range: 'Range',

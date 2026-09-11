@@ -21,8 +21,9 @@ interface ControlRoutePageProps {
   activePanel?: ControlPagePanelId;
   crop: CropType;
   controls: ControlStatus;
-  onToggle: (key: keyof ControlStatus) => void;
-  onSettingsChange: (settings: TemperatureSettings) => void;
+  onToggle?: (key: keyof ControlStatus) => void;
+  /** Must reject when the server refuses the settings; a resolve is read as accepted. */
+  onSettingsChange: (settings: TemperatureSettings) => void | Promise<void>;
   history: SensorData[];
   currentData: SensorData;
   weather: WeatherOutlook | null;
@@ -44,7 +45,6 @@ export default function ControlRoutePage({
   activePanel = 'control-strategy',
   crop,
   controls,
-  onToggle,
   onSettingsChange,
   history,
   currentData,
@@ -98,8 +98,9 @@ export default function ControlRoutePage({
       )}
       controlSummary={(
         <ControlPanel
+          // Remount per crop so the draft rebuilds from that crop's accepted settings.
+          key={crop}
           status={controls}
-          onToggle={onToggle}
           onSettingsChange={onSettingsChange}
         />
       )}

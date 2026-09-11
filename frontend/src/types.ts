@@ -11,7 +11,8 @@ export type SensorFieldKey =
     | 'vpd'
     | 'stomatalConductance';
 
-export type SensorFieldAvailability = Record<SensorFieldKey, boolean>;
+export type DerivedSensorFieldKey = 'soilMoisture' | 'canopyTemp' | 'transpiration' | 'photosynthesis' | 'energyUsage' | 'hFlux' | 'leFlux';
+export type SensorFieldAvailability = Record<SensorFieldKey, boolean> & Partial<Record<DerivedSensorFieldKey, boolean>>;
 export type SensorFieldTimestamps = Record<SensorFieldKey, number | null>;
 
 export interface SensorData {
@@ -32,6 +33,8 @@ export interface SensorData {
     energyUsage: number;
     fieldAvailability?: SensorFieldAvailability;
     fieldTimestamps?: SensorFieldTimestamps;
+    dataQuality?: { status: 'ok' | 'invalid'; source?: string; issues: Array<{ field: string; reason: string }> };
+    simulationStatus?: string;
 }
 
 export interface TemperatureSettings {
@@ -48,6 +51,8 @@ export interface ControlStatus {
     heating: boolean;
     shading: boolean;
     settings: TemperatureSettings;
+    settingsState?: 'loading' | 'ready' | 'error';
+    settingsError?: string | null;
 }
 
 export interface AdvancedModelMetrics {
@@ -62,6 +67,9 @@ export interface AdvancedModelMetrics {
     };
     yield: {
         predictedWeekly: number;
+        /** False when the crop model provides dry matter rather than a fresh-harvest prediction. */
+        predictionAvailable?: boolean;
+        dryMatterGrowthKg?: number | null;
         confidence: number;
         harvestableFruits: number;
     };
@@ -80,17 +88,30 @@ export interface AdvancedModelMetrics {
 
 export interface ForecastDay {
     date: string;
-    harvest_kg: number;
-    ETc_mm: number;
+    harvest_kg: number | null;
+    fruit_growth_dry_kg?: number | null;
+    harvested_dry_kg?: number | null;
+    energy_kWh?: number | null;
+    ETc_mm: number | null;
+    harvested_fruit_dry_kg?: number | null;
 }
 
 export interface ForecastData {
     type?: 'forecast.snapshot';
     daily: ForecastDay[];
     last?: Record<string, unknown>;
-    total_harvest_kg: number;
-    total_ETc_mm: number;
-    total_energy_kWh: number;
+    total_harvest_kg: number | null;
+    total_fruit_growth_dry_kg?: number | null;
+    total_harvested_dry_kg?: number | null;
+    total_harvested_fruit_dry_kg?: number | null;
+    data_quality?: SensorData['dataQuality'];
+    refresh_error?: string | null;
+    refreshed_at?: string;
+    harvest_basis?: string;
+    fruit_growth_basis?: string;
+    energy_basis?: string;
+    total_ETc_mm: number | null;
+    total_energy_kWh: number | null;
 }
 
 export interface WeatherCurrent {
@@ -831,6 +852,8 @@ export interface RtrSensitivityResponse {
 
 export interface MetricHistoryPoint {
     timestamp: number;
+    /** Model state captured with this sensor frame for synchronized scene replay. */
+    metrics?: AdvancedModelMetrics;
     receivedAtTimestamp?: number;
     lai: number;
     biomass: number;

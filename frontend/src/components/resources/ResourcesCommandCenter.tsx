@@ -6,9 +6,10 @@ import type {
     SensorData,
     WeatherOutlook,
 } from '../../types';
-import { getProduceDisplayName } from '../../utils/displayCopy';
+import { getProduceDisplayName, UNIT_LABELS } from '../../utils/displayCopy';
 import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import DashboardCard from '../common/DashboardCard';
+import ScientificText from '../common/ScientificText';
 import DecisionSnapshotGrid from '../dashboard/DecisionSnapshotGrid';
 import WeatherOutlookPanel from '../WeatherOutlookPanel';
 import LoadingSkeleton from '../../features/common/LoadingSkeleton';
@@ -85,7 +86,7 @@ export default function ResourcesCommandCenter({
     const weatherValue = weather
         ? `${weather.current.temperature_c.toFixed(1)}°C · ${weather.current.relative_humidity_pct.toFixed(0)}%`
         : (weatherLoading ? (locale === 'ko' ? '기상 불러오는 중' : 'Loading weather') : (weatherError ?? '-'));
-    const cropValue = `${currentData.transpiration.toFixed(2)} mmol/m²/s · ${currentData.photosynthesis.toFixed(1)} µmol/m²/s`;
+    const cropValue = `${currentData.transpiration.toFixed(2)} ${UNIT_LABELS.transpirationRate} · ${currentData.photosynthesis.toFixed(1)} ${UNIT_LABELS.photonFlux}`;
     const supportCards = [
         {
             label: copy.energy,
@@ -125,14 +126,14 @@ export default function ResourcesCommandCenter({
                     {supportCards.map((card) => (
                         <article
                             key={card.label}
-                            className={`rounded-[24px] px-4 py-4 ${card.toneClass}`}
+                            className={`rounded-[var(--sg-radius-md)] border border-[color:var(--sg-outline-soft)] px-4 py-4 ${card.toneClass}`}
                             style={{ boxShadow: 'var(--sg-shadow-card)' }}
                         >
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+                            <div className="text-xs font-medium text-[color:var(--sg-text-muted)]">
                                 {card.label}
                             </div>
-                            <div className="mt-2 text-lg font-semibold tracking-[-0.05em] text-[color:var(--sg-text-strong)]">
-                                {card.value}
+                            <div className="mt-2 text-base font-semibold leading-6 text-[color:var(--sg-text-strong)]">
+                                <ScientificText text={card.value} />
                             </div>
                             <p className="mt-2 text-sm leading-6 text-[color:var(--sg-text-muted)]">
                                 {card.detail}

@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Optional, Literal
 
@@ -20,6 +21,7 @@ from .services.advisory_api import (
     build_nutrient_correction_response,
     build_nutrient_recommendation_response,
     build_pesticide_recommendation_response,
+    build_stock_tank_prescription_response,
 )
 from .services.advisor_orchestration import (
     build_advisor_chat_response,
@@ -35,6 +37,7 @@ from .services.advisor_orchestration import (
     build_work_recommendation_response,
 )
 from .services.openai_service import generate_consulting, generate_chat_reply
+from .services.chat_streaming import chat_event_stream
 from .services.knowledge_catalog import (
     build_crop_knowledge_context,
     build_knowledge_catalog,
@@ -99,6 +102,7 @@ class AdvisorChatRequest(BaseModel):
     messages: list[Dict[str, str]]
     dashboard: Optional[Dict[str, Any]] = None
     language: Optional[str] = "ko"
+    stream: bool = False
 
 
 class AdvisorChatPrimeRequest(BaseModel):
@@ -157,6 +161,17 @@ class NutrientCorrectionRequest(BaseModel):
     drain_water_mmol_l: Optional[Dict[str, float]] = None
     working_solution_volume_l: Optional[float] = None
     stock_ratio: Optional[float] = None
+
+
+class NutrientPrescriptionRequest(BaseModel):
+    crop: str
+    stage: Optional[str] = None
+    medium: Optional[str] = None
+    source_water_mmol_l: Optional[Dict[str, float]] = None
+    drain_water_mmol_l: Optional[Dict[str, float]] = None
+    stock_tank_volume_l: Optional[float] = None
+    stock_ratio: Optional[float] = None
+    options: Optional[Dict[str, Any]] = None
 
 
 class KnowledgeQueryFilters(BaseModel):
@@ -539,6 +554,7 @@ def _simulation_step_delay_seconds(simulator) -> float:
 async def _sleep_simulation_delay(crop: str, simulator, delay: float) -> None:
     remaining = max(0.0, float(delay))
     while remaining > 0 and simulator.running:
+        _record_runtime_tick(crop, clear_error=False)
         sleep_for = min(remaining, MAX_SIMULATION_SLEEP_CHUNK_SECONDS)
         pace_changed_event = app_state[crop].get("pace_changed_event")
         if pace_changed_event is None:
@@ -760,14 +776,15 @@ def _is_meaningful_source_sink_snapshot(
     )
 
 
-def _record_runtime_tick(crop: str, *, tick_at: Optional[datetime] = None) -> None:
+def _record_runtime_tick(crop: str, *, tick_at: Optional[datetime] = None, clear_error: bool = True) -> None:
     crop_state = app_state[crop]
     normalized = tick_at or datetime.now(UTC)
     crop_state["last_runtime_tick_at"] = (
         normalized if normalized.tzinfo else normalized.replace(tzinfo=UTC)
     )
-    crop_state["last_runtime_error"] = None
-    crop_state["last_runtime_error_at"] = None
+    if clear_error:
+        crop_state["last_runtime_error"] = None
+        crop_state["last_runtime_error_at"] = None
 
 
 def _record_runtime_error(crop: str, exc: Exception | str) -> None:
@@ -790,12 +807,15 @@ def _maybe_persist_runtime_snapshot(
     if adapter is None:
         return None
 
-    snapshot_dt = (
-        snapshot_time
-        or getattr(adapter, "_last_datetime", None)
-        or datetime.now(UTC)
-    )
-    snapshot_dt = snapshot_dt if snapshot_dt.tzinfo else snapshot_dt.replace(tzinfo=UTC)
+    last_state = getattr(adapter, "_last_state", None) or {}
+    if (
+        (last_state.get("data_quality") or {}).get("status") == "invalid"
+        or last_state.get("simulation_status") in {"failed", "unconverged", "invalid_input"}
+    ):
+        return None
+    snapshot_dt = _normalize_simulation_datetime(
+        snapshot_time or getattr(adapter, "_last_datetime", None)
+    ) or datetime.now(UTC)
     last_snapshot_at = crop_state.get("last_runtime_snapshot_at")
     if (
         isinstance(last_snapshot_at, datetime)
@@ -1740,7 +1760,7 @@ async def start_simulation(req: StartRequest):
     existing_task = crop_state.get("sim_task")
     if existing_simulator is not None:
         total_rows = len(existing_simulator.df_env)
-        at_end = total_rows > 0 and existing_simulator.idx >= total_rows - 1
+        at_end = total_rows > 0 and existing_simulator.idx >= total_rows
         task_alive = existing_task is not None and not existing_task.done()
         is_paused = bool(getattr(existing_simulator, "paused", False))
         same_dataset = (
@@ -1783,10 +1803,9 @@ async def start_simulation(req: StartRequest):
         logger.info(f"Stopping previous {crop} simulation...")
         crop_state["simulator"].stop()
         
-        # Cancel running simulation task
+        # Drain the in-flight model call before replacing its adapter. Cancelling
+        # an asyncio.to_thread await does not stop the underlying model thread.
         if crop_state["sim_task"] and not crop_state["sim_task"].done():
-            logger.info(f"Cancelling previous {crop} simulation task...")
-            crop_state["sim_task"].cancel()
             try:
                 await crop_state["sim_task"]
             except asyncio.CancelledError:
@@ -1800,9 +1819,6 @@ async def start_simulation(req: StartRequest):
             finally:
                 crop_state["sim_task"] = None
         
-        # Small delay to allow cleanup
-        await asyncio.sleep(0.2)
-
     # Resolve the dataset through the dataset service, which rejects path traversal:
     # csv_filename is user-controlled, and joining it to the data dir by hand would
     # let "../.." escape. It resolves both bundled fixtures and uploaded datasets.
@@ -1816,10 +1832,13 @@ async def start_simulation(req: StartRequest):
     try:
         ingestor = BatchIngestor(csv_path, quality_check=True)
         df_env = ingestor.load()
+        deduplicated_rows = int(df_env.attrs.get("deduplicated_rows", 0))
     except FileNotFoundError:
         raise HTTPException(
             status_code=404, detail=f"CSV file not found: {req.csv_filename}"
         )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid environment data: {e}") from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load CSV: {str(e)}")
 
@@ -1843,6 +1862,14 @@ async def start_simulation(req: StartRequest):
 
             resampled = numeric_resampled.copy()
             for col in non_numeric_cols:
+                if col == "data_quality":
+                    def combine_quality(items):
+                        issues = [issue for item in items if isinstance(item, dict) for issue in item.get("issues", [])]
+                        if len(items) == 0:
+                            issues.append({"field": "datetime", "reason": "No source rows in this interval; values were interpolated."})
+                        return {"status": "invalid" if issues else "ok", "source": "csv_replay", "issues": issues}
+                    resampled[col] = df[col].resample(frequency).apply(combine_quality)
+                    continue
                 resampled[col] = df[col].resample(frequency).ffill().bfill()
 
             resampled = resampled.reset_index()
@@ -1861,6 +1888,7 @@ async def start_simulation(req: StartRequest):
     crop_state["last_runtime_error"] = None
     crop_state["last_runtime_error_at"] = None
     crop_state["last_forecast_schedule_at"] = None
+    crop_state["latest_forecast"] = None
     crop_state["pace_changed_event"] = None
 
     # Calculate timestep duration from the active time-step contract.
@@ -1933,6 +1961,8 @@ async def start_simulation(req: StartRequest):
 
     # Initialize forecaster
     def _handle_forecast_broadcast(path: str, payload: Dict[str, Any]):
+        if crop_state.get("forecaster") is not forecaster:
+            return
         # Intercept forecast result to store in state
         if payload.get("type") == "forecast.snapshot":
             crop_state["latest_forecast"] = payload
@@ -1975,6 +2005,7 @@ async def start_simulation(req: StartRequest):
         "status": "success",
         "crop": crop,
         "rows": len(df_env),
+        "deduplicated_rows": deduplicated_rows,
         "date_range": {
             "start": str(df_env["datetime"].min()),
             "end": str(df_env["datetime"].max()),
@@ -1998,33 +2029,24 @@ async def step_simulation(crop: str = "tomato"):
 
     simulator = crop_state["simulator"]
 
+    if simulator.running and not simulator.paused:
+        raise HTTPException(status_code=409, detail="Pause the simulation before stepping manually.")
+    pending_step = crop_state.get("model_step_task")
+    if pending_step is not None and not pending_step.done():
+        raise HTTPException(status_code=409, detail="A simulation step is still finishing.")
+
     # Check if at end
     if simulator.idx >= len(simulator.df_env):
         return {"status": "end", "message": "Reached end of data"}
 
     # Execute step
-    payload = simulator.step_from_index(simulator.idx)
+    model_step_task = asyncio.create_task(asyncio.to_thread(simulator.step_from_index, simulator.idx))
+    crop_state["model_step_task"] = model_step_task
+    payload = await asyncio.shield(model_step_task)
 
-    # Update irrigation
-    dt = simulator.df_env.iloc[simulator.idx]["datetime"]
-    irr_advice = crop_state["irrigation"].update_step(
-        payload["state"], dt
-    )
-
-    # Update energy
-    dt_hours = crop_state.get("dt_hours", 1.0)
-    ops_config = _get_ops_config(crop)
-    energy_est = crop_state["energy"].estimate_step(
-        state=payload["state"],
-        env=payload["env"],
-        setpoints={
-            "heating_set_C": ops_config["heating_set_C"],
-            "cooling_set_C": ops_config["cooling_set_C"],
-            "T_out_C": payload["env"]["T_air_C"] - 5,  # Placeholder
-        },
-        dt=dt,
-        dt_hours=dt_hours,
-    )
+    # Simulator.step already integrated these services for this interval.
+    irr_advice = payload.get("irrigation", {})
+    energy_est = payload.get("energy", {})
 
     # Merge into payload and store last recommendations inputs
     payload["irrigation"] = irr_advice
@@ -2044,16 +2066,13 @@ async def step_simulation(crop: str = "tomato"):
     _maybe_persist_runtime_snapshot(
         crop,
         source="simulation_step",
-        snapshot_time=_normalize_snapshot_datetime(
+        snapshot_time=_normalize_simulation_datetime(
             payload.get("state", {}).get("datetime") or payload.get("t")
         ),
     )
 
     await manager.broadcast(f"/ws/sim/{crop}", payload)
     _record_runtime_tick(crop)
-
-    # Advance index
-    simulator.idx += 1
 
     # Schedule forecast every N steps
     if simulator.idx % 60 == 0:  # Every 60 steps (hourly if minute data)
@@ -2063,11 +2082,11 @@ async def step_simulation(crop: str = "tomato"):
 
 
 @app.post("/api/run")
-async def run_all():
-    """Run entire simulation for all active crops."""
+async def run_all(crop: Optional[str] = None):
+    """Run the selected crop, or all initialized crops when omitted."""
     started_crops = []
     
-    for crop in CROPS:
+    for crop in _target_crops(crop):
         if app_state.get(crop) and app_state[crop].get("simulator"):
             simulator = app_state[crop]["simulator"]
             if not simulator.running:
@@ -2094,21 +2113,27 @@ async def _run_simulation_task(crop: str):
     _record_runtime_tick(crop)
 
     try:
-        for i in range(simulator.idx, len(simulator.df_env)):
+        while simulator.idx < len(simulator.df_env):
             if not simulator.running:
                 logger.info(f"{crop} simulation stopped by user")
                 break
 
             # Handle pause
-            while simulator.paused:
-                _record_runtime_tick(crop)
+            while simulator.paused and simulator.running:
+                _record_runtime_tick(crop, clear_error=False)
                 await asyncio.sleep(0.1)
+
+            if not simulator.running:
+                break
+            i = simulator.idx
 
             try:
                 # Crop model stepping is CPU-heavy enough to starve the event loop if
                 # we run it inline here. Offload it so API and WebSocket handshakes
                 # remain responsive while the simulation is advancing.
-                payload = await asyncio.to_thread(simulator.step_from_index, i)
+                model_step_task = asyncio.create_task(asyncio.to_thread(simulator.step_from_index, i))
+                crop_state["model_step_task"] = model_step_task
+                payload = await asyncio.shield(model_step_task)
 
                 # Store last values for recommendations
                 crop_state["last_irrigation"] = payload.get("irrigation", {})
@@ -2134,7 +2159,7 @@ async def _run_simulation_task(crop: str):
                     _maybe_persist_runtime_snapshot(
                         crop,
                         source="simulation_run",
-                        snapshot_time=_normalize_snapshot_datetime(
+                        snapshot_time=_normalize_simulation_datetime(
                             payload.get("state", {}).get("datetime") or payload.get("t")
                         ),
                     )
@@ -2173,9 +2198,10 @@ async def _run_simulation_task(crop: str):
             except Exception as exc:
                 _record_runtime_error(crop, exc)
                 logger.error("%s simulation step %s failed: %s", crop, i, exc, exc_info=True)
-                await asyncio.sleep(0.25)
+                simulator.stop()
+                break
 
-        if simulator.running and simulator.idx >= len(simulator.df_env) - 1:
+        if simulator.running and simulator.idx >= len(simulator.df_env):
             simulator.stop()
             logger.info("%s simulation reached end of data", crop)
 
@@ -2226,7 +2252,8 @@ def _schedule_forecast(crop: str, *, force: bool = False) -> bool:
         logger.warning(f"{crop} forecast skipped - at end of data")
         return False
 
-    current_dt = pd.to_datetime(simulator.df_env.iloc[current_idx]["datetime"])
+    last_datetime = (getattr(adapter, "_last_state", None) or {}).get("datetime")
+    current_dt = pd.to_datetime(last_datetime) if last_datetime else pd.to_datetime(simulator.df_env.iloc[max(0, current_idx - 1)]["datetime"])
     future_end = current_dt + timedelta(days=settings.forecast_window_days)
 
     mask = (simulator.df_env["datetime"] > current_dt) & (
@@ -2256,6 +2283,9 @@ async def pause_simulation(crop: Optional[str] = None):
             continue
 
         simulator.pause()
+        model_step_task = app_state[crop_name].get("model_step_task")
+        if model_step_task is not None and not model_step_task.done():
+            await asyncio.shield(model_step_task)
         _record_runtime_tick(crop_name)
         paused_crops.append(crop_name)
 
@@ -2271,7 +2301,7 @@ async def resume_simulation(crop: Optional[str] = None):
     resumed_crops = []
     for crop_name in _target_crops(crop):
         simulator = app_state[crop_name]["simulator"]
-        if simulator is None:
+        if simulator is None or not simulator.running:
             continue
 
         simulator.resume()
@@ -2296,8 +2326,10 @@ async def stop_simulation(crop: Optional[str] = None):
 
         simulator.stop()
         if crop_state["sim_task"] and not crop_state["sim_task"].done():
-            logger.info(f"Cancelling {crop_name} simulation task...")
-            crop_state["sim_task"].cancel()
+            await crop_state["sim_task"]
+        model_step_task = crop_state.get("model_step_task")
+        if model_step_task is not None and not model_step_task.done():
+            await asyncio.shield(model_step_task)
 
         stopped_crops.append(crop_name)
 
@@ -2421,6 +2453,11 @@ async def set_speed(req: SpeedRequest, crop: Optional[str] = None):
         ],
         "greenhouses": greenhouse_updates,
     }
+
+
+@app.get("/api/config/ops")
+async def get_ops_config(crop: str = "tomato"):
+    return dict(_get_ops_config(_validate_crop(crop)))
 
 
 @app.post("/api/config/ops")
@@ -2894,11 +2931,28 @@ async def advisor_chat(req: AdvisorChatRequest):
     crop = _validate_crop(req.crop)
     try:
 
+        dashboard = _augment_dashboard_with_knowledge_context(crop, req.dashboard)
+        runtime = (await get_status())["greenhouses"][crop]
+        last_state = getattr(app_state[crop].get("adapter"), "_last_state", None) or {}
+        dashboard["simulation_runtime"] = {
+            **{key: runtime.get(key) for key in ("status", "simulated_at", "idx", "total_rows", "progress", "task_alive", "last_error")},
+            "last_model_status": last_state.get("simulation_status"),
+            "data_quality": last_state.get("data_quality"),
+        }
+        if req.stream:
+            return StreamingResponse(
+                chat_event_stream(build_advisor_chat_response, kwargs={
+                    "crop": crop, "messages": req.messages, "dashboard": dashboard,
+                    "language": req.language or "ko",
+                }),
+                media_type="application/x-ndjson",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
         return await asyncio.to_thread(
             build_advisor_chat_response,
             crop=crop,
             messages=req.messages,
-            dashboard=_augment_dashboard_with_knowledge_context(crop, req.dashboard),
+            dashboard=dashboard,
             language=req.language or "ko",
         )
     except RuntimeError as exc:
@@ -3070,6 +3124,22 @@ async def recommend_nutrient_correction_draft(req: NutrientCorrectionRequest):
         drain_water_mmol_l=req.drain_water_mmol_l,
         working_solution_volume_l=req.working_solution_volume_l,
         stock_ratio=req.stock_ratio,
+    )
+
+
+@app.post("/api/nutrients/prescription")
+async def recommend_stock_tank_prescription_plan(req: NutrientPrescriptionRequest):
+    """Return the deterministic A/B stock-tank prescription for a workbook recipe."""
+    crop = _validate_crop(req.crop)
+    return build_stock_tank_prescription_response(
+        crop=crop,
+        stage=req.stage,
+        medium=req.medium,
+        source_water_mmol_l=req.source_water_mmol_l,
+        drain_water_mmol_l=req.drain_water_mmol_l,
+        stock_tank_volume_l=req.stock_tank_volume_l,
+        stock_ratio=req.stock_ratio,
+        options=req.options,
     )
 
 
@@ -3802,7 +3872,13 @@ async def get_rtr_calibration_state(crop: str, greenhouse_id: Optional[str] = No
     normalized_crop = _validate_crop(crop)
     resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, greenhouse_id)
     profiles_payload = load_rtr_profiles()
-    windows_payload = load_rtr_good_windows()
+    # The window loader fails closed on a malformed curated-window file rather
+    # than dropping the window, which would refit the RTR line from a different
+    # set of days while still calling itself "curated-windows".
+    try:
+        windows_payload = load_rtr_good_windows()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     current_windows = filter_rtr_good_windows_for_house(
         windows_payload,
         normalized_crop,
@@ -3849,13 +3925,18 @@ async def save_rtr_calibration(req: RTRCalibrationSaveRequest):
     resolved_greenhouse_id = _resolve_greenhouse_id(normalized_crop, req.greenhouse_id)
     crop_key = _get_rtr_profile_crop_key(normalized_crop)
     incoming_windows = [window.model_dump(exclude_none=True) for window in req.windows]
-    existing_windows_payload = load_rtr_good_windows()
-    updated_windows_payload = upsert_rtr_good_windows(
-        existing_windows_payload,
-        crop=normalized_crop,
-        greenhouse_id=resolved_greenhouse_id,
-        windows=incoming_windows,
-    )
+    # A rejected window must not be written out as a saved file that silently
+    # lost it, so surface the rejection to the caller instead.
+    try:
+        existing_windows_payload = load_rtr_good_windows()
+        updated_windows_payload = upsert_rtr_good_windows(
+            existing_windows_payload,
+            crop=normalized_crop,
+            greenhouse_id=resolved_greenhouse_id,
+            windows=incoming_windows,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     scoped_windows = filter_rtr_good_windows_for_house(
         updated_windows_payload,
         normalized_crop,
@@ -3973,6 +4054,8 @@ async def get_status():
         if crop_state["simulator"] is None:
             status_result[crop_name] = {
                 "status": "idle",
+                "csv_filename": crop_state.get("csv_filename"),
+                "simulated_at": None,
                 "sim_seconds_per_real_second": crop_state.get(
                     "sim_seconds_per_real_second"
                 ),
@@ -3983,7 +4066,7 @@ async def get_status():
             task_alive = sim_task is not None and not sim_task.done()
             is_paused = simulator.running and task_alive and bool(getattr(simulator, "paused", False))
             total_rows = len(simulator.df_env)
-            at_end = total_rows > 0 and simulator.idx >= total_rows - 1
+            at_end = total_rows > 0 and simulator.idx >= total_rows
             last_tick_at = crop_state.get("last_runtime_tick_at")
             last_error = crop_state.get("last_runtime_error")
             last_error_at = crop_state.get("last_runtime_error_at")
@@ -4000,13 +4083,7 @@ async def get_status():
                     )
                 )
             )
-            if total_rows <= 1:
-                progress = 100.0 if at_end else 0.0
-            else:
-                progress = round(
-                    min(simulator.idx, total_rows - 1) / (total_rows - 1) * 100,
-                    2,
-                )
+            progress = round(min(simulator.idx, total_rows) / total_rows * 100, 2) if total_rows else 0.0
 
             if at_end:
                 status = "completed"
@@ -4021,6 +4098,8 @@ async def get_status():
 
             status_result[crop_name] = {
                 "status": status,
+                "csv_filename": crop_state.get("csv_filename"),
+                "simulated_at": _serialize_datetime(_normalize_simulation_datetime((getattr(crop_state.get("adapter"), "_last_state", None) or {}).get("datetime"))),
                 "running": simulator.running,
                 "at_end": at_end,
                 "idx": simulator.idx,
@@ -4045,6 +4124,7 @@ async def get_status():
                 "last_tick_at": _serialize_datetime(last_tick_at),
                 "last_error": last_error,
                 "last_error_at": _serialize_datetime(last_error_at),
+                "last_model_status": (getattr(crop_state.get("adapter"), "_last_state", None) or {}).get("simulation_status"),
             }
     
     return {"status": "success", "greenhouses": status_result}
@@ -4060,7 +4140,8 @@ async def get_forecast(crop: str):
     if crop_state.get("latest_forecast"):
         return crop_state["latest_forecast"]
         
-    return {"daily": [], "total_harvest_kg": 0, "total_ETc_mm": 0, "total_energy_kWh": 0}
+    return {"daily": [], "total_harvest_kg": None, "total_ETc_mm": None, "total_energy_kWh": None,
+            "total_fruit_growth_dry_kg": None, "harvest_basis": "fresh_mass_unavailable", "energy_basis": "not_estimated"}
 
 
 # ===== WebSocket Endpoints =====

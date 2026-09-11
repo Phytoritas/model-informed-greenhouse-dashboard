@@ -50,7 +50,7 @@ export function useOverviewSignalTrends(crop: CropType) {
                 const hasFreshIrradianceSeries = nextIrradiancePoints.length >= 2;
                 const hasPreviousIrradianceSeries = previousIrradiancePoints.length >= 2;
 
-                if (hasFreshIrradianceSeries || !hasPreviousIrradianceSeries || !previous) {
+                if (hasFreshIrradianceSeries || !hasPreviousIrradianceSeries || !previous || previous.crop !== data.crop) {
                     return data;
                 }
 
@@ -58,7 +58,7 @@ export function useOverviewSignalTrends(crop: CropType) {
                     ...data,
                     irradiance: {
                         ...previous.irradiance,
-                        source: data.irradiance?.source ?? previous.irradiance.source,
+                        source: previous.irradiance.source,
                         window_hours: data.irradiance?.window_hours ?? previous.irradiance.window_hours,
                     },
                 };
@@ -98,6 +98,7 @@ export function useOverviewSignalTrends(crop: CropType) {
 
     useEffect(() => {
         refreshSessionRef.current += 1;
+        setSignals(null);
         setError(null);
         setRefreshedAt(null);
         queuedRefreshRef.current = false;

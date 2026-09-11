@@ -1,0 +1,280 @@
+/* Field decision board: the six situation cards under "지금 확인할 일".
+   Layout only. Every colour comes from the shared token set in theme.css so the
+   board follows the existing light/dark surfaces without new palette values. */
+
+.field-decision-board {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  scroll-margin-top: 96px;
+}
+.field-decision-board--compact {
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--sg-radius-lg, 16px);
+  border: 1px solid var(--sg-outline-soft);
+  background: var(--sg-surface-raised);
+}
+.field-decision-board h2 { font-size: 20px; line-height: 1.4; }
+
+.field-decision-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--sg-text-faint);
+}
+
+/* ---------- substrate demo ---------- */
+.field-decision-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--sg-outline-soft);
+  border-radius: var(--sg-radius-sm);
+  background: var(--sg-surface-muted);
+}
+.field-decision-demo-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--sg-text-strong);
+}
+.field-decision-demo-summary {
+  flex: 1 1 260px;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--sg-text-muted);
+}
+
+/* ---------- card grid ---------- */
+.field-decision-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.field-decision-board--compact .field-decision-grid { grid-template-columns: 1fr; gap: 12px; }
+
+.field-decision-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--sg-outline-soft);
+  border-radius: var(--sg-radius-sm);
+  background: var(--sg-surface-raised);
+}
+/* The priority band is the only card-level colour, so a card never reads as an
+   alarm on its background alone. */
+.field-decision-card--first { border-left: 3px solid var(--sg-color-primary-strong); }
+.field-decision-card--today { border-left: 3px solid var(--sg-color-primary); }
+.field-decision-card--observe { border-left: 3px solid var(--sg-outline-soft); }
+.field-decision-card--data { border-left: 3px solid var(--sg-text-faint); }
+
+.field-decision-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.field-decision-card-title {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--sg-text-strong);
+}
+.field-decision-card-head .field-decision-chip-group {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.field-decision-reason {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--sg-text);
+}
+
+.field-decision-rows { display: grid; gap: 10px; margin: 0; }
+.field-decision-rows > div { display: grid; gap: 3px; }
+.field-decision-rows dt {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--sg-text-faint);
+}
+.field-decision-rows dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--sg-text);
+}
+.field-decision-rows dd.field-decision-action { font-weight: 600; color: var(--sg-text-strong); }
+.field-decision-confirm,
+.field-decision-limit { display: grid; gap: 5px; padding-top: 10px; }
+.field-decision-confirm-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--sg-text-faint);
+}
+.field-decision-confirm-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+.field-decision-confirm-list li { font-size: 14px; line-height: 1.75; color: var(--sg-text); }
+.field-decision-limit-text { margin: 0; font-size: 13px; line-height: 1.75; color: var(--sg-text-muted); }
+
+.field-decision-basis {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--sg-text-faint);
+}
+
+/* ---------- disclosures ---------- */
+.field-decision-disclosure {
+  border-top: 1px solid var(--sg-outline-soft);
+  padding-top: 10px;
+}
+.field-decision-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--sg-color-primary-strong);
+  list-style: none;
+}
+.field-decision-disclosure > summary::-webkit-details-marker { display: none; }
+.field-decision-disclosure > summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.field-decision-disclosure[open] > summary::after { transform: rotate(-135deg) translate(-1px, -1px); }
+.field-decision-disclosure > summary:focus-visible {
+  outline: 2px solid var(--sg-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--sg-radius-xs);
+}
+
+/* ---------- field observation inputs ---------- */
+.field-decision-questions { display: grid; gap: 12px; padding-top: 12px; }
+.field-decision-question { display: grid; gap: 5px; }
+.field-decision-question > label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--sg-text-strong);
+}
+.field-decision-question > select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--sg-outline-soft);
+  border-radius: var(--sg-radius-xs);
+  background: var(--sg-surface-raised);
+  color: var(--sg-text-strong);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.field-decision-question > select:focus-visible {
+  outline: 2px solid var(--sg-color-primary);
+  outline-offset: 1px;
+}
+.field-decision-answer-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-top: 2px;
+}
+.field-decision-answer-time {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--sg-text-faint);
+}
+
+/* ---------- evidence ---------- */
+.field-decision-evidence-list { display: grid; gap: 12px; margin: 0; padding: 12px 0 0; list-style: none; }
+.field-decision-evidence-item {
+  display: grid;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--sg-outline-soft);
+}
+.field-decision-evidence-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--sg-text-strong);
+}
+.field-decision-evidence-claim {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--sg-text-muted);
+}
+.field-decision-evidence-locator {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--sg-text-faint);
+}
+.field-decision-evidence-locator a { color: var(--sg-color-primary-strong); }
+.field-decision-evidence-limits { display: grid; gap: 3px; margin: 0; padding-left: 16px; list-style: disc; }
+.field-decision-evidence-limits li { font-size: 12px; line-height: 1.65; color: var(--sg-text-faint); }
+
+/* ---------- footer ---------- */
+.field-decision-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--sg-outline-soft);
+}
+.field-decision-note { margin: 0; font-size: 12px; line-height: 1.65; color: var(--sg-text-faint); }
+
+@media (max-width: 1099px) {
+  .field-decision-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 639px) {
+  .field-decision-board { padding: 18px; }
+  .field-decision-card { padding: 16px; }
+  /* Field use is one-handed on a phone: every control clears the 40px target. */
+  .field-decision-question > select { min-height: 48px; font-size: 15px; }
+  .field-decision-demo select { min-height: 48px; }
+  .field-decision-disclosure > summary { min-height: 44px; }
+}

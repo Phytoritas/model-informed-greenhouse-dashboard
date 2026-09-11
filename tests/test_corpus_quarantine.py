@@ -23,11 +23,11 @@ def test_orphaned_wiki_families_are_quarantined() -> None:
     assert not is_quarantined(asset_family="manual")
 
 
-def test_japanese_compendia_are_quarantined() -> None:
-    # 農業技術大系: Japanese-language books; agronomic transfer unverified and
-    # the 農文協 licence is unresolved.
-    assert is_quarantined(filename="농업기술대계_토마토편.pdf")
-    assert is_quarantined(filename="오이_농업기술대계.pdf")
+def test_requested_japanese_compendia_are_available_for_reference() -> None:
+    # Local compendia are requested reference sources, with their Japanese
+    # agronomic conditions retained rather than treated as local prescriptions.
+    assert not is_quarantined(filename="농업기술대계_토마토편.pdf")
+    assert not is_quarantined(filename="오이_농업기술대계.pdf")
     assert not is_quarantined(filename="농업기술길잡이-토마토.PDF")
 
 
@@ -89,7 +89,7 @@ def test_quarantine_clause_actually_excludes_rows_in_sqlite() -> None:
     ).fetchall()
     connection.close()
 
-    assert [row[0] for row in rows] == [1, 6], "quarantined documents leaked into results"
+    assert [row[0] for row in rows] == [1, 4, 5, 6], "orphaned wiki documents leaked into results"
 
 
 def _pages_from_text(text: str) -> list[str]:

@@ -15,7 +15,7 @@ export default function AppShell({
     children,
 }: AppShellProps) {
     return (
-        <div className="min-h-screen bg-[color:var(--sg-bg)] px-4 py-4 font-sans text-[color:var(--sg-text)] sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-[color:var(--sg-bg)] px-3 py-3 font-sans text-[color:var(--sg-text)] sm:px-6 sm:py-5">
             <main className="overview-browser-shell">
                 <div className="overview-browser-frame">
                     <div className="overview-frame-body">

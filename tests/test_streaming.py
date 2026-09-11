@@ -22,6 +22,7 @@ def _reset_streaming_app_state() -> None:
         crop_state["adapter"] = None
         crop_state["df_env"] = None
         crop_state["sim_task"] = None
+        crop_state["model_step_task"] = None
         crop_state["dt_hours"] = None
         crop_state["time_step"] = "auto"
         crop_state["step_sim_duration_seconds"] = None
@@ -55,18 +56,21 @@ class DummySimulator:
     def __init__(self) -> None:
         self.idx = 0
         self.running = True
+        self.paused = True
         self.df_env = pd.DataFrame(
             [{"datetime": pd.Timestamp("2026-04-03T09:00:00")}]
         )
 
     def step_from_index(self, idx: int) -> dict:
-        self.idx = idx
+        self.idx = idx + 1
         return {
             "t": "2026-04-03T09:00:00",
             "crop": "tomato",
             "kpi": {"yield_confidence": 91},
             "env": {"T_air_C": 21.5},
             "state": {"development_stage": "vegetative"},
+            "irrigation": {"recommended_irrigation_l": 12.5},
+            "energy": {"P_elec_kW": 4.2, "COP_current": 3.6},
         }
 
 
@@ -210,7 +214,7 @@ def test_verify_src001_s0002_r001_a01_stream_delay_uses_step_duration_over_pace(
             )
 
         def step_from_index(self, idx: int) -> dict:
-            self.idx = idx
+            self.idx = idx + 1
             return {
                 "t": "2026-04-03T09:00:00",
                 "crop": "tomato",

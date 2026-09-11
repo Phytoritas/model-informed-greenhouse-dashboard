@@ -127,10 +127,26 @@ export function buildAiDashboardContext({
 }: BuildAiDashboardContextArgs) {
     const recentSummary = buildDashboardRecentSummary(currentData, history, 60);
     const effectiveProfile = getRtrProfile(crop, rtrProfile);
+    const hasRtrInputs = (point: SensorData) =>
+        point.fieldAvailability?.temperature !== false
+        && point.fieldAvailability?.light !== false
+        && Number.isFinite(point.temperature) && Number.isFinite(point.light);
 
     return {
-        data: currentData,
-        metrics,
+        data: {
+            ...currentData,
+            ...Object.fromEntries(Object.entries(currentData.fieldAvailability ?? {})
+                .filter(([, available]) => !available).map(([field]) => [field, null])),
+        },
+        source: 'csv_replay',
+        simulation_time: new Date(currentData.timestamp).toISOString(),
+        metrics: {
+            ...metrics,
+            yield: {
+                ...metrics.yield,
+                predictedWeekly: metrics.yield.predictionAvailable === false ? null : metrics.yield.predictedWeekly,
+            },
+        },
         forecast,
         market: buildMarketContext(producePrices, crop),
         recentSummary,
@@ -150,7 +166,9 @@ export function buildAiDashboardContext({
                 toleranceC: effectiveProfile.toleranceC,
                 calibration: effectiveProfile.calibration,
             },
-            live: buildRTRLiveSnapshot(currentData, history, crop, effectiveProfile),
+            live: hasRtrInputs(currentData)
+                ? buildRTRLiveSnapshot(currentData, history.filter(hasRtrInputs), crop, effectiveProfile)
+                : null,
             forecastTargets: buildRTRForecastTargets(weather?.daily ?? [], crop, effectiveProfile).slice(0, 3),
         },
     };

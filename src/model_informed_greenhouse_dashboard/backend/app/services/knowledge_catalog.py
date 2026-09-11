@@ -103,7 +103,18 @@ ASSET_SPECS: list[dict[str, Any]] = [
     },
     {
         "filename": "오이_농업기술대계.pdf",
-        "title": "Cucumber agronomy compendium",
+        "title": "농업기술대계 오이편 (農業技術大系, 일본어)",
+        "expected_language": "ja",
+        "source_context": {
+            "language": "ja",
+            "region": "Japan",
+            "reference_kind": "agronomy_compendium",
+            "series": "農業技術大系",
+            "supplement_evidence": {
+                "pdf_page": 76, "volume": 1, "issue": 40, "year": 2015,
+                "note": "Footer observed on this page; not the publication year of the whole compiled book.",
+            },
+        },
         "crop_scopes": ["cucumber"],
         "asset_family": "manual",
         "source_type": "pdf",
@@ -150,7 +161,18 @@ ASSET_SPECS: list[dict[str, Any]] = [
     },
     {
         "filename": "농업기술대계_토마토편.pdf",
-        "title": "Tomato agronomy compendium",
+        "title": "농업기술대계 토마토편 (農業技術大系, 일본어)",
+        "expected_language": "ja",
+        "source_context": {
+            "language": "ja",
+            "region": "Japan",
+            "reference_kind": "agronomy_compendium",
+            "series": "農業技術大系",
+            "supplement_evidence": {
+                "pdf_page": 29, "volume": 2, "issue": 35, "year": 2010,
+                "note": "Footer observed on this page; not the publication year of the whole compiled book.",
+            },
+        },
         "crop_scopes": ["tomato"],
         "asset_family": "manual",
         "source_type": "pdf",
@@ -381,6 +403,8 @@ def _build_asset_entry(spec: dict[str, Any]) -> dict[str, Any]:
     }
     if spec.get("manifest_sha256"):
         entry["manifest_sha256"] = spec["manifest_sha256"]
+    if spec.get("source_context"):
+        entry["source_context"] = deepcopy(spec["source_context"])
 
     if exists:
         stats = path.stat()

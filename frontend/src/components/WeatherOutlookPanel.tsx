@@ -3,6 +3,7 @@ import { formatLocaleDate, formatLocaleDateTime } from '../i18n/locale';
 import { getCountryLabel, getWeatherLabel } from '../utils/displayCopy';
 import type { WeatherOutlook } from '../types';
 import DashboardCard from './common/DashboardCard';
+import ScientificText from './common/ScientificText';
 import { StatusChip, type StatusChipTone } from './ui/status-chip';
 
 interface WeatherOutlookPanelProps {
@@ -21,11 +22,11 @@ function WeatherStatTile({
 }) {
     return (
         <div className="min-w-0 rounded-[var(--sg-radius-md)] bg-white/84 px-3 py-2.5 shadow-[var(--sg-shadow-card)]">
-            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sg-text-faint)]">
+            <div className="text-xs font-semibold leading-5 text-[color:var(--sg-text-muted)]">
                 {label}
             </div>
-            <div className="sg-data-number mt-1 truncate text-sm font-bold text-[color:var(--sg-text-strong)]">
-                {value}
+            <div className="sg-data-number mt-1 text-sm font-bold leading-5 text-[color:var(--sg-text-strong)]">
+                <ScientificText text={value} />
             </div>
         </div>
     );
@@ -168,7 +169,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                     {copy.feelsLike} {weather.current.apparent_temperature_c.toFixed(1)}°C
                                 </span>
                             </div>
-                            <div className="text-right text-[11px] text-[color:var(--sg-text-muted)]">
+                            <div className="text-right text-xs text-[color:var(--sg-text-muted)]">
                                 {formatLocaleDateTime(locale, weather.current.time)} · {weather.location.timezone}
                             </div>
                         </div>
@@ -194,7 +195,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                             />
                             <WeatherStatTile
                                 label={copy.shortwave}
-                                value={`${(today?.shortwave_radiation_sum_mj_m2 ?? 0).toFixed(1)} MJ/m2`}
+                                value={`${(today?.shortwave_radiation_sum_mj_m2 ?? 0).toFixed(1)} MJ m⁻²`}
                             />
                             <WeatherStatTile
                                 label={copy.sunshine}
@@ -250,7 +251,7 @@ const WeatherOutlookPanel = ({ weather, loading, error, compact = false }: Weath
                                             <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-neutral)] px-3 py-3">
                                                 <div className="text-[color:var(--sg-text-faint)]">{copy.shortwave}</div>
                                                 <div className="sg-data-number mt-1 font-semibold text-[color:var(--sg-text-strong)]">
-                                                    {day.shortwave_radiation_sum_mj_m2.toFixed(1)} MJ/m2
+                                                    <ScientificText text={`${day.shortwave_radiation_sum_mj_m2.toFixed(1)} MJ m⁻²`} />
                                                 </div>
                                             </div>
                                             <div className="rounded-[var(--sg-radius-md)] bg-[color:var(--sg-tint-violet)] px-3 py-3">

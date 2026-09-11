@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import greenhouseHero from '../../assets/overview-greenhouse-hero.jpg';
 import {
@@ -8,15 +8,10 @@ import {
   BookOpen,
   Check,
   CloudSun,
-  Droplets,
-  Fan,
   Leaf,
   Mail,
-  ShieldAlert,
   Sprout,
   Thermometer,
-  ThumbsDown,
-  ThumbsUp,
   TrendingUp,
   Wind,
   type LucideIcon,
@@ -31,7 +26,6 @@ import type {
   WeatherOutlook,
 } from '../../types';
 import type { SmartGrowKnowledgeSummary } from '../../hooks/useSmartGrowKnowledge';
-import { API_URL } from '../../config';
 import { useLocale } from '../../i18n/LocaleProvider';
 import { formatMetricValue } from '../../utils/formatValue';
 import { getCropLabel } from '../../utils/displayCopy';
@@ -39,7 +33,6 @@ import { selectProduceItemForCrop } from '../../utils/producePriceSelectors';
 import { buildRTRLiveSnapshot, getRtrProfile } from '../../utils/rtr';
 import { cn } from '../../utils/cn';
 import { metricToneForTile } from '../../utils/metricTone';
-import { AlertCard } from '../ui/alert-card';
 import { Button } from '../ui/button';
 import GlobalTopNav from '../shell/GlobalTopNav';
 import { Input } from '../ui/input';
@@ -65,22 +58,7 @@ function compactTrendLabel(label: string | null | undefined): string | undefined
     .replace(/^1h 변화\s*/, '')
     .replace(/^1h change\s*/i, '')
     .replace(/^최근 변화\s*/, '')
-    .replace(/µmol m⁻² s⁻¹/g, 'PAR')
-    .replace(/mol H₂O m⁻² s⁻¹/g, 'mol')
     .trim();
-}
-
-function compactMetricUnit(unit: string | undefined): string | undefined {
-  if (!unit) {
-    return undefined;
-  }
-  if (unit.includes('µmol')) {
-    return 'PAR';
-  }
-  if (unit.includes('mol H₂O')) {
-    return 'mol';
-  }
-  return unit;
 }
 
 const bridgeBodyClampStyle: CSSProperties = {
@@ -183,7 +161,7 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
   const copy = locale === 'ko'
     ? {
         eyebrow: 'Live Overview',
-        title: '실시간 의사결정 지표',
+        title: '현재 환경 지표',
         description: '센서 상태 기준',
         yield: '수확 전망',
         yieldDetail: '이번 주 예측',
@@ -191,7 +169,7 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
       }
     : {
         eyebrow: 'Live Overview',
-        title: 'Live decision metrics',
+        title: 'Current environment',
         description: 'Sensor freshness',
         yield: 'Yield Outlook',
         yieldDetail: 'weekly forecast',
@@ -201,22 +179,12 @@ export function LiveMetricStrip({ tiles, yieldOutlookKg }: { tiles: KpiTileData[
   const yieldValue = typeof yieldOutlookKg === 'number' && Number.isFinite(yieldOutlookKg)
     ? formatNumber(yieldOutlookKg, 1)
     : '-';
-  const freshnessLabel = compactTiles.find((tile) => tile.lastReceived)?.lastReceived
-    ?? compactTiles.find((tile) => tile.availabilityLabel)?.availabilityLabel
-    ?? copy.description;
 
   return (
     <section id="live-overview" tabIndex={-1} className="scroll-mt-24 space-y-1.5" aria-label={copy.title}>
-      <LandingSectionHeading
-        titleId="live-metric-strip-title"
-        eyebrow={copy.eyebrow}
-        title={copy.title}
-        description={copy.description}
-        actions={<StatusChip tone="stable">{freshnessLabel}</StatusChip>}
-      />
       <OverviewMetricDeck
         tiles={compactTiles}
-        yieldOutlook={{
+        yieldOutlook={yieldValue === '-' ? undefined : {
           label: copy.yield,
           value: yieldValue,
           unit: yieldValue === '-' ? undefined : copy.yieldUnit,
@@ -242,7 +210,7 @@ export function OverviewMetricDeck({
   className?: string;
 }) {
   return (
-    <div className={cn('overview-metric-row', className)} data-testid="overview-metric-deck">
+    <div className={cn('overview-metric-row decision-metric-deck', className)} data-testid="overview-metric-deck">
       {tiles.map((tile) => {
         const isNumeric = typeof tile.value === 'number';
         const value = typeof tile.value === 'number'
@@ -254,7 +222,7 @@ export function OverviewMetricDeck({
             key={tile.key}
             label={tile.label}
             value={value}
-            unit={isNumeric && tile.availabilityState !== 'missing' ? compactMetricUnit(tile.unit) : undefined}
+            unit={isNumeric && tile.availabilityState !== 'missing' ? tile.unit : undefined}
             detail={tile.lastReceived ?? tile.availabilityLabel}
             trend={tile.trend}
             trendLabel={compactTrendLabel(tile.trendDetail) || tile.availabilityLabel}
@@ -279,309 +247,30 @@ export function OverviewMetricDeck({
   );
 }
 
-// A consistent traffic light across every action card: act (red) needs attention now,
-// watch (amber) is worth checking today, ok (green) is inside its normal band. Before
-// this, chips like "확인 필요" were hardcoded per card and did not track the data.
-type ActionLevel = 'act' | 'watch' | 'ok';
+const UNTRUSTWORTHY_SIMULATION_STATUS = ['failed', 'unconverged', 'invalid_input', 'error'];
 
-const ACTION_LEVEL_TONE: Record<ActionLevel, 'critical' | 'warning' | 'growth'> = {
-  act: 'critical',
-  watch: 'warning',
-  ok: 'growth',
-};
-
-const ACTION_LEVEL_PRIORITY: Record<ActionLevel, number> = { act: 2, watch: 1, ok: 0 };
-
-interface TodayActionBoardProps {
-  crop: CropType;
-  currentData: SensorData;
-  modelMetrics: AdvancedModelMetrics;
-  actionsNow: string[];
-  actionsToday: string[];
-  monitor: string[];
-  onOpenRtr: () => void;
-  onOpenAdvisor: () => void;
-  /** Current mean temp minus RTR target (°C). When provided, the RTR card shows a
-   *  real verdict instead of the static fallback. */
-  rtrDeltaC?: number;
-  rtrToleranceC?: number;
+/**
+ * Whether the displayed frame as a whole can back a recommendation. Backend data
+ * quality and simulation status win over per-field flags, so a failed model run
+ * degrades every card to "confirm the data" instead of reusing stale numbers.
+ */
+export function isFrameTrustworthy(currentData: SensorData): boolean {
+  if (currentData.dataQuality?.status === 'invalid') {
+    return false;
+  }
+  const simulationStatus = currentData.simulationStatus?.toLowerCase() ?? '';
+  return !UNTRUSTWORTHY_SIMULATION_STATUS.some((flag) => simulationStatus.includes(flag));
 }
 
-export function TodayActionBoard({
-  crop,
-  currentData,
-  modelMetrics,
-  actionsNow,
-  actionsToday,
-  monitor,
-  onOpenRtr,
-  onOpenAdvisor,
-  rtrDeltaC,
-  rtrToleranceC,
-}: TodayActionBoardProps) {
-  const { locale } = useLocale();
-  const diseaseTone = currentData.humidity >= 85 || currentData.vpd < 0.65
-    ? 'critical'
-    : currentData.humidity >= 80 || currentData.vpd < 0.75
-      ? 'warning'
-      : 'growth';
-  // RTR card verdict from the shared snapshot delta, when the parent supplies it.
-  const rtrTol = rtrToleranceC ?? 1.0;
-  const rtrKnown = typeof rtrDeltaC === 'number' && Number.isFinite(rtrDeltaC);
-  const rtrWithin = rtrKnown ? Math.abs(rtrDeltaC as number) <= rtrTol : true;
-
-  // Each signal's traffic-light level, computed from the live data.
-  const ventLevel: ActionLevel = currentData.vpd < 0.55 || currentData.vpd > 1.45
-    ? 'act'
-    : currentData.vpd < 0.75 || currentData.vpd > 1.25
-      ? 'watch'
-      : 'ok';
-  const irrigLevel: ActionLevel = currentData.soilMoisture < 40
-    ? 'act'
-    : currentData.soilMoisture < 52 || currentData.soilMoisture > 88
-      ? 'watch'
-      : 'ok';
-  const diseaseLevel: ActionLevel = diseaseTone === 'critical' ? 'act' : diseaseTone === 'warning' ? 'watch' : 'ok';
-  const rtrLevel: ActionLevel = !rtrKnown
-    ? 'ok'
-    : Math.abs(rtrDeltaC as number) > 2 * rtrTol
-      ? 'act'
-      : !rtrWithin
-        ? 'watch'
-        : 'ok';
-  const copy = locale === 'ko'
-    ? {
-        eyebrow: 'Today Action Board',
-        title: '오늘 바로 볼 조치',
-        description: '환기, 관수, 병해 위험, RTR 시나리오를 행동 단위로 정리합니다.',
-        statusAct: '지금 조치',
-        statusWatch: '오늘 확인',
-        statusOk: '정상 범위',
-        summaryAct: (n: number) => `지금 조치 ${n}건`,
-        summaryWatch: (n: number) => `확인 ${n}건`,
-        summaryClear: '지금 급한 조치는 없어요',
-        ventilation: '환기 조정',
-        irrigation: '관수 타이밍',
-        disease: '병해 위험',
-        rtr: 'RTR 시나리오',
-        impact: '영향 큼',
-        moderate: '확인 필요',
-        recommended: '정상 범위',
-        compare: '비교',
-        details: '자세히',
-        highRisk: '위험 높음',
-        rtrWithinChip: '기준 범위',
-        rtrOffChip: '조정 검토',
-        vpdFallback: `VPD ${formatNumber(currentData.vpd, 2)} kPa입니다. 증산 요구에 맞춰 환기 상태를 확인하세요.`,
-        irrigationFallback: `토양수분은 ${formatNumber(currentData.soilMoisture, 1)}%입니다. 정오 전 다음 관수 창을 확인하세요.`,
-        diseaseFallback: `RH ${formatNumber(currentData.humidity, 0)}%와 VPD ${formatNumber(currentData.vpd, 2)} kPa 기준으로 병해 감시 수준을 봅니다.`,
-        rtrFallback: `예상 수확량은 주 ${formatNumber(modelMetrics.yield.predictedWeekly, 1)} kg입니다. 설정값 변경 전 RTR 목표 온도를 비교하세요.`,
-        rtrWithinBody: 'RTR 목표 범위 안입니다. 현재 온도 관리를 유지하세요.',
-        rtrAboveBody: (d: string) => `RTR 목표보다 ${d}°C 높습니다. 환기·차광을 검토하세요.`,
-        rtrBelowBody: (d: string) => `RTR 목표보다 ${d}°C 낮습니다. 난방·보온을 검토하세요.`,
-      }
-    : {
-        eyebrow: 'Today Action Board',
-        title: 'Actions worth checking today',
-        description: 'Ventilation, irrigation, disease risk, and RTR scenario signals are grouped into action cards.',
-        statusAct: 'Act now',
-        statusWatch: 'Check today',
-        statusOk: 'In range',
-        summaryAct: (n: number) => `${n} to act now`,
-        summaryWatch: (n: number) => `${n} to check`,
-        summaryClear: 'Nothing urgent right now',
-        ventilation: 'Ventilation Adjustment',
-        irrigation: 'Irrigation Timing',
-        disease: 'Disease Risk',
-        rtr: 'RTR Scenario',
-        impact: 'High impact',
-        moderate: 'Moderate',
-        recommended: 'Recommended',
-        compare: 'Compare',
-        details: 'See Details',
-        highRisk: 'High risk',
-        rtrWithinChip: 'Within band',
-        rtrOffChip: 'Review setpoint',
-        vpdFallback: `VPD ${formatNumber(currentData.vpd, 2)} kPa. Keep ventilation aligned with transpiration demand.`,
-        irrigationFallback: `Soil moisture is ${formatNumber(currentData.soilMoisture, 1)}%. Confirm the next irrigation window before midday.`,
-        diseaseFallback: `RH ${formatNumber(currentData.humidity, 0)}% and VPD ${formatNumber(currentData.vpd, 2)} kPa define the disease watch level.`,
-        rtrFallback: `Yield outlook ${formatNumber(modelMetrics.yield.predictedWeekly, 1)} kg/week. Compare RTR target temperature before changing setpoints.`,
-        rtrWithinBody: 'Within the RTR target band. Hold the current temperature strategy.',
-        rtrAboveBody: (d: string) => `${d}°C above the RTR target. Consider venting or shading.`,
-        rtrBelowBody: (d: string) => `${d}°C below the RTR target. Consider heating.`,
-      };
-
-  const rtrAbsDelta = rtrKnown ? formatNumber(Math.abs(rtrDeltaC as number), 1) : '0';
-  const rtrBody = !rtrKnown
-    ? copy.rtrFallback
-    : rtrWithin
-      ? copy.rtrWithinBody
-      : (rtrDeltaC as number) > 0
-        ? copy.rtrAboveBody(rtrAbsDelta)
-        : copy.rtrBelowBody(rtrAbsDelta);
-
-  const statusLabel = (level: ActionLevel) =>
-    level === 'act' ? copy.statusAct : level === 'watch' ? copy.statusWatch : copy.statusOk;
-
-  // One descriptor per signal, then sort most-urgent-first so the grower reads the
-  // card that needs attention before the ones that are fine.
-  const cards = [
-    {
-      key: 'ventilation',
-      icon: Fan,
-      title: copy.ventilation,
-      level: ventLevel,
-      body: actionsNow[0] ?? copy.vpdFallback,
-      recommendationId: 'overview-ventilation-adjustment',
-      actionLabel: copy.details,
-      onAction: onOpenAdvisor,
-    },
-    {
-      key: 'irrigation',
-      icon: Droplets,
-      title: copy.irrigation,
-      level: irrigLevel,
-      body: actionsToday[0] ?? copy.irrigationFallback,
-      recommendationId: 'overview-irrigation-timing',
-      actionLabel: copy.details,
-      onAction: onOpenAdvisor,
-    },
-    {
-      key: 'disease',
-      icon: ShieldAlert,
-      title: copy.disease,
-      level: diseaseLevel,
-      body: monitor[0] ?? copy.diseaseFallback,
-      recommendationId: 'overview-disease-risk',
-      actionLabel: copy.details,
-      onAction: onOpenAdvisor,
-    },
-    {
-      key: 'rtr',
-      icon: TrendingUp,
-      title: copy.rtr,
-      level: rtrLevel,
-      body: rtrBody,
-      recommendationId: 'overview-rtr-scenario',
-      actionLabel: copy.compare,
-      onAction: onOpenRtr,
-    },
-  ];
-  const orderedCards = [...cards].sort(
-    (a, b) => ACTION_LEVEL_PRIORITY[b.level] - ACTION_LEVEL_PRIORITY[a.level],
-  );
-  const actCount = cards.filter((card) => card.level === 'act').length;
-  const watchCount = cards.filter((card) => card.level === 'watch').length;
-
-  return (
-    <section id="today-action-board" tabIndex={-1} className="scroll-mt-24 space-y-1.5" aria-labelledby="today-action-board-title">
-      <LandingSectionHeading
-        titleId="today-action-board-title"
-        eyebrow={copy.eyebrow}
-        title={copy.title}
-        description={copy.description}
-        actions={(
-          <div className="flex flex-wrap items-center gap-1.5">
-            {actCount > 0 ? <StatusChip tone="critical">{copy.summaryAct(actCount)}</StatusChip> : null}
-            {watchCount > 0 ? <StatusChip tone="warning">{copy.summaryWatch(watchCount)}</StatusChip> : null}
-            {actCount === 0 && watchCount === 0 ? <StatusChip tone="growth">{copy.summaryClear}</StatusChip> : null}
-          </div>
-        )}
-      />
-      <div className="overview-card-row-4">
-        {orderedCards.map((card) => (
-          <AlertCard
-            key={card.key}
-            icon={card.icon}
-            title={card.title}
-            chip={statusLabel(card.level)}
-            tone={ACTION_LEVEL_TONE[card.level]}
-            body={card.body}
-            meta={<FeedbackControls crop={crop} recommendationId={card.recommendationId} />}
-            actionLabel={card.actionLabel}
-            onAction={card.onAction}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function FeedbackControls({
-  crop,
-  recommendationId,
-}: {
-  crop: CropType;
-  recommendationId: string;
-}) {
-  const { locale } = useLocale();
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const copy = locale === 'ko'
-    ? {
-        useful: '도움됨',
-        notUseful: '아쉬움',
-        sent: '피드백 저장됨',
-        error: '피드백 실패',
-      }
-    : {
-        useful: 'Useful',
-        notUseful: 'Not useful',
-        sent: 'Feedback saved',
-        error: 'Feedback failed',
-      };
-
-  const submit = async (feedback: 'up' | 'down') => {
-    setStatus('sending');
-    try {
-      const response = await fetch(`${API_URL}/feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recommendation_id: recommendationId,
-          feedback,
-          crop: crop.toLowerCase(),
-        }),
-      });
-      if (!response.ok) {
-        throw new Error(response.statusText || 'feedback failed');
-      }
-      setStatus('sent');
-    } catch {
-      setStatus('error');
-    }
-  };
-
-  return (
-    <div className="flex flex-wrap items-center gap-1" aria-live="polite">
-      <button
-        type="button"
-        aria-label={copy.useful}
-        title={copy.useful}
-        onClick={() => { void submit('up'); }}
-        disabled={status === 'sending'}
-        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-color-success)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-success)] disabled:opacity-60"
-      >
-        <ThumbsUp className="h-2.5 w-2.5" aria-hidden="true" />
-        <span className="sr-only">{copy.useful}</span>
-      </button>
-      <button
-        type="button"
-        aria-label={copy.notUseful}
-        title={copy.notUseful}
-        onClick={() => { void submit('down'); }}
-        disabled={status === 'sending'}
-        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full border border-[color:var(--sg-outline-soft)] bg-white text-[color:var(--sg-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sg-color-primary)] disabled:opacity-60"
-      >
-        <ThumbsDown className="h-2.5 w-2.5" aria-hidden="true" />
-        <span className="sr-only">{copy.notUseful}</span>
-      </button>
-      {status === 'sent' ? <span className="text-[10px] font-semibold text-[color:var(--sg-color-success)]">{copy.sent}</span> : null}
-      {status === 'error' ? <span className="text-[10px] font-semibold text-[color:var(--sg-color-primary)]">{copy.error}</span> : null}
-    </div>
-  );
-}
+/**
+ * The overview decision board.
+ *
+ * The six situation cards now live in FieldDecisionBoard, which reads the shared
+ * decision engine instead of re-deriving verdicts here. This export keeps the
+ * existing import path and prop shape for the routes that compose the overview.
+ */
+export { FieldDecisionBoard as TodayActionBoard } from './FieldDecisionBoard';
+export type { FieldDecisionBoardProps as TodayActionBoardProps } from './FieldDecisionBoard';
 
 interface ScenarioOptimizerPreviewProps {
   crop: CropType;

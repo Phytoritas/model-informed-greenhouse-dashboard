@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { ReactNode } from 'react';
@@ -10,9 +10,6 @@ import type { KpiTileData } from '../KpiStrip';
 import { LocaleProvider } from '../../i18n/LocaleProvider';
 import { LOCALE_STORAGE_KEY } from '../../i18n/locale';
 import {
-  FinalCTA,
-  HeroDecisionBrief,
-  LandingFooter,
   LiveMetricStrip,
   OverviewMetricDeck,
   ScenarioOptimizerPreview,
@@ -148,68 +145,58 @@ function renderWithProviders(ui: ReactNode, locale: 'en' | 'ko' = 'en') {
   );
 }
 
+// The six situations the board now presents, in English.
+const SITUATION_TITLES = [
+  'Wilting and actual water delivery',
+  'Surface wetness and moisture removal',
+  'Feed EC/pH versus settings',
+  'Light, mean temperature and fruit load',
+  'CO₂ supply and ventilation',
+  'Execution and crop response',
+];
+
+/** The card for one situation, found through its heading. */
+function cardFor(title: string): HTMLElement {
+  const heading = screen.getByRole('heading', { name: title });
+  const card = heading.closest('article');
+  if (!card) {
+    throw new Error('No card rendered for ' + title);
+  }
+  return card as HTMLElement;
+}
+
 describe('overview landing sections', () => {
-  it('verify_src001_s0002_r002_a01 reuses the shared Command UI kit', () => {
-    const overviewSections = readSource('components/dashboard/overviewLandingSections.tsx');
-    const metricCard = readSource('components/ui/metric-card.tsx');
-    const alertCard = readSource('components/ui/alert-card.tsx');
-    const overviewPage = readSource('pages/overview-page.tsx');
-
-    expect(overviewSections).toContain("from '../ui/section-header'");
-    expect(overviewSections).toContain("from '../ui/button'");
-    expect(overviewSections).toContain("from '../ui/status-chip'");
-    expect(metricCard).toContain("from '../common/DashboardCard'");
-    expect(alertCard).toContain("from '../common/DashboardCard'");
-    expect(overviewPage).toContain("from '../components/ui/toggle-group'");
-  });
-
-  it('verify_src001_s0002_r003_a01 gives Command sections an eyebrow title and one-line description', () => {
-    const { container } = renderWithProviders(
+  it('presents latest measurements and one set of decisions with their purpose', () => {
+    renderWithProviders(
       <>
-        <HeroDecisionBrief heroCard={<div>hero card</div>} />
         <LiveMetricStrip tiles={[KPI_TILE]} yieldOutlookKg={27.6} />
         <TodayActionBoard
           crop="Tomato"
           currentData={SENSOR}
           modelMetrics={MODEL_METRICS}
-          actionsNow={[]}
-          actionsToday={[]}
-          monitor={[]}
+          actionsNow={['Schedule harvest labor.']}
+          actionsToday={['Inspect fruit grading.']}
+          monitor={['Review market prices.']}
           onOpenRtr={() => undefined}
           onOpenAdvisor={() => undefined}
         />
-        <ScenarioOptimizerPreview
-          crop="Tomato"
-          currentData={SENSOR}
-          history={[SENSOR]}
-          modelMetrics={MODEL_METRICS}
-          rtrProfile={RTR_PROFILE}
-        />
-        <WeatherMarketKnowledgeBridge
-          crop="Tomato"
-          weather={null}
-          weatherLoading={false}
-          weatherError={null}
-          producePrices={null}
-          produceLoading={false}
-          produceError={null}
-          knowledgeSummary={null}
-          knowledgeLoading={false}
-          knowledgeError={null}
-          history={[SENSOR]}
-          onOpenAssistant={() => undefined}
-        />
-        <FinalCTA />
       </>,
     );
 
-    expect(container.querySelectorAll('.sg-eyebrow').length).toBeGreaterThanOrEqual(6);
-    expect(screen.getByText('Unify climate, crop, market, and knowledge insight in one practical greenhouse command center.')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Live decision metrics' })).toBeTruthy();
+    expect(screen.getAllByRole('region', { name: 'What to check now' })).toHaveLength(1);
     expect(screen.getByText('Sensor freshness')).toBeTruthy();
-    expect(screen.getByText('Ventilation, irrigation, disease risk, and RTR scenario signals are grouped into action cards.')).toBeTruthy();
-    expect(screen.getByText('Compare observed conditions with RTR profile targets. Actual recommended control values come from the optimizer surface in Control.')).toBeTruthy();
-    expect(screen.getByText('Weather, market, and knowledge surfaces remain linked to the existing live data flow.')).toBeTruthy();
-    expect(screen.getByText('Join growers who rely on PhytoSync every day.')).toBeTruthy();
+    expect(screen.getByText(
+      'For each situation: why it is showing, what to confirm in the crop, and what to do next.',
+    )).toBeTruthy();
+    // Six situations, each named once, replace the old per-sensor traffic lights.
+    for (const title of SITUATION_TITLES) {
+      expect(screen.getByRole('heading', { name: title })).toBeTruthy();
+    }
+    // Advisor task feeds are still never shown as a card justification.
+    expect(screen.queryByText(/Schedule harvest labor|Inspect fruit grading|Review market prices/)).toBeNull();
+    // The upgraded board no longer states a universal soil-moisture verdict.
+    expect(screen.queryByText(/Soil moisture 54\.0%/)).toBeNull();
   });
 
   it('verify_src001_s0002_r004_a01 renders numeric indicators as metric tiles with value unit and delta chips', () => {
@@ -297,20 +284,29 @@ describe('overview landing sections', () => {
     expect(screen.getByText('Knowledge catalog unavailable')).toBeTruthy();
   });
 
-  it('renders prominent Korean landing copy when Korean locale is active', () => {
+  it('presents the same decision and data-check distinction in Korean', () => {
     renderWithProviders(
-      <>
-        <HeroDecisionBrief heroCard={<div>hero card</div>} />
-        <FinalCTA />
-        <LandingFooter onOpenAssistant={() => undefined} />
-      </>,
+      <TodayActionBoard
+        crop="Tomato"
+        currentData={SENSOR}
+        modelMetrics={MODEL_METRICS}
+        actionsNow={[]}
+        actionsToday={[]}
+        monitor={[]}
+        onOpenRtr={() => undefined}
+        onOpenAdvisor={() => undefined}
+        telemetryStatus="offline"
+      />,
       'ko',
     );
 
-    expect(screen.getByRole('heading', { name: '스마트온실 인공지능 의사결정 플랫폼' })).toBeTruthy();
-    expect(screen.getByText('대시보드 보기')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '무료로 시작' })).toBeTruthy();
-    expect(screen.queryByText('AI decision platform for smart greenhouses.')).toBeNull();
+    expect(screen.getByRole('heading', { name: '지금 확인할 일' })).toBeTruthy();
+    expect(screen.getAllByText('데이터 확인').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: '시듦과 실제 급액' })).toBeTruthy();
+    expect(screen.getAllByText('예시').length).toBeGreaterThan(0);
+    // The board states priorities per situation and never a blanket all-clear.
+    expect(screen.queryByText('지금 급한 항목은 없습니다')).toBeNull();
+    expect(screen.queryByRole('button', { name: '무료로 시작' })).toBeNull();
   });
 
   it('routes landing navigation to live feature surfaces without dead hash anchors', () => {
@@ -324,8 +320,7 @@ describe('overview landing sections', () => {
     expect(screen.getByRole('link', { name: 'SCENARIOS' }).getAttribute('href')).toBe('/scenarios');
     expect(screen.getByRole('link', { name: 'KNOWLEDGE' }).getAttribute('href')).toBe('/assistant');
     expect(screen.getByRole('button', { name: 'Ask Assistant' })).toBeTruthy();
-    // CONTACT is a standalone page now, so it navigates like every other tab.
-    expect(screen.getByRole('link', { name: 'CONTACT' }).getAttribute('href')).toBe('/contact');
+    expect(screen.queryByRole('link', { name: 'CONTACT' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'CONTACT' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Open Dashboard' }).getAttribute('href')).toBe('/control');
   });
@@ -340,58 +335,106 @@ describe('overview landing sections', () => {
   });
 });
 
-describe('today action board RTR verdict', () => {
+describe('today action board field decisions', () => {
   const baseProps = {
-    crop: 'Tomato' as const,
-    currentData: SENSOR,
-    modelMetrics: MODEL_METRICS,
-    actionsNow: [] as string[],
-    actionsToday: [] as string[],
-    monitor: [] as string[],
-    onOpenRtr: () => undefined,
-    onOpenAdvisor: () => undefined,
+    crop: 'Tomato' as const, currentData: SENSOR, modelMetrics: MODEL_METRICS,
+    onOpenRtr: () => undefined, onOpenAdvisor: () => undefined,
+    rtrDeltaC: 0.1, rtrToleranceC: 0.8, rtrWindowHours: 24,
   };
+  const pickDemo = (value: string) => fireEvent.change(screen.getByLabelText(/Substrate conditions/), { target: { value } });
+  const openInputs = (card: HTMLElement) => fireEvent.click(card.querySelector('details > summary')!);
 
-  it('flags "act now" when current temp is far under the band, with a heat instruction', () => {
-    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={-2.0} rtrToleranceC={0.8} />);
-    // |delta| 2.0 > 2×tolerance 1.6 -> act. Body proves the verdict; the unified chip
-    // vocabulary can repeat across cards, so assert presence rather than uniqueness.
-    expect(screen.getByText('2.0°C below the RTR target. Consider heating.')).toBeTruthy();
-    expect(screen.getAllByText('Act now').length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('flags "check today" when current temp is over the band, with a vent instruction', () => {
-    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={1.6} rtrToleranceC={0.8} />);
-    // 0.8 < |delta| 1.6 <= 1.6 -> watch.
-    expect(screen.getByText('1.6°C above the RTR target. Consider venting or shading.')).toBeTruthy();
-    expect(screen.getAllByText('Check today').length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('shows a "hold" verdict inside the band', () => {
-    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={0.3} rtrToleranceC={0.8} />);
-    expect(screen.getByText('Within the RTR target band. Hold the current temperature strategy.')).toBeTruthy();
-    expect(screen.getAllByText('In range').length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('falls back to the static RTR copy when no delta is provided', () => {
+  it('shows reference differences as a review prompt, not permission to hold settings', () => {
     renderWithProviders(<TodayActionBoard {...baseProps} />);
-    expect(screen.getByText(/Compare RTR target temperature before changing setpoints\./)).toBeTruthy();
+    const rtr = cardFor('Light, mean temperature and fruit load');
+    expect(within(rtr).getByText(/configured reference is \+0.1°C/)).toBeTruthy();
+    expect(within(rtr).getByText('Observe')).toBeTruthy();
+    expect(screen.queryByText(/current temperature setting can stay|Nothing urgent right now/)).toBeNull();
   });
 
-  it('summarises urgency and orders the most urgent card first', () => {
-    // For the SENSOR fixture, ventilation/irrigation/disease are all in range, so a
-    // far-off RTR delta is the only "act now" signal.
-    const { container } = renderWithProviders(
-      <TodayActionBoard {...baseProps} rtrDeltaC={-2.0} rtrToleranceC={0.8} />,
+  it('leaves an incomplete daily comparison pending even with a large delta', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={-3} rtrWindowHours={8} />);
+    const rtr = cardFor('Light, mean temperature and fruit load');
+    expect(within(rtr).getByText('Confirm data')).toBeTruthy();
+    expect(within(rtr).getByText(/8.0 hours/)).toBeTruthy();
+    expect(screen.queryByText(/Try a heating setting/)).toBeNull();
+  });
+
+  it.each([
+    { reason: 'stale transport', data: SENSOR, telemetryStatus: 'stale' as const },
+    { reason: 'invalid source', data: { ...SENSOR, dataQuality: { status: 'invalid', issues: [] } } as SensorData, telemetryStatus: 'live' as const },
+    { reason: 'failed model', data: { ...SENSOR, simulationStatus: 'unconverged' }, telemetryStatus: 'live' as const },
+  ])('keeps a labeled substrate demo but no numeric climate verdict for $reason', ({ data, telemetryStatus }) => {
+    renderWithProviders(<TodayActionBoard {...baseProps} currentData={data} telemetryStatus={telemetryStatus}
+      actionsNow={['Increase ventilation now.']} actionsToday={['Irrigate immediately.']} />);
+    expect(within(cardFor('Surface wetness and moisture removal')).getByText('Confirm data')).toBeTruthy();
+    expect(within(cardFor('Wilting and actual water delivery')).getByText('Example')).toBeTruthy();
+    expect(screen.queryByText(/Increase ventilation now|Irrigate immediately|Nothing urgent right now/)).toBeNull();
+  });
+
+  it('switches the actual water decision between interrupted supply and wet wilting', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} compact />);
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Wilting and actual water delivery' })).toBeTruthy();
+    pickDemo('interrupted');
+    let water = cardFor('Wilting and actual water delivery');
+    expect(within(water).getByText('Check first')).toBeTruthy();
+    expect(within(water).getByText(/address the confirmed supply problem/)).toBeTruthy();
+    pickDemo('wetWilt');
+    water = cardFor('Wilting and actual water delivery');
+    expect(within(water).getByText(/arrange field diagnosis/)).toBeTruthy();
+    expect(within(water).queryByText(/increase irrigation|irrigate more/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show 4 more' }));
+    expect(screen.getAllByRole('article')).toHaveLength(6);
+    fireEvent.click(screen.getByRole('button', { name: 'Show less' }));
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
+
+  it('keeps unknown explicit, clears overrides, and updates the conditional decision', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} />);
+    pickDemo('interrupted');
+    const water = cardFor('Wilting and actual water delivery');
+    openInputs(water);
+    for (const label of ['Wilting on the same plants', 'Actual delivery at the dripper', 'Substrate checked at root depth']) {
+      fireEvent.change(within(water).getByLabelText(label), { target: { value: 'unknown' } });
+    }
+    expect(within(water).queryByText('Check first')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Clear entries' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear entries' }));
+    expect(within(water).getByText('Check first')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear entries' })).toBeNull();
+  });
+
+  it('preserves partial recovery and does not infer execution from an improved response', () => {
+    renderWithProviders(<TodayActionBoard {...baseProps} />);
+    const follow = cardFor('Execution and crop response');
+    openInputs(follow);
+    fireEvent.change(within(follow).getByLabelText('Execution of the action being reviewed'), { target: { value: 'done' } });
+    fireEvent.change(within(follow).getByLabelText('Follow-up on the same plants or area'), { target: { value: 'partial' } });
+    expect(within(follow).getByText(/Residual symptoms/)).toBeTruthy();
+    fireEvent.change(within(follow).getByLabelText('Execution of the action being reviewed'), { target: { value: 'planned' } });
+    fireEvent.change(within(follow).getByLabelText('Follow-up on the same plants or area'), { target: { value: 'improved' } });
+    expect(within(follow).getByText(/not confirmed as executed/)).toBeTruthy();
+  });
+
+  it('retains entries across frame ticks but resets on the displayed local day or crop', () => {
+    const at = new Date(2026, 8, 8, 23, 55).getTime();
+    const Wrapped = ({ time, crop = 'Tomato' }: { time: number; crop?: 'Tomato' | 'Cucumber' }) => (
+      <LocaleProvider><MemoryRouter><TodayActionBoard {...baseProps} crop={crop} simulatedTimestamp={time} /></MemoryRouter></LocaleProvider>
     );
-    expect(screen.getByText('1 to act now')).toBeTruthy();
-    // The act card (RTR Scenario) renders before the in-range ventilation card.
-    const html = container.innerHTML;
-    expect(html.indexOf('RTR Scenario')).toBeLessThan(html.indexOf('Ventilation Adjustment'));
-  });
-
-  it('shows an all-clear summary when every signal is in range', () => {
-    renderWithProviders(<TodayActionBoard {...baseProps} rtrDeltaC={0.1} rtrToleranceC={0.8} />);
-    expect(screen.getByText('Nothing urgent right now')).toBeTruthy();
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, 'en');
+    const { rerender } = render(<Wrapped time={at} />);
+    let nutrition = cardFor('Feed EC/pH versus settings');
+    openInputs(nutrition);
+    fireEvent.change(within(nutrition).getByLabelText(/Setpoint versus dripper/), { target: { value: 'yes' } });
+    rerender(<Wrapped time={at + 60_000} />);
+    expect(screen.getByRole('button', { name: 'Clear entries' })).toBeTruthy();
+    rerender(<Wrapped time={at + 10 * 60_000} />);
+    expect(screen.queryByRole('button', { name: 'Clear entries' })).toBeNull();
+    nutrition = cardFor('Feed EC/pH versus settings');
+    openInputs(nutrition);
+    fireEvent.change(within(nutrition).getByLabelText(/Setpoint versus dripper/), { target: { value: 'yes' } });
+    rerender(<Wrapped time={at + 10 * 60_000} crop="Cucumber" />);
+    expect(screen.queryByRole('button', { name: 'Clear entries' })).toBeNull();
   });
 });

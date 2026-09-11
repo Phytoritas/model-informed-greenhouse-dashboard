@@ -1,7 +1,5 @@
 import { Suspense, lazy } from 'react';
 import AskSearchPage from '../components/phyto/AskSearchPage';
-import AiCompatibilityPanel from '../components/assistant/AiCompatibilityPanel';
-import AdaptiveAdvisorWorkbench from '../components/advisor/AdaptiveAdvisorWorkbench';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import type { SmartGrowAdvisorySurfaceSummary, SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import type { AppLocale } from '../i18n/locale';
@@ -84,37 +82,15 @@ export default function AssistantRoutePage({
             smartGrowError={smartGrowError}
             onOpenSearch={onOpenSearch}
           />
-          <AdaptiveAdvisorWorkbench
-            locale={locale}
-            crop={crop}
-            currentData={currentData}
-            metrics={metrics}
-            forecast={forecast}
-            history={history}
-            producePrices={producePrices}
-            weather={weather}
-            rtrProfile={rtrProfile}
-          />
         </div>
       )}
       summaryRail={(
         <div className="min-w-0 space-y-6">
-          <AiCompatibilityPanel
-            locale={locale}
-            crop={crop}
-            currentData={currentData}
-            metrics={metrics}
-            forecast={forecast}
-            history={history}
-            producePrices={producePrices}
-            weather={weather}
-            rtrProfile={rtrProfile}
-          />
           <Suspense
             fallback={(
               <LoadingSkeleton
-                title={locale === 'ko' ? '바로 실행 도구' : 'Quick operating tools'}
-                loadingMessage={locale === 'ko' ? '운영 도구를 불러오는 중입니다...' : 'Loading quick operating tools...'}
+                title={locale === 'ko' ? '양액·방제 도구' : 'Nutrient and protection tools'}
+                loadingMessage={locale === 'ko' ? '도구를 불러오는 중입니다...' : 'Loading tools...'}
                 minHeightClassName="min-h-[320px]"
               />
             )}

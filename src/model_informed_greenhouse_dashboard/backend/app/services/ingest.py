@@ -4,10 +4,57 @@ from pathlib import Path
 import time
 from typing import Any, Callable, Dict
 
-import numpy as np
 import pandas as pd
 
+from ..adapters.base import ENVIRONMENT_RANGES, environment_quality, finite_number
+
 logger = logging.getLogger(__name__)
+
+
+class EnvironmentInputError(ValueError):
+    """Environment rows cannot form an unambiguous replay timeline."""
+
+
+def normalize_environment_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Sort replay inputs and remove only identical rows at the same timestamp."""
+    normalized = df.copy()
+    if "datetime" not in normalized.columns:
+        raise EnvironmentInputError("Environment data requires a datetime column")
+    try:
+        normalized["datetime"] = pd.to_datetime(normalized["datetime"])
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise EnvironmentInputError("Environment datetime values must be valid timestamps") from exc
+    if normalized["datetime"].isna().any():
+        raise EnvironmentInputError("Environment datetime values must not be missing")
+
+    normalized = normalized.sort_values("datetime", kind="stable").reset_index(drop=True)
+    duplicates = normalized["datetime"].duplicated(keep=False)
+    for timestamp, group in normalized.loc[duplicates].groupby("datetime", sort=False):
+        first = group.iloc[0]
+        # Include optional inputs and quality provenance: neither may be discarded
+        # just because the five required environment channels happen to agree.
+        if any(not first.equals(group.iloc[i]) for i in range(1, len(group))):
+            raise EnvironmentInputError(
+                f"Conflicting environment rows at duplicate timestamp {timestamp.isoformat()}"
+            )
+
+    repeated = normalized["datetime"].duplicated(keep="first")
+    removed = int(repeated.sum())
+    normalized = normalized.loc[~repeated].reset_index(drop=True)
+    normalized.attrs["deduplicated_rows"] = df.attrs.get("deduplicated_rows", 0) + removed
+    if removed:
+        logger.info("Removed %s identical rows with repeated environment timestamps", removed)
+    return normalized
+
+
+def _clean_environment_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Prepare numeric replay inputs while retaining their quality provenance."""
+    cleaned = row.copy()
+    cleaned["data_quality"] = environment_quality(row)
+    for key, (minimum, maximum, default) in ENVIRONMENT_RANGES.items():
+        value = finite_number(row.get(key))
+        cleaned[key] = default if value is None else min(maximum, max(minimum, value))
+    return cleaned
 
 
 class CSVIngestor:
@@ -40,8 +87,7 @@ class CSVIngestor:
         logger.info("Starting CSV ingestion...")
         
         # Read entire file first
-        df = pd.read_csv(self.csv_path)
-        df['datetime'] = pd.to_datetime(df['datetime'])
+        df = normalize_environment_frame(pd.read_csv(self.csv_path))
         
         logger.info(f"Loaded {len(df)} rows from {self.csv_path}")
         
@@ -67,8 +113,7 @@ class CSVIngestor:
         """
         logger.info(f"Starting streaming ingestion (interval={interval_ms}ms)...")
         
-        df = pd.read_csv(self.csv_path)
-        df['datetime'] = pd.to_datetime(df['datetime'])
+        df = normalize_environment_frame(pd.read_csv(self.csv_path))
         
         for idx, row in df.iterrows():
             row_dict = row.to_dict()
@@ -97,33 +142,7 @@ class CSVIngestor:
         - Range clipping
         - Missing value imputation
         """
-        cleaned = row.copy()
-        
-        # Define valid ranges
-        ranges = {
-            'T_air_C': (-20, 50, 20),  # (min, max, default)
-            'PAR_umol': (0, 3000, 0),
-            'CO2_ppm': (300, 2000, 400),
-            'RH_percent': (0, 100, 50),
-            'wind_speed_ms': (0, 10, 0.3),
-        }
-        
-        for key, (min_val, max_val, default) in ranges.items():
-            if key in cleaned:
-                val = cleaned[key]
-                
-                # Check for NaN/inf
-                if not np.isfinite(val):
-                    logger.warning(f"Invalid value {val} for {key} at {row.get('datetime')}, using default {default}")
-                    cleaned[key] = default
-                    continue
-                
-                # Clip to range
-                if val < min_val or val > max_val:
-                    logger.warning(f"Out-of-range value {val} for {key}, clipping to [{min_val}, {max_val}]")
-                    cleaned[key] = np.clip(val, min_val, max_val)
-        
-        return cleaned
+        return _clean_environment_row(row)
 
 
 class BatchIngestor:
@@ -150,9 +169,7 @@ class BatchIngestor:
         """
         logger.info(f"Loading CSV from {self.csv_path}...")
         
-        df = pd.read_csv(self.csv_path)
-        df['datetime'] = pd.to_datetime(df['datetime'])
-        df = df.sort_values('datetime').reset_index(drop=True)
+        df = normalize_environment_frame(pd.read_csv(self.csv_path))
         
         if self.quality_check:
             df = self._validate_dataframe(df)
@@ -162,27 +179,12 @@ class BatchIngestor:
     
     def _validate_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Validate and clean entire dataframe."""
-        df = df.copy()
-        
-        # Define valid ranges
-        ranges = {
-            'T_air_C': (-20, 50, 20),
-            'PAR_umol': (0, 3000, 0),
-            'CO2_ppm': (300, 2000, 400),
-            'RH_percent': (0, 100, 50),
-            'wind_speed_ms': (0, 10, 0.3),
-        }
-        
-        for key, (min_val, max_val, default) in ranges.items():
-            if key in df.columns:
-                # Replace NaN/inf with default
-                invalid_mask = ~np.isfinite(df[key])
-                if invalid_mask.any():
-                    logger.warning(f"Found {invalid_mask.sum()} invalid values in {key}, replacing with {default}")
-                    df.loc[invalid_mask, key] = default
-                
-                # Clip to range
-                df[key] = df[key].clip(min_val, max_val)
-        
-        return df
+        if df.empty:
+            return df.copy()
+        cleaned = pd.DataFrame(
+            [_clean_environment_row(row) for row in df.to_dict("records")],
+            index=df.index,
+        )
+        cleaned.attrs.update(df.attrs)
+        return cleaned
 

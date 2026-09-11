@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
   GLOBAL_NAVIGATION_ITEMS,
+  VISIBLE_GLOBAL_NAVIGATION_ITEMS,
   getGlobalNavigationKeyForPathname,
   getSubNavigationSectionKeys,
 } from './globalNavigation';
 
 describe('globalNavigation', () => {
-  it('verify_src001_s0002_r001_a01 keeps the shared global navigation labels in order', () => {
-    expect(GLOBAL_NAVIGATION_ITEMS.map((item) => item.label)).toEqual([
+  it('shows the five task destinations while keeping contact out of workspace navigation', () => {
+    expect(VISIBLE_GLOBAL_NAVIGATION_ITEMS.map((item) => item.label)).toEqual([
       'HOME',
       'DASHBOARD',
       'INSIGHTS',
       'SCENARIOS',
       'KNOWLEDGE',
-      'CONTACT',
     ]);
   });
 

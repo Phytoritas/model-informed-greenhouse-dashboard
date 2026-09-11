@@ -20,11 +20,17 @@ from .corpus_quarantine import is_quarantined, quarantine_filter_sql
 from .pdf_quality import assess_document, extract_pdf_pages
 
 from ..config import settings
-from .knowledge_query_router import route_knowledge_query, routed_relevance_bonus
+from .knowledge_query_router import (
+    caller_relevance_hits,
+    caller_term_variants,
+    route_knowledge_query,
+    routed_relevance_bonus,
+)
 from .workbook_normalization import (
     export_nutrient_reference_rows,
     export_pesticide_reference_rows,
 )
+from . import workbook_normalization
 
 
 DATA_ROOT = Path(settings.data_dir)
@@ -38,7 +44,7 @@ _CSV_ENCODINGS = ("utf-8-sig", "utf-8", "cp949", "euc-kr")
 _PDF_CHUNK_CHARS = 1200
 _PDF_WARNING_PATTERN = r"Advanced encoding .* not implemented yet"
 _PDF_CMAP_LOGGER = "pypdf._cmap"
-_QUERY_TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣]+")
+_QUERY_TOKEN_PATTERN = re.compile(r"[0-9A-Za-z가-힣\u3040-\u30ff\u3400-\u9fff]+")
 _MAX_QUERY_LIMIT = 10
 
 _SCHEMA_STATEMENTS = [
@@ -367,7 +373,7 @@ def _safe_float(value: Any) -> float | None:
 
 
 def _split_sentences(text: str) -> list[str]:
-    return [chunk.strip() for chunk in re.split(r"(?<=[.!?])\s+", text) if chunk.strip()]
+    return [chunk.strip() for chunk in re.split(r"(?<=[.!?])\s+|(?<=[。！？])\s*", text) if chunk.strip()]
 
 
 def _build_text_chunks(text: str, max_chars: int = _PDF_CHUNK_CHARS) -> list[str]:
@@ -670,6 +676,8 @@ def _fetch_fts_candidates(
             kd.asset_family,
             kd.source_type,
             kd.crop_scopes_json,
+            kd.metadata_json AS document_metadata_json,
+            kc.metadata_json AS chunk_metadata_json,
             bm25(knowledge_chunks_fts, 6.0, 2.0, 1.0, 1.0) AS fts_rank
         FROM knowledge_chunks_fts
         JOIN knowledge_chunks AS kc ON kc.chunk_id = knowledge_chunks_fts.chunk_id
@@ -726,6 +734,7 @@ def _fetch_lexical_candidates(
     query_text: str,
     filters: dict[str, Any] | None,
     limit: int,
+    caller_terms: list[str] | None = None,
 ) -> list[sqlite3.Row]:
     lexical_terms = tokens or [query_text.lower()]
     lexical_terms = [term for term in lexical_terms if term]
@@ -734,6 +743,14 @@ def _fetch_lexical_candidates(
 
     term_clauses: list[str] = []
     term_params: list[Any] = []
+    body_clauses: list[str] = []
+    body_params: list[Any] = []
+    for term in caller_terms or []:
+        variants = caller_term_variants(term)
+        body_clauses.append(
+            "(" + " OR ".join("LOWER(kc.text_content) LIKE ?" for _ in variants) + ")"
+        )
+        body_params.extend(f"%{variant}%" for variant in variants)
     for term in lexical_terms:
         pattern = f"%{term}%"
         term_clauses.append(
@@ -765,19 +782,38 @@ def _fetch_lexical_candidates(
             kd.relative_path,
             kd.asset_family,
             kd.source_type,
-            kd.crop_scopes_json
+            kd.crop_scopes_json,
+            kd.metadata_json AS document_metadata_json,
+            kc.metadata_json AS chunk_metadata_json
         FROM knowledge_chunks AS kc
         JOIN knowledge_documents AS kd ON kd.document_id = kc.document_id
         WHERE (
         """
-        + " OR ".join(term_clauses)
+        + " OR ".join(body_clauses or term_clauses)
         + "\n)"
     )
-    params: list[Any] = term_params
+    params: list[Any] = list(body_params or term_params)
     if where_sql:
         query += f" AND {where_sql}"
         params.extend(filter_params)
-    query += " ORDER BY kc.ordinal ASC LIMIT ?"
+    if body_clauses:
+        # Apply the caller's body matches before LIMIT. Otherwise early title or
+        # generic expansion hits can fill the candidate window entirely.
+        query += " ORDER BY "
+        if {"nutrient", "recipe"}.issubset(caller_terms or []):
+            # Composition queries need the table itself, not only early prose
+            # mentioning nutrient solutions. Rank table headers before LIMIT.
+            query += "CASE WHEN " + " OR ".join(
+                "instr(lower(kc.text_content), ?) > 0" for _ in _NUTRIENT_TABLE_TERMS
+            ) + " THEN 1 ELSE 0 END DESC, "
+            params.extend(_NUTRIENT_TABLE_TERMS)
+        query += "(" + " + ".join(
+            f"CASE WHEN {clause} THEN 1 ELSE 0 END" for clause in body_clauses
+        ) + ") DESC, "
+        query += "kc.ordinal ASC, kc.chunk_id ASC LIMIT ?"
+        params.extend(body_params)
+    else:
+        query += " ORDER BY kc.ordinal ASC, kc.chunk_id ASC LIMIT ?"
     params.append(limit)
     return connection.execute(query, params).fetchall()
 
@@ -804,6 +840,9 @@ def _merge_candidate_rows(*row_groups: Iterable[sqlite3.Row]) -> list[dict[str, 
     return list(merged.values())
 
 
+_NUTRIENT_TABLE_TERMS = ("성분 조성", "양액의 조성", "배양액 조성", "양액 조성", "培養液の組成", "成分組成")
+
+
 def _result_score(
     *,
     row: Mapping[str, Any],
@@ -821,38 +860,67 @@ def _result_score(
             _normalize_text(row["topic_minor"]).lower(),
         ]
     )
-    token_hits = sum(1 for token in query_terms if token.lower() in haystack)
-    title_hits = sum(
-        1
-        for token in query_terms
-        if token.lower() in _normalize_text(row["title"]).lower()
-    )
-    if query_mode == "intent_routed_hybrid":
-        fts_rank = float(row["fts_rank"]) if row["fts_rank"] is not None else 20.0
-        base = max(2.0, 32.0 - min(fts_rank, 29.0))
-        return round(
-            base
-            + entity_hits * 14.0
-            + title_hits * 5.0
-            + token_hits * 1.75
-            + routed_relevance_bonus(row=row, route=route, haystack=haystack),
-            3,
-        )
-
-    if query_mode == "fts5_hybrid":
-        fts_rank = float(row["fts_rank"]) if row["fts_rank"] is not None else 20.0
-        base = max(1.0, 30.0 - min(fts_rank, 29.0))
-        return round(
-            base + entity_hits * 14.0 + title_hits * 5.0 + token_hits * 1.5,
-            3,
-        )
-
+    caller_terms = route.get("caller_terms", query_terms)
+    core_terms = [term for term in caller_terms if term not in {"night", "day"}]
+    condition_terms = [term for term in caller_terms if term in {"night", "day"}]
+    body_hits = caller_relevance_hits(row["text_content"], core_terms or caller_terms)
+    if not body_hits or _is_cover_chunk(row):
+        return 0.0
+    condition_hits = caller_relevance_hits(row["text_content"], condition_terms) if core_terms else 0
+    source_context = _row_source_context(row)
+    reference_bonus = 6.0 if source_context.get("reference_kind") == "agronomy_compendium" else 0.0
+    composition_bonus = 96.0 if (
+        {"nutrient", "recipe"}.issubset(caller_terms)
+        and (row.get("chunk_type") == "nutrient_recipe_row"
+             or any(term in _normalize_text(row["text_content"]).lower() for term in _NUTRIENT_TABLE_TERMS))
+    ) else 0.0
+    if composition_bonus and any(unit in _normalize_text(row["text_content"]).lower()
+                                 for unit in ("me/l", "meq/l", "mmol/l", "mg/l", "mg·l", "mg・l")):
+        # Prefer the numeric concentration table over prose naming its formula.
+        composition_bonus += 24.0
+    title_hits = caller_relevance_hits(row["title"], caller_terms)
+    fts_bonus = 0.0
+    if query_mode in {"intent_routed_hybrid", "fts5_hybrid"} and row.get("fts_rank") is not None:
+        fts_bonus = max(0.0, min(3.0, -float(row["fts_rank"])))
     return round(
-        entity_hits * 14.0
-        + title_hits * 6.0
-        + token_hits * 4.0
+        body_hits * 40.0
+        + condition_hits * 12.0
+        + reference_bonus
+        + composition_bonus
+        + min(title_hits, 3) * 2.0
+        + min(entity_hits, 3) * 2.0
+        + fts_bonus
         + routed_relevance_bonus(row=row, route=route, haystack=haystack),
         3,
+    )
+
+
+def _is_cover_chunk(row: Mapping[str, Any]) -> bool:
+    if row.get("chunk_type") in {"cover", "title", "table_of_contents", "toc"}:
+        return True
+    if row.get("source_type") not in {"pdf", "markdown"}:
+        return False
+    text = _normalize_text(row["text_content"])
+    headings = re.split(r"\s+>\s+", text)
+    if len(headings) >= 5 and all(len(heading) <= 100 for heading in headings):
+        # Some PDF section overviews are stored as paragraphs rather than toc.
+        return True
+    words = [
+        word for word in _QUERY_TOKEN_PATTERN.findall(text.lower())
+        if not word.isdigit()
+    ]
+    if not words:
+        return True
+    title_words = set(_QUERY_TOKEN_PATTERN.findall(_normalize_text(row["title"]).lower()))
+    if set(words).issubset(title_words):
+        return True
+    # Repeated headers/cover extraction such as "토마토 스마트 온실 ... 관리 매뉴얼"
+    # contain many tokens but no usable passage.
+    cover_vocabulary = {"manual", "guide", "매뉴얼", "길잡이", "표지"}
+    return (
+        len(words) >= 12
+        and bool(set(words) & cover_vocabulary)
+        and len(set(words)) / len(words) < 0.4
     )
 
 
@@ -865,11 +933,91 @@ def _result_score(
 _MAX_RESULT_TEXT_CHARS = _PDF_CHUNK_CHARS
 
 
+def _row_source_context(row: Mapping[str, Any]) -> dict[str, Any]:
+    document = json.loads(row.get("document_metadata_json") or "{}")
+    chunk = json.loads(row.get("chunk_metadata_json") or "{}")
+    context = dict(document.get("source_context") or {})
+    if chunk.get("section_title"):
+        context["section_title"] = chunk["section_title"]
+    return context
+
+
 def _trim_chunk_text(text: str, max_chars: int = _MAX_RESULT_TEXT_CHARS) -> str:
     normalized = _normalize_text(text)
     if len(normalized) <= max_chars:
         return normalized
     return normalized[: max_chars - 3].rstrip() + "..."
+
+
+def _row_to_result(row: Mapping[str, Any], score: float = 0.0) -> dict[str, Any]:
+    return {
+        "chunk_id": int(row["chunk_id"]),
+        "document_id": int(row["document_id"]),
+        "source_locator": row["source_locator"],
+        "score": score,
+        "text": _trim_chunk_text(row["text_content"]),
+        "chunk_type": row["chunk_type"],
+        "topic_major": row["topic_major"],
+        "topic_minor": row["topic_minor"],
+        "source_context": _row_source_context(row),
+        "document": {
+            "title": row["title"], "filename": row["filename"],
+            "relative_path": row["relative_path"], "asset_family": row["asset_family"],
+            "source_type": row["source_type"], "crop_scopes": json.loads(row["crop_scopes_json"]),
+        },
+    }
+
+
+def fetch_knowledge_neighbors(
+    *, crop: str, seeds: list[dict[str, Any]], limit: int = 6,
+) -> list[dict[str, Any]]:
+    """Read the immediate continuation/context of selected PDF passages."""
+    path = knowledge_db_path(crop)
+    if not path.exists():
+        path = knowledge_db_path(_ALL_SCOPE)
+    if not path.exists() or limit <= 0:
+        return []
+    neighbors: list[dict[str, Any]] = []
+    seen = {int(seed["chunk_id"]) for seed in seeds if seed.get("chunk_id") is not None}
+    where_sql, params = _document_filter_sql(crop=crop, filters={"source_types": ["pdf"]})
+    with sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True) as connection:
+        connection.row_factory = sqlite3.Row
+        for seed in seeds:
+            if seed.get("chunk_type") != "pdf_paragraph" or not seed.get("chunk_id"):
+                continue
+            rows = connection.execute(
+                """SELECT kc.*, kd.title, kd.filename, kd.relative_path, kd.asset_family,
+                          kd.source_type, kd.crop_scopes_json,
+                          kd.metadata_json AS document_metadata_json,
+                          kc.metadata_json AS chunk_metadata_json
+                   FROM knowledge_chunks AS anchor
+                   JOIN knowledge_chunks AS kc ON kc.document_id = anchor.document_id
+                        AND kc.ordinal IN (anchor.ordinal + 1, anchor.ordinal - 1)
+                   JOIN knowledge_documents AS kd ON kd.document_id = kc.document_id
+                   WHERE anchor.chunk_id = ? AND anchor.document_id = ? AND """ + where_sql
+                + " ORDER BY CASE WHEN kc.ordinal > anchor.ordinal THEN 0 ELSE 1 END",
+                [seed["chunk_id"], seed["document_id"], *params],
+            ).fetchall()
+            for record in rows:
+                row = dict(record)
+                if int(row["chunk_id"]) in seen or _is_cover_chunk(row):
+                    continue
+                anchor_page = re.fullmatch(r"page:(\d+)", str(seed.get("source_locator") or ""))
+                neighbor_page = re.fullmatch(r"page:(\d+)", str(row.get("source_locator") or ""))
+                if not anchor_page or not neighbor_page or abs(int(anchor_page[1]) - int(neighbor_page[1])) > 1:
+                    continue
+                anchor_section = (seed.get("source_context") or {}).get("section_title")
+                neighbor_section = _row_source_context(row).get("section_title")
+                if anchor_section and neighbor_section and anchor_section != neighbor_section:
+                    continue
+                result = _row_to_result(row)
+                result["evidence_role"] = "adjacent"
+                result["context_for_chunk_id"] = seed["chunk_id"]
+                neighbors.append(result)
+                seen.add(int(row["chunk_id"]))
+                if len(neighbors) >= limit:
+                    return neighbors
+    return neighbors
 
 
 def query_knowledge_database(
@@ -914,6 +1062,7 @@ def query_knowledge_database(
         }
 
     query_terms = route["query_terms"] or _normalize_query_tokens(query_text)
+    caller_terms = route["caller_terms"]
     candidate_limit = max(query_limit * 5, 20)
     resolved_scope = database.get("resolved_scope", crop or _ALL_SCOPE)
     actual_db_path = knowledge_db_path(
@@ -946,13 +1095,27 @@ def query_knowledge_database(
             query_text=query_text,
             filters=applied_filters,
             limit=candidate_limit,
+            caller_terms=caller_terms,
         )
 
+        # The legacy recipe chunks omitted most ions and contain values from a
+        # faulty header parser. Read this small, filtered family from its source
+        # before relevance scoring, including ion-only queries absent in old text.
+        recipe_rows = _current_recipe_candidates(connection, crop=crop, filters=applied_filters)
+
     candidate_rows = _merge_candidate_rows(fts_rows, lexical_rows)
+    candidate_rows = [row for row in candidate_rows if row["chunk_type"] != "nutrient_recipe_row"]
+    candidate_rows.extend(recipe_rows)
     query_mode = "intent_routed_hybrid" if fts_rows else "lexical_fallback"
 
+    core_terms = [term for term in caller_terms if term not in {"night", "day"}]
+    relevant_rows = [
+        row for row in candidate_rows
+        if caller_relevance_hits(row["text_content"], core_terms or caller_terms)
+        and not _is_cover_chunk(row)
+    ]
     ranked_rows = sorted(
-        candidate_rows,
+        relevant_rows,
         key=lambda row: (
             -_result_score(
                 row=row,
@@ -966,34 +1129,30 @@ def query_knowledge_database(
             and row["fts_rank"] is not None
             else 0.0,
             int(row["ordinal"]),
+            int(row["chunk_id"]),
         ),
-    )[:query_limit]
+    )
+    if route["intent"] == "nutrient_recipe":
+        selected, deferred = [], []
+        per_document: dict[int, int] = defaultdict(int)
+        for row in ranked_rows:
+            document_id = int(row["document_id"])
+            if per_document[document_id] >= 2:
+                deferred.append(row)
+            else:
+                selected.append(row)
+                per_document[document_id] += 1
+        ranked_rows = selected + deferred
+    ranked_rows = ranked_rows[:query_limit]
 
     results = [
-        {
-            "chunk_id": int(row["chunk_id"]),
-            "document_id": int(row["document_id"]),
-            "source_locator": row["source_locator"],
-            "score": _result_score(
+        _row_to_result(row, _result_score(
                 row=row,
                 query_terms=query_terms,
                 entity_hits=entity_hits.get(int(row["chunk_id"]), 0),
                 query_mode=query_mode,
                 route=route,
-            ),
-            "text": _trim_chunk_text(row["text_content"]),
-            "chunk_type": row["chunk_type"],
-            "topic_major": row["topic_major"],
-            "topic_minor": row["topic_minor"],
-            "document": {
-                "title": row["title"],
-                "filename": row["filename"],
-                "relative_path": row["relative_path"],
-                "asset_family": row["asset_family"],
-                "source_type": row["source_type"],
-                "crop_scopes": json.loads(row["crop_scopes_json"]),
-            },
-        }
+            ))
         for row in ranked_rows
     ]
 
@@ -1031,6 +1190,7 @@ def _insert_document(
     metadata = {
         "normalization_targets": asset.get("normalization_targets", []),
         "sheet_hints": asset.get("sheet_hints", []),
+        "source_context": asset.get("source_context", {}),
     }
     cursor = connection.execute(
         """
@@ -1200,6 +1360,7 @@ def _extract_pdf_pages_with_quality(
     path: Path,
     *,
     expected_language: str = "ko",
+    reading_order: str = "default",
 ) -> tuple[list[str], dict[str, Any]]:
     """Extract per-page text via pdfminer.six and assess it.
 
@@ -1208,7 +1369,8 @@ def _extract_pdf_pages_with_quality(
     garbage extraction measurable instead of silent; the caller decides what to do
     with a document that fails.
     """
-    pages = extract_pdf_pages(path)
+    pages = (extract_pdf_pages(path) if reading_order == "default"
+             else extract_pdf_pages(path, reading_order=reading_order))
     assessment = assess_document(pages, expected_language=expected_language)
     return pages, assessment.to_dict()
 
@@ -1341,15 +1503,16 @@ def _ingest_pdf_asset(
 ) -> dict[str, Any]:
     """Ingest a PDF's chunks and return its extraction-quality assessment.
 
-    Quarantined documents (Japanese compendia) are still assessed so their quality is
-    on record, but their chunks are not indexed — no point storing text that retrieval
-    can never return. The assessment is returned so the catalog build can fail on a
-    Korean-expected document that extracts as garbage.
+    Assess the source in its declared language. The Japanese compendia use their
+    two-column reading order; excluded sources remain unavailable to retrieval.
     """
     path = REPO_ROOT / asset["relative_path"]
     expected_language = str(asset.get("expected_language", "ko"))
     pages, quality = _extract_pdf_pages_with_quality(
-        path, expected_language=expected_language
+        path, expected_language=expected_language,
+        reading_order="two_column_bands_v1" if (
+            asset.get("source_context", {}).get("reference_kind") == "agronomy_compendium"
+        ) else "default",
     )
     if is_quarantined(filename=asset.get("filename"), asset_family=asset.get("asset_family")):
         quality["ingested"] = False
@@ -1446,11 +1609,59 @@ def _rotation_chunk_text(row: dict[str, Any]) -> str:
 
 
 def _recipe_chunk_text(row: dict[str, Any]) -> str:
-    return (
-        f"{row.get('crop')} nutrient recipe for {row.get('stage')} on {row.get('medium')}: "
-        f"EC target {row.get('ec_target')}, K {row.get('k')}, Ca {row.get('ca')}, Mg {row.get('mg')}, "
-        f"Cl guardrail {row.get('cl_max')}, HCO3 guardrail {row.get('hco3_max')}, Na guardrail {row.get('na_max')}."
+    units = row.get("nutrient_units", {})
+    labels = {"ec_target": "EC", "n_no3": "N-NO3", "n_nh4": "N-NH4", "p": "P", "k": "K",
+              "ca": "Ca", "mg": "Mg", "s": "S", "fe": "Fe", "mn": "Mn", "zn": "Zn",
+              "b": "B", "cu": "Cu", "mo": "Mo", "cl_max": "Cl_max", "hco3_max": "HCO3_max", "na_max": "Na_max"}
+    composition = "; ".join(
+        f"{label} {row[key]} {units.get(key, '(unit not specified)')}"
+        for key, label in labels.items() if row.get(key) is not None
     )
+    return (
+        f"{row.get('crop')} nutrient recipe reference targets for {row.get('stage')} on {row.get('medium')}: "
+        f"{composition}. These are reference solution concentrations, not a farm-adjusted fertilizer or A/B stock recipe. "
+        "Stage labels do not establish a node-count threshold. "
+        f"Workbook source note: {row.get('source_note') or 'not specified'}."
+    )
+
+
+def _current_recipe_candidates(connection: sqlite3.Connection, *, crop: str | None,
+                               filters: dict[str, Any]) -> list[dict[str, Any]]:
+    where_sql, params = _document_filter_sql(crop=crop, filters=filters)
+    rows = connection.execute(
+        """SELECT kc.*, kd.title, kd.filename, kd.relative_path, kd.asset_family,
+                  kd.source_type, kd.crop_scopes_json,
+                  kd.metadata_json AS document_metadata_json,
+                  kc.metadata_json AS chunk_metadata_json
+           FROM knowledge_chunks AS kc JOIN knowledge_documents AS kd
+             ON kd.document_id = kc.document_id
+           WHERE kc.chunk_type = 'nutrient_recipe_row'"""
+        + (f" AND {where_sql}" if where_sql else ""), params,
+    ).fetchall()
+    if not rows:
+        return []
+    source_path = (workbook_normalization.DATA_ROOT / workbook_normalization.NUTRIENT_WORKBOOK).resolve()
+    matching = [dict(row) for row in rows
+                if row["source_type"] == "xlsx" and row["asset_family"] == "nutrient_workbook"
+                and (REPO_ROOT / row["relative_path"]).resolve() == source_path]
+    if not matching:
+        return []
+    try:
+        recipes = export_nutrient_reference_rows(crop)["recipes"]
+    except (OSError, ValueError):
+        return []
+    current = {(row["source_sheet"], row["source_row"]): row for row in recipes}
+    hydrated = []
+    for row in matching:
+        previous = json.loads(row["chunk_metadata_json"] or "{}")
+        recipe = current.get((previous.get("source_sheet"), previous.get("source_row")))
+        if recipe is None or any(previous.get(key) != recipe.get(key)
+                                 for key in ("source_key", "crop", "medium", "stage")):
+            continue
+        row.update(text_content=_recipe_chunk_text(recipe), chunk_metadata_json=_json_dumps(recipe),
+                   fts_rank=None, candidate_sources=["workbook"])
+        hydrated.append(row)
+    return hydrated
 
 
 def _fertilizer_chunk_text(row: dict[str, Any]) -> str:

@@ -76,7 +76,9 @@ def test_chat_refuses_phi_before_any_llm_call(monkeypatch) -> None:
         called["llm"] = True
         raise AssertionError("the LLM must not be called for a refused PHI question")
 
-    monkeypatch.setattr(advisor_orchestration, "generate_chat_reply", _boom)
+    # The orchestrator reaches the model through generate_chat_turn; the older
+    # generate_chat_reply name no longer exists, so patching it watched nothing.
+    monkeypatch.setattr(advisor_orchestration, "generate_chat_turn", _boom)
 
     response = advisor_orchestration.build_advisor_chat_response(
         crop="tomato",

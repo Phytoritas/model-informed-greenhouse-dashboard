@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import PageCanvas from '../components/layout/PageCanvas';
-import { SectionHeader } from '../components/ui/section-header';
 import type { AppLocale } from '../i18n/locale';
 
 interface TrendPageProps {
@@ -47,38 +46,21 @@ export default function TrendPage({
       };
 
   return (
-    <PageCanvas eyebrow={copy.eyebrow} title={copy.title} description={copy.description}>
+    <PageCanvas title={copy.title} description={copy.description} hideHeader>
+      <p className="max-w-4xl text-sm leading-6 text-[color:var(--sg-text-muted)]">{copy.description}</p>
       <section className="grid gap-3" aria-labelledby="trend-weather-title" data-command-surface="trend-weather">
-        <SectionHeader
-          density="compact"
-          eyebrow={copy.weatherEyebrow}
-          title={copy.weatherTitle}
-          description={copy.weatherDescription}
-          titleId="trend-weather-title"
-        />
+        <h2 id="trend-weather-title" className="sr-only">{copy.weatherTitle}</h2>
         {weatherSurface}
       </section>
 
       <section className="grid gap-3" aria-labelledby="trend-market-title" data-command-surface="trend-market">
-        <SectionHeader
-          density="compact"
-          eyebrow={copy.marketEyebrow}
-          title={copy.marketTitle}
-          description={copy.marketDescription}
-          titleId="trend-market-title"
-        />
+        <h2 id="trend-market-title" className="sr-only">{copy.marketTitle}</h2>
         {marketSurface}
       </section>
 
       {decisionSurface ? (
         <section className="grid gap-3" aria-labelledby="trend-decision-title" data-command-surface="trend-decision">
-          <SectionHeader
-            density="compact"
-            eyebrow={copy.decisionEyebrow}
-            title={copy.decisionTitle}
-            description={copy.decisionDescription}
-            titleId="trend-decision-title"
-          />
+          <h2 id="trend-decision-title" className="sr-only">{copy.decisionTitle}</h2>
           {decisionSurface}
         </section>
       ) : null}

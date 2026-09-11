@@ -1,4 +1,6 @@
 import { Suspense, lazy } from 'react';
+import type { ReactNode } from 'react';
+import { ArrowRight } from 'lucide-react';
 import type { AppLocale } from '../i18n/locale';
 import type {
   AdvancedModelMetrics,
@@ -14,26 +16,19 @@ import type { KpiTileData } from '../components/KpiStrip';
 import type { AlertRailItem } from '../components/dashboard/AlertRail';
 import type { SmartGrowKnowledgeSummary } from '../hooks/useSmartGrowKnowledge';
 import AlertRail from '../components/dashboard/AlertRail';
-import ConsultingTrendCard from '../components/dashboard/ConsultingTrendCard';
-import EnvironmentDatasetCard from '../components/dashboard/EnvironmentDatasetCard';
-import HeroControlCard from '../components/dashboard/HeroControlCard';
 import OverviewSignalTrendCard from '../components/dashboard/OverviewSignalTrendCard';
-import TodayBoard from '../components/dashboard/TodayBoard';
 import {
-  FinalCTA,
-  HeroDecisionBrief,
-  LandingFooter,
   LiveMetricStrip,
   OverviewMetricDeck,
-  ScenarioOptimizerPreview,
   TodayActionBoard,
-  TopNavigation,
-  WeatherMarketKnowledgeBridge,
 } from '../components/dashboard/overviewLandingSections';
 import LoadingSkeleton from '../features/common/LoadingSkeleton';
 import { SectionHeader } from '../components/ui/section-header';
 import { buildRTRLiveSnapshot, getRtrProfile } from '../utils/rtr';
+import { isDecisionRtrWindowUsable } from '../utils/fieldDecisionSupport';
 import OverviewPage from './overview-page';
+import OverviewPageHeader from '../components/dashboard/OverviewPageHeader';
+import PsychrometricDecisionPanel from '../components/dashboard/PsychrometricDecisionPanel';
 
 const Charts = lazy(() => import('../components/Charts'));
 const RtrTrendCard = lazy(() => import('../components/dashboard/RtrTrendCard'));
@@ -88,28 +83,21 @@ interface OverviewRoutePageProps {
   onOpenAssistant: () => void;
   rtrProfile?: RtrProfile | null;
   activeTabId?: string;
+  /** Greenhouse view, owned by the 3D lane and injected by the app root. */
+  scene?: ReactNode;
+  /** Shared timeline cursor. Drives the charts; the decision board stays on latest. */
+  selectedTimestamp?: number | null;
+  siteName?: string;
+  siteCoordinates?: { latitude: number; longitude: number } | null;
+  cropSelector?: ReactNode;
 }
 
 export default function OverviewRoutePage({
   locale,
   crop,
   telemetryStatus,
-  telemetryDetail,
   primaryKpiTiles,
   secondaryKpiTiles,
-  runtimeRecommendedAction,
-  heroPrimaryNarrative,
-  heroSummary,
-  heroImportantIssue,
-  heroActions,
-  confidence,
-  advisorUpdatedAt = null,
-  advisorRefreshing = false,
-  modelRuntimeSummary = null,
-  sourceSinkBalance = null,
-  canopyAssimilation = null,
-  lai = null,
-  liveSourceSinkSeries = [],
   alertItems,
   fallbackAlertBody,
   history,
@@ -119,26 +107,27 @@ export default function OverviewRoutePage({
   overviewSignalsLoading,
   overviewSignalsError,
   overviewSignalsRefreshedAt = null,
-  weather,
-  weatherLoading,
-  weatherError,
-  producePrices,
-  produceLoading,
-  produceError,
-  knowledgeSummary,
-  knowledgeLoading,
-  knowledgeError,
   actionsNow,
   actionsToday,
-  actionsWeek,
   monitor,
   onOpenRtr,
   onOpenAdvisor,
-  onOpenAssistant,
   rtrProfile = null,
   activeTabId,
+  scene,
+  selectedTimestamp = null,
+  siteName,
+  siteCoordinates = null,
+  cropSelector,
 }: OverviewRoutePageProps) {
   const allMetricTiles = [...primaryKpiTiles, ...secondaryKpiTiles];
+  // Only show a harvest number the model actually produced. A zero from an
+  // unavailable prediction would read as a real forecast of no harvest.
+  const yieldPrediction = modelMetrics.yield as { predictedWeekly: number; predictionAvailable?: boolean };
+  const yieldOutlookKg = yieldPrediction.predictionAvailable === false
+    || !Number.isFinite(yieldPrediction.predictedWeekly)
+    ? undefined
+    : yieldPrediction.predictedWeekly;
   // Compute the RTR snapshot once so the action board and the comparison card agree.
   const rtrSnapshot = buildRTRLiveSnapshot(
     currentData,
@@ -158,36 +147,24 @@ export default function OverviewRoutePage({
 
   return (
     <OverviewPage
-      topNavigation={<TopNavigation onOpenAssistant={onOpenAssistant} />}
-      heroDecisionBrief={(
-        <HeroDecisionBrief
-          heroCard={(
-            <HeroControlCard
-              crop={crop}
-              operatingMode={runtimeRecommendedAction ?? (locale === 'ko' ? '비교안 준비' : 'Scenario ready')}
-              primaryNarrative={heroPrimaryNarrative}
-              summary={heroSummary}
-              importantIssue={heroImportantIssue}
-              actions={heroActions}
-              confidence={confidence}
-              advisorUpdatedAt={advisorUpdatedAt}
-              advisorRefreshing={advisorRefreshing}
-              currentData={currentData}
-              telemetryStatus={telemetryStatus}
-              telemetryDetail={telemetryDetail}
-              modelRuntimeSummary={modelRuntimeSummary}
-              sourceSinkBalance={sourceSinkBalance}
-              canopyAssimilation={canopyAssimilation}
-              lai={lai}
-              onOpenRtr={onOpenRtr}
-              onOpenAdvisor={onOpenAdvisor}
-              onOpenAssistant={onOpenAssistant}
-            />
-          )}
+      replayNotice={selectedTimestamp !== null ? (
+        <p className="overview-replay-note">{locale === 'ko'
+          ? '과거 시점을 보고 있습니다. 장면과 그래프는 선택 시각을, 상단 지표와 관리 판단은 최신 값을 표시합니다.'
+          : 'Replaying a past moment. The scene and charts use the selected time; top metrics and management decisions use the latest values.'}</p>
+      ) : null}
+      pageHeader={(
+        <OverviewPageHeader
+          locale={locale}
+          siteName={siteName ?? (locale === 'ko' ? '경북대 온실' : 'KNU greenhouse')}
+          siteCoordinates={siteCoordinates}
+          // No frames yet means no simulated clock to show, rather than "now".
+          simulatedTimestamp={history.length ? currentData.timestamp ?? null : null}
+          cropSelector={cropSelector}
         />
       )}
-      liveMetricStrip={<LiveMetricStrip tiles={[...primaryKpiTiles, ...secondaryKpiTiles]} yieldOutlookKg={modelMetrics.yield.predictedWeekly} />}
-      todayActionBoard={(
+      metricRow={<LiveMetricStrip tiles={[...primaryKpiTiles, ...secondaryKpiTiles]} yieldOutlookKg={yieldOutlookKg} />}
+      scene={scene}
+      decisionBoard={(
         <TodayActionBoard
           crop={crop}
           currentData={currentData}
@@ -199,43 +176,47 @@ export default function OverviewRoutePage({
           onOpenAdvisor={onOpenAdvisor}
           rtrDeltaC={rtrSnapshot.deltaTempC}
           rtrToleranceC={rtrToleranceC}
-        />
-      )}
-      scenarioOptimizerPreview={(
-        <ScenarioOptimizerPreview
-          crop={crop}
-          currentData={currentData}
-          history={history}
-          modelMetrics={modelMetrics}
-          rtrProfile={rtrProfile}
-        />
-      )}
-      environmentDatasetPanel={(
-        <EnvironmentDatasetCard
-          locale={locale}
-          crop={crop}
+          rtrWindowHours={rtrSnapshot.windowHours}
+          rtrWindowUsable={isDecisionRtrWindowUsable(history, currentData)}
           telemetryStatus={telemetryStatus}
+          receivedAtTimestamp={currentData.receivedAtTimestamp ?? null}
+          simulatedTimestamp={history.length ? currentData.timestamp ?? null : null}
+          compact={Boolean(scene)}
         />
+      )}
+      chartRow={(
+        // Today stays a decision screen. The full chart board lives once, on
+        // Metrics, instead of being duplicated below the scene.
+        <a href="#overview-dashboard" className="overview-trend-link">
+          <span className="overview-trend-link-text">
+            <strong>{locale === 'ko' ? '환경·생육 그래프와 습공기 선도' : 'Climate, crop and moist-air charts'}</strong>
+            <span>{locale === 'ko'
+              ? '7개 추세와 RTR, 습공기 선도를 지표·추세 탭에서 한 화면으로 봅니다.'
+              : 'See all seven trends, RTR and the moist-air chart together on the Metrics tab.'}</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+        </a>
       )}
       dashboardTab={(
-        <div className="min-w-0 space-y-4" data-command-surface="overview-dashboard">
-          <section className="min-w-0 space-y-4" aria-labelledby="overview-dashboard-metrics-title">
+        // One composed board: a single page heading, then the metric strip,
+        // the chart grid, and the wide panels — each starting at the same left
+        // edge, with no per-section header frames in between.
+        <div className="overview-metrics-board min-w-0" data-command-surface="overview-dashboard">
+          <section className="min-w-0" aria-labelledby="overview-dashboard-metrics-title">
             <SectionHeader
               density="compact"
-              eyebrow="Dashboard"
-              title={locale === 'ko' ? '전체 지표와 센서 추세' : 'Full metric deck and sensor trends'}
+              title={locale === 'ko' ? '지표와 추세' : 'Metrics and trends'}
               titleId="overview-dashboard-metrics-title"
               description={
                 locale === 'ko'
-                  ? 'Command 화면에서는 요약만 보이고, 상세 지표와 환경 차트는 이 탭에서 같은 데이터 흐름으로 확인합니다.'
-                  : 'Command stays summary-first; detailed metrics and environmental charts remain connected here.'
+                  ? '전체 지표를 살펴보고 시간에 따른 환경과 작물 반응을 비교하세요.'
+                  : 'Explore the full set of metrics and compare environmental and crop responses over time.'
               }
             />
-            <OverviewMetricDeck tiles={allMetricTiles} />
+            <OverviewMetricDeck className="mt-3" tiles={allMetricTiles} />
           </section>
-          <div className="grid min-w-0 gap-4 xl:grid-cols-12">
-            <div className="min-w-0 xl:col-span-7">
-              <Suspense
+          <div className="min-w-0">
+            <Suspense
                 fallback={(
                   <LoadingSkeleton
                     title={locale === 'ko' ? '실시간 환경 분석' : 'Real-time Environmental Analysis'}
@@ -247,6 +228,7 @@ export default function OverviewRoutePage({
                 <Charts
                   data={history}
                   variant="overview"
+                  selectedTimestamp={selectedTimestamp}
                   extraChartSlot={(
                     <Suspense
                       fallback={(
@@ -262,67 +244,30 @@ export default function OverviewRoutePage({
                         currentData={currentData}
                         history={history}
                         profile={rtrProfile}
+                        selectedTimestamp={selectedTimestamp}
                         variant="chart-slot"
                       />
                     </Suspense>
                   )}
                 />
-              </Suspense>
-            </div>
-            <div className="min-w-0 space-y-4 xl:col-span-5">
-              <OverviewSignalTrendCard
-                signals={overviewSignals}
-                loading={overviewSignalsLoading}
-                error={overviewSignalsError}
-                refreshedAt={overviewSignalsRefreshedAt}
-                fillHeight={false}
-                liveSourceSinkSeries={liveSourceSinkSeries}
-              />
-              <ConsultingTrendCard
-                actionsNow={actionsNow}
-                actionsToday={actionsToday}
-                actionsWeek={actionsWeek}
-                confidence={confidence}
-                advisorRefreshing={advisorRefreshing}
-                advisorUpdatedAt={advisorUpdatedAt}
-              />
-            </div>
+            </Suspense>
           </div>
+          <PsychrometricDecisionPanel history={history} telemetryStatus={telemetryStatus} selectedTimestamp={selectedTimestamp} />
+          <OverviewSignalTrendCard
+            signals={overviewSignals}
+            loading={overviewSignalsLoading}
+            error={overviewSignalsError}
+            refreshedAt={overviewSignalsRefreshedAt}
+            selectedTimestamp={selectedTimestamp}
+            fillHeight={false}
+          />
         </div>
       )}
       watchTab={(
         <div className="space-y-4" data-command-surface="overview-watch">
           <AlertRail items={fallbackAlerts} />
-          <TodayBoard
-            actionsNow={actionsNow}
-            actionsToday={actionsToday}
-            actionsWeek={actionsWeek}
-            monitor={monitor}
-            advisorUpdatedAt={advisorUpdatedAt}
-            advisorRefreshing={advisorRefreshing}
-            onOpenAdvisor={onOpenAdvisor}
-            onOpenRtr={onOpenRtr}
-          />
         </div>
       )}
-      weatherMarketKnowledgeBridge={(
-        <WeatherMarketKnowledgeBridge
-          crop={crop}
-          weather={weather}
-          weatherLoading={weatherLoading}
-          weatherError={weatherError}
-          producePrices={producePrices}
-          produceLoading={produceLoading}
-          produceError={produceError}
-          knowledgeSummary={knowledgeSummary}
-          knowledgeLoading={knowledgeLoading}
-          knowledgeError={knowledgeError}
-          history={history}
-          onOpenAssistant={onOpenAssistant}
-        />
-      )}
-      finalCta={<FinalCTA />}
-      footer={<LandingFooter onOpenAssistant={onOpenAssistant} />}
       activeTabId={activeTabId}
     />
   );

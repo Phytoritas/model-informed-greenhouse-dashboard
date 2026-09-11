@@ -8,7 +8,7 @@ from datetime import datetime
 from model_informed_greenhouse_dashboard.models.legacy.CucumberModel import (
     CucumberModel,
 )
-from .base import ModelAdapter
+from .base import ModelAdapter, environment_quality, finite_number
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +78,15 @@ class CucumberAdapter(ModelAdapter):
             else:
                 dt = row["datetime"]
 
-            # Calculate timestep (default 3600s for hourly data)
-            if self._last_datetime is not None:
-                delta_s = (dt - self._last_datetime).total_seconds()
-            else:
-                delta_s = 3600.0  # Assume 1 hour for first step
+            delta_s = self._step_duration_seconds(dt, row)
+            quality = environment_quality(row)
+            if quality["status"] == "invalid":
+                self._last_datetime = dt
+                self._last_state = self._fallback_state(row, "invalid_input")
+                return self._last_state
+
+            # Consume this input interval even if its model calculation fails.
+            self._last_datetime = dt
 
             # Update model inputs from row (CucumberModel expects specific names)
             self.model.T_a = row["T_air_C"] + 273.15  # Convert to Kelvin
@@ -105,9 +109,18 @@ class CucumberAdapter(ModelAdapter):
 
             # Extract output state
             state = self._extract_state(dt, row, delta_s)
+            if any(
+                finite_number(value) is None
+                for value in state.values()
+                if isinstance(value, (int, float))
+            ):
+                raise ValueError("Model returned a non-finite state")
 
-            # Update daily cache
-            self._update_daily_cache(state, dt)
+            state["data_quality"] = quality
+            state["source"] = "model_prediction"
+            state["simulation_status"] = "ok" if state["converged"] == 1 else "unconverged"
+            if state["converged"] == 1:
+                self._update_daily_cache(state, dt)
 
             self._last_state = state
             self._last_datetime = dt
@@ -117,7 +130,8 @@ class CucumberAdapter(ModelAdapter):
         except Exception as e:
             logger.error(f"CucumberAdapter.step() error: {e}", exc_info=True)
             # Return safe fallback state
-            return self._fallback_state(row)
+            self._last_state = self._fallback_state(row)
+            return self._last_state
 
     def _extract_state(
         self, dt: datetime, row: Dict[str, Any], dt_seconds: float
@@ -221,17 +235,20 @@ class CucumberAdapter(ModelAdapter):
 
         return state
 
-    def _fallback_state(self, row: Dict[str, Any]) -> Dict[str, Any]:
+    def _fallback_state(
+        self, row: Dict[str, Any], status: str = "failed"
+    ) -> Dict[str, Any]:
         """Return safe fallback state on error."""
+        previous = self._last_state or {}
         return {
-            "datetime": row["datetime"],
-            "T_air_C": row.get("T_air_C", 0.0),
-            "PAR_umol": row.get("PAR_umol", 0.0),
-            "CO2_ppm": row.get("CO2_ppm", 0.0),
-            "RH_percent": row.get("RH_percent", 0.0),
-            "wind_speed_ms": row.get("wind_speed_ms", 0.0),
-            "LAI": 0.0,
-            "T_canopy_C": row["T_air_C"],
+            "datetime": row.get("datetime"),
+            "T_air_C": finite_number(row.get("T_air_C")),
+            "PAR_umol": finite_number(row.get("PAR_umol")),
+            "CO2_ppm": finite_number(row.get("CO2_ppm")),
+            "RH_percent": finite_number(row.get("RH_percent")),
+            "wind_speed_ms": finite_number(row.get("wind_speed_ms")),
+            "LAI": previous.get("LAI", 0.0),
+            "T_canopy_C": finite_number(row.get("T_air_C")),
             "H_W_m2": 0.0,
             "LE_W_m2": 0.0,
             "transpiration_g_m2": 0.0,
@@ -240,12 +257,15 @@ class CucumberAdapter(ModelAdapter):
             "net_assimilation_umol_m2_s": 0.0,
             "gross_photosynthesis_umol_m2_s": 0.0,
             "dt_seconds": 0.0,
-            "fractional_cover": 0.0,
+            "fractional_cover": previous.get("fractional_cover", 0.0),
             "converged": 0,
-            "node_count": 0,
-            "fruit_dry_weight_g_m2": 0.0,
-            "vegetative_dry_weight_g_m2": 0.0,
-            "total_dry_weight_g_m2": 0.0,
+            "simulation_status": status,
+            "source": "model_prediction",
+            "data_quality": environment_quality(row),
+            "node_count": previous.get("node_count", 0),
+            "fruit_dry_weight_g_m2": previous.get("fruit_dry_weight_g_m2", 0.0),
+            "vegetative_dry_weight_g_m2": previous.get("vegetative_dry_weight_g_m2", 0.0),
+            "total_dry_weight_g_m2": previous.get("total_dry_weight_g_m2", 0.0),
         }
 
     def _update_daily_cache(self, state: Dict[str, Any], dt: datetime) -> None:
@@ -260,8 +280,6 @@ class CucumberAdapter(ModelAdapter):
                 prev_transp_mm = self._daily_cache.get("transpiration_sum", 0) / 1000
                 self._previous_day["fruit_growth_g_m2"] = prev_growth_g_m2
                 self._previous_day["transpiration_mm"] = prev_transp_mm
-                # Update cumulative
-                self._cumulative["total_transpiration_mm"] += prev_transp_mm
                 logger.info(
                     f"CucumberAdapter: End of day, fruit growth={prev_growth_g_m2:.2f} g/m², transp={prev_transp_mm:.2f} mm"
                 )
@@ -313,6 +331,7 @@ class CucumberAdapter(ModelAdapter):
         daily_fruit_dw_g_m2 = self._daily_cache.get("daily_fruit_dw_g_m2", 0)
 
         kpi = {
+            "fruit_growth_basis": "dry_matter",
             "node_count": int(last_state.get("node_count", 0)),
             "LAI": round(last_state.get("LAI", 0), 2),
             "daily_transpiration_mm": round(daily_transp_mm, 2),
@@ -396,6 +415,7 @@ class CucumberAdapter(ModelAdapter):
         """Restore model state from snapshot."""
         try:
             # Extract adapter metadata
+            state = copy.deepcopy(state)
             meta = state.pop("_adapter_meta", {})
             if meta.get("last_datetime"):
                 self._last_datetime = datetime.fromisoformat(meta["last_datetime"])

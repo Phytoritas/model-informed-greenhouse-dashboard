@@ -181,6 +181,51 @@ export default function SmartGrowSurfacePanel({
     const supportingSurfaces = orderedSurfaces.slice(1);
     const isCompact = layoutMode === 'compact';
 
+    if (isCompact) {
+        return (
+            <section className="assistant-toolbox rounded-2xl border border-[color:var(--sg-outline-soft)] bg-[color:var(--sg-surface-strong)] p-5 sm:p-6" aria-label={copy.title}>
+                <header className="mb-5">
+                    <span className="text-[13px] font-medium text-[color:var(--sg-text-muted)]">{cropLabel}</span>
+                    <h2 className="mt-1 text-lg font-semibold text-[color:var(--sg-text-strong)]">{copy.title}</h2>
+                    <p className="mt-2 text-[13px] leading-6 text-[color:var(--sg-text-muted)]">
+                        {locale === 'ko' ? '필요한 도구를 골라 입력 조건부터 확인하세요.' : 'Choose a tool and review its input conditions.'}
+                    </p>
+                </header>
+                {loading ? <p role="status" className="py-4 text-sm text-[color:var(--sg-text-muted)]">{copy.loading}</p>
+                    : error ? <p role="alert" className="py-4 text-sm text-[color:var(--sg-accent-amber)]">{copy.unavailable}: {error}</p>
+                        : orderedSurfaces.length === 0 ? <p className="py-4 text-sm text-[color:var(--sg-text-muted)]">{copy.empty}</p>
+                            : <div className="divide-y divide-[color:var(--sg-outline-soft)]">
+                                {orderedSurfaces.map((surface) => {
+                                    const Icon = SURFACE_ICON[surface.key];
+                                    const ready = surface.status === 'ready';
+                                    return (
+                                        <article key={surface.key} className="py-5 first:pt-0 last:pb-0">
+                                            <div className="flex items-center gap-3">
+                                                <Icon className="h-5 w-5 shrink-0 text-[color:var(--sg-text-muted)]" aria-hidden="true" />
+                                                <h3 className="min-w-0 flex-1 text-[15px] font-semibold text-[color:var(--sg-text-strong)]">{labels[surface.key]}</h3>
+                                                <span className={`text-xs font-medium ${ready ? 'text-[color:var(--sg-status-live-text)]' : 'text-[color:var(--sg-text-faint)]'}`}>
+                                                    {ready ? copy.ready : copy.unavailableStatus}
+                                                </span>
+                                            </div>
+                                            <p className="mt-3 text-[13px] leading-6 text-[color:var(--sg-text-muted)]">{descriptions[surface.key]}</p>
+                                            {surface.limitation ? <p className="mt-2 text-xs leading-5 text-[color:var(--sg-text-faint)]">{surface.limitation}</p> : null}
+                                            <button
+                                                type="button"
+                                                onClick={() => onOpenSurface?.(surface.key)}
+                                                disabled={!ready || !onOpenSurface}
+                                                className="mt-3 inline-flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border border-[color:var(--sg-outline-strong)] bg-[color:var(--sg-surface)] px-3 py-2 text-[13px] font-semibold text-[color:var(--sg-text-strong)] transition-colors hover:bg-[color:var(--sg-color-primary-soft)] disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {ready ? copy.open : copy.unavailableAction}
+                                                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                                            </button>
+                                        </article>
+                                    );
+                                })}
+                            </div>}
+            </section>
+        );
+    }
+
     return (
         <DashboardCard
             eyebrow={copy.title}

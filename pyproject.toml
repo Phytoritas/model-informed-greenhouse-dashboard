@@ -1,6 +1,6 @@
 [project]
 name = "model-informed-greenhouse-dashboard"
-version = "0.1.0"
+version = "1.0.0"
 description = "Model-informed greenhouse dashboard"
 authors = [
     {name = "Phytoritas",email = "phmoon08@gmail.com"}

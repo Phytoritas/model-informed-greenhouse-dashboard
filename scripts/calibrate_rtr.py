@@ -70,7 +70,13 @@ def main() -> int:
         crop_to_csv_path["Cucumber"] = (repo_root / args.cucumber_csv).resolve()
 
     existing_payload = load_rtr_profiles(repo_root / args.output)
-    calibration_windows_payload = load_rtr_good_windows(repo_root / args.windows)
+    # The loader fails closed on a malformed curated-window file. Report which
+    # file and why instead of a traceback, since this is a command-line tool.
+    try:
+        calibration_windows_payload = load_rtr_good_windows(repo_root / args.windows)
+    except ValueError as exc:
+        print(f"Invalid RTR good-window file {repo_root / args.windows}: {exc}")
+        return 1
     approved_window_count = sum(
         1
         for windows in calibration_windows_payload.get("crops", {}).values()

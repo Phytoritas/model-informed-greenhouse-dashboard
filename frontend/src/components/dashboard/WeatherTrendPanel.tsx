@@ -1,7 +1,5 @@
 import { CloudRain, SunMedium, Thermometer } from 'lucide-react';
 import {
-  CartesianGrid,
-  Legend,
   Line,
   LineChart,
   Tooltip,
@@ -11,7 +9,19 @@ import {
 import { useLocale } from '../../i18n/LocaleProvider';
 import { formatLocaleDate } from '../../i18n/locale';
 import type { WeatherOutlook } from '../../types';
-import ChartFrame from '../charts/ChartFrame';
+import { UNIT_LABELS } from '../../utils/displayCopy';
+import ChartFrame, { ChartSeriesLegend } from '../charts/ChartFrame';
+import {
+  chartSeries,
+  DASHBOARD_CHART_AXIS_PROPS,
+  DASHBOARD_CHART_CURSOR,
+  DASHBOARD_CHART_HEIGHT,
+  DASHBOARD_CHART_TOOLTIP_ITEM_STYLE,
+  DASHBOARD_CHART_TOOLTIP_LABEL_STYLE,
+  DASHBOARD_CHART_TOOLTIP_STYLE,
+  seriesLineProps,
+} from '../charts/chartStyles';
+import ScientificText from '../common/ScientificText';
 import { MetricCard } from '../ui/metric-card';
 import { StatusChip } from '../ui/status-chip';
 
@@ -21,18 +31,24 @@ interface WeatherTrendPanelProps {
   error: string | null;
 }
 
-const TOOLTIP_STYLE = {
-  backgroundColor: 'var(--sg-surface-raised)',
-  border: '1px solid var(--sg-outline-soft)',
-  borderRadius: 'var(--sg-radius-lg)',
-  boxShadow: 'var(--sg-shadow-card)',
-} as const;
+/**
+ * Temperature, rain risk, and radiation do not share a unit, so each keeps its
+ * own labeled axis: two temperature series on the left, percent on the right,
+ * and radiation in its own chart below.
+ */
+const MAX_TEMP_SERIES_INDEX = 0;
+const MIN_TEMP_SERIES_INDEX = 3;
+const RAIN_SERIES_INDEX = 2;
+const RADIATION_SERIES_INDEX = 1;
+
+/** Radiation sum reported per unit ground area; kept as a real exponent. */
+const RADIATION_UNIT = 'MJ m⁻²';
 
 export default function WeatherTrendPanel({ weather, loading, error }: WeatherTrendPanelProps) {
   const { locale } = useLocale();
   const copy = locale === 'ko'
     ? {
-        eyebrow: 'Weather Trend',
+        eyebrow: '외기 예보',
         title: '대구 외기 추세 그래프',
         description: '최고·최저기온, 강수 위험, 일사량, 풍속을 한 화면에서 비교합니다.',
         loading: '외기 예보 추세를 불러오는 중입니다...',
@@ -48,10 +64,13 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
         wind: '최대풍속',
         source: '예보 소스',
         chartTitle: '3일 외기 추세',
-        chartDetail: '온도·강수·일사량을 같은 카드에서 비교합니다.',
+        chartDetail: '기온과 강수확률은 축을 나누어 표시하고, 일사량은 아래 차트에서 봅니다.',
+        radiationChartTitle: '일사량 추세',
+        leftAxis: '좌',
+        rightAxis: '우',
       }
     : {
-        eyebrow: 'Weather Trend',
+        eyebrow: 'Outside forecast',
         title: 'Daegu outside trend chart',
         description: 'Compare temperature, precipitation risk, radiation, and wind on the same lane.',
         loading: 'Loading outside trend...',
@@ -67,7 +86,10 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
         wind: 'Wind max',
         source: 'Forecast source',
         chartTitle: '3-day outside trend',
-        chartDetail: 'Temperature, rain risk, and radiation stay in one chart card.',
+        chartDetail: 'Temperature and rain risk use separate labeled axes; radiation has its own chart.',
+        radiationChartTitle: 'Radiation trend',
+        leftAxis: 'L',
+        rightAxis: 'R',
       };
 
   const trendRows = weather?.daily.map((day) => ({
@@ -92,8 +114,7 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
     <section className="sg-panel bg-[color:var(--sg-surface-raised)] p-4" aria-labelledby="weather-trend-title">
       <header className="flex flex-col gap-3 border-b border-[color:var(--sg-outline-soft)] pb-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="sg-eyebrow">{copy.eyebrow}</p>
-          <h2 id="weather-trend-title" className="mt-1 text-xl font-bold text-[color:var(--sg-text-strong)]">
+          <h2 id="weather-trend-title" className="text-base font-bold text-[color:var(--sg-text-strong)]">
             {copy.title}
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-[color:var(--sg-text-muted)]">
@@ -119,7 +140,7 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
             <MetricCard
               label={copy.currentTemp}
               value={weather.current.temperature_c.toFixed(1)}
-              unit="C"
+              unit={UNIT_LABELS.temperature}
               detail={weather.current.weather_label}
               icon={Thermometer}
               trendLabel={weather.location.name}
@@ -127,7 +148,7 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
             <MetricCard
               label={copy.todayRange}
               value={firstForecast ? `${firstForecast.minTemp.toFixed(1)}-${firstForecast.maxTemp.toFixed(1)}` : '-'}
-              unit="C"
+              unit={UNIT_LABELS.temperature}
               detail={firstForecast?.label ?? weather.location.timezone}
               icon={Thermometer}
               trendLabel={copy.maxTemp}
@@ -145,7 +166,7 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
             <MetricCard
               label={copy.todayRadiation}
               value={firstForecast ? firstForecast.radiation.toFixed(1) : '-'}
-              unit="MJ/m2"
+              unit={RADIATION_UNIT}
               detail={firstForecast ? `${copy.wind} ${firstForecast.wind.toFixed(1)} km/h` : copy.radiation}
               icon={SunMedium}
               trendLabel={copy.radiation}
@@ -155,27 +176,98 @@ export default function WeatherTrendPanel({ weather, loading, error }: WeatherTr
           <article className="sg-panel min-w-0 bg-white p-3" data-testid="weather-trend-chart-card">
             <div className="mb-3 flex flex-col gap-2 border-b border-[color:var(--sg-outline-soft)] pb-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <h3 className="text-sm font-bold text-[color:var(--sg-text-strong)]">{copy.chartTitle}</h3>
+                <h3 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.chartTitle}</h3>
                 <p className="mt-1 text-xs leading-5 text-[color:var(--sg-text-muted)]">{copy.chartDetail}</p>
               </div>
               <StatusChip tone="stable">{weather.source.fetched_at.slice(0, 10)}</StatusChip>
             </div>
-            <ChartFrame className="h-[22rem]" minHeight={300}>
+            {/* Units read horizontally, tagged by side, so the two axes stay
+                identifiable without rotated titles eating the plot width. */}
+            <ChartSeriesLegend
+              className="mb-2"
+              entries={[
+                { label: `[${copy.leftAxis}] ${copy.maxTemp} (${UNIT_LABELS.temperature})`, seriesIndex: MAX_TEMP_SERIES_INDEX },
+                { label: `[${copy.leftAxis}] ${copy.minTemp} (${UNIT_LABELS.temperature})`, seriesIndex: MIN_TEMP_SERIES_INDEX },
+                { label: `[${copy.rightAxis}] ${copy.rainRisk} (%)`, seriesIndex: RAIN_SERIES_INDEX },
+              ]}
+            />
+            <ChartFrame minHeight={DASHBOARD_CHART_HEIGHT.standard} style={{ height: DASHBOARD_CHART_HEIGHT.standard }}>
               {({ width, height }) => (
-                <LineChart width={Math.max(width, 1)} height={Math.max(height, 300)} data={trendRows} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--sg-outline-strong)" />
-                  <XAxis dataKey="label" stroke="var(--sg-text-faint)" tick={{ fontSize: 11 }} />
-                  <YAxis yAxisId="temp" stroke="var(--sg-text-faint)" tick={{ fontSize: 11 }} />
-                  <YAxis yAxisId="percent" orientation="right" stroke="var(--sg-text-faint)" tick={{ fontSize: 11 }} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ''} />
-                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
-                  <Line yAxisId="temp" type="monotone" dataKey="maxTemp" name={`${copy.maxTemp} (C)`} stroke="var(--sg-color-primary)" strokeWidth={2} dot={false} connectNulls />
-                  <Line yAxisId="temp" type="monotone" dataKey="minTemp" name={`${copy.minTemp} (C)`} stroke="var(--sg-color-olive)" strokeWidth={2} dot={false} connectNulls />
-                  <Line yAxisId="percent" type="monotone" dataKey="rainRisk" name={`${copy.rainRisk} (%)`} stroke="var(--sg-accent-amber)" strokeWidth={2} dot={false} connectNulls />
-                  <Line yAxisId="temp" type="monotone" dataKey="radiation" name={`${copy.radiation} (MJ/m2)`} stroke="var(--sg-color-success)" strokeWidth={2} dot={false} connectNulls />
+                <LineChart
+                  width={Math.max(width, 1)}
+                  height={Math.max(height, DASHBOARD_CHART_HEIGHT.standard)}
+                  data={trendRows}
+                  margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
+                >
+                  <XAxis {...DASHBOARD_CHART_AXIS_PROPS} dataKey="label" />
+                  <YAxis {...DASHBOARD_CHART_AXIS_PROPS} yAxisId="temp" width={46} />
+                  <YAxis {...DASHBOARD_CHART_AXIS_PROPS} yAxisId="percent" orientation="right" domain={[0, 100]} width={42} />
+                  <Tooltip
+                    contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
+                    labelStyle={DASHBOARD_CHART_TOOLTIP_LABEL_STYLE}
+                    itemStyle={DASHBOARD_CHART_TOOLTIP_ITEM_STYLE}
+                    cursor={DASHBOARD_CHART_CURSOR}
+                    labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ''}
+                  />
+                  <Line
+                    {...seriesLineProps(MAX_TEMP_SERIES_INDEX)}
+                    yAxisId="temp"
+                    dataKey="maxTemp"
+                    name={`${copy.maxTemp} (${UNIT_LABELS.temperature})`}
+                    activeDot={{ ...seriesLineProps(MAX_TEMP_SERIES_INDEX).activeDot, fill: chartSeries(MAX_TEMP_SERIES_INDEX).fill }}
+                  />
+                  <Line
+                    {...seriesLineProps(MIN_TEMP_SERIES_INDEX)}
+                    yAxisId="temp"
+                    dataKey="minTemp"
+                    name={`${copy.minTemp} (${UNIT_LABELS.temperature})`}
+                    activeDot={{ ...seriesLineProps(MIN_TEMP_SERIES_INDEX).activeDot, fill: chartSeries(MIN_TEMP_SERIES_INDEX).fill }}
+                  />
+                  <Line
+                    {...seriesLineProps(RAIN_SERIES_INDEX)}
+                    yAxisId="percent"
+                    dataKey="rainRisk"
+                    name={`${copy.rainRisk} (%)`}
+                    activeDot={{ ...seriesLineProps(RAIN_SERIES_INDEX).activeDot, fill: chartSeries(RAIN_SERIES_INDEX).fill }}
+                  />
                 </LineChart>
               )}
             </ChartFrame>
+
+            <div className="mt-4 border-t border-[color:var(--sg-outline-soft)] pt-3">
+              <h4 className="text-sm font-semibold text-[color:var(--sg-text-strong)]">{copy.radiationChartTitle}</h4>
+              <ScientificText text={RADIATION_UNIT} className="scientific-unit mt-0.5 block text-xs text-[color:var(--sg-text-muted)]" />
+              <ChartSeriesLegend
+                className="mb-2 mt-2"
+                entries={[{ label: copy.radiation, seriesIndex: RADIATION_SERIES_INDEX }]}
+              />
+              <ChartFrame minHeight={DASHBOARD_CHART_HEIGHT.compact} style={{ height: DASHBOARD_CHART_HEIGHT.compact }}>
+                {({ width, height }) => (
+                  <LineChart
+                    width={Math.max(width, 1)}
+                    height={Math.max(height, DASHBOARD_CHART_HEIGHT.compact)}
+                    data={trendRows}
+                    margin={{ top: 8, right: 12, left: 4, bottom: 4 }}
+                  >
+                    <XAxis {...DASHBOARD_CHART_AXIS_PROPS} dataKey="label" />
+                    <YAxis {...DASHBOARD_CHART_AXIS_PROPS} width={46} />
+                    <Tooltip
+                      contentStyle={DASHBOARD_CHART_TOOLTIP_STYLE}
+                      labelStyle={DASHBOARD_CHART_TOOLTIP_LABEL_STYLE}
+                      itemStyle={DASHBOARD_CHART_TOOLTIP_ITEM_STYLE}
+                      cursor={DASHBOARD_CHART_CURSOR}
+                      labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ''}
+                    />
+                    <Line
+                      {...seriesLineProps(RADIATION_SERIES_INDEX)}
+                      dataKey="radiation"
+                      name={`${copy.radiation} (${RADIATION_UNIT})`}
+                      activeDot={{ ...seriesLineProps(RADIATION_SERIES_INDEX).activeDot, fill: chartSeries(RADIATION_SERIES_INDEX).fill }}
+                    />
+                  </LineChart>
+                )}
+              </ChartFrame>
+            </div>
           </article>
         </div>
       )}

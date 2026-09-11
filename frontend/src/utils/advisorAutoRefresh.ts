@@ -25,7 +25,7 @@ export function buildAdvisorForecastSignature(forecast: unknown): string | null 
     }
 
     try {
-        return JSON.stringify(forecast);
+        return JSON.stringify(forecast, (key, value) => key === 'refreshed_at' ? undefined : value);
     } catch {
         return String(forecast);
     }

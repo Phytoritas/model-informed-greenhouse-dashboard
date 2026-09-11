@@ -35,35 +35,10 @@ QUARANTINED_ASSET_FAMILIES: frozenset[str] = frozenset({"wiki_page", "wiki_case"
 
 #: Individual source documents that are quarantined, keyed by lowercase filename.
 #:
-#: The two 農業技術大系 volumes are **Japanese-language books**, not corrupt Korean
-#: ones: their fonts declare ``CIDSystemInfo Registry=Adobe / Ordering=Japan1``
-#: (a CID collection that contains no Hangul glyphs at all) and the text extracts
-#: as ~65% Japanese script with zero Hangul. They are quarantined for two
-#: independent reasons, either of which is sufficient:
-#:
-#: 1. **Agronomic transfer is unverified.** Retrieval judges "relevant to the
-#:    question", never "applicable in a 2026 Korean greenhouse". These are books
-#:    about Japanese cultivars, Japanese climate, Japanese cropping calendars and
-#:    period-specific facilities/materials. In an advisory system the cost of a
-#:    confident wrong prescription exceeds the cost of a miss.
-#: 2. **Licensing is unresolved.** 農文協 sells 大系 commercially as an
-#:    annually-supplemented loose-leaf (加除式) encyclopedia. Berne makes
-#:    reproduction *and translation* exclusive rights; Japan's Copyright Act
-#:    Art. 30-4 (non-enjoyment data analysis) and Art. 47-5 (book-search
-#:    snippets) do not plainly reach advisory RAG that serves the work's content
-#:    to users as translated advice.
-#:
-#: Exit condition: (a) confirm with the publisher/licence that full-text local
-#: indexing and serving answers to users are permitted, and (b) have a Korean
-#: protected-horticulture consultant whitelist specific passages with Korean
-#: annotations. Only then remove entries here — and even then, prefer
-#: passage-level whitelisting over lifting the whole document.
-QUARANTINED_FILENAMES: frozenset[str] = frozenset(
-    {
-        "농업기술대계_토마토편.pdf",
-        "오이_농업기술대계.pdf",
-    }
-)
+#: The owner explicitly requested use of the Japanese 農業技術大系 sources.
+#: Their language and regional context travel with the document metadata;
+#: extraction quality is checked independently of this exclusion list.
+QUARANTINED_FILENAMES: frozenset[str] = frozenset()
 
 
 def quarantine_reasons() -> dict[str, str]:
@@ -72,12 +47,6 @@ def quarantine_reasons() -> dict[str, str]:
         family: "ungoverned-orphan: source and ingest removed 2026-07-05 (PII/source exposure)"
         for family in sorted(QUARANTINED_ASSET_FAMILIES)
     }
-    reasons.update(
-        {
-            filename: "japanese-source: agronomic transfer unverified and licence unresolved"
-            for filename in sorted(QUARANTINED_FILENAMES)
-        }
-    )
     return reasons
 
 

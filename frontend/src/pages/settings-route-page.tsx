@@ -144,12 +144,15 @@ export default function SettingsRoutePage({
     <SettingsPage
       locale={locale}
       runtimeSurface={(
-        <SimulationRuntimePanel
-          locale={locale}
-          crop={crop}
-          telemetryStatus={telemetryStatus}
-          telemetryDetail={telemetryDetail}
-        />
+        <div className="grid min-w-0 gap-6">
+          <SimulationRuntimePanel
+            key={crop}
+            locale={locale}
+            crop={crop}
+            telemetryStatus={telemetryStatus}
+            telemetryDetail={telemetryDetail}
+          />
+        </div>
       )}
       shellCard={(
         <DashboardCard

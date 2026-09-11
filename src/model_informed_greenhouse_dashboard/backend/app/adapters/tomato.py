@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from model_informed_greenhouse_dashboard.models.legacy.TomatoModel import TomatoModel
-from .base import ModelAdapter
+from .base import ModelAdapter, environment_quality, finite_number
 
 logger = logging.getLogger(__name__)
 
@@ -74,11 +74,15 @@ class TomatoAdapter(ModelAdapter):
             else:
                 dt = row["datetime"]
 
-            # Calculate timestep (default 3600s for hourly data)
-            if self._last_datetime is not None:
-                delta_s = (dt - self._last_datetime).total_seconds()
-            else:
-                delta_s = 3600.0  # Assume 1 hour for first step
+            delta_s = self._step_duration_seconds(dt, row)
+            quality = environment_quality(row)
+            if quality["status"] == "invalid":
+                self._last_datetime = dt
+                self._last_state = self._fallback_state(row, "invalid_input")
+                return self._last_state
+
+            # Consume this input interval even if its model calculation fails.
+            self._last_datetime = dt
 
             # Update model inputs from row (TomatoModel expects specific names)
             self.model.T_a = row["T_air_C"] + 273.15  # Convert to Kelvin
@@ -101,9 +105,18 @@ class TomatoAdapter(ModelAdapter):
 
             # Extract output state
             state = self._extract_state(dt, row, delta_s)
+            if any(
+                finite_number(value) is None
+                for value in state.values()
+                if isinstance(value, (int, float))
+            ):
+                raise ValueError("Model returned a non-finite state")
 
-            # Update daily cache
-            self._update_daily_cache(state, dt)
+            state["data_quality"] = quality
+            state["source"] = "model_prediction"
+            state["simulation_status"] = "ok" if state["converged"] == 1 else "unconverged"
+            if state["converged"] == 1:
+                self._update_daily_cache(state, dt)
 
             self._last_state = state
             self._last_datetime = dt
@@ -113,7 +126,8 @@ class TomatoAdapter(ModelAdapter):
         except Exception as e:
             logger.error(f"TomatoAdapter.step() error: {e}", exc_info=True)
             # Return safe fallback state
-            return self._fallback_state(row)
+            self._last_state = self._fallback_state(row)
+            return self._last_state
 
     def _extract_state(
         self, dt: datetime, row: Dict[str, Any], dt_seconds: float
@@ -182,6 +196,7 @@ class TomatoAdapter(ModelAdapter):
             "root_dry_weight_g_m2": float(getattr(m, "W_rt", 0)),
             "fruit_dry_weight_g_m2": float(getattr(m, "W_fr", 0)),
             "harvested_fruit_g_m2": float(getattr(m, "W_fr_harvested", 0)),
+            "harvest_basis": "dry_matter",
             "truss_count": int(getattr(m, "truss_count", 0)),
             "active_trusses": int(getattr(m, "_count_active_trusses", lambda: 0)()),
             "SLA_m2_g": float(getattr(m, "SLA", 0.025)),
@@ -205,12 +220,15 @@ class TomatoAdapter(ModelAdapter):
 
         return state
 
-    def _fallback_state(self, row: Dict[str, Any]) -> Dict[str, Any]:
+    def _fallback_state(
+        self, row: Dict[str, Any], status: str = "failed"
+    ) -> Dict[str, Any]:
         """Return safe fallback state on error."""
+        previous = self._last_state or {}
         return {
-            "datetime": row["datetime"],
-            "LAI": 0.0,
-            "T_canopy_C": row["T_air_C"],
+            "datetime": row.get("datetime"),
+            "LAI": previous.get("LAI", 0.0),
+            "T_canopy_C": finite_number(row.get("T_air_C")),
             "H_W_m2": 0.0,
             "LE_W_m2": 0.0,
             "transpiration_g_m2": 0.0,
@@ -218,21 +236,25 @@ class TomatoAdapter(ModelAdapter):
             "co2_flux_g_m2_s": 0.0,
             "net_assimilation_umol_m2_s": 0.0,
             "gross_photosynthesis_umol_m2_s": 0.0,
-            "fractional_cover": 0.0,
+            "fractional_cover": previous.get("fractional_cover", 0.0),
             "converged": 0,
-            "T_air_C": row.get("T_air_C", 0.0),
-            "PAR_umol": row.get("PAR_umol", 0.0),
-            "CO2_ppm": row.get("CO2_ppm", 0.0),
-            "RH_percent": row.get("RH_percent", 0.0),
-            "wind_speed_ms": row.get("wind_speed_ms", 0.0),
+            "simulation_status": status,
+            "source": "model_prediction",
+            "data_quality": environment_quality(row),
+            "T_air_C": finite_number(row.get("T_air_C")),
+            "PAR_umol": finite_number(row.get("PAR_umol")),
+            "CO2_ppm": finite_number(row.get("CO2_ppm")),
+            "RH_percent": finite_number(row.get("RH_percent")),
+            "wind_speed_ms": finite_number(row.get("wind_speed_ms")),
             "dt_seconds": 0.0,
-            "leaf_dry_weight_g_m2": 0.0,
-            "stem_dry_weight_g_m2": 0.0,
-            "root_dry_weight_g_m2": 0.0,
-            "fruit_dry_weight_g_m2": 0.0,
-            "harvested_fruit_g_m2": 0.0,
-            "truss_count": 0,
-            "active_trusses": 0,
+            "leaf_dry_weight_g_m2": previous.get("leaf_dry_weight_g_m2", 0.0),
+            "stem_dry_weight_g_m2": previous.get("stem_dry_weight_g_m2", 0.0),
+            "root_dry_weight_g_m2": previous.get("root_dry_weight_g_m2", 0.0),
+            "fruit_dry_weight_g_m2": previous.get("fruit_dry_weight_g_m2", 0.0),
+            "harvested_fruit_g_m2": previous.get("harvested_fruit_g_m2", 0.0),
+            "harvest_basis": "dry_matter",
+            "truss_count": previous.get("truss_count", 0),
+            "active_trusses": previous.get("active_trusses", 0),
             "SLA_m2_g": 0.025,
             "crop_efficiency": 0.0,
         }
@@ -251,8 +273,6 @@ class TomatoAdapter(ModelAdapter):
                     prev_harvest_g_m2 * self.area_m2
                 ) / 1000
                 self._previous_day["transpiration_mm"] = prev_transp_mm
-                # Update cumulative
-                self._cumulative["total_transpiration_mm"] += prev_transp_mm
                 logger.info(
                     f"TomatoAdapter: End of day, harvest={self._previous_day['harvest_kg']:.3f} kg, transp={prev_transp_mm:.2f} mm"
                 )
@@ -309,6 +329,13 @@ class TomatoAdapter(ModelAdapter):
         daily_transp_mm = self._daily_cache.get("transpiration_sum", 0) / 1000
 
         kpi = {
+            # Legacy harvest keys carry dry matter; fresh mass is not modeled.
+            "harvest_basis": "dry_matter",
+            "harvest_dry_kg_total": round(harvest_kg_total, 2),
+            "daily_harvest_dry_kg": round(daily_harvest_kg, 3),
+            "previous_day_harvest_dry_kg": round(
+                self._previous_day.get("harvest_kg", 0), 3
+            ),
             "harvest_kg_ha": round(harvest_kg_ha, 2),
             "harvest_kg_total": round(harvest_kg_total, 2),
             "daily_harvest_kg": round(daily_harvest_kg, 3),  # Today's harvest increment
@@ -365,6 +392,7 @@ class TomatoAdapter(ModelAdapter):
         """Restore model state from snapshot."""
         try:
             # Extract adapter metadata
+            state = copy.deepcopy(state)
             meta = state.pop("_adapter_meta", {})
             if meta.get("last_datetime"):
                 self._last_datetime = datetime.fromisoformat(meta["last_datetime"])

@@ -1,0 +1,21 @@
+.scientific-text {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+}
+
+.scientific-text :is(sub, sup) {
+  position: relative;
+  font-size: 0.72em;
+  line-height: 0;
+  vertical-align: baseline;
+}
+
+.scientific-text sup { top: -0.48em; }
+.scientific-text sub { bottom: -0.2em; }
+
+.scientific-unit {
+  display: inline-block;
+  white-space: nowrap;
+  line-height: 1.6;
+  font-weight: 500;
+}
